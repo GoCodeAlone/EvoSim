@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"sort"
@@ -689,8 +690,26 @@ func (pns *PlantNetworkSystem) GetNetworkStats() map[string]interface{} {
 	connectionsByType := make(map[NetworkConnectionType]int)
 	signalsByType := make(map[ChemicalSignalType]int)
 
+	// Count active connections (healthy ones)
+	activeConnections := 0
+	totalConnectionStrength := 0.0
+	healthyConnections := 0
+	degradingConnections := 0
+
 	for _, conn := range pns.Connections {
 		connectionsByType[conn.Type]++
+		if conn.Health > 0.5 {
+			activeConnections++
+			healthyConnections++
+		} else if conn.Health > 0.1 {
+			degradingConnections++
+		}
+		totalConnectionStrength += conn.Strength
+	}
+
+	avgConnectionStrength := 0.0
+	if len(pns.Connections) > 0 {
+		avgConnectionStrength = totalConnectionStrength / float64(len(pns.Connections))
 	}
 
 	for _, signal := range pns.ChemicalSignals {
@@ -707,7 +726,67 @@ func (pns *PlantNetworkSystem) GetNetworkStats() map[string]interface{} {
 		avgClusterSize = float64(totalSize) / float64(len(pns.NetworkClusters))
 	}
 
+	// Build cluster information
+	clusters := make([]map[string]interface{}, 0)
+	for _, cluster := range pns.NetworkClusters {
+		plantTypes := make([]string, 0)
+		typeMap := make(map[PlantType]bool)
+
+		for _, plant := range cluster.Plants {
+			if !typeMap[plant.Type] {
+				typeMap[plant.Type] = true
+				configs := GetPlantConfigs()
+				if config, exists := configs[plant.Type]; exists {
+					plantTypes = append(plantTypes, config.Name)
+				}
+			}
+		}
+
+		clusterInfo := map[string]interface{}{
+			"id":          cluster.ID,
+			"size":        cluster.Size,
+			"avg_health":  cluster.AverageHealth,
+			"efficiency":  cluster.Efficiency,
+			"plant_types": plantTypes,
+		}
+		clusters = append(clusters, clusterInfo)
+	}
+
+	// Resource sharing statistics
+	resourceSharing := map[string]interface{}{
+		"transfers_this_tick":         pns.ActiveConnections, // Approximation
+		"total_resources_transferred": pns.TotalResourceTransferred,
+		"avg_transfer_efficiency":     pns.NetworkEfficiency,
+		"recent_beneficiaries":        len(pns.NetworkClusters),
+	}
+
+	// Network health metrics
+	healthPercentage := 0.0
+	if len(pns.Connections) > 0 {
+		healthPercentage = float64(healthyConnections) / float64(len(pns.Connections))
+	}
+
+	networkHealth := map[string]interface{}{
+		"healthy_percentage":    healthPercentage,
+		"degrading_connections": degradingConnections,
+		"connections_lost":      0, // Could track this in future
+		"new_connections":       0, // Could track this in future
+	}
+
+	// Recent events (placeholder - could be enhanced with actual event tracking)
+	recentEvents := []string{}
+	if len(pns.Connections) > 0 {
+		recentEvents = append(recentEvents, fmt.Sprintf("%d active network connections", activeConnections))
+	}
+	if len(pns.ChemicalSignals) > 0 {
+		recentEvents = append(recentEvents, fmt.Sprintf("%d chemical signals propagating", len(pns.ChemicalSignals)))
+	}
+	if len(pns.NetworkClusters) > 0 {
+		recentEvents = append(recentEvents, fmt.Sprintf("%d plant clusters formed", len(pns.NetworkClusters)))
+	}
+
 	return map[string]interface{}{
+		// Basic stats (original keys)
 		"total_connections":           len(pns.Connections),
 		"total_signals":               len(pns.ChemicalSignals),
 		"total_clusters":              len(pns.NetworkClusters),
@@ -717,6 +796,18 @@ func (pns *PlantNetworkSystem) GetNetworkStats() map[string]interface{} {
 		"signals_by_type":             signalsByType,
 		"average_cluster_size":        avgClusterSize,
 		"max_connection_distance":     pns.MaxConnectionDistance,
+
+		// Enhanced stats (expected by CLI)
+		"active_connections":      activeConnections,
+		"cluster_count":           len(pns.NetworkClusters),
+		"active_signals":          len(pns.ChemicalSignals),
+		"avg_connection_strength": avgConnectionStrength,
+		"connection_types":        connectionsByType,
+		"signal_activity":         signalsByType,
+		"clusters":                clusters,
+		"resource_sharing":        resourceSharing,
+		"recent_events":           recentEvents,
+		"network_health":          networkHealth,
 	}
 }
 
