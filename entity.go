@@ -453,7 +453,7 @@ func (e *Entity) CheckStarvation(world *World) {
 	}
 
 	// Severe starvation can trigger evolutionary adaptation
-	if e.Energy < 5 && e.Species == "predator" {
+	if e.Energy < 5 && e.Species == "predator" && e.Age > 50 { // Also require mature age
 		// Check if there are any herbivores or omnivores nearby
 		hasPreyNearby := false
 		for _, other := range world.AllEntities {
@@ -464,7 +464,7 @@ func (e *Entity) CheckStarvation(world *World) {
 		}
 
 		// If no prey nearby, consider evolutionary pressure
-		if !hasPreyNearby && rand.Float64() < 0.01 { // 1% chance per tick
+		if !hasPreyNearby && rand.Float64() < 0.001 { // 0.1% chance per tick - much lower
 			e.evolveSpecies("omnivore", world)
 		}
 	}
