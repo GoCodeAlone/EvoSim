@@ -54,6 +54,7 @@ type WorldEvent struct {
 type GridCell struct {
 	Biome    BiomeType
 	Entities []*Entity
+	Plants   []*Plant    // Plants in this cell
 	Event    *WorldEvent // Current event affecting this cell
 }
 
@@ -73,10 +74,13 @@ type World struct {
 	Config      WorldConfig
 	Populations map[string]*Population
 	AllEntities []*Entity
+	AllPlants   []*Plant // All plants in the world
 	Grid        [][]GridCell
 	Biomes      map[BiomeType]Biome
 	Events      []*WorldEvent
+	EventLogger *EventLogger // Event logging system
 	NextID      int
+	NextPlantID int // ID counter for plants
 	Tick        int
 	Clock       time.Time
 	LastUpdate  time.Time
@@ -88,10 +92,13 @@ func NewWorld(config WorldConfig) *World {
 		Config:      config,
 		Populations: make(map[string]*Population),
 		AllEntities: make([]*Entity, 0),
+		AllPlants:   make([]*Plant, 0),
 		Grid:        make([][]GridCell, config.GridHeight),
 		Biomes:      initializeBiomes(),
 		Events:      make([]*WorldEvent, 0),
+		EventLogger: NewEventLogger(1000), // Keep up to 1000 events
 		NextID:      0,
+		NextPlantID: 0,
 		Tick:        0,
 		Clock:       time.Now(),
 		LastUpdate:  time.Now(),
@@ -104,10 +111,14 @@ func NewWorld(config WorldConfig) *World {
 			world.Grid[y][x] = GridCell{
 				Biome:    world.generateBiome(x, y),
 				Entities: make([]*Entity, 0),
+				Plants:   make([]*Plant, 0),
 				Event:    nil,
 			}
 		}
 	}
+
+	// Initialize plant life
+	world.initializePlants()
 
 	return world
 }
@@ -274,7 +285,7 @@ func (w *World) Update() {
 	w.Clock = w.Clock.Add(time.Hour) // Each tick = 1 hour world time
 	w.LastUpdate = now
 
-	// Clear grid entities
+	// Clear grid entities and plants
 	w.clearGrid()
 
 	// Update world events
@@ -285,43 +296,126 @@ func (w *World) Update() {
 		w.triggerRandomEvent()
 	}
 
-	// Update all entities with biome effects
+	// Update all plants
+	w.updatePlants()
+
+	// Update all entities with biome effects and starvation checks
 	for _, entity := range w.AllEntities {
 		w.updateEntityWithBiome(entity)
+		entity.CheckStarvation(w) // Check for starvation-driven evolution
 		entity.Update()
 	}
 
-	// Update grid with current entity positions
+	// Update grid with current entity and plant positions
 	w.updateGrid()
 
-	// Handle interactions between entities
+	// Handle interactions between entities and with plants
 	w.handleInteractions()
 
-	// Remove dead entities
+	// Remove dead entities and plants
 	w.removeDeadEntities()
+	w.removeDeadPlants()
+
+	// Plant reproduction
+	if w.Tick%10 == 0 {
+		w.reproducePlants()
+	}
 
 	// Population-level evolution (less frequent)
 	if w.Tick%50 == 0 {
 		w.evolvePopulations()
 	}
 
-	// Spawn new entities occasionally
+	// Spawn new entities occasionally (based on carrying capacity)
 	if w.Tick%20 == 0 {
 		w.spawnNewEntities()
 	}
+
+	// Update event logger with population changes
+	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
 }
 
-// clearGrid clears all entities from grid cells
+// updatePlants handles plant growth, aging, and death
+func (w *World) updatePlants() {
+	for _, plant := range w.AllPlants {
+		if !plant.IsAlive {
+			continue
+		}
+
+		// Get biome for plant's location
+		gridX := int((plant.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((plant.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+
+		// Clamp to grid bounds
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+		biome := w.Biomes[w.Grid[gridY][gridX].Biome]
+		plant.Update(biome)
+	}
+}
+
+// reproducePlants handles plant reproduction
+func (w *World) reproducePlants() {
+	newPlants := make([]*Plant, 0)
+
+	for _, plant := range w.AllPlants {
+		if !plant.IsAlive {
+			continue
+		}
+
+		if offspring := plant.Reproduce(w.NextPlantID); offspring != nil {
+			w.NextPlantID++
+			newPlants = append(newPlants, offspring)
+		}
+	}
+
+	// Add new plants to world
+	w.AllPlants = append(w.AllPlants, newPlants...)
+
+	// Log significant plant population changes
+	if len(newPlants) > 5 {
+		w.EventLogger.LogEcosystemShift(w.Tick,
+			fmt.Sprintf("Plant reproduction boom: %d new plants born", len(newPlants)),
+			map[string]interface{}{"new_plants": len(newPlants)})
+	}
+}
+
+// removeDeadPlants removes dead plants from the world
+func (w *World) removeDeadPlants() {
+	alivePlants := make([]*Plant, 0, len(w.AllPlants))
+
+	for _, plant := range w.AllPlants {
+		if plant.IsAlive {
+			alivePlants = append(alivePlants, plant)
+		}
+	}
+
+	if len(alivePlants) < len(w.AllPlants) {
+		deadCount := len(w.AllPlants) - len(alivePlants)
+		if deadCount > 10 {
+			w.EventLogger.LogEcosystemShift(w.Tick,
+				fmt.Sprintf("Significant plant die-off: %d plants died", deadCount),
+				map[string]interface{}{"plants_died": deadCount})
+		}
+	}
+
+	w.AllPlants = alivePlants
+}
+
+// clearGrid clears all entities and plants from grid cells
 func (w *World) clearGrid() {
 	for y := 0; y < w.Config.GridHeight; y++ {
 		for x := 0; x < w.Config.GridWidth; x++ {
 			w.Grid[y][x].Entities = w.Grid[y][x].Entities[:0]
+			w.Grid[y][x].Plants = w.Grid[y][x].Plants[:0]
 		}
 	}
 }
 
-// updateGrid places entities in their current grid cells
+// updateGrid places entities and plants in their current grid cells
 func (w *World) updateGrid() {
+	// Place entities in grid
 	for _, entity := range w.AllEntities {
 		if !entity.IsAlive {
 			continue
@@ -336,6 +430,23 @@ func (w *World) updateGrid() {
 		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
 
 		w.Grid[gridY][gridX].Entities = append(w.Grid[gridY][gridX].Entities, entity)
+	}
+
+	// Place plants in grid
+	for _, plant := range w.AllPlants {
+		if !plant.IsAlive {
+			continue
+		}
+
+		// Convert world coordinates to grid coordinates
+		gridX := int((plant.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((plant.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+
+		// Clamp to grid bounds
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+		w.Grid[gridY][gridX].Plants = append(w.Grid[gridY][gridX].Plants, plant)
 	}
 }
 
@@ -532,10 +643,11 @@ func (w *World) generateMeteorCraters() map[Position]BiomeType {
 	return craters
 }
 
-// handleInteractions processes interactions between nearby entities
+// handleInteractions processes interactions between nearby entities and with plants
 func (w *World) handleInteractions() {
 	interactionDistance := 5.0
 
+	// Entity-entity interactions
 	for i, entity1 := range w.AllEntities {
 		if !entity1.IsAlive {
 			continue
@@ -549,6 +661,52 @@ func (w *World) handleInteractions() {
 			distance := entity1.DistanceTo(entity2)
 			if distance <= interactionDistance {
 				w.processEntityInteraction(entity1, entity2)
+			}
+		}
+	}
+
+	// Entity-plant interactions
+	w.handleEntityPlantInteractions()
+}
+
+// handleEntityPlantInteractions processes interactions between entities and plants
+func (w *World) handleEntityPlantInteractions() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		// Get entity's grid position
+		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+
+		// Clamp to grid bounds
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+		cell := &w.Grid[gridY][gridX]
+
+		// Try to eat plants in the same cell
+		for _, plant := range cell.Plants {
+			if !plant.IsAlive {
+				continue
+			}
+
+			// Check if entity can and wants to eat this plant
+			if entity.CanEatPlant(plant) && rand.Float64() < 0.4 {
+				if entity.EatPlant(plant) {
+					// Log successful plant consumption
+					if rand.Float64() < 0.1 { // Log 10% of plant eating events
+						w.EventLogger.LogEcosystemShift(w.Tick,
+							fmt.Sprintf("%s ate %s for nutrition", entity.Species, GetPlantConfigs()[plant.Type].Name),
+							map[string]interface{}{
+								"entity_species": entity.Species,
+								"plant_type":     GetPlantConfigs()[plant.Type].Name,
+								"entity_energy":  entity.Energy,
+							})
+					}
+					break // Entity can only eat one plant per interaction
+				}
 			}
 		}
 	}
@@ -684,6 +842,78 @@ func (w *World) spawnNewEntities() {
 				w.AllEntities = append(w.AllEntities, newEntity)
 			}
 		}
+	}
+}
+
+// initializePlants populates the world with initial plant life
+func (w *World) initializePlants() {
+	// Calculate plant density based on world size
+	totalCells := w.Config.GridWidth * w.Config.GridHeight
+	plantsPerCell := 0.3 // Average 0.3 plants per cell
+	totalPlants := int(float64(totalCells) * plantsPerCell)
+
+	for i := 0; i < totalPlants; i++ {
+		// Random position
+		x := rand.Intn(w.Config.GridWidth)
+		y := rand.Intn(w.Config.GridHeight)
+
+		cell := &w.Grid[y][x]
+		biome := w.Biomes[cell.Biome]
+
+		// Choose plant type based on biome
+		var plantType PlantType
+		switch biome.Type {
+		case BiomePlains:
+			if rand.Float64() < 0.6 {
+				plantType = PlantGrass
+			} else {
+				plantType = PlantBush
+			}
+		case BiomeForest:
+			switch rand.Float64() {
+			case 0.0:
+				plantType = PlantTree
+			case 0.1:
+				plantType = PlantMushroom
+			case 0.4:
+				plantType = PlantBush
+			default:
+				plantType = PlantGrass
+			}
+		case BiomeDesert:
+			if rand.Float64() < 0.7 {
+				plantType = PlantCactus
+			} else {
+				plantType = PlantBush
+			}
+		case BiomeMountain:
+			if rand.Float64() < 0.8 {
+				plantType = PlantBush
+			} else {
+				plantType = PlantGrass
+			}
+		case BiomeWater:
+			plantType = PlantAlgae
+		case BiomeRadiation:
+			if rand.Float64() < 0.6 {
+				plantType = PlantMushroom
+			} else {
+				plantType = PlantBush
+			}
+		default:
+			plantType = PlantGrass
+		}
+
+		// Create plant at world coordinates
+		worldX := (float64(x) + rand.Float64()) * (w.Config.Width / float64(w.Config.GridWidth))
+		worldY := (float64(y) + rand.Float64()) * (w.Config.Height / float64(w.Config.GridHeight))
+
+		plant := NewPlant(w.NextPlantID, plantType, Position{X: worldX, Y: worldY})
+		w.NextPlantID++
+
+		// Add to world and grid
+		w.AllPlants = append(w.AllPlants, plant)
+		cell.Plants = append(cell.Plants, plant)
 	}
 }
 

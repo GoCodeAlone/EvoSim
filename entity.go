@@ -391,3 +391,113 @@ func (e *Entity) Update() {
 		e.IsAlive = false
 	}
 }
+
+// CanEatPlant determines if this entity can eat a plant
+func (e *Entity) CanEatPlant(plant *Plant) bool {
+	if !e.IsAlive || !plant.IsAlive {
+		return false
+	}
+
+	// Herbivores and omnivores can eat plants
+	// Predators can only eat plants if starving
+	switch e.Species {
+	case "herbivore":
+		return true
+	case "omnivore":
+		return true
+	case "predator":
+		// Predators can only eat plants when desperate (very low energy)
+		return e.Energy < 20
+	default:
+		return false
+	}
+}
+
+// EatPlant consumes a plant for energy
+func (e *Entity) EatPlant(plant *Plant) bool {
+	if !e.CanEatPlant(plant) {
+		return false
+	}
+
+	// Calculate how much to eat based on entity size and hunger
+	eatAmount := 10 + e.GetTrait("size")*5
+	if e.Energy < 30 {
+		eatAmount *= 1.5 // Eat more when hungry
+	}
+
+	// Get nutrition and toxicity
+	nutrition := plant.Consume(eatAmount)
+	toxicity := plant.GetToxicity()
+
+	// Apply nutrition
+	e.Energy += nutrition
+
+	// Apply toxicity damage
+	if toxicity > 0 {
+		resistance := e.GetTrait("toxin_resistance")
+		damage := toxicity * (1.0 - resistance*0.5)
+		e.Energy -= damage
+	}
+
+	// Eating costs some energy
+	e.Energy -= 2
+
+	return true
+}
+
+// CheckStarvation handles starvation effects and potential species evolution
+func (e *Entity) CheckStarvation(world *World) {
+	if !e.IsAlive || e.Energy > 15 {
+		return
+	}
+
+	// Severe starvation can trigger evolutionary adaptation
+	if e.Energy < 5 && e.Species == "predator" {
+		// Check if there are any herbivores or omnivores nearby
+		hasPreyNearby := false
+		for _, other := range world.AllEntities {
+			if other.IsAlive && other.Species != "predator" && e.DistanceTo(other) < 20 {
+				hasPreyNearby = true
+				break
+			}
+		}
+
+		// If no prey nearby, consider evolutionary pressure
+		if !hasPreyNearby && rand.Float64() < 0.01 { // 1% chance per tick
+			e.evolveSpecies("omnivore", world)
+		}
+	}
+}
+
+// evolveSpecies changes an entity's species under evolutionary pressure
+func (e *Entity) evolveSpecies(newSpecies string, world *World) {
+	if e.Species == newSpecies {
+		return
+	}
+
+	oldSpecies := e.Species
+	e.Species = newSpecies
+
+	// Adjust traits for new species
+	switch newSpecies {
+	case "omnivore":
+		// Develop omnivore traits
+		e.SetTrait("diet_flexibility", e.GetTrait("diet_flexibility")+0.3)
+		e.SetTrait("toxin_resistance", e.GetTrait("toxin_resistance")+0.2)
+		e.SetTrait("aggression", e.GetTrait("aggression")-0.1) // Less aggressive
+	case "herbivore":
+		// Develop herbivore traits
+		e.SetTrait("digestion_efficiency", e.GetTrait("digestion_efficiency")+0.4)
+		e.SetTrait("toxin_resistance", e.GetTrait("toxin_resistance")+0.3)
+		e.SetTrait("aggression", e.GetTrait("aggression")-0.3) // Much less aggressive
+	case "predator":
+		// Develop predator traits
+		e.SetTrait("aggression", e.GetTrait("aggression")+0.3)
+		e.SetTrait("strength", e.GetTrait("strength")+0.2)
+		e.SetTrait("speed", e.GetTrait("speed")+0.1)
+	}
+
+	// Log the evolution
+	details := fmt.Sprintf("Evolved due to environmental pressure (energy: %.1f)", e.Energy)
+	world.EventLogger.LogSpeciesEvolution(world.Tick, newSpecies, oldSpecies, details)
+}

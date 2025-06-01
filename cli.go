@@ -264,9 +264,7 @@ func (m CLIModel) gridView() string {
 	for y := 0; y < m.world.Config.GridHeight; y++ {
 		for x := 0; x < m.world.Config.GridWidth; x++ {
 			cell := m.world.Grid[y][x]
-			biome := m.world.Biomes[cell.Biome]
-
-			// Start with biome symbol
+			biome := m.world.Biomes[cell.Biome] // Start with biome symbol
 			symbol := biome.Symbol
 			style := biomeColors[cell.Biome]
 
@@ -302,6 +300,33 @@ func (m CLIModel) gridView() string {
 						symbol = rune('0' + len(cell.Entities))
 					} else {
 						symbol = '+'
+					}
+				}
+			} else if len(cell.Plants) > 0 {
+				// Show plants if no entities are present
+				// Find the most prominent plant (largest or most numerous)
+				var dominantPlant *Plant
+				maxSize := 0.0
+				for _, plant := range cell.Plants {
+					if plant.IsAlive && plant.Size > maxSize {
+						maxSize = plant.Size
+						dominantPlant = plant
+					}
+				}
+
+				if dominantPlant != nil {
+					config := GetPlantConfigs()[dominantPlant.Type]
+					symbol = config.Symbol
+					// Use a dimmer style for plants
+					style = biomeColors[cell.Biome].Copy().Foreground(lipgloss.Color("240"))
+				}
+
+				// Show multiple plants with small numbers
+				if len(cell.Plants) > 1 {
+					if len(cell.Plants) < 5 {
+						symbol = rune('0' + len(cell.Plants))
+					} else {
+						symbol = '■'
 					}
 				}
 			}
@@ -353,10 +378,28 @@ func (m CLIModel) statsView() string {
 
 	var content strings.Builder
 	content.WriteString(titleStyle.Render("World Statistics") + "\n\n")
-
 	content.WriteString(fmt.Sprintf("Tick: %d\n", stats["tick"]))
 	content.WriteString(fmt.Sprintf("Total Entities: %d\n", stats["total_entities"]))
+	content.WriteString(fmt.Sprintf("Total Plants: %d\n", len(m.world.AllPlants)))
 	content.WriteString(fmt.Sprintf("World Time: %s\n", m.world.Clock.Format("15:04 Day 2006-01-02")))
+	content.WriteString("\n")
+
+	// Plant statistics
+	content.WriteString("Plant Distribution:\n")
+	plantTypeCount := make(map[PlantType]int)
+	alivePlants := 0
+	for _, plant := range m.world.AllPlants {
+		if plant.IsAlive {
+			alivePlants++
+			plantTypeCount[plant.Type]++
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("  Total Alive: %d\n", alivePlants))
+	for plantType, count := range plantTypeCount {
+		config := GetPlantConfigs()[plantType]
+		content.WriteString(fmt.Sprintf("  %s: %d\n", config.Name, count))
+	}
 	content.WriteString("\n")
 
 	// Population statistics
@@ -394,13 +437,15 @@ func (m CLIModel) statsView() string {
 	return content.String()
 }
 
-// eventsView renders active world events
+// eventsView renders active world events and recent event log
 func (m CLIModel) eventsView() string {
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("World Events") + "\n\n")
+	content.WriteString(titleStyle.Render("World Events & Event Log") + "\n\n")
 
+	// Active Events Section
+	content.WriteString("=== ACTIVE EVENTS ===\n")
 	if len(m.world.Events) == 0 {
-		content.WriteString("No active events")
+		content.WriteString("No active events\n")
 	} else {
 		for i, event := range m.world.Events {
 			content.WriteString(eventStyle.Render(fmt.Sprintf("🌪 %s", event.Name)) + "\n")
@@ -421,7 +466,34 @@ func (m CLIModel) eventsView() string {
 		}
 	}
 
-	content.WriteString("\n\nPossible Events:")
+	// Recent Event Log Section
+	content.WriteString("\n\n=== RECENT EVENT LOG ===\n")
+	if m.world.EventLogger != nil {
+		recentEvents := m.world.EventLogger.GetRecentEvents(10) // Get last 10 events
+		if len(recentEvents) == 0 {
+			content.WriteString("No events logged yet\n")
+		} else {
+			for i, event := range recentEvents {
+				// Format timestamp relative to current tick
+				ticksAgo := m.world.Tick - event.Tick
+				timeStr := fmt.Sprintf("T-%d", ticksAgo)
+				if ticksAgo == 0 {
+					timeStr = "NOW"
+				}
+
+				content.WriteString(fmt.Sprintf("[%s] %s: %s\n",
+					timeStr, event.Type, event.Description))
+
+				if i >= 9 { // Limit display to prevent overflow
+					break
+				}
+			}
+		}
+	} else {
+		content.WriteString("Event logger not initialized\n")
+	}
+
+	content.WriteString("\n=== POSSIBLE EVENTS ===")
 	content.WriteString("\n• Solar Flare - Increases radiation and mutations")
 	content.WriteString("\n• Meteor Shower - Creates radiation zones")
 	content.WriteString("\n• Ice Age - Increases energy drain worldwide")
@@ -530,12 +602,27 @@ GRID SYMBOLS:
   2-9        Multiple entities in cell
   +          10+ entities in cell
 
+PLANTS (shown when no entities present):
+  .          Grass (nutrition: 15)
+  ♦          Bush (nutrition: 25, slightly toxic)
+  ♠          Tree (nutrition: 40, large)
+  ♪          Mushroom (nutrition: 20, toxic)
+  ~          Algae (nutrition: 10, aquatic)
+  †          Cactus (nutrition: 30, toxic, desert-adapted)
+  1-4        Multiple plants in cell
+  ■          5+ plants in cell
+
 The simulation runs in real-time, with entities moving, aging, interacting,
-and evolving based on their traits and the biome they're in. Different
-biomes provide different challenges and benefits to different species.
+eating plants, and evolving based on their traits and the biome they're in. 
+Different biomes provide different challenges and benefits to different species.
+
+Plants form the base of the food chain - herbivores and omnivores eat them,
+while desperate predators may resort to plants when no prey is available.
+Some plants are toxic and can damage entities that lack toxin resistance.
 
 World events can occur randomly, affecting mutation rates, energy drain,
-and even changing the landscape itself.
+and even changing the landscape itself. Check the Events view to see the
+complete event log including extinctions, evolutions, and ecosystem shifts.
 
 Press ? again to return to the simulation.
 `

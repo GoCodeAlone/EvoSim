@@ -1,22 +1,83 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 )
 
 func main() {
+	// Define command-line flags
+	var (
+		help       = flag.Bool("help", false, "Show help message")
+		h          = flag.Bool("h", false, "Show help message (short)")
+		width      = flag.Float64("width", 100.0, "World width")
+		height     = flag.Float64("height", 100.0, "World height")
+		gridWidth  = flag.Int("grid-width", 40, "Grid cells width for visualization")
+		gridHeight = flag.Int("grid-height", 25, "Grid cells height for visualization")
+		popSize    = flag.Int("pop-size", 20, "Population size per species")
+		seed       = flag.Int64("seed", 0, "Random seed (0 for current time)")
+		version    = flag.Bool("version", false, "Show version information")
+	)
+
+	flag.Parse()
+
+	// Show help
+	if *help || *h {
+		fmt.Println("Genetic Ecosystem Simulation")
+		fmt.Println("============================")
+		fmt.Println()
+		fmt.Println("A genetic algorithm simulation featuring a complete ecosystem with:")
+		fmt.Println("• Multiple species (herbivores, predators, omnivores)")
+		fmt.Println("• Plant life system with 6 plant types")
+		fmt.Println("• Dynamic biomes and world events")
+		fmt.Println("• Evolutionary pressure and species adaptation")
+		fmt.Println("• Event logging system")
+		fmt.Println()
+		fmt.Println("Usage:")
+		fmt.Printf("  %s [options]\n", os.Args[0])
+		fmt.Println()
+		fmt.Println("Options:")
+		flag.PrintDefaults()
+		fmt.Println()
+		fmt.Println("Controls (in simulation):")
+		fmt.Println("  space      Pause/Resume simulation")
+		fmt.Println("  enter      Manual step (when paused)")
+		fmt.Println("  v          Cycle through views (grid/stats/events/populations)")
+		fmt.Println("  ?          Toggle help screen")
+		fmt.Println("  q          Quit")
+		fmt.Println()
+		fmt.Println("The simulation will display a real-time grid showing entities, plants,")
+		fmt.Println("and biomes. Different symbols represent different species and plant types.")
+		fmt.Println("Check the in-simulation help (?) for detailed symbol meanings.")
+		return
+	}
+
+	// Show version
+	if *version {
+		fmt.Println("Genetic Ecosystem Simulation v1.0")
+		fmt.Println("Enhanced with plant life, event logging, and evolutionary pressure")
+		return
+	}
 	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
+	if *seed == 0 {
+		rand.Seed(time.Now().UnixNano())
+	} else {
+		rand.Seed(*seed)
+		fmt.Printf("Using random seed: %d\n", *seed)
+	}
+
 	// Create world configuration
 	worldConfig := WorldConfig{
-		Width:          100.0,
-		Height:         100.0,
+		Width:          *width,
+		Height:         *height,
 		NumPopulations: 3,
-		PopulationSize: 20,
-		GridWidth:      40, // Grid cells for visualization
-		GridHeight:     25,
+		PopulationSize: *popSize,
+		GridWidth:      *gridWidth,
+		GridHeight:     *gridHeight,
 	}
 
 	// Create the world
