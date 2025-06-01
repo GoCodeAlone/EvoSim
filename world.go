@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -97,6 +98,12 @@ type World struct {
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
+	
+	// Micro and Macro Evolution Systems
+	DNASystem           *DNASystem          // DNA-based genetic system
+	CellularSystem      *CellularSystem     // Cellular-level evolution and processes
+	MacroEvolutionSystem *MacroEvolutionSystem // Macro-evolution tracking
+	TopologySystem      *TopologySystem     // World terrain and geological processes
 	FluidRegions        []FluidRegion
 }
 
@@ -142,6 +149,16 @@ func NewWorld(config WorldConfig) *World {
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem()
 	world.SpeciesNaming = NewSpeciesNaming()
+	
+	// Initialize new evolution and topology systems
+	world.DNASystem = NewDNASystem()
+	world.CellularSystem = NewCellularSystem(world.DNASystem)
+	world.MacroEvolutionSystem = NewMacroEvolutionSystem()
+	world.TopologySystem = NewTopologySystem(config.GridWidth, config.GridHeight)
+	
+	// Generate initial world terrain
+	world.TopologySystem.GenerateInitialTerrain()
+	
 	world.FluidRegions = make([]FluidRegion, 0)
 
 	// Initialize plant life
@@ -267,6 +284,9 @@ func (w *World) generateBiome(x, y int) BiomeType {
 
 // AddPopulation adds a new population to the world
 func (w *World) AddPopulation(config PopulationConfig) {
+	// Generate a proper species name using the naming system
+	speciesName := w.SpeciesNaming.GenerateSpeciesName(config.Species, "", 0, w.Tick)
+	
 	// Generate trait names based on base traits
 	traitNames := make([]string, 0, len(config.BaseTraits))
 	for name := range config.BaseTraits {
@@ -275,7 +295,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 
 	// Create population with species-specific mutation rate
 	pop := NewPopulation(w.Config.PopulationSize, traitNames, config.BaseMutationRate, 0.2)
-	pop.Species = config.Species
+	pop.Species = speciesName
 
 	// Initialize entities with base traits and positions
 	for _, entity := range pop.Entities {
@@ -287,7 +307,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 			X: config.StartPos.X + math.Cos(angle)*distance,
 			Y: config.StartPos.Y + math.Sin(angle)*distance,
 		}
-		entity.Species = config.Species
+		entity.Species = speciesName
 		entity.ID = w.NextID
 		w.NextID++
 
@@ -299,10 +319,25 @@ func (w *World) AddPopulation(config PopulationConfig) {
 			entity.SetTrait(traitName, value)
 		}
 
+		// Create DNA for entity
+		dna := w.DNASystem.GenerateRandomDNA(entity.ID, entity.Generation)
+		
+		// Create cellular organism
+		w.CellularSystem.CreateSingleCellOrganism(entity.ID, dna)
+		
+		// Update entity traits based on DNA expression
+		for traitName := range entity.Traits {
+			dnaValue := w.DNASystem.ExpressTrait(dna, traitName)
+			// Blend DNA value with existing trait (50/50 blend)
+			currentValue := entity.GetTrait(traitName)
+			newValue := (currentValue + dnaValue) / 2.0
+			entity.SetTrait(traitName, newValue)
+		}
+
 		w.AllEntities = append(w.AllEntities, entity)
 	}
 
-	w.Populations[config.Species] = pop
+	w.Populations[speciesName] = pop
 }
 
 // Update simulates one tick of the world
@@ -317,6 +352,11 @@ func (w *World) Update() {
 
 	// 2. Update wind system (affects pollen dispersal and plant reproduction)
 	w.WindSystem.Update(currentTimeState.Season, w.Tick)
+
+	// 3. Update micro and macro evolution systems
+	w.CellularSystem.UpdateCellularOrganisms()
+	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
+	w.TopologySystem.UpdateTopology(w.Tick)
 
 	// Clear grid entities and plants
 	w.clearGrid()
@@ -349,52 +389,14 @@ func (w *World) Update() {
 
 	// Update all entities with biome effects, time effects, and starvation checks
 	deltaTime := 0.1 // Physics time step
-	for _, entity := range w.AllEntities {
-		if !entity.IsAlive {
-			continue
-		}
-
-		// Apply biome effects
-		w.updateEntityWithBiome(entity)
-
-		// Apply time-based effects (circadian preferences)
-		w.applyTimeEffects(entity, currentTimeState)
-
-		// Check starvation-driven evolution
-		entity.CheckStarvation(w)
-
-		// Update basic entity properties
-		entity.Update()
-
-		// 4. Apply physics forces and movement
-		physics := w.PhysicsComponents[entity.ID]
-		if physics != nil {
-			// Get entity's current biome
-			gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
-			gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
-			gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
-			gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-			biome := w.Grid[gridY][gridX].Biome
-
-			// Calculate attraction/repulsion forces between entities
-			for _, other := range w.AllEntities {
-				if other.ID != entity.ID && other.IsAlive {
-					otherPhysics := w.PhysicsComponents[other.ID]
-					if otherPhysics != nil {
-						force := w.PhysicsSystem.CalculateAttraction(entity, other, physics, otherPhysics)
-						w.PhysicsSystem.ApplyForce(physics, force)
-					}
-				}
-			}
-
-			// Apply fluid effects if in fluid regions
-			w.PhysicsSystem.ApplyFluidEffects(entity, physics, w.FluidRegions)
-
-			// Update physics
-			w.PhysicsSystem.ApplyPhysics(entity, physics, biome, deltaTime)
-		}
-		// Handle entity communication and signaling
-		w.handleEntityCommunication(entity)
+	
+	// Use concurrent processing for entity updates if we have many entities
+	if len(w.AllEntities) > 50 {
+		w.updateEntitiesConcurrent(currentTimeState, deltaTime)
+		// Calculate inter-entity physics forces after concurrent updates
+		w.updateEntityPhysicsForces()
+	} else {
+		w.updateEntitiesSequential(currentTimeState, deltaTime)
 	}
 
 	// 5. Reset collision counters and check collisions
@@ -459,6 +461,148 @@ func (w *World) Update() {
 
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
+}
+
+// updateEntitiesSequential updates entities using single-threaded processing
+func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime float64) {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		// Apply biome effects
+		w.updateEntityWithBiome(entity)
+
+		// Apply time-based effects (circadian preferences)
+		w.applyTimeEffects(entity, currentTimeState)
+
+		// Check starvation-driven evolution
+		entity.CheckStarvation(w)
+
+		// Update basic entity properties
+		entity.Update()
+
+		// 4. Apply physics forces and movement
+		physics := w.PhysicsComponents[entity.ID]
+		if physics != nil {
+			// Get entity's current biome
+			gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+			gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+			gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+			gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+			biome := w.Grid[gridY][gridX].Biome
+
+			// Calculate attraction/repulsion forces between entities
+			for _, other := range w.AllEntities {
+				if other.ID != entity.ID && other.IsAlive {
+					otherPhysics := w.PhysicsComponents[other.ID]
+					if otherPhysics != nil {
+						force := w.PhysicsSystem.CalculateAttraction(entity, other, physics, otherPhysics)
+						w.PhysicsSystem.ApplyForce(physics, force)
+					}
+				}
+			}
+
+			// Apply fluid effects if in fluid regions
+			w.PhysicsSystem.ApplyFluidEffects(entity, physics, w.FluidRegions)
+
+			// Update physics
+			w.PhysicsSystem.ApplyPhysics(entity, physics, biome, deltaTime)
+		}
+		// Handle entity communication and signaling
+		w.handleEntityCommunication(entity)
+	}
+}
+
+// updateEntitiesConcurrent updates entities using multi-threaded processing
+func (w *World) updateEntitiesConcurrent(currentTimeState TimeState, deltaTime float64) {
+	// Worker pool for concurrent entity processing
+	numWorkers := 4 // Use 4 goroutines for parallel processing
+	workChan := make(chan *Entity, len(w.AllEntities))
+	var wg sync.WaitGroup
+
+	// Start workers
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for entity := range workChan {
+				w.updateSingleEntity(entity, currentTimeState, deltaTime)
+			}
+		}()
+	}
+
+	// Send entities to workers
+	for _, entity := range w.AllEntities {
+		if entity.IsAlive {
+			workChan <- entity
+		}
+	}
+	close(workChan)
+
+	// Wait for all workers to complete
+	wg.Wait()
+}
+
+// updateSingleEntity updates a single entity (thread-safe parts only)
+func (w *World) updateSingleEntity(entity *Entity, currentTimeState TimeState, deltaTime float64) {
+	// Apply biome effects
+	w.updateEntityWithBiome(entity)
+
+	// Apply time-based effects (circadian preferences)
+	w.applyTimeEffects(entity, currentTimeState)
+
+	// Check starvation-driven evolution
+	entity.CheckStarvation(w)
+
+	// Update basic entity properties
+	entity.Update()
+
+	// Note: Physics force calculations and interactions are handled separately
+	// to avoid race conditions between entities
+	
+	// Handle entity communication and signaling
+	w.handleEntityCommunication(entity)
+
+	// Apply basic physics (without inter-entity forces)
+	physics := w.PhysicsComponents[entity.ID]
+	if physics != nil {
+		// Get entity's current biome
+		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		biome := w.Grid[gridY][gridX].Biome
+
+		// Apply fluid effects if in fluid regions
+		w.PhysicsSystem.ApplyFluidEffects(entity, physics, w.FluidRegions)
+
+		// Update physics (without inter-entity forces for now)
+		w.PhysicsSystem.ApplyPhysics(entity, physics, biome, deltaTime)
+	}
+}
+
+// updateEntityPhysicsForces calculates inter-entity forces (done after concurrent updates)
+func (w *World) updateEntityPhysicsForces() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		physics := w.PhysicsComponents[entity.ID]
+		if physics != nil {
+			// Calculate attraction/repulsion forces between entities
+			for _, other := range w.AllEntities {
+				if other.ID != entity.ID && other.IsAlive {
+					otherPhysics := w.PhysicsComponents[other.ID]
+					if otherPhysics != nil {
+						force := w.PhysicsSystem.CalculateAttraction(entity, other, physics, otherPhysics)
+						w.PhysicsSystem.ApplyForce(physics, force)
+					}
+				}
+			}
+		}
+	}
 }
 
 // updatePlants handles plant growth, aging, and death
@@ -783,6 +927,66 @@ func (w *World) triggerRandomEvent() {
 			GlobalMutation: 0.1,
 			GlobalDamage:   2.5,
 		},
+		{
+			Name:           "Volcanic Eruption",
+			Description:    "Massive lava flows create new biomes",
+			Duration:       40,
+			GlobalMutation: 0.15,
+			GlobalDamage:   3.0,
+			BiomeChanges:   w.generateVolcanicFields(),
+		},
+		{
+			Name:           "Lightning Storm",
+			Description:    "Electrical discharges cause widespread mutations",
+			Duration:       20,
+			GlobalMutation: 0.3,
+			GlobalDamage:   1.0,
+		},
+		{
+			Name:           "Wildfire",
+			Description:    "Fires spread across vegetation",
+			Duration:       35,
+			GlobalMutation: 0.05,
+			GlobalDamage:   2.0,
+			BiomeChanges:   w.generateFireZones(),
+		},
+		{
+			Name:           "Great Flood",
+			Description:    "Rising waters reshape the landscape",
+			Duration:       60,
+			GlobalMutation: 0.08,
+			GlobalDamage:   1.8,
+			BiomeChanges:   w.generateFloodZones(),
+		},
+		{
+			Name:           "Magnetic Storm",
+			Description:    "Electromagnetic chaos disrupts navigation",
+			Duration:       25,
+			GlobalMutation: 0.12,
+			GlobalDamage:   0.5,
+		},
+		{
+			Name:           "Ash Cloud",
+			Description:    "Dense ash blocks sunlight and poisons air",
+			Duration:       45,
+			GlobalMutation: 0.08,
+			GlobalDamage:   2.2,
+		},
+		{
+			Name:           "Earthquake",
+			Description:    "Seismic activity creates new mountain ranges",
+			Duration:       15,
+			GlobalMutation: 0.05,
+			GlobalDamage:   1.5,
+			BiomeChanges:   w.generateSeismicChanges(),
+		},
+		{
+			Name:           "Cosmic Radiation",
+			Description:    "Interstellar radiation penetrates atmosphere", 
+			Duration:       80,
+			GlobalMutation: 0.25,
+			GlobalDamage:   1.0,
+		},
 	}
 
 	event := events[rand.Intn(len(events))]
@@ -812,6 +1016,155 @@ func (w *World) generateMeteorCraters() map[Position]BiomeType {
 	}
 
 	return craters
+}
+
+// generateVolcanicFields creates mountain and radiation zones from volcanic activity
+func (w *World) generateVolcanicFields() map[Position]BiomeType {
+	changes := make(map[Position]BiomeType)
+	numVolcanoes := 1 + rand.Intn(3)
+
+	for i := 0; i < numVolcanoes; i++ {
+		centerX := rand.Intn(w.Config.GridWidth)
+		centerY := rand.Intn(w.Config.GridHeight)
+
+		// Create volcanic mountain at center
+		changes[Position{X: float64(centerX), Y: float64(centerY)}] = BiomeMountain
+
+		// Add lava flows (radiation zones) radiating outward
+		for radius := 1; radius <= 3; radius++ {
+			for angle := 0; angle < 360; angle += 45 {
+				radian := float64(angle) * math.Pi / 180
+				x := centerX + int(float64(radius)*math.Cos(radian))
+				y := centerY + int(float64(radius)*math.Sin(radian))
+
+				if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight && 
+					rand.Float64() < 0.6 {
+					changes[Position{X: float64(x), Y: float64(y)}] = BiomeRadiation
+				}
+			}
+		}
+	}
+
+	return changes
+}
+
+// generateFireZones creates desert zones from wildfires
+func (w *World) generateFireZones() map[Position]BiomeType {
+	changes := make(map[Position]BiomeType)
+	numFires := 2 + rand.Intn(4)
+
+	for i := 0; i < numFires; i++ {
+		centerX := rand.Intn(w.Config.GridWidth)
+		centerY := rand.Intn(w.Config.GridHeight)
+
+		// Fire spreads in irregular patterns
+		for radius := 0; radius <= 4; radius++ {
+			for dy := -radius; dy <= radius; dy++ {
+				for dx := -radius; dx <= radius; dx++ {
+					x := centerX + dx
+					y := centerY + dy
+
+					if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
+						distance := math.Sqrt(float64(dx*dx + dy*dy))
+						// Fire probability decreases with distance
+						fireChance := 0.8 * math.Exp(-distance/2.0)
+						if rand.Float64() < fireChance {
+							changes[Position{X: float64(x), Y: float64(y)}] = BiomeDesert
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return changes
+}
+
+// generateFloodZones creates water zones from flooding
+func (w *World) generateFloodZones() map[Position]BiomeType {
+	changes := make(map[Position]BiomeType)
+	numFloodSources := 1 + rand.Intn(2)
+
+	for i := 0; i < numFloodSources; i++ {
+		// Start flood from edge of map (representing river overflow)
+		var centerX, centerY int
+		edge := rand.Intn(4)
+		switch edge {
+		case 0: // top edge
+			centerX = rand.Intn(w.Config.GridWidth)
+			centerY = 0
+		case 1: // right edge
+			centerX = w.Config.GridWidth - 1
+			centerY = rand.Intn(w.Config.GridHeight)
+		case 2: // bottom edge
+			centerX = rand.Intn(w.Config.GridWidth)
+			centerY = w.Config.GridHeight - 1
+		case 3: // left edge
+			centerX = 0
+			centerY = rand.Intn(w.Config.GridHeight)
+		}
+
+		// Flood spreads inward
+		for radius := 0; radius <= 6; radius++ {
+			for dy := -radius; dy <= radius; dy++ {
+				for dx := -radius; dx <= radius; dx++ {
+					x := centerX + dx
+					y := centerY + dy
+
+					if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
+						distance := math.Sqrt(float64(dx*dx + dy*dy))
+						// Flood probability decreases with distance
+						floodChance := 0.7 * math.Exp(-distance/3.0)
+						if rand.Float64() < floodChance {
+							changes[Position{X: float64(x), Y: float64(y)}] = BiomeWater
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return changes
+}
+
+// generateSeismicChanges creates mountain ranges from earthquakes
+func (w *World) generateSeismicChanges() map[Position]BiomeType {
+	changes := make(map[Position]BiomeType)
+	
+	// Create fault lines that generate mountain ranges
+	numFaults := 1 + rand.Intn(2)
+	
+	for i := 0; i < numFaults; i++ {
+		// Random fault line across the map
+		startX := rand.Intn(w.Config.GridWidth)
+		startY := rand.Intn(w.Config.GridHeight)
+		
+		// Fault direction
+		angle := rand.Float64() * 2 * math.Pi
+		length := 8 + rand.Intn(12)
+		
+		for step := 0; step < length; step++ {
+			x := startX + int(float64(step)*math.Cos(angle))
+			y := startY + int(float64(step)*math.Sin(angle))
+			
+			if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
+				changes[Position{X: float64(x), Y: float64(y)}] = BiomeMountain
+				
+				// Add nearby elevations
+				for dy := -1; dy <= 1; dy++ {
+					for dx := -1; dx <= 1; dx++ {
+						nx, ny := x+dx, y+dy
+						if nx >= 0 && nx < w.Config.GridWidth && ny >= 0 && ny < w.Config.GridHeight &&
+							rand.Float64() < 0.4 {
+							changes[Position{X: float64(nx), Y: float64(ny)}] = BiomeMountain
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return changes
 }
 
 // handleInteractions processes interactions between nearby entities and with plants

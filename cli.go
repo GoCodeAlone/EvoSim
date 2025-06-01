@@ -183,7 +183,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -325,6 +325,14 @@ func (m CLIModel) View() string {
 		content = m.speciesView()
 	case "network":
 		content = m.networkView()
+	case "dna":
+		content = m.dnaView()
+	case "cellular":
+		content = m.cellularView()
+	case "evolution":
+		content = m.evolutionView()
+	case "topology":
+		content = m.topologyView()
 	default:
 		content = m.gridView()
 	}
@@ -383,7 +391,7 @@ func (m CLIModel) headerView() string {
 	}
 
 	title := titleStyle.Render(fmt.Sprintf("🌍 Genetic Ecosystem - Tick %d", m.world.Tick))
-	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Species: %d | Events: %d | View: %s",
+	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Pops: %d | Events: %d | View: %s",
 		status, timeIcon, worldTime, entities, populations, activeEvents, strings.ToUpper(m.selectedView))
 
 	if len(indicators) > 0 {
@@ -492,10 +500,18 @@ func (m CLIModel) gridView() string {
 					}
 
 					if dominantSpecies != "" {
-						if sym, exists := m.speciesSymbols[dominantSpecies]; exists {
+						// Get base species type from species naming system
+						baseSpecies := dominantSpecies
+						if m.world.SpeciesNaming != nil {
+							if info := m.world.SpeciesNaming.GetSpeciesInfo(dominantSpecies); info != nil {
+								baseSpecies = info.Species
+							}
+						}
+						
+						if sym, exists := m.speciesSymbols[baseSpecies]; exists {
 							symbol = sym
 						}
-						if entityStyle, exists := speciesStyles[dominantSpecies]; exists {
+						if entityStyle, exists := speciesStyles[baseSpecies]; exists {
 							style = entityStyle
 						}
 					}
@@ -579,10 +595,26 @@ func (m CLIModel) legendView() string {
 	}
 
 	legend.WriteString("\n👥 Species:\n")
-	for species, symbol := range m.speciesSymbols {
-		style := speciesStyles[species]
-		legend.WriteString(fmt.Sprintf("%s %s\n",
-			style.Render(string(symbol)), strings.Title(species)))
+	// Show actual species names from populations
+	if m.world.SpeciesNaming != nil {
+		for _, pop := range m.world.Populations {
+			if info := m.world.SpeciesNaming.GetSpeciesInfo(pop.Species); info != nil {
+				baseSpecies := info.Species
+				if symbol, exists := m.speciesSymbols[baseSpecies]; exists {
+					if style, exists := speciesStyles[baseSpecies]; exists {
+						legend.WriteString(fmt.Sprintf("%s %s\n",
+							style.Render(string(symbol)), pop.Species))
+					}
+				}
+			}
+		}
+	} else {
+		// Fallback to old behavior
+		for species, symbol := range m.speciesSymbols {
+			style := speciesStyles[species]
+			legend.WriteString(fmt.Sprintf("%s %s\n",
+				style.Render(string(symbol)), strings.Title(species)))
+		}
 	}
 
 	legend.WriteString("\n📊 Numbers = Multiple entities\n")
@@ -1684,6 +1716,299 @@ func (m CLIModel) networkView() string {
 		content.WriteString(fmt.Sprintf("New connections formed: %v\n", health["new_connections"]))
 	}
 
+	return content.String()
+}
+
+// dnaView displays DNA and genetic information
+func (m *CLIModel) dnaView() string {
+	var content strings.Builder
+	content.WriteString("=== DNA ANALYSIS ===\n\n")
+	
+	if m.world.DNASystem == nil {
+		content.WriteString("DNA system not available\n")
+		return content.String()
+	}
+	
+	// Show DNA system statistics
+	content.WriteString("DNA SYSTEM STATUS:\n")
+	content.WriteString(fmt.Sprintf("Active trait-gene mappings: %d\n", len(m.world.DNASystem.TraitToGene)))
+	content.WriteString(fmt.Sprintf("Gene length definitions: %d\n", len(m.world.DNASystem.GeneLength)))
+	
+	// Find sample entities with DNA
+	sampleCount := 0
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive || sampleCount >= 5 {
+			continue
+		}
+		
+		// Look for cellular organism
+		if organism := m.world.CellularSystem.OrganismMap[entity.ID]; organism != nil {
+			if len(organism.Cells) > 0 && organism.Cells[0].DNA != nil {
+				dna := organism.Cells[0].DNA
+				
+				content.WriteString(fmt.Sprintf("\n--- Entity %d DNA Analysis ---\n", entity.ID))
+				content.WriteString(fmt.Sprintf("Species: %s\n", entity.Species))
+				content.WriteString(fmt.Sprintf("Generation: %d\n", dna.Generation))
+				content.WriteString(fmt.Sprintf("Chromosomes: %d\n", len(dna.Chromosomes)))
+				content.WriteString(fmt.Sprintf("Total mutations: %d\n", dna.Mutations))
+				
+				// Show DNA sequence sample
+				dnaString := m.world.DNASystem.GetDNAString(dna, 50)
+				content.WriteString(fmt.Sprintf("DNA Sample: %s\n", dnaString))
+				
+				// Show trait expression
+				content.WriteString("Trait Expression:\n")
+				for traitName := range entity.Traits {
+					originalValue := entity.GetTrait(traitName)
+					dnaValue := m.world.DNASystem.ExpressTrait(dna, traitName)
+					content.WriteString(fmt.Sprintf("  %s: %.3f (DNA: %.3f)\n", traitName, originalValue, dnaValue))
+				}
+				
+				sampleCount++
+			}
+		}
+	}
+	
+	if sampleCount == 0 {
+		content.WriteString("\nNo DNA samples available for analysis\n")
+	}
+	
+	return content.String()
+}
+
+// cellularView displays cellular-level information
+func (m *CLIModel) cellularView() string {
+	var content strings.Builder
+	content.WriteString("=== CELLULAR ANALYSIS ===\n\n")
+	
+	if m.world.CellularSystem == nil {
+		content.WriteString("Cellular system not available\n")
+		return content.String()
+	}
+	
+	// System statistics
+	stats := m.world.CellularSystem.GetCellularSystemStats()
+	content.WriteString("CELLULAR SYSTEM STATUS:\n")
+	content.WriteString(fmt.Sprintf("Total organisms: %v\n", stats["total_organisms"]))
+	content.WriteString(fmt.Sprintf("Total cells: %v\n", stats["total_cells"]))
+	content.WriteString(fmt.Sprintf("Next cell ID: %v\n", stats["next_cell_id"]))
+	
+	// Complexity distribution
+	if complexityDist, ok := stats["complexity_distribution"].(map[int]int); ok {
+		content.WriteString("\nComplexity Distribution:\n")
+		for level := 1; level <= 5; level++ {
+			count := complexityDist[level]
+			content.WriteString(fmt.Sprintf("  Level %d: %d organisms\n", level, count))
+		}
+	}
+	
+	// Sample organism details
+	content.WriteString("\n=== ORGANISM SAMPLES ===\n")
+	sampleCount := 0
+	for entityID, organism := range m.world.CellularSystem.OrganismMap {
+		if sampleCount >= 3 {
+			break
+		}
+		
+		content.WriteString(fmt.Sprintf("\n--- Organism %d ---\n", entityID))
+		content.WriteString(fmt.Sprintf("Cells: %d\n", len(organism.Cells)))
+		content.WriteString(fmt.Sprintf("Complexity Level: %d\n", organism.ComplexityLevel))
+		content.WriteString(fmt.Sprintf("Total Energy: %.1f\n", organism.TotalEnergy))
+		content.WriteString(fmt.Sprintf("Cell Divisions: %d\n", organism.CellDivisions))
+		content.WriteString(fmt.Sprintf("Generation: %d\n", organism.Generation))
+		
+		// Organ systems
+		content.WriteString("Organ Systems:\n")
+		for systemName, cellIDs := range organism.OrganSystems {
+			content.WriteString(fmt.Sprintf("  %s: %d cells\n", systemName, len(cellIDs)))
+		}
+		
+		// Sample cell details
+		if len(organism.Cells) > 0 {
+			cell := organism.Cells[0]
+			content.WriteString(fmt.Sprintf("Sample Cell (ID %d):\n", cell.ID))
+			content.WriteString(fmt.Sprintf("  Type: %s\n", m.world.CellularSystem.CellTypeNames[cell.Type]))
+			content.WriteString(fmt.Sprintf("  Size: %.1f μm\n", cell.Size))
+			content.WriteString(fmt.Sprintf("  Energy: %.1f\n", cell.Energy))
+			content.WriteString(fmt.Sprintf("  Health: %.1f%%\n", cell.Health*100))
+			content.WriteString(fmt.Sprintf("  Age: %d ticks\n", cell.Age))
+			content.WriteString(fmt.Sprintf("  Activity: %.1f%%\n", cell.Activity*100))
+			content.WriteString(fmt.Sprintf("  Organelles: %d types\n", len(cell.Organelles)))
+		}
+		
+		sampleCount++
+	}
+	
+	return content.String()
+}
+
+// evolutionView displays macro-evolution information
+func (m *CLIModel) evolutionView() string {
+	var content strings.Builder
+	content.WriteString("=== MACRO EVOLUTION ===\n\n")
+	
+	if m.world.MacroEvolutionSystem == nil {
+		content.WriteString("Macro evolution system not available\n")
+		return content.String()
+	}
+	
+	// System statistics
+	stats := m.world.MacroEvolutionSystem.GetEvolutionStats()
+	content.WriteString("EVOLUTIONARY OVERVIEW:\n")
+	content.WriteString(fmt.Sprintf("Total species tracked: %v\n", stats["total_species"]))
+	content.WriteString(fmt.Sprintf("Living species: %v\n", stats["living_species"]))
+	content.WriteString(fmt.Sprintf("Extinct species: %v\n", stats["extinct_species"]))
+	content.WriteString(fmt.Sprintf("Total evolutionary events: %v\n", stats["total_events"]))
+	content.WriteString(fmt.Sprintf("Recent events (last 100 ticks): %v\n", stats["recent_events"]))
+	content.WriteString(fmt.Sprintf("Extinction events: %v\n", stats["extinction_events"]))
+	
+	// Phylogenetic tree info
+	if treeDepth, ok := stats["tree_depth"]; ok {
+		content.WriteString(fmt.Sprintf("Phylogenetic tree depth: %v\n", treeDepth))
+	}
+	if treeNodes, ok := stats["tree_nodes"]; ok {
+		content.WriteString(fmt.Sprintf("Tree nodes: %v\n", treeNodes))
+	}
+	
+	// Recent evolutionary events
+	content.WriteString("\n=== RECENT EVOLUTIONARY EVENTS ===\n")
+	recentEvents := m.world.MacroEvolutionSystem.GetRecentEvents(5)
+	if len(recentEvents) == 0 {
+		content.WriteString("No recent evolutionary events\n")
+	} else {
+		for _, event := range recentEvents {
+			content.WriteString(fmt.Sprintf("Tick %d [%s]: %s\n", 
+				event.Tick, strings.ToUpper(event.Type), event.Description))
+			if event.Significance > 0.5 {
+				content.WriteString("  *** HIGHLY SIGNIFICANT ***\n")
+			}
+		}
+	}
+	
+	// Species lineages
+	content.WriteString("\n=== SPECIES LINEAGES ===\n")
+	lineageCount := 0
+	for speciesName, lineage := range m.world.MacroEvolutionSystem.SpeciesLineages {
+		if lineageCount >= 8 { // Limit display
+			remaining := len(m.world.MacroEvolutionSystem.SpeciesLineages) - lineageCount
+			content.WriteString(fmt.Sprintf("... and %d more species\n", remaining))
+			break
+		}
+		
+		status := "LIVING"
+		if lineage.ExtinctionTick != 0 {
+			status = "EXTINCT"
+		}
+		
+		content.WriteString(fmt.Sprintf("%s [%s]:\n", speciesName, status))
+		content.WriteString(fmt.Sprintf("  Origin: Tick %d", lineage.OriginTick))
+		if lineage.ParentSpecies != "" {
+			content.WriteString(fmt.Sprintf(" (from %s)", lineage.ParentSpecies))
+		}
+		content.WriteString("\n")
+		
+		if lineage.ExtinctionTick != 0 {
+			duration := lineage.ExtinctionTick - lineage.OriginTick
+			content.WriteString(fmt.Sprintf("  Extinction: Tick %d (survived %d ticks)\n", 
+				lineage.ExtinctionTick, duration))
+		}
+		
+		content.WriteString(fmt.Sprintf("  Peak population: %d\n", lineage.PeakPopulation))
+		content.WriteString(fmt.Sprintf("  Child species: %d\n", len(lineage.ChildSpecies)))
+		content.WriteString(fmt.Sprintf("  Adaptations: %d\n", len(lineage.Adaptations)))
+		
+		// Show niches
+		if len(lineage.Niches) > 0 {
+			content.WriteString(fmt.Sprintf("  Niches: %s\n", strings.Join(lineage.Niches, ", ")))
+		}
+		
+		lineageCount++
+	}
+	
+	return content.String()
+}
+
+// topologyView displays world terrain and geological information
+func (m *CLIModel) topologyView() string {
+	var content strings.Builder
+	content.WriteString("=== WORLD TOPOLOGY ===\n\n")
+	
+	if m.world.TopologySystem == nil {
+		content.WriteString("Topology system not available\n")
+		return content.String()
+	}
+	
+	// System statistics
+	stats := m.world.TopologySystem.GetTopologyStats()
+	content.WriteString("TOPOLOGY OVERVIEW:\n")
+	content.WriteString(fmt.Sprintf("World size: %dx%d\n", m.world.TopologySystem.Width, m.world.TopologySystem.Height))
+	content.WriteString(fmt.Sprintf("Sea level: %.2f\n", stats["sea_level"]))
+	content.WriteString(fmt.Sprintf("Average elevation: %.3f\n", stats["avg_elevation"]))
+	content.WriteString(fmt.Sprintf("Average slope: %.3f\n", stats["avg_slope"]))
+	content.WriteString(fmt.Sprintf("Water coverage: %.1f%%\n", stats["water_coverage"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Erosion rate: %.6f\n", stats["erosion_rate"]))
+	content.WriteString(fmt.Sprintf("Tectonic activity: %.2f\n", stats["tectonic_activity"]))
+	
+	// Terrain features
+	content.WriteString(fmt.Sprintf("\nTerrain features: %v\n", stats["terrain_features"]))
+	content.WriteString(fmt.Sprintf("Water bodies: %v\n", stats["water_bodies"]))
+	content.WriteString(fmt.Sprintf("Active geological events: %v\n", stats["geological_events"]))
+	
+	// Active geological events
+	if len(m.world.TopologySystem.GeologicalEvents) > 0 {
+		content.WriteString("\n=== ACTIVE GEOLOGICAL EVENTS ===\n")
+		for _, event := range m.world.TopologySystem.GeologicalEvents {
+			content.WriteString(fmt.Sprintf("%s (ID %d):\n", strings.ToTitle(event.Type), event.ID))
+			content.WriteString(fmt.Sprintf("  Center: (%.1f, %.1f)\n", event.Center.X, event.Center.Y))
+			content.WriteString(fmt.Sprintf("  Radius: %.1f\n", event.Radius))
+			content.WriteString(fmt.Sprintf("  Intensity: %.2f\n", event.Intensity))
+			content.WriteString(fmt.Sprintf("  Duration remaining: %d ticks\n", event.Duration))
+		}
+	}
+	
+	// Major terrain features
+	content.WriteString("\n=== MAJOR TERRAIN FEATURES ===\n")
+	featureCount := 0
+	for _, feature := range m.world.TopologySystem.TerrainFeatures {
+		if featureCount >= 8 { // Limit display
+			remaining := len(m.world.TopologySystem.TerrainFeatures) - featureCount
+			content.WriteString(fmt.Sprintf("... and %d more features\n", remaining))
+			break
+		}
+		
+		typeName := m.world.TopologySystem.GetTerrainTypeName(feature.Type)
+		content.WriteString(fmt.Sprintf("%s (ID %d):\n", typeName, feature.ID))
+		content.WriteString(fmt.Sprintf("  Center: (%.1f, %.1f)\n", feature.Center.X, feature.Center.Y))
+		content.WriteString(fmt.Sprintf("  Size: %.1f\n", feature.Radius))
+		content.WriteString(fmt.Sprintf("  Height: %.3f\n", feature.Height))
+		content.WriteString(fmt.Sprintf("  Age: %d ticks\n", feature.Age))
+		content.WriteString(fmt.Sprintf("  Stability: %.2f\n", feature.Stability))
+		content.WriteString(fmt.Sprintf("  Composition: %s\n", feature.Composition))
+		
+		featureCount++
+	}
+	
+	// Major water bodies
+	if len(m.world.TopologySystem.WaterBodies) > 0 {
+		content.WriteString("\n=== WATER BODIES ===\n")
+		waterCount := 0
+		for _, waterBody := range m.world.TopologySystem.WaterBodies {
+			if waterCount >= 5 { // Limit display
+				remaining := len(m.world.TopologySystem.WaterBodies) - waterCount
+				content.WriteString(fmt.Sprintf("... and %d more water bodies\n", remaining))
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("%s (ID %d):\n", strings.ToTitle(waterBody.Type), waterBody.ID))
+			content.WriteString(fmt.Sprintf("  Depth: %.2f\n", waterBody.Depth))
+			content.WriteString(fmt.Sprintf("  Flow: %.2f\n", waterBody.Flow))
+			content.WriteString(fmt.Sprintf("  Salinity: %.1f%%\n", waterBody.Salinity*100))
+			content.WriteString(fmt.Sprintf("  Points: %d\n", len(waterBody.Points)))
+			
+			waterCount++
+		}
+	}
+	
 	return content.String()
 }
 
