@@ -1,4 +1,4 @@
-# Dynamic Genetic Algorithm in Go
+# EvoSim: Dynamic Genetic Algorithm in Go
 
 A sophisticated genetic algorithm implementation that supports dynamic trait-based entities with configurable evaluation rules.
 

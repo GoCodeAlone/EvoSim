@@ -1,4 +1,4 @@
-# Copilot Instructions for Genetic Algorithm Simulation Project
+# Copilot Instructions for EvoSim: Genetic Algorithm Simulation Project
 
 ## Project Overview
 This is a sophisticated genetic algorithm simulation written in Go that models evolving entities in a 2D world environment. The project features advanced systems including communication, civilization building, physics, time cycles, and a rich terminal-based user interface.

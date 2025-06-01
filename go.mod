@@ -1,4 +1,4 @@
-module mutate
+module github.com/GoCodeAlone/evosim
 
 go 1.24.3
 
