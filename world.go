@@ -96,6 +96,7 @@ type World struct {
 	WindSystem          *WindSystem         // Wind and pollen dispersal system
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
+	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
 	FluidRegions        []FluidRegion
 }
 
@@ -140,6 +141,7 @@ func NewWorld(config WorldConfig) *World {
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height))
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem()
+	world.SpeciesNaming = NewSpeciesNaming()
 	world.FluidRegions = make([]FluidRegion, 0)
 
 	// Initialize plant life

@@ -383,8 +383,7 @@ func (m CLIModel) headerView() string {
 	}
 
 	title := titleStyle.Render(fmt.Sprintf("🌍 Genetic Ecosystem - Tick %d", m.world.Tick))
-
-	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Pops: %d | Events: %d | View: %s",
+	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Species: %d | Events: %d | View: %s",
 		status, timeIcon, worldTime, entities, populations, activeEvents, strings.ToUpper(m.selectedView))
 
 	if len(indicators) > 0 {

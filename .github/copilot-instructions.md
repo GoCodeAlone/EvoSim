@@ -49,6 +49,26 @@ Always consult FEATURES.md before starting new work to understand current priori
 - `integration_test.go` - End-to-end simulation testing
 - `scripts/` - Build and utility scripts
 
+## Quality Assurance Requirements
+
+### Test Stability (CRITICAL)
+**ALL TESTS MUST PASS** before completing any development iteration. This is non-negotiable.
+
+#### Testing Protocol:
+1. **Before making changes**: Run `GOWORK=off go test ./...` to ensure starting state is clean
+2. **After implementing features**: Run full test suite to verify no regressions
+3. **Before completing work**: Final test run must show 100% pass rate
+4. **Flaky tests**: Any intermittently failing tests must be fixed immediately
+5. **Test coverage**: New features require corresponding test coverage
+
+#### Test Failure Response:
+- **Immediate action required** if any test fails
+- **Root cause analysis** to determine if issue is in new code or existing systems
+- **Fix implementation** before proceeding with other features
+- **Validation** that fix doesn't break other functionality
+
+**Command to verify test stability**: `GOWORK=off go test ./...`
+
 ## Core Concepts & Systems
 
 ### Genetic Algorithm
