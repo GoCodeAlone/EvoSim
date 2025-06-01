@@ -98,6 +98,12 @@ type World struct {
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
+	
+	// Micro and Macro Evolution Systems
+	DNASystem           *DNASystem          // DNA-based genetic system
+	CellularSystem      *CellularSystem     // Cellular-level evolution and processes
+	MacroEvolutionSystem *MacroEvolutionSystem // Macro-evolution tracking
+	TopologySystem      *TopologySystem     // World terrain and geological processes
 	FluidRegions        []FluidRegion
 }
 
@@ -143,6 +149,16 @@ func NewWorld(config WorldConfig) *World {
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem()
 	world.SpeciesNaming = NewSpeciesNaming()
+	
+	// Initialize new evolution and topology systems
+	world.DNASystem = NewDNASystem()
+	world.CellularSystem = NewCellularSystem(world.DNASystem)
+	world.MacroEvolutionSystem = NewMacroEvolutionSystem()
+	world.TopologySystem = NewTopologySystem(config.GridWidth, config.GridHeight)
+	
+	// Generate initial world terrain
+	world.TopologySystem.GenerateInitialTerrain()
+	
 	world.FluidRegions = make([]FluidRegion, 0)
 
 	// Initialize plant life
@@ -303,6 +319,21 @@ func (w *World) AddPopulation(config PopulationConfig) {
 			entity.SetTrait(traitName, value)
 		}
 
+		// Create DNA for entity
+		dna := w.DNASystem.GenerateRandomDNA(entity.ID, entity.Generation)
+		
+		// Create cellular organism
+		w.CellularSystem.CreateSingleCellOrganism(entity.ID, dna)
+		
+		// Update entity traits based on DNA expression
+		for traitName := range entity.Traits {
+			dnaValue := w.DNASystem.ExpressTrait(dna, traitName)
+			// Blend DNA value with existing trait (50/50 blend)
+			currentValue := entity.GetTrait(traitName)
+			newValue := (currentValue + dnaValue) / 2.0
+			entity.SetTrait(traitName, newValue)
+		}
+
 		w.AllEntities = append(w.AllEntities, entity)
 	}
 
@@ -321,6 +352,11 @@ func (w *World) Update() {
 
 	// 2. Update wind system (affects pollen dispersal and plant reproduction)
 	w.WindSystem.Update(currentTimeState.Season, w.Tick)
+
+	// 3. Update micro and macro evolution systems
+	w.CellularSystem.UpdateCellularOrganisms()
+	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
+	w.TopologySystem.UpdateTopology(w.Tick)
 
 	// Clear grid entities and plants
 	w.clearGrid()
