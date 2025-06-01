@@ -25,11 +25,24 @@ This is a sophisticated genetic algorithm simulation written in Go that models e
 - `physics.go` - Physics engine with collision detection, environmental forces, momentum
 - `time_cycles.go` - Day/night cycles and seasonal changes affecting entity behavior
 - `plant.go` - Plant ecosystem with 6 types and biome interactions
+- `wind.go` - Wind system with pollen dispersal and cross-pollination mechanics
 - `eventlog.go` - World event logging and history tracking
 
 ### User Interface
-- `cli.go` - Enhanced CLI with 7 view modes and real-time updates
+- `cli.go` - Enhanced CLI with 8 view modes and real-time updates (Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind)
 - `viewport.go` - Multi-zoom navigation system (1x, 2x, 4x, 8x zoom levels)
+
+### Project Planning & Tracking
+- `FEATURES.md` - **Comprehensive feature roadmap and implementation status tracking** - ALWAYS CHECK THIS FILE FOR CURRENT PRIORITIES AND STATUS
+- `README.md` - Project documentation and setup instructions
+
+**IMPORTANT**: The `FEATURES.md` file contains the complete development roadmap including:
+- ✅ Completed features with detailed descriptions
+- 🚧 Features currently in progress
+- 📋 Prioritized feature backlog (HIGH/MEDIUM/LOW priority)
+- 🎯 Next steps and immediate tasks
+- 📊 Testing and validation requirements
+Always consult FEATURES.md before starting new work to understand current priorities and avoid duplicating effort.
 
 ### Testing & Utilities
 - `*_test.go` - Comprehensive test suite covering all major systems
@@ -63,10 +76,25 @@ const (
 - **Resource Management**: Collective resource gathering and sharing
 - **Technology**: Knowledge accumulation and technological advancement
 
+### Wind & Pollen System (NEW)
+```go
+type WindSystem struct {
+    BaseWindDirection   float64     // Global wind direction (radians)
+    BaseWindStrength    float64     // Global wind strength
+    TurbulenceLevel     float64     // Chaos in wind patterns
+    WindMap            [][]WindVector // 2D grid of wind vectors
+    AllPollenGrains    []*PollenGrain // Active pollen particles
+    PollenClouds       []*PollenCloud // Pollen concentration areas
+    SeasonalMultiplier  float64     // Wind strength varies by season
+    WeatherPattern      int         // Current weather (0=calm, 1=windy, 2=storm)
+}
+```
+
 ### Physics Engine
 - **Collision Detection**: AABB and circle-based collision systems
 - **Environmental Forces**: Wind, terrain effects, gravitational influences
 - **Movement Physics**: Momentum, acceleration, realistic movement patterns
+- **Pollen Physics**: Wind-driven pollen grain movement and dispersal
 
 ### Time & Environment
 - **Day/Night Cycles**: Affecting visibility, activity patterns, energy consumption
@@ -75,7 +103,7 @@ const (
 
 ## CLI Interface & Controls
 
-### View Modes (7 total)
+### View Modes (8 total)
 1. **Grid View** - 2D world visualization with entities and environment
 2. **Stats View** - Population statistics, trait distributions, averages
 3. **Events View** - Recent world events and significant occurrences
@@ -83,6 +111,7 @@ const (
 5. **Communication View** - Signal activity and communication patterns
 6. **Civilization View** - Tribal information and structure status
 7. **Physics View** - Physics state, forces, and collision information
+8. **Wind View** - Wind patterns, pollen dispersal, and cross-pollination activity
 
 ### Navigation Controls
 - Arrow keys: Move viewport

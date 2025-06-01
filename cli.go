@@ -182,9 +182,8 @@ func NewCLIModel(world *World) CLIModel {
 		"predator":  '▲',
 		"omnivore":  '◆',
 	}
-	return CLIModel{
-		world:          world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics"},
+	return CLIModel{world: world,
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -304,7 +303,6 @@ func (m CLIModel) View() string {
 	if m.showHelp {
 		return m.helpView()
 	}
-
 	var content string
 	switch m.selectedView {
 	case "grid":
@@ -321,6 +319,12 @@ func (m CLIModel) View() string {
 		content = m.civilizationView()
 	case "physics":
 		content = m.physicsView()
+	case "wind":
+		content = m.windView()
+	case "species":
+		content = m.speciesView()
+	case "network":
+		content = m.networkView()
 	default:
 		content = m.gridView()
 	}
@@ -1113,7 +1117,7 @@ func (m CLIModel) helpView() string {
 CONTROLS:
   space      Pause/Resume simulation
   enter      Manual step (when paused)
-  v          Cycle through views (grid/stats/events/populations/communication/civilization/physics)
+  v          Cycle through views (grid/stats/events/populations/communication/civilization/physics/wind)
   a          Toggle auto-advance
   ←→↑↓/hjkl  Navigate viewport (pan around world)
   z          Cycle zoom level
@@ -1132,6 +1136,9 @@ VIEWS:
   Communication Active signals and entity communication data
   Civilization Tribal information and structure development
   Physics      Movement statistics and collision data
+  Wind         Wind patterns and pollen dispersal information
+  Species      Species tracking and visualization
+  Network      Plant network statistics and underground connections
 
 HEADER INDICATORS:
   📡N         Active communication signals (N = count)
@@ -1194,13 +1201,491 @@ The simulation features multiple interconnected systems:
 • Event System: Random world events like solar flares, meteor showers,
   and ice ages create evolutionary pressure and environmental challenges.
 
+• Wind System: Wind patterns affect pollen dispersal, with seasonal changes
+  influencing reproduction strategies of plants.
+
 All systems interact dynamically - communication helps coordinate responses 
 to events, civilization provides resilience against environmental challenges,
-and physics creates realistic movement and interaction patterns.
+physics creates realistic movement and interaction patterns, and wind patterns
+influence plant reproduction and migration.
 
 Press ? again to return to the simulation.
 `
 	return help
+}
+
+// windView renders wind patterns and pollen dispersal information
+func (m CLIModel) windView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Wind & Pollen System") + "\n\n")
+
+	if m.world.WindSystem == nil {
+		content.WriteString("Wind system not initialized\n")
+		return content.String()
+	}
+
+	// Current Wind Conditions
+	content.WriteString("=== CURRENT WIND CONDITIONS ===\n")
+	windStats := m.world.WindSystem.GetWindStats()
+
+	// Wind strength and direction
+	baseDirection := windStats["base_wind_direction"].(float64)
+	baseStrength := windStats["base_wind_strength"].(float64)
+	seasonalMultiplier := windStats["seasonal_multiplier"].(float64)
+	effectiveStrength := baseStrength * seasonalMultiplier
+
+	// Convert direction to compass bearing
+	directionDegrees := baseDirection * 180.0 / 3.14159
+	if directionDegrees < 0 {
+		directionDegrees += 360
+	}
+
+	var compassDirection string
+	switch {
+	case directionDegrees < 22.5 || directionDegrees >= 337.5:
+		compassDirection = "N"
+	case directionDegrees < 67.5:
+		compassDirection = "NE"
+	case directionDegrees < 112.5:
+		compassDirection = "E"
+	case directionDegrees < 157.5:
+		compassDirection = "SE"
+	case directionDegrees < 202.5:
+		compassDirection = "S"
+	case directionDegrees < 247.5:
+		compassDirection = "SW"
+	case directionDegrees < 292.5:
+		compassDirection = "W"
+	default:
+		compassDirection = "NW"
+	}
+
+	content.WriteString(fmt.Sprintf("Direction: %s (%.0f°)\n", compassDirection, directionDegrees))
+	content.WriteString(fmt.Sprintf("Base strength: %.2f\n", baseStrength))
+	content.WriteString(fmt.Sprintf("Seasonal modifier: %.2fx\n", seasonalMultiplier))
+	content.WriteString(fmt.Sprintf("Effective strength: %.2f\n", effectiveStrength))
+	// Weather conditions
+	weatherDuration := windStats["weather_duration"].(int)
+	weatherDescription := m.world.WindSystem.GetWeatherDescription()
+
+	content.WriteString(fmt.Sprintf("Weather: %s (%d ticks remaining)\n", weatherDescription, weatherDuration))
+
+	// Wind strength visualization
+	strengthBars := int(effectiveStrength * 20)
+	if strengthBars > 20 {
+		strengthBars = 20
+	}
+	windBar := strings.Repeat("█", strengthBars) + strings.Repeat("░", 20-strengthBars)
+	content.WriteString(fmt.Sprintf("Strength: [%s] %.1f%%\n", windBar, effectiveStrength*100))
+
+	// Pollen Activity
+	content.WriteString("\n=== POLLEN ACTIVITY ===\n")
+	activePollenGrains := windStats["active_pollen_grains"].(int)
+	totalPollenReleased := windStats["total_pollen_released"].(int)
+	pollinationsThisTick := windStats["pollinations_this_tick"].(int)
+	totalCrossPollinations := windStats["total_cross_pollinations"].(int)
+
+	content.WriteString(fmt.Sprintf("Active pollen grains: %d\n", activePollenGrains))
+	content.WriteString(fmt.Sprintf("Total pollen released: %d\n", totalPollenReleased))
+	content.WriteString(fmt.Sprintf("Cross-pollinations this tick: %d\n", pollinationsThisTick))
+	content.WriteString(fmt.Sprintf("Total cross-pollinations: %d\n", totalCrossPollinations))
+
+	// Calculate pollen success rate
+	successRate := 0.0
+	if totalPollenReleased > 0 {
+		successRate = float64(totalCrossPollinations) / float64(totalPollenReleased) * 100
+	}
+	content.WriteString(fmt.Sprintf("Pollination success rate: %.2f%%\n", successRate))
+
+	// Plant Reproduction Analysis
+	content.WriteString("\n=== PLANT REPRODUCTION ===\n")
+
+	// Count plants by type and reproduction status
+	plantCounts := make(map[PlantType]int)
+	reproducingPlants := make(map[PlantType]int)
+	totalPlants := 0
+	totalReproducing := 0
+
+	for _, plant := range m.world.AllPlants {
+		if plant.IsAlive {
+			plantCounts[plant.Type]++
+			totalPlants++
+			if plant.CanReproduce() {
+				reproducingPlants[plant.Type]++
+				totalReproducing++
+			}
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("Total plants: %d (%d capable of reproduction)\n", totalPlants, totalReproducing))
+
+	// Show reproduction rates by plant type
+	content.WriteString("\nReproduction by type:\n")
+	plantConfigs := GetPlantConfigs()
+	for plantType, config := range plantConfigs {
+		if count, exists := plantCounts[plantType]; exists && count > 0 {
+			reproducingCount := reproducingPlants[plantType]
+			reproductionRate := float64(reproducingCount) / float64(count) * 100
+			content.WriteString(fmt.Sprintf("  %s %s: %d total, %d reproducing (%.1f%%)\n",
+				string(config.Symbol), config.Name, count, reproducingCount, reproductionRate))
+		}
+	}
+
+	// Wind Map Visualization (simplified)
+	content.WriteString("\n=== WIND MAP SAMPLE ===\n")
+	content.WriteString("Wind vectors across world (sample 5x5 grid):\n")
+
+	// Sample wind vectors from different parts of the world
+	mapWidth := m.world.WindSystem.MapWidth
+	mapHeight := m.world.WindSystem.MapHeight
+
+	for y := 0; y < 5; y++ {
+		for x := 0; x < 5; x++ {
+			// Sample from different parts of the wind map
+			sampleX := (x * mapWidth) / 5
+			sampleY := (y * mapHeight) / 5
+
+			if sampleX < mapWidth && sampleY < mapHeight {
+				windVector := m.world.WindSystem.WindMap[sampleY][sampleX]
+
+				// Convert wind vector to arrow direction
+				var arrow string
+				if windVector.Strength < 0.1 {
+					arrow = "·" // Calm
+				} else {
+					// Determine arrow direction from wind vector
+					angle := math.Atan2(windVector.Y, windVector.X)
+					angleDegrees := angle * 180.0 / math.Pi
+					if angleDegrees < 0 {
+						angleDegrees += 360
+					}
+
+					switch {
+					case angleDegrees < 22.5 || angleDegrees >= 337.5:
+						arrow = "→"
+					case angleDegrees < 67.5:
+						arrow = "↘"
+					case angleDegrees < 112.5:
+						arrow = "↓"
+					case angleDegrees < 157.5:
+						arrow = "↙"
+					case angleDegrees < 202.5:
+						arrow = "←"
+					case angleDegrees < 247.5:
+						arrow = "↖"
+					case angleDegrees < 292.5:
+						arrow = "↑"
+					default:
+						arrow = "↗"
+					}
+				}
+				content.WriteString(arrow)
+			} else {
+				content.WriteString(" ")
+			}
+		}
+		content.WriteString("\n")
+	}
+
+	// Seasonal Effects
+	currentSeason := m.world.AdvancedTimeSystem.GetTimeState().Season
+	content.WriteString("\n=== SEASONAL EFFECTS ===\n")
+	content.WriteString(fmt.Sprintf("Current season: %s\n", seasonNames[currentSeason]))
+
+	switch currentSeason {
+	case Spring:
+		content.WriteString("• Enhanced pollen dispersal (+20% wind strength)\n")
+		content.WriteString("• Peak flowering season\n")
+		content.WriteString("• Increased plant reproduction rates\n")
+	case Summer:
+		content.WriteString("• Calmer winds (-20% wind strength)\n")
+		content.WriteString("• Reduced pollen dispersal\n")
+		content.WriteString("• Focus on growth over reproduction\n")
+	case Autumn:
+		content.WriteString("• Strong winds (+40% wind strength)\n")
+		content.WriteString("• Seed dispersal season\n")
+		content.WriteString("• Final reproduction push\n")
+	case Winter:
+		content.WriteString("• Harsh winds (+60% wind strength)\n")
+		content.WriteString("• Minimal plant reproduction\n")
+		content.WriteString("• Survival mode for plants\n")
+	}
+
+	return content.String()
+}
+
+// speciesView renders plant species evolution and tracking information
+func (m CLIModel) speciesView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Species Evolution & Tracking") + "\n\n")
+
+	if m.world.SpeciationSystem == nil {
+		content.WriteString("Speciation system not initialized\n")
+		return content.String()
+	}
+
+	// System overview
+	stats := m.world.SpeciationSystem.GetSpeciesStats()
+	content.WriteString("=== SYSTEM OVERVIEW ===\n")
+	content.WriteString(fmt.Sprintf("Active species: %v\n", stats["active_species"]))
+	content.WriteString(fmt.Sprintf("Total species formed: %v\n", stats["total_species_formed"]))
+	content.WriteString(fmt.Sprintf("Species extinct: %v\n", stats["total_species_extinct"]))
+	content.WriteString(fmt.Sprintf("Max concurrent species: %v (tick %v)\n",
+		stats["max_active_species"], stats["max_active_species_tick"]))
+	content.WriteString(fmt.Sprintf("Genetic distance threshold: %.2f\n",
+		stats["genetic_distance_threshold"]))
+
+	if largestSpeciesName, ok := stats["largest_species_name"].(string); ok && largestSpeciesName != "" {
+		content.WriteString(fmt.Sprintf("Largest species: %s (%v individuals)\n",
+			largestSpeciesName, stats["largest_species_size"]))
+	}
+
+	// Active species list
+	content.WriteString("\n=== ACTIVE SPECIES ===\n")
+	speciesList := m.world.SpeciationSystem.GetActiveSpeciesList()
+
+	if len(speciesList) == 0 {
+		content.WriteString("No active species yet\n")
+	} else {
+		content.WriteString("Name               Type      Pop  Peak  Formation  Parent\n")
+		content.WriteString("─────────────────────────────────────────────────────────\n")
+
+		for _, species := range speciesList {
+			name := species["name"].(string)
+			if len(name) > 18 {
+				name = name[:15] + "..."
+			}
+
+			originType := species["origin_type"].(PlantType)
+			typeStr := GetPlantConfigs()[originType].Name
+			if len(typeStr) > 8 {
+				typeStr = typeStr[:8]
+			}
+
+			pop := species["current_population"].(int)
+			peak := species["peak_population"].(int)
+			formationTick := species["formation_tick"].(int)
+			parentID := species["parent_species_id"].(int)
+
+			parentStr := "root"
+			if parentID > 0 {
+				parentStr = fmt.Sprintf("S%d", parentID)
+			}
+
+			content.WriteString(fmt.Sprintf("%-18s %-8s %4d %4d %8d  %s\n",
+				name, typeStr, pop, peak, formationTick, parentStr))
+		}
+	}
+
+	// Recent events
+	content.WriteString("\n=== RECENT EVOLUTION EVENTS ===\n")
+	recentEvents := m.world.SpeciationSystem.GetRecentEvents(5)
+
+	speciationEvents := recentEvents["speciation_events"].([]SpeciationEvent)
+	extinctionEvents := recentEvents["extinction_events"].([]ExtinctionEvent)
+
+	if len(speciationEvents) == 0 && len(extinctionEvents) == 0 {
+		content.WriteString("No evolution events yet\n")
+	} else {
+		// Show recent speciation events
+		if len(speciationEvents) > 0 {
+			content.WriteString("🌱 Recent Speciation:\n")
+			for i := len(speciationEvents) - 1; i >= 0 && i >= len(speciationEvents)-3; i-- {
+				event := speciationEvents[i]
+				content.WriteString(fmt.Sprintf("  Tick %d: S%d split from S%d (distance: %.3f, %d members)\n",
+					event.Tick, event.NewSpeciesID, event.ParentSpeciesID,
+					event.GeneticDistance, event.MemberCount))
+			}
+		}
+
+		// Show recent extinction events
+		if len(extinctionEvents) > 0 {
+			content.WriteString("💀 Recent Extinctions:\n")
+			for i := len(extinctionEvents) - 1; i >= 0 && i >= len(extinctionEvents)-3; i-- {
+				event := extinctionEvents[i]
+				content.WriteString(fmt.Sprintf("  Tick %d: %s (lifespan: %d ticks)\n",
+					event.Tick, event.SpeciesName, event.Lifespan))
+			}
+		}
+	}
+
+	// Genetic diversity analysis
+	content.WriteString("\n=== GENETIC DIVERSITY ===\n")
+
+	// Count total plants in species vs unassigned
+	totalPlantsInSpecies := 0
+	for _, species := range speciesList {
+		totalPlantsInSpecies += species["current_population"].(int)
+	}
+
+	totalPlants := 0
+	for _, plant := range m.world.AllPlants {
+		if plant.IsAlive {
+			totalPlants++
+		}
+	}
+
+	if totalPlants > 0 {
+		speciesPercentage := float64(totalPlantsInSpecies) / float64(totalPlants) * 100
+		content.WriteString(fmt.Sprintf("Plants in species: %d/%d (%.1f%%)\n",
+			totalPlantsInSpecies, totalPlants, speciesPercentage))
+	}
+
+	// Species diversity index (simplified Shannon diversity)
+	if len(speciesList) > 1 {
+		diversity := 0.0
+		for _, species := range speciesList {
+			if totalPlantsInSpecies > 0 {
+				proportion := float64(species["current_population"].(int)) / float64(totalPlantsInSpecies)
+				if proportion > 0 {
+					diversity -= proportion * math.Log(proportion)
+				}
+			}
+		}
+		content.WriteString(fmt.Sprintf("Species diversity index: %.3f\n", diversity))
+	}
+
+	return content.String()
+}
+
+// Helper map for season names (add this near other constants)
+var seasonNames = map[Season]string{
+	Spring: "Spring",
+	Summer: "Summer",
+	Autumn: "Autumn",
+	Winter: "Winter",
+}
+
+// networkView renders plant network information and underground connections
+func (m CLIModel) networkView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Plant Network System") + "\n\n")
+
+	if m.world.PlantNetworkSystem == nil {
+		content.WriteString("Plant network system not initialized\n")
+		return content.String()
+	}
+
+	// Network overview
+	stats := m.world.PlantNetworkSystem.GetNetworkStats()
+	content.WriteString("=== NETWORK OVERVIEW ===\n")
+	content.WriteString(fmt.Sprintf("Total connections: %v\n", stats["total_connections"]))
+	content.WriteString(fmt.Sprintf("Active connections: %v\n", stats["active_connections"]))
+	content.WriteString(fmt.Sprintf("Network clusters: %v\n", stats["cluster_count"]))
+	content.WriteString(fmt.Sprintf("Chemical signals: %v\n", stats["active_signals"]))
+	content.WriteString(fmt.Sprintf("Average connection strength: %.3f\n", stats["avg_connection_strength"]))
+	content.WriteString(fmt.Sprintf("Network efficiency: %.1f%%\n", stats["network_efficiency"].(float64)*100))
+	// Connection types breakdown
+	content.WriteString("\n=== CONNECTION TYPES ===\n")
+	if connectionTypes, ok := stats["connection_types"].(map[NetworkConnectionType]int); ok {
+		typeNames := map[NetworkConnectionType]string{
+			ConnectionMycorrhizal: "Mycorrhizal",
+			ConnectionRoot:        "Root",
+			ConnectionChemical:    "Chemical",
+		}
+
+		for connType, count := range connectionTypes {
+			if name, exists := typeNames[connType]; exists {
+				content.WriteString(fmt.Sprintf("  %s: %d\n", name, count))
+			}
+		}
+	}
+
+	// Chemical signals activity
+	content.WriteString("\n=== CHEMICAL SIGNALS ===\n")
+	if signals, ok := stats["signal_activity"].(map[ChemicalSignalType]int); ok {
+		signalNames := map[ChemicalSignalType]string{
+			SignalNutrientAvailable: "Nutrient sharing",
+			SignalNutrientNeeded:    "Nutrient requests",
+			SignalThreatDetected:    "Threat warnings",
+			SignalOptimalGrowth:     "Growth signals",
+			SignalReproductionReady: "Reproduction aid",
+			SignalToxicConditions:   "Toxin warnings",
+		}
+
+		totalSignals := 0
+		for _, count := range signals {
+			totalSignals += count
+		}
+
+		if totalSignals > 0 {
+			for signalType, count := range signals {
+				if name, exists := signalNames[signalType]; exists && count > 0 {
+					percentage := float64(count) / float64(totalSignals) * 100
+					content.WriteString(fmt.Sprintf("  %s: %d (%.1f%%)\n", name, count, percentage))
+				}
+			}
+		} else {
+			content.WriteString("  No active chemical signals\n")
+		}
+	}
+
+	// Network clusters
+	content.WriteString("\n=== NETWORK CLUSTERS ===\n")
+	if clusters, ok := stats["clusters"].([]map[string]interface{}); ok && len(clusters) > 0 {
+		content.WriteString("Cluster ID   Size   Avg Health   Efficiency   Plant Types\n")
+		content.WriteString("──────────────────────────────────────────────────────────\n")
+
+		for i, cluster := range clusters {
+			if i >= 10 { // Limit display to prevent overflow
+				content.WriteString(fmt.Sprintf("... and %d more clusters\n", len(clusters)-10))
+				break
+			}
+
+			id := cluster["id"].(int)
+			size := cluster["size"].(int)
+			avgHealth := cluster["avg_health"].(float64)
+			efficiency := cluster["efficiency"].(float64)
+			plantTypes := cluster["plant_types"].([]string)
+
+			// Limit plant types display
+			typesStr := strings.Join(plantTypes, ",")
+			if len(typesStr) > 15 {
+				typesStr = typesStr[:12] + "..."
+			}
+
+			content.WriteString(fmt.Sprintf("%-12d %-6d %-12.2f %-12.1f%% %s\n",
+				id, size, avgHealth, efficiency*100, typesStr))
+		}
+	} else {
+		content.WriteString("No network clusters formed yet\n")
+	}
+
+	// Resource sharing statistics
+	content.WriteString("\n=== RESOURCE SHARING ===\n")
+	if sharing, ok := stats["resource_sharing"].(map[string]interface{}); ok {
+		content.WriteString(fmt.Sprintf("Total transfers this tick: %v\n", sharing["transfers_this_tick"]))
+		content.WriteString(fmt.Sprintf("Total resources transferred: %.1f\n", sharing["total_resources_transferred"]))
+		content.WriteString(fmt.Sprintf("Average transfer efficiency: %.1f%%\n", sharing["avg_transfer_efficiency"].(float64)*100))
+
+		if beneficiaries, exists := sharing["recent_beneficiaries"].(int); exists {
+			content.WriteString(fmt.Sprintf("Plants aided this cycle: %v\n", beneficiaries))
+		}
+	}
+
+	// Recent network events
+	content.WriteString("\n=== RECENT NETWORK ACTIVITY ===\n")
+	if events, ok := stats["recent_events"].([]string); ok && len(events) > 0 {
+		for i, event := range events {
+			if i >= 5 { // Show last 5 events
+				break
+			}
+			content.WriteString(fmt.Sprintf("• %s\n", event))
+		}
+	} else {
+		content.WriteString("No recent network activity\n")
+	}
+
+	// Network health and maintenance
+	content.WriteString("\n=== NETWORK HEALTH ===\n")
+	if health, ok := stats["network_health"].(map[string]interface{}); ok {
+		content.WriteString(fmt.Sprintf("Healthy connections: %v%%\n", int(health["healthy_percentage"].(float64)*100)))
+		content.WriteString(fmt.Sprintf("Degrading connections: %v\n", health["degrading_connections"]))
+		content.WriteString(fmt.Sprintf("Connections lost this tick: %v\n", health["connections_lost"]))
+		content.WriteString(fmt.Sprintf("New connections formed: %v\n", health["new_connections"]))
+	}
+
+	return content.String()
 }
 
 // RunCLI starts the CLI interface

@@ -84,7 +84,6 @@ type World struct {
 	Tick        int
 	Clock       time.Time
 	LastUpdate  time.Time
-
 	// Advanced feature systems
 	CommunicationSystem *CommunicationSystem
 	GroupBehaviorSystem *GroupBehaviorSystem
@@ -94,6 +93,9 @@ type World struct {
 	AdvancedTimeSystem  *AdvancedTimeSystem
 	CivilizationSystem  *CivilizationSystem
 	ViewportSystem      *ViewportSystem
+	WindSystem          *WindSystem         // Wind and pollen dispersal system
+	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
+	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	FluidRegions        []FluidRegion
 }
 
@@ -126,8 +128,7 @@ func NewWorld(config WorldConfig) *World {
 				Event:    nil,
 			}
 		}
-	}
-	// Initialize advanced systems
+	} // Initialize advanced systems
 	world.CommunicationSystem = NewCommunicationSystem()
 	world.GroupBehaviorSystem = NewGroupBehaviorSystem()
 	world.PhysicsSystem = NewPhysicsSystem()
@@ -136,6 +137,9 @@ func NewWorld(config WorldConfig) *World {
 	world.AdvancedTimeSystem = NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
 	world.CivilizationSystem = NewCivilizationSystem()
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
+	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height))
+	world.SpeciationSystem = NewSpeciationSystem()
+	world.PlantNetworkSystem = NewPlantNetworkSystem()
 	world.FluidRegions = make([]FluidRegion, 0)
 
 	// Initialize plant life
@@ -305,10 +309,12 @@ func (w *World) Update() {
 	now := time.Now()
 	w.Clock = w.Clock.Add(time.Hour) // Each tick = 1 hour world time
 	w.LastUpdate = now
-
 	// 1. Update advanced time system (affects all other systems)
 	w.AdvancedTimeSystem.Update()
 	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+
+	// 2. Update wind system (affects pollen dispersal and plant reproduction)
+	w.WindSystem.Update(currentTimeState.Season, w.Tick)
 
 	// Clear grid entities and plants
 	w.clearGrid()
@@ -323,9 +329,11 @@ func (w *World) Update() {
 	if rand.Float64() < eventChance {
 		w.triggerRandomEvent()
 	}
-
 	// Update all plants (affected by day/night cycle)
 	w.updatePlants()
+
+	// Update plant network system (underground networks and communication)
+	w.PlantNetworkSystem.Update(w.AllPlants, w.Tick)
 
 	// 2. Create physics components for new entities
 	for _, entity := range w.AllEntities {
@@ -413,10 +421,14 @@ func (w *World) Update() {
 	// Remove dead entities and plants
 	w.removeDeadEntities()
 	w.removeDeadPlants()
-
 	// Plant reproduction
 	if w.Tick%10 == 0 {
 		w.reproducePlants()
+	}
+
+	// Update species evolution and tracking (after plant reproduction)
+	if w.Tick%20 == 0 {
+		w.SpeciationSystem.Update(w.AllPlants, w.Tick)
 	}
 
 	// Population-level evolution (less frequent)
@@ -471,25 +483,70 @@ func (w *World) updatePlants() {
 func (w *World) reproducePlants() {
 	newPlants := make([]*Plant, 0)
 
+	// Get current time state for seasonal effects
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+
+	// First, process asexual reproduction and pollen release
 	for _, plant := range w.AllPlants {
 		if !plant.IsAlive {
 			continue
 		}
 
+		// Asexual reproduction (existing behavior)
 		if offspring := plant.Reproduce(w.NextPlantID); offspring != nil {
 			w.NextPlantID++
 			newPlants = append(newPlants, offspring)
 		}
+
+		// Release pollen for sexual reproduction during flowering
+		if plant.CanReproduce() && currentTimeState.Season == Spring && rand.Float64() < 0.6 {
+			// Determine pollen amount based on plant traits and type
+			pollenAmount := int(5 + plant.Size*10 + plant.GetTrait("reproduction_rate")*15)
+
+			// Different plant types have different pollen release patterns
+			switch plant.Type {
+			case PlantGrass:
+				pollenAmount *= 2 // Grasses release lots of pollen
+			case PlantTree:
+				pollenAmount *= 3 // Trees release huge amounts
+			case PlantBush:
+				pollenAmount = int(float64(pollenAmount) * 1.2) // Bushes moderate
+			case PlantMushroom:
+				pollenAmount = int(float64(pollenAmount) * 0.8) // Mushrooms release spores
+			case PlantAlgae:
+				pollenAmount = int(float64(pollenAmount) * 0.5) // Algae less pollen in water
+			case PlantCactus:
+				pollenAmount = int(float64(pollenAmount) * 0.7) // Cacti conserve resources
+			}
+
+			w.WindSystem.ReleasePollen(plant, pollenAmount)
+		}
+	}
+	// Process wind-based cross-pollination
+	crossPollinatedPlants := w.WindSystem.TryPollination(w.AllPlants, w.SpeciationSystem)
+
+	// Assign IDs to cross-pollinated plants
+	for _, offspring := range crossPollinatedPlants {
+		offspring.ID = w.NextPlantID
+		w.NextPlantID++
+		newPlants = append(newPlants, offspring)
 	}
 
 	// Add new plants to world
 	w.AllPlants = append(w.AllPlants, newPlants...)
 
-	// Log significant plant population changes
+	// Enhanced logging for reproduction events
 	if len(newPlants) > 5 {
+		asexualReproduction := len(newPlants) - len(crossPollinatedPlants)
 		w.EventLogger.LogEcosystemShift(w.Tick,
-			fmt.Sprintf("Plant reproduction boom: %d new plants born", len(newPlants)),
-			map[string]interface{}{"new_plants": len(newPlants)})
+			fmt.Sprintf("Plant reproduction boom: %d new plants (%d asexual, %d cross-pollinated)",
+				len(newPlants), asexualReproduction, len(crossPollinatedPlants)),
+			map[string]interface{}{
+				"new_plants":           len(newPlants),
+				"asexual_reproduction": asexualReproduction,
+				"cross_pollination":    len(crossPollinatedPlants),
+				"active_pollen_grains": len(w.WindSystem.AllPollenGrains),
+			})
 	}
 }
 
