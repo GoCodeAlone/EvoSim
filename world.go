@@ -84,6 +84,17 @@ type World struct {
 	Tick        int
 	Clock       time.Time
 	LastUpdate  time.Time
+
+	// Advanced feature systems
+	CommunicationSystem *CommunicationSystem
+	GroupBehaviorSystem *GroupBehaviorSystem
+	PhysicsSystem       *PhysicsSystem
+	CollisionSystem     *CollisionSystem
+	PhysicsComponents   map[int]*PhysicsComponent // Entity ID -> Physics
+	AdvancedTimeSystem  *AdvancedTimeSystem
+	CivilizationSystem  *CivilizationSystem
+	ViewportSystem      *ViewportSystem
+	FluidRegions        []FluidRegion
 }
 
 // NewWorld creates a new world with multiple populations
@@ -116,6 +127,16 @@ func NewWorld(config WorldConfig) *World {
 			}
 		}
 	}
+	// Initialize advanced systems
+	world.CommunicationSystem = NewCommunicationSystem()
+	world.GroupBehaviorSystem = NewGroupBehaviorSystem()
+	world.PhysicsSystem = NewPhysicsSystem()
+	world.CollisionSystem = NewCollisionSystem()
+	world.PhysicsComponents = make(map[int]*PhysicsComponent)
+	world.AdvancedTimeSystem = NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
+	world.CivilizationSystem = NewCivilizationSystem()
+	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
+	world.FluidRegions = make([]FluidRegion, 0)
 
 	// Initialize plant life
 	world.initializePlants()
@@ -285,32 +306,109 @@ func (w *World) Update() {
 	w.Clock = w.Clock.Add(time.Hour) // Each tick = 1 hour world time
 	w.LastUpdate = now
 
+	// 1. Update advanced time system (affects all other systems)
+	w.AdvancedTimeSystem.Update()
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+
 	// Clear grid entities and plants
 	w.clearGrid()
 
 	// Update world events
 	w.updateEvents()
-
-	// Maybe trigger new events
-	if rand.Float64() < 0.01 { // 1% chance per tick
+	// Maybe trigger new events (less frequent during night)
+	eventChance := 0.01
+	if currentTimeState.IsNight() {
+		eventChance *= 0.5 // Fewer events at night
+	}
+	if rand.Float64() < eventChance {
 		w.triggerRandomEvent()
 	}
 
-	// Update all plants
+	// Update all plants (affected by day/night cycle)
 	w.updatePlants()
 
-	// Update all entities with biome effects and starvation checks
+	// 2. Create physics components for new entities
 	for _, entity := range w.AllEntities {
-		w.updateEntityWithBiome(entity)
-		entity.CheckStarvation(w) // Check for starvation-driven evolution
-		entity.Update()
+		if entity.IsAlive && w.PhysicsComponents[entity.ID] == nil {
+			w.PhysicsComponents[entity.ID] = NewPhysicsComponent(entity)
+		}
 	}
+
+	// 3. Update communication system (entities send signals)
+	w.CommunicationSystem.Update()
+
+	// Update all entities with biome effects, time effects, and starvation checks
+	deltaTime := 0.1 // Physics time step
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		// Apply biome effects
+		w.updateEntityWithBiome(entity)
+
+		// Apply time-based effects (circadian preferences)
+		w.applyTimeEffects(entity, currentTimeState)
+
+		// Check starvation-driven evolution
+		entity.CheckStarvation(w)
+
+		// Update basic entity properties
+		entity.Update()
+
+		// 4. Apply physics forces and movement
+		physics := w.PhysicsComponents[entity.ID]
+		if physics != nil {
+			// Get entity's current biome
+			gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+			gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+			gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+			gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+			biome := w.Grid[gridY][gridX].Biome
+
+			// Calculate attraction/repulsion forces between entities
+			for _, other := range w.AllEntities {
+				if other.ID != entity.ID && other.IsAlive {
+					otherPhysics := w.PhysicsComponents[other.ID]
+					if otherPhysics != nil {
+						force := w.PhysicsSystem.CalculateAttraction(entity, other, physics, otherPhysics)
+						w.PhysicsSystem.ApplyForce(physics, force)
+					}
+				}
+			}
+
+			// Apply fluid effects if in fluid regions
+			w.PhysicsSystem.ApplyFluidEffects(entity, physics, w.FluidRegions)
+
+			// Update physics
+			w.PhysicsSystem.ApplyPhysics(entity, physics, biome, deltaTime)
+		}
+		// Handle entity communication and signaling
+		w.handleEntityCommunication(entity)
+	}
+
+	// 5. Reset collision counters and check collisions
+	w.PhysicsSystem.ResetCollisionCounters()
+	w.CollisionSystem.CheckCollisions(w.AllEntities, w.PhysicsComponents, w.PhysicsSystem)
 
 	// Update grid with current entity and plant positions
 	w.updateGrid()
 
+	// 6. Update group behavior system
+	w.GroupBehaviorSystem.UpdateGroups()
+
+	// Try to form new groups based on proximity and compatibility
+	if w.Tick%10 == 0 {
+		w.attemptGroupFormation()
+	}
+
 	// Handle interactions between entities and with plants
 	w.handleInteractions()
+	// 7. Update civilization system
+	w.CivilizationSystem.Update()
+
+	// Process civilization activities
+	w.processCivilizationActivities()
 
 	// Remove dead entities and plants
 	w.removeDeadEntities()
@@ -329,6 +427,20 @@ func (w *World) Update() {
 	// Spawn new entities occasionally (based on carrying capacity)
 	if w.Tick%20 == 0 {
 		w.spawnNewEntities()
+	}
+
+	// Clean up physics components for dead entities
+	for entityID := range w.PhysicsComponents {
+		found := false
+		for _, entity := range w.AllEntities {
+			if entity.ID == entityID && entity.IsAlive {
+				found = true
+				break
+			}
+		}
+		if !found {
+			delete(w.PhysicsComponents, entityID)
+		}
 	}
 
 	// Update event logger with population changes
@@ -952,4 +1064,320 @@ func (w *World) GetStats() map[string]interface{} {
 func (w *World) String() string {
 	return fmt.Sprintf("World{Tick: %d, Entities: %d, Populations: %d}",
 		w.Tick, len(w.AllEntities), len(w.Populations))
+}
+
+// applyTimeEffects applies time-of-day and seasonal effects to entities
+func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
+	// Circadian effects - some entities prefer day, others prefer night
+	circadianPref := entity.GetTrait("circadian_preference") // -1 to 1, negative = nocturnal
+	if timeState.IsNight() && circadianPref < 0 {
+		// Nocturnal entities get energy boost at night
+		entity.Energy += math.Abs(circadianPref) * 0.5
+	} else if !timeState.IsNight() && circadianPref > 0 {
+		// Diurnal entities get energy boost during day
+		entity.Energy += circadianPref * 0.5
+	} else {
+		// Entities active at "wrong" time lose extra energy
+		entity.Energy -= 0.2
+	}
+	// Seasonal effects
+	switch timeState.Season {
+	case Spring:
+		// More food available, slight energy bonus
+		entity.Energy += 0.1
+	case Summer:
+		// Peak activity season
+		entity.Energy += 0.2
+	case Autumn:
+		// Preparation time, entities with high intelligence store energy
+		if entity.GetTrait("intelligence") > 0.5 {
+			entity.Energy += 0.15
+		}
+	case Winter:
+		// Harsh season, higher energy drain
+		entity.Energy -= 0.5
+		// Entities with good endurance survive better
+		if entity.GetTrait("endurance") < 0.3 {
+			entity.Energy -= 0.3
+		}
+	}
+}
+
+// handleEntityCommunication processes entity signaling and responses
+func (w *World) handleEntityCommunication(entity *Entity) {
+	// Entity might send a signal based on its state
+	intelligence := entity.GetTrait("intelligence")
+	cooperation := entity.GetTrait("cooperation")
+	if intelligence > 0.4 && cooperation > 0.3 {
+		// Send signals based on entity state
+		if entity.Energy < 30 && rand.Float64() < 0.1 {
+			// Distress signal
+			w.CommunicationSystem.SendSignal(entity, SignalDanger, map[string]interface{}{
+				"energy":  entity.Energy,
+				"species": entity.Species,
+			})
+		} else if entity.Energy > 80 && rand.Float64() < 0.05 {
+			// Food found signal
+			w.CommunicationSystem.SendSignal(entity, SignalFood, map[string]interface{}{
+				"position": entity.Position,
+				"energy":   entity.Energy,
+			})
+		} else if cooperation > 0.6 && rand.Float64() < 0.03 {
+			// Cooperation signal
+			w.CommunicationSystem.SendSignal(entity, SignalHelp, map[string]interface{}{
+				"species":     entity.Species,
+				"cooperation": cooperation,
+			})
+		}
+	}
+
+	// Receive and respond to signals
+	receivedSignals := w.CommunicationSystem.ReceiveSignals(entity)
+	for _, signal := range receivedSignals {
+		w.respondToSignal(entity, signal)
+	}
+}
+
+// respondToSignal makes an entity respond to a received signal
+func (w *World) respondToSignal(entity *Entity, signal Signal) {
+	switch signal.Type {
+	case SignalDanger:
+		// Cooperative entities might help
+		if entity.GetTrait("cooperation") > 0.5 && entity.Energy > 50 {
+			// Move toward distress signal
+			distance := math.Sqrt(math.Pow(entity.Position.X-signal.Position.X, 2) + math.Pow(entity.Position.Y-signal.Position.Y, 2))
+			if distance > 1 {
+				speed := entity.GetTrait("speed") * 0.5
+				entity.MoveTo(signal.Position.X, signal.Position.Y, speed)
+			}
+		}
+	case SignalFood:
+		// Move toward food if hungry
+		if entity.Energy < 60 {
+			speed := entity.GetTrait("speed") * 0.3
+			entity.MoveTo(signal.Position.X, signal.Position.Y, speed)
+		}
+	case SignalHelp:
+		// Increase cooperation temporarily
+		if entity.GetTrait("cooperation") > 0.4 {
+			entity.SetTrait("cooperation", math.Min(2.0, entity.GetTrait("cooperation")+0.1))
+		}
+	}
+}
+
+// attemptGroupFormation tries to form new groups from nearby compatible entities
+func (w *World) attemptGroupFormation() {
+	groupCandidates := make(map[string][]*Entity) // species -> entities
+
+	// Group entities by species and cooperation level
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive || entity.GetTrait("cooperation") < 0.4 {
+			continue
+		}
+
+		species := entity.Species
+		if groupCandidates[species] == nil {
+			groupCandidates[species] = make([]*Entity, 0)
+		}
+		groupCandidates[species] = append(groupCandidates[species], entity)
+	}
+
+	// Try to form groups within each species
+	for species, candidates := range groupCandidates {
+		if len(candidates) < 2 {
+			continue
+		}
+
+		// Find clusters of nearby entities
+		for i, entity1 := range candidates {
+			nearbyEntities := []*Entity{entity1}
+
+			for j, entity2 := range candidates {
+				if i == j {
+					continue
+				}
+
+				distance := entity1.DistanceTo(entity2)
+				if distance <= 15.0 { // Group formation distance
+					nearbyEntities = append(nearbyEntities, entity2)
+				}
+			}
+
+			// Form group if we have enough compatible entities
+			if len(nearbyEntities) >= 2 && len(nearbyEntities) <= 6 {
+				// Check if these entities are already in a group
+				alreadyGrouped := false
+				for _, group := range w.GroupBehaviorSystem.Groups {
+					for _, member := range group.Members {
+						for _, candidate := range nearbyEntities {
+							if member.ID == candidate.ID {
+								alreadyGrouped = true
+								break
+							}
+						}
+						if alreadyGrouped {
+							break
+						}
+					}
+					if alreadyGrouped {
+						break
+					}
+				}
+
+				if !alreadyGrouped {
+					// Determine group purpose based on entity traits
+					purpose := "territory"
+					avgAggression := 0.0
+					for _, e := range nearbyEntities {
+						avgAggression += e.GetTrait("aggression")
+					}
+					avgAggression /= float64(len(nearbyEntities))
+
+					if avgAggression > 0.6 {
+						purpose = "hunting"
+					} else if species == "herbivore" || species == "omnivore" {
+						purpose = "migration"
+					}
+
+					w.GroupBehaviorSystem.FormGroup(nearbyEntities, purpose)
+				}
+			}
+		}
+	}
+}
+
+// processCivilizationActivities handles tribe activities and structure management
+func (w *World) processCivilizationActivities() {
+	// Update civilization system
+	w.CivilizationSystem.Update()
+
+	// Process tribe activities
+	for _, tribe := range w.CivilizationSystem.Tribes {
+		// Tribe expansion - try to recruit nearby compatible entities
+		if len(tribe.Members) < 20 { // Max tribe size
+			for _, entity := range w.AllEntities {
+				if !entity.IsAlive || entity.TribeID != 0 {
+					continue // Already in a tribe
+				}
+
+				// Check if entity is near tribe territory
+				inTerritory := false
+				for _, territory := range tribe.Territory {
+					distance := math.Sqrt(math.Pow(entity.Position.X-territory.X, 2) + math.Pow(entity.Position.Y-territory.Y, 2))
+					if distance <= 20.0 {
+						inTerritory = true
+						break
+					}
+				}
+
+				if inTerritory && entity.GetTrait("cooperation") > 0.5 && entity.GetTrait("intelligence") > 0.4 {
+					// Try to recruit entity
+					if rand.Float64() < 0.05 { // 5% chance
+						tribe.Members = append(tribe.Members, entity)
+						entity.TribeID = tribe.ID
+					}
+				}
+			}
+		}
+
+		// Tribe activities based on size and resources
+		if len(tribe.Members) >= 3 {
+			// Larger tribes can build structures
+			if rand.Float64() < 0.02 && len(tribe.Structures) < 5 {
+				w.buildTribeStructure(tribe)
+			}
+
+			// Resource gathering and trading
+			if rand.Float64() < 0.1 {
+				w.processTribeResourceGathering(tribe)
+			}
+		}
+	}
+}
+
+// buildTribeStructure creates a new structure for a tribe
+func (w *World) buildTribeStructure(tribe *Tribe) {
+	if len(tribe.Members) == 0 {
+		return
+	}
+
+	// Choose a location near tribe center
+	centerX, centerY := 0.0, 0.0
+	for _, member := range tribe.Members {
+		centerX += member.Position.X
+		centerY += member.Position.Y
+	}
+	centerX /= float64(len(tribe.Members))
+	centerY /= float64(len(tribe.Members))
+
+	// Random offset for structure location
+	structX := centerX + (rand.Float64()-0.5)*20
+	structY := centerY + (rand.Float64()-0.5)*20
+
+	// Ensure within world bounds
+	structX = math.Max(0, math.Min(w.Config.Width, structX))
+	structY = math.Max(0, math.Min(w.Config.Height, structY))
+	// Determine structure type based on tribe needs
+	var structType StructureType = StructureNest // Default to basic shelter
+	if len(tribe.Structures) > 0 && rand.Float64() < 0.3 {
+		structType = StructureCache // Storage
+	} else if len(tribe.Structures) > 1 && rand.Float64() < 0.2 {
+		if tribe.TechLevel >= 3 {
+			structType = StructureFarm // Workshop equivalent
+		} else {
+			structType = StructureTrap
+		}
+	}
+
+	structure := &Structure{
+		ID:        len(tribe.Structures) + 1,
+		Type:      structType,
+		Position:  Position{X: structX, Y: structY},
+		Health:    100.0,
+		Resources: make(map[string]float64),
+	}
+
+	tribe.Structures = append(tribe.Structures, structure)
+}
+
+// processTribeResourceGathering handles resource collection and management
+func (w *World) processTribeResourceGathering(tribe *Tribe) {
+	// Tribe members gather resources
+	for _, member := range tribe.Members {
+		if !member.IsAlive {
+			continue
+		}
+
+		// Check for plants to harvest
+		gridX := int((member.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((member.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+		cell := &w.Grid[gridY][gridX]
+		for _, plant := range cell.Plants {
+			if plant.IsAlive && rand.Float64() < 0.1 {
+				// Harvest resource from plant
+				harvestedAmount := 1.0 + member.GetTrait("intelligence")*0.5
+				tribe.Resources["food"] += harvestedAmount
+				plant.Energy -= harvestedAmount * 2 // Depletes plant
+				break
+			}
+		}
+
+		// Intelligent members can gather building materials
+		if member.GetTrait("intelligence") > 0.6 && rand.Float64() < 0.05 {
+			tribe.Resources["materials"] += 0.5 + member.GetTrait("strength")*0.3
+		}
+	}
+
+	// Use resources for tribe benefits
+	if tribe.Resources["food"] > 10 {
+		// Feed tribe members
+		foodPerMember := math.Min(tribe.Resources["food"]/float64(len(tribe.Members)), 5.0)
+		for _, member := range tribe.Members {
+			member.Energy += foodPerMember
+		}
+		tribe.Resources["food"] -= foodPerMember * float64(len(tribe.Members))
+	}
 }

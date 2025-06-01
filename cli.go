@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -9,6 +10,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 // CLI model for the ecosystem simulation
 type CLIModel struct {
@@ -24,6 +33,17 @@ type CLIModel struct {
 	lastUpdateTime time.Time
 	speciesColors  map[string]string
 	speciesSymbols map[string]rune
+	// Viewport controls for navigation
+	viewportX int
+	viewportY int
+	zoomLevel int
+	// Interactive features
+	selectedEntity *Entity
+	followEntity   bool
+	showSignals    bool
+	showStructures bool
+	showPhysics    bool
+	showTime       bool
 }
 
 // tickMsg represents an auto-advance tick
@@ -31,22 +51,37 @@ type tickMsg time.Time
 
 // Key bindings
 var keys = struct {
-	up    key.Binding
-	down  key.Binding
-	enter key.Binding
-	space key.Binding
-	help  key.Binding
-	quit  key.Binding
-	view  key.Binding
-	auto  key.Binding
+	up         key.Binding
+	down       key.Binding
+	left       key.Binding
+	right      key.Binding
+	enter      key.Binding
+	space      key.Binding
+	help       key.Binding
+	quit       key.Binding
+	view       key.Binding
+	auto       key.Binding
+	zoom       key.Binding
+	reset      key.Binding
+	signals    key.Binding
+	structures key.Binding
+	physics    key.Binding
 }{
 	up: key.NewBinding(
 		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithHelp("↑/k", "move up/pan up"),
 	),
 	down: key.NewBinding(
 		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithHelp("↓/j", "move down/pan down"),
+	),
+	left: key.NewBinding(
+		key.WithKeys("left", "h"),
+		key.WithHelp("←/h", "pan left"),
+	),
+	right: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("→/l", "pan right"),
 	),
 	enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -71,6 +106,26 @@ var keys = struct {
 	auto: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "toggle auto"),
+	),
+	zoom: key.NewBinding(
+		key.WithKeys("z"),
+		key.WithHelp("z", "zoom"),
+	),
+	reset: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "reset view"),
+	),
+	signals: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "toggle signals"),
+	),
+	structures: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "toggle structures"),
+	),
+	physics: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "toggle physics"),
 	),
 }
 
@@ -127,15 +182,21 @@ func NewCLIModel(world *World) CLIModel {
 		"predator":  '▲',
 		"omnivore":  '◆',
 	}
-
 	return CLIModel{
 		world:          world,
-		viewModes:      []string{"grid", "stats", "events", "populations"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
 		speciesColors:  speciesColors,
 		speciesSymbols: speciesSymbols,
+		viewportX:      0,
+		viewportY:      0,
+		zoomLevel:      1,
+		showSignals:    true,
+		showStructures: true,
+		showPhysics:    false,
+		showTime:       true,
 	}
 }
 
@@ -159,7 +220,6 @@ func (m CLIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.quit):
@@ -187,6 +247,45 @@ func (m CLIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Manual step forward
 			m.world.Update()
 			m.tick++
+
+		case key.Matches(msg, keys.left):
+			if m.viewportX > 0 {
+				m.viewportX--
+			}
+
+		case key.Matches(msg, keys.right):
+			if m.viewportX < m.world.Config.GridWidth-20 {
+				m.viewportX++
+			}
+
+		case key.Matches(msg, keys.up):
+			if m.viewportY > 0 {
+				m.viewportY--
+			}
+
+		case key.Matches(msg, keys.down):
+			if m.viewportY < m.world.Config.GridHeight-15 {
+				m.viewportY++
+			}
+
+		case key.Matches(msg, keys.zoom):
+			m.zoomLevel = (m.zoomLevel % 3) + 1
+
+		case key.Matches(msg, keys.reset):
+			m.viewportX = 0
+			m.viewportY = 0
+			m.zoomLevel = 1
+			m.selectedEntity = nil
+			m.followEntity = false
+
+		case key.Matches(msg, keys.signals):
+			m.showSignals = !m.showSignals
+
+		case key.Matches(msg, keys.structures):
+			m.showStructures = !m.showStructures
+
+		case key.Matches(msg, keys.physics):
+			m.showPhysics = !m.showPhysics
 		}
 
 	case tickMsg:
@@ -207,7 +306,6 @@ func (m CLIModel) View() string {
 	}
 
 	var content string
-
 	switch m.selectedView {
 	case "grid":
 		content = m.gridView()
@@ -217,6 +315,12 @@ func (m CLIModel) View() string {
 		content = m.eventsView()
 	case "populations":
 		content = m.populationsView()
+	case "communication":
+		content = m.communicationView()
+	case "civilization":
+		content = m.civilizationView()
+	case "physics":
+		content = m.physicsView()
 	default:
 		content = m.gridView()
 	}
@@ -241,13 +345,49 @@ func (m CLIModel) headerView() string {
 
 	entities := len(m.world.AllEntities)
 	populations := len(m.world.Populations)
-
-	// Count active events
 	activeEvents := len(m.world.Events)
 
+	// Advanced system indicators
+	var indicators []string
+
+	// Communication system indicator
+	if m.world.CommunicationSystem != nil && len(m.world.CommunicationSystem.Signals) > 0 {
+		indicators = append(indicators, fmt.Sprintf("📡%d", len(m.world.CommunicationSystem.Signals)))
+	}
+
+	// Civilization system indicator
+	if m.world.CivilizationSystem != nil {
+		tribesCount := len(m.world.CivilizationSystem.Tribes)
+		structuresCount := len(m.world.CivilizationSystem.Structures)
+		if tribesCount > 0 || structuresCount > 0 {
+			indicators = append(indicators, fmt.Sprintf("🏛️T%d/S%d", tribesCount, structuresCount))
+		}
+	}
+
+	// Physics system indicator
+	if m.world.PhysicsSystem != nil && m.world.PhysicsSystem.CollisionsThisTick > 0 {
+		indicators = append(indicators, fmt.Sprintf("⚡%d", m.world.PhysicsSystem.CollisionsThisTick))
+	}
+
+	// Time of day indicator
+	hour := m.world.Clock.Hour()
+	var timeIcon string
+	if hour >= 6 && hour < 18 {
+		timeIcon = "☀️" // Day
+	} else {
+		timeIcon = "🌙" // Night
+	}
+
 	title := titleStyle.Render(fmt.Sprintf("🌍 Genetic Ecosystem - Tick %d", m.world.Tick))
-	info := infoStyle.Render(fmt.Sprintf("%s | %s | Entities: %d | Pops: %d | Events: %d | View: %s",
-		status, worldTime, entities, populations, activeEvents, strings.ToUpper(m.selectedView)))
+
+	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Pops: %d | Events: %d | View: %s",
+		status, timeIcon, worldTime, entities, populations, activeEvents, strings.ToUpper(m.selectedView))
+
+	if len(indicators) > 0 {
+		infoText += " | " + strings.Join(indicators, " ")
+	}
+
+	info := infoStyle.Render(infoText)
 
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, " ", info)
 }
@@ -259,81 +399,157 @@ func (m CLIModel) gridView() string {
 	}
 
 	var gridBuilder strings.Builder
+	// Build grid representation with viewport support
+	startX := m.viewportX
+	startY := m.viewportY
+	displayWidth := min(m.world.Config.GridWidth-startX, 60)
+	displayHeight := min(m.world.Config.GridHeight-startY, 25)
 
-	// Build grid representation
-	for y := 0; y < m.world.Config.GridHeight; y++ {
-		for x := 0; x < m.world.Config.GridWidth; x++ {
+	for y := startY; y < startY+displayHeight; y++ {
+		for x := startX; x < startX+displayWidth; x++ {
 			cell := m.world.Grid[y][x]
-			biome := m.world.Biomes[cell.Biome] // Start with biome symbol
+			biome := m.world.Biomes[cell.Biome]
 			symbol := biome.Symbol
 			style := biomeColors[cell.Biome]
 
-			// If entities present, show the dominant species
+			// Check for structures first (highest priority)
+			if m.showStructures && m.world.CivilizationSystem != nil {
+				for _, structure := range m.world.CivilizationSystem.Structures {
+					if int(structure.Position.X) == x && int(structure.Position.Y) == y && structure.IsActive {
+						structureSymbols := map[StructureType]rune{
+							StructureNest:    '🏠',
+							StructureCache:   '📦',
+							StructureBarrier: '🚧',
+							StructureTrap:    '🕳',
+							StructureFarm:    '🌾',
+							StructureWell:    '🚰',
+							StructureTower:   '🗼',
+							StructureMarket:  '🏪',
+						}
+						if structSymbol, exists := structureSymbols[structure.Type]; exists {
+							symbol = structSymbol
+							style = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange for structures
+						}
+						break
+					}
+				}
+			}
+
+			// Check for signals (medium priority)
+			if m.showSignals && m.world.CommunicationSystem != nil {
+				for _, signal := range m.world.CommunicationSystem.Signals {
+					distance := math.Sqrt((signal.Position.X-float64(x))*(signal.Position.X-float64(x)) +
+						(signal.Position.Y-float64(y))*(signal.Position.Y-float64(y)))
+					if distance <= signal.Range {
+						// Show signal effect with different symbols
+						signalSymbols := map[SignalType]rune{
+							SignalDanger:    '!',
+							SignalFood:      '*',
+							SignalMating:    '♥',
+							SignalTerritory: 'T',
+							SignalHelp:      '?',
+							SignalMigration: '→',
+						}
+						if signalSymbol, exists := signalSymbols[signal.Type]; exists && distance < 2.0 {
+							symbol = signalSymbol
+							style = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Blink(true) // Red blinking
+							break
+						}
+					}
+				}
+			}
+
+			// If entities present, show the dominant species (override signals but not structures)
 			if len(cell.Entities) > 0 {
-				speciesCount := make(map[string]int)
-				for _, entity := range cell.Entities {
-					speciesCount[entity.Species]++
-				}
-
-				// Find most common species
-				maxCount := 0
-				dominantSpecies := ""
-				for species, count := range speciesCount {
-					if count > maxCount {
-						maxCount = count
-						dominantSpecies = species
+				// Don't override structure symbols
+				isStructure := false
+				if m.showStructures && m.world.CivilizationSystem != nil {
+					for _, structure := range m.world.CivilizationSystem.Structures {
+						if int(structure.Position.X) == x && int(structure.Position.Y) == y && structure.IsActive {
+							isStructure = true
+							break
+						}
 					}
 				}
 
-				if dominantSpecies != "" {
-					if sym, exists := m.speciesSymbols[dominantSpecies]; exists {
-						symbol = sym
+				if !isStructure {
+					speciesCount := make(map[string]int)
+					for _, entity := range cell.Entities {
+						speciesCount[entity.Species]++
 					}
-					if style, exists := speciesStyles[dominantSpecies]; exists {
-						style = style
-					}
-				}
 
-				// Show multiple entities with numbers
-				if len(cell.Entities) > 1 {
-					if len(cell.Entities) < 10 {
-						symbol = rune('0' + len(cell.Entities))
-					} else {
-						symbol = '+'
+					// Find most common species
+					maxCount := 0
+					dominantSpecies := ""
+					for species, count := range speciesCount {
+						if count > maxCount {
+							maxCount = count
+							dominantSpecies = species
+						}
+					}
+
+					if dominantSpecies != "" {
+						if sym, exists := m.speciesSymbols[dominantSpecies]; exists {
+							symbol = sym
+						}
+						if entityStyle, exists := speciesStyles[dominantSpecies]; exists {
+							style = entityStyle
+						}
+					}
+
+					// Show multiple entities with numbers
+					if len(cell.Entities) > 1 {
+						if len(cell.Entities) < 10 {
+							symbol = rune('0' + len(cell.Entities))
+						} else {
+							symbol = '+'
+						}
 					}
 				}
 			} else if len(cell.Plants) > 0 {
-				// Show plants if no entities are present
-				// Find the most prominent plant (largest or most numerous)
-				var dominantPlant *Plant
-				maxSize := 0.0
-				for _, plant := range cell.Plants {
-					if plant.IsAlive && plant.Size > maxSize {
-						maxSize = plant.Size
-						dominantPlant = plant
+				// Show plants if no entities are present and no structures
+				isStructureOrSignal := false
+				if m.showStructures && m.world.CivilizationSystem != nil {
+					for _, structure := range m.world.CivilizationSystem.Structures {
+						if int(structure.Position.X) == x && int(structure.Position.Y) == y && structure.IsActive {
+							isStructureOrSignal = true
+							break
+						}
 					}
 				}
 
-				if dominantPlant != nil {
-					config := GetPlantConfigs()[dominantPlant.Type]
-					symbol = config.Symbol
-					// Use a dimmer style for plants
-					style = biomeColors[cell.Biome].Copy().Foreground(lipgloss.Color("240"))
-				}
+				if !isStructureOrSignal {
+					// Find the most prominent plant (largest or most numerous)
+					var dominantPlant *Plant
+					maxSize := 0.0
+					for _, plant := range cell.Plants {
+						if plant.IsAlive && plant.Size > maxSize {
+							maxSize = plant.Size
+							dominantPlant = plant
+						}
+					}
 
-				// Show multiple plants with small numbers
-				if len(cell.Plants) > 1 {
-					if len(cell.Plants) < 5 {
-						symbol = rune('0' + len(cell.Plants))
-					} else {
-						symbol = '■'
+					if dominantPlant != nil {
+						config := GetPlantConfigs()[dominantPlant.Type]
+						symbol = config.Symbol
+						// Use a dimmer style for plants
+						style = biomeColors[cell.Biome].Copy().Foreground(lipgloss.Color("240"))
+					}
+
+					// Show multiple plants with small numbers
+					if len(cell.Plants) > 1 {
+						if len(cell.Plants) < 5 {
+							symbol = rune('0' + len(cell.Plants))
+						} else {
+							symbol = '■'
+						}
 					}
 				}
 			}
 
 			gridBuilder.WriteString(style.Render(string(symbol)))
 		}
-		if y < m.world.Config.GridHeight-1 {
+		if y < startY+displayHeight-1 {
 			gridBuilder.WriteString("\n")
 		}
 	}
@@ -556,12 +772,332 @@ func (m CLIModel) populationsView() string {
 	return content.String()
 }
 
+// communicationView renders active signals and entity communication
+func (m CLIModel) communicationView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Communication System") + "\n\n")
+
+	if m.world.CommunicationSystem == nil {
+		content.WriteString("Communication system not initialized\n")
+		return content.String()
+	}
+
+	// Active Signals Section
+	content.WriteString("=== ACTIVE SIGNALS ===\n")
+	if len(m.world.CommunicationSystem.Signals) == 0 {
+		content.WriteString("No active signals\n")
+	} else {
+		signalTypes := map[SignalType]string{
+			SignalDanger:    "🚨 DANGER",
+			SignalFood:      "🍎 FOOD",
+			SignalMating:    "💕 MATING",
+			SignalTerritory: "🏴 TERRITORY",
+			SignalHelp:      "🆘 HELP",
+			SignalMigration: "🧭 MIGRATION",
+		}
+
+		signalCounts := make(map[SignalType]int)
+		for _, signal := range m.world.CommunicationSystem.Signals {
+			signalCounts[signal.Type]++
+		}
+
+		for signalType, count := range signalCounts {
+			typeName := signalTypes[signalType]
+			content.WriteString(fmt.Sprintf("%s: %d active\n", typeName, count))
+		}
+
+		content.WriteString("\nRecent Signals:\n")
+		// Show the 10 most recent signals
+		recentCount := 0
+		for i := len(m.world.CommunicationSystem.Signals) - 1; i >= 0 && recentCount < 10; i-- {
+			signal := m.world.CommunicationSystem.Signals[i]
+			typeName := signalTypes[signal.Type]
+			age := m.world.Tick - signal.Timestamp
+			content.WriteString(fmt.Sprintf("  %s at (%.0f,%.0f) - %d ticks ago - Strength: %.1f\n",
+				typeName, signal.Position.X, signal.Position.Y, age, signal.Strength))
+			recentCount++
+		}
+	}
+
+	// Communication Activity Statistics
+	content.WriteString("\n=== COMMUNICATION STATS ===\n")
+	intelligentEntities := 0
+	cooperativeEntities := 0
+	totalEntities := len(m.world.AllEntities)
+
+	for _, entity := range m.world.AllEntities {
+		if entity.IsAlive {
+			if entity.GetTrait("intelligence") > 0.3 {
+				intelligentEntities++
+			}
+			if entity.GetTrait("cooperation") > 0.2 {
+				cooperativeEntities++
+			}
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("Entities capable of communication: %d/%d\n",
+		intelligentEntities, totalEntities))
+	content.WriteString(fmt.Sprintf("Cooperative entities: %d/%d\n",
+		cooperativeEntities, totalEntities))
+	content.WriteString(fmt.Sprintf("Signal efficiency: %.1f%%\n",
+		float64(len(m.world.CommunicationSystem.Signals))/float64(m.world.CommunicationSystem.MaxSignals)*100))
+
+	return content.String()
+}
+
+// civilizationView renders tribal information and structures
+func (m CLIModel) civilizationView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Civilization System") + "\n\n")
+
+	if m.world.CivilizationSystem == nil {
+		content.WriteString("Civilization system not initialized\n")
+		return content.String()
+	}
+
+	// Tribes Section
+	content.WriteString("=== ACTIVE TRIBES ===\n")
+	if len(m.world.CivilizationSystem.Tribes) == 0 {
+		content.WriteString("No tribes formed yet\n")
+	} else {
+		for _, tribe := range m.world.CivilizationSystem.Tribes {
+			// Determine dominant species in tribe
+			speciesCount := make(map[string]int)
+			for _, member := range tribe.Members {
+				speciesCount[member.Species]++
+			}
+			dominantSpecies := "mixed"
+			maxCount := 0
+			for species, count := range speciesCount {
+				if count > maxCount {
+					maxCount = count
+					dominantSpecies = species
+				}
+			}
+
+			content.WriteString(fmt.Sprintf("🏴 Tribe %d (%s - %s)\n", tribe.ID, tribe.Name, dominantSpecies))
+			content.WriteString(fmt.Sprintf("  Members: %d\n", len(tribe.Members)))
+
+			// Calculate territory size from positions
+			territorySize := float64(len(tribe.Territory))
+			content.WriteString(fmt.Sprintf("  Territory: %.0f locations\n", territorySize))
+
+			// Calculate cohesion from culture
+			cohesion := tribe.Culture["cooperation"]
+			content.WriteString(fmt.Sprintf("  Cohesion: %.2f\n", cohesion))
+
+			if tribe.Leader != nil {
+				content.WriteString(fmt.Sprintf("  Leader: Entity %d (Fitness: %.2f)\n",
+					tribe.Leader.ID, tribe.Leader.Fitness))
+			}
+
+			// Show tribe's structures
+			structureCount := 0
+			for _, structure := range m.world.CivilizationSystem.Structures {
+				if structure.Tribe == tribe {
+					structureCount++
+				}
+			}
+			content.WriteString(fmt.Sprintf("  Structures: %d\n", structureCount))
+			content.WriteString("\n")
+		}
+	}
+
+	// Structures Section
+	content.WriteString("=== STRUCTURES ===\n")
+	if len(m.world.CivilizationSystem.Structures) == 0 {
+		content.WriteString("No structures built yet\n")
+	} else {
+		structureTypes := map[StructureType]string{
+			StructureNest:    "🏠 Nest",
+			StructureCache:   "📦 Cache",
+			StructureBarrier: "🚧 Barrier",
+			StructureTrap:    "🕳 Trap",
+			StructureFarm:    "🌾 Farm",
+			StructureWell:    "🚰 Well",
+			StructureTower:   "🗼 Tower",
+			StructureMarket:  "🏪 Market",
+		}
+
+		structureCounts := make(map[StructureType]int)
+		activeStructures := 0
+		for _, structure := range m.world.CivilizationSystem.Structures {
+			structureCounts[structure.Type]++
+			if structure.IsActive {
+				activeStructures++
+			}
+		}
+
+		content.WriteString(fmt.Sprintf("Total: %d (%d active)\n",
+			len(m.world.CivilizationSystem.Structures), activeStructures))
+
+		for structureType, count := range structureCounts {
+			typeName := structureTypes[structureType]
+			content.WriteString(fmt.Sprintf("  %s: %d\n", typeName, count))
+		}
+
+		// Show recent structures
+		content.WriteString("\nRecent Structures:\n")
+		recentCount := 0
+		for i := len(m.world.CivilizationSystem.Structures) - 1; i >= 0 && recentCount < 5; i-- {
+			structure := m.world.CivilizationSystem.Structures[i]
+			typeName := structureTypes[structure.Type]
+			age := m.world.Tick - structure.CreationTick
+			status := "Active"
+			if !structure.IsActive {
+				status = "Inactive"
+			}
+			content.WriteString(fmt.Sprintf("  %s at (%.0f,%.0f) - %d ticks old - %s\n",
+				typeName, structure.Position.X, structure.Position.Y, age, status))
+			recentCount++
+		}
+	}
+
+	// Civilization Development Index
+	content.WriteString("\n=== CIVILIZATION INDEX ===\n")
+	totalStructures := len(m.world.CivilizationSystem.Structures)
+	totalTribes := len(m.world.CivilizationSystem.Tribes)
+
+	developmentIndex := float64(totalStructures*2+totalTribes*5) / float64(len(m.world.AllEntities)+1)
+	content.WriteString(fmt.Sprintf("Development Index: %.2f\n", developmentIndex))
+
+	if developmentIndex < 0.1 {
+		content.WriteString("Civilization Level: Primitive\n")
+	} else if developmentIndex < 0.5 {
+		content.WriteString("Civilization Level: Developing\n")
+	} else if developmentIndex < 1.0 {
+		content.WriteString("Civilization Level: Advanced\n")
+	} else {
+		content.WriteString("Civilization Level: Highly Advanced\n")
+	}
+
+	return content.String()
+}
+
+// physicsView renders physics and movement information
+func (m CLIModel) physicsView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Physics System") + "\n\n")
+
+	if m.world.PhysicsSystem == nil {
+		content.WriteString("Physics system not initialized\n")
+		return content.String()
+	}
+
+	// Movement Statistics
+	content.WriteString("=== MOVEMENT STATISTICS ===\n")
+	movingEntities := 0
+	totalVelocity := 0.0
+	maxVelocity := 0.0
+	for _, entity := range m.world.AllEntities {
+		if entity.IsAlive {
+			physics := m.world.PhysicsComponents[entity.ID]
+			var speed float64
+			if physics != nil {
+				speed = math.Sqrt(physics.Velocity.X*physics.Velocity.X + physics.Velocity.Y*physics.Velocity.Y)
+			}
+			if speed > 0.1 {
+				movingEntities++
+				totalVelocity += speed
+				if speed > maxVelocity {
+					maxVelocity = speed
+				}
+			}
+		}
+	}
+
+	avgVelocity := 0.0
+	if movingEntities > 0 {
+		avgVelocity = totalVelocity / float64(movingEntities)
+	}
+
+	content.WriteString(fmt.Sprintf("Moving entities: %d/%d\n", movingEntities, len(m.world.AllEntities)))
+	content.WriteString(fmt.Sprintf("Average velocity: %.2f\n", avgVelocity))
+	content.WriteString(fmt.Sprintf("Maximum velocity: %.2f\n", maxVelocity))
+
+	// Collision Statistics
+	content.WriteString("\n=== COLLISION STATISTICS ===\n")
+	content.WriteString(fmt.Sprintf("Collisions this tick: %d\n", m.world.PhysicsSystem.CollisionsThisTick))
+	content.WriteString(fmt.Sprintf("Total collisions: %d\n", m.world.PhysicsSystem.TotalCollisions))
+
+	avgCollisions := 0.0
+	if m.world.Tick > 0 {
+		avgCollisions = float64(m.world.PhysicsSystem.TotalCollisions) / float64(m.world.Tick)
+	}
+	content.WriteString(fmt.Sprintf("Average collisions/tick: %.2f\n", avgCollisions))
+
+	// Force Analysis
+	content.WriteString("\n=== FORCE ANALYSIS ===\n")
+	content.WriteString("Active Forces:\n")
+
+	// Count entities affected by different forces
+	gravityAffected := 0
+	frictionAffected := 0
+	for _, entity := range m.world.AllEntities {
+		if entity.IsAlive {
+			// Entities are affected by friction if they're moving
+			physics := m.world.PhysicsComponents[entity.ID]
+			var speed float64
+			if physics != nil {
+				speed = math.Sqrt(physics.Velocity.X*physics.Velocity.X + physics.Velocity.Y*physics.Velocity.Y)
+			}
+			if speed > 0.1 {
+				frictionAffected++
+			}
+
+			// All entities are affected by environmental forces
+			gravityAffected++
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("  Environmental forces: %d entities\n", gravityAffected))
+	content.WriteString(fmt.Sprintf("  Friction: %d entities\n", frictionAffected))
+
+	// Entity Distribution by Speed
+	content.WriteString("\n=== SPEED DISTRIBUTION ===\n")
+	speedBands := []struct {
+		min, max float64
+		name     string
+	}{
+		{0.0, 0.1, "Stationary"},
+		{0.1, 0.5, "Slow"},
+		{0.5, 1.0, "Medium"},
+		{1.0, 2.0, "Fast"},
+		{2.0, 999.0, "Very Fast"},
+	}
+	for _, band := range speedBands {
+		count := 0
+		for _, entity := range m.world.AllEntities {
+			if entity.IsAlive {
+				physics := m.world.PhysicsComponents[entity.ID]
+				var speed float64
+				if physics != nil {
+					speed = math.Sqrt(physics.Velocity.X*physics.Velocity.X + physics.Velocity.Y*physics.Velocity.Y)
+				}
+				if speed >= band.min && speed < band.max {
+					count++
+				}
+			}
+		}
+		if count > 0 {
+			content.WriteString(fmt.Sprintf("  %s (%.1f-%.1f): %d entities\n",
+				band.name, band.min, band.max, count))
+		}
+	}
+
+	return content.String()
+}
+
 // footerView renders the footer with controls
 func (m CLIModel) footerView() string {
 	controls := []string{
 		"space: pause/resume",
 		"v: cycle view",
+		"arrows: navigate",
 		"enter: step",
+		"s/t/p: toggles",
+		"r: reset",
 		"?: help",
 		"q: quit",
 	}
@@ -577,16 +1113,31 @@ func (m CLIModel) helpView() string {
 CONTROLS:
   space      Pause/Resume simulation
   enter      Manual step (when paused)
-  v          Cycle through views (grid/stats/events/populations)
+  v          Cycle through views (grid/stats/events/populations/communication/civilization/physics)
   a          Toggle auto-advance
+  ←→↑↓/hjkl  Navigate viewport (pan around world)
+  z          Cycle zoom level
+  r          Reset viewport to origin
+  s          Toggle signal visualization
+  t          Toggle structure visualization
+  p          Toggle physics visualization
   ?          Toggle this help screen
   q          Quit
 
 VIEWS:
-  Grid       Real-time animated world map with entities and biomes
-  Stats      Detailed world and population statistics
-  Events     Active world events and their effects
-  Populations Detailed view of each species population
+  Grid         Real-time animated world map with entities and biomes
+  Stats        Detailed world and population statistics
+  Events       Active world events and their effects
+  Populations  Detailed view of each species population
+  Communication Active signals and entity communication data
+  Civilization Tribal information and structure development
+  Physics      Movement statistics and collision data
+
+HEADER INDICATORS:
+  📡N         Active communication signals (N = count)
+  🏛️T/S       Tribes (T) and Structures (S) counts
+  ⚡N         Collisions this tick (N = count)
+  ☀️/🌙       Day/Night time indicator
 
 GRID SYMBOLS:
   .          Plains biome
@@ -602,6 +1153,16 @@ GRID SYMBOLS:
   2-9        Multiple entities in cell
   +          10+ entities in cell
 
+STRUCTURES (when structure visualization enabled):
+  🏠         Nest (shelter)
+  📦         Cache (food storage)
+  🚧         Barrier (defensive wall)
+  🕳         Trap (hunting trap)
+  🌾         Farm (cultivated plants)
+  🚰         Well (water source)
+  🗼         Tower (observation post)
+  🏪         Market (trading post)
+
 PLANTS (shown when no entities present):
   .          Grass (nutrition: 15)
   ♦          Bush (nutrition: 25, slightly toxic)
@@ -612,17 +1173,30 @@ PLANTS (shown when no entities present):
   1-4        Multiple plants in cell
   ■          5+ plants in cell
 
-The simulation runs in real-time, with entities moving, aging, interacting,
-eating plants, and evolving based on their traits and the biome they're in. 
-Different biomes provide different challenges and benefits to different species.
+ADVANCED SYSTEMS:
+The simulation features multiple interconnected systems:
 
-Plants form the base of the food chain - herbivores and omnivores eat them,
-while desperate predators may resort to plants when no prey is available.
-Some plants are toxic and can damage entities that lack toxin resistance.
+• Communication: Entities can send signals (danger, food, mating, etc.) 
+  to coordinate behavior. Intelligence and cooperation traits affect ability.
 
-World events can occur randomly, affecting mutation rates, energy drain,
-and even changing the landscape itself. Check the Events view to see the
-complete event log including extinctions, evolutions, and ecosystem shifts.
+• Civilization: Intelligent, cooperative entities can form tribes and build 
+  structures that provide benefits like shelter, food storage, and defense.
+
+• Physics: Realistic movement with velocity, collision detection, and 
+  environmental forces affecting entity behavior and interaction.
+
+• Time Cycles: Day/night cycles affect entity behavior, with some entities
+  being more active during certain times.
+
+• Plant Ecosystem: Six plant types with different nutritional values, 
+  toxicity levels, and biome preferences form the food web base.
+
+• Event System: Random world events like solar flares, meteor showers,
+  and ice ages create evolutionary pressure and environmental challenges.
+
+All systems interact dynamically - communication helps coordinate responses 
+to events, civilization provides resilience against environmental challenges,
+and physics creates realistic movement and interaction patterns.
 
 Press ? again to return to the simulation.
 `

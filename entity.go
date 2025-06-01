@@ -30,6 +30,7 @@ type Entity struct {
 	IsAlive    bool             `json:"is_alive"`
 	Species    string           `json:"species"`
 	Generation int              `json:"generation"`
+	TribeID    int              `json:"tribe_id"` // ID of the tribe this entity belongs to (0 = no tribe)
 }
 
 // NewEntity creates a new entity with random traits
