@@ -383,7 +383,7 @@ func (m CLIModel) headerView() string {
 	}
 
 	title := titleStyle.Render(fmt.Sprintf("🌍 Genetic Ecosystem - Tick %d", m.world.Tick))
-	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Species: %d | Events: %d | View: %s",
+	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Pops: %d | Events: %d | View: %s",
 		status, timeIcon, worldTime, entities, populations, activeEvents, strings.ToUpper(m.selectedView))
 
 	if len(indicators) > 0 {
@@ -492,10 +492,18 @@ func (m CLIModel) gridView() string {
 					}
 
 					if dominantSpecies != "" {
-						if sym, exists := m.speciesSymbols[dominantSpecies]; exists {
+						// Get base species type from species naming system
+						baseSpecies := dominantSpecies
+						if m.world.SpeciesNaming != nil {
+							if info := m.world.SpeciesNaming.GetSpeciesInfo(dominantSpecies); info != nil {
+								baseSpecies = info.Species
+							}
+						}
+						
+						if sym, exists := m.speciesSymbols[baseSpecies]; exists {
 							symbol = sym
 						}
-						if entityStyle, exists := speciesStyles[dominantSpecies]; exists {
+						if entityStyle, exists := speciesStyles[baseSpecies]; exists {
 							style = entityStyle
 						}
 					}
@@ -579,10 +587,26 @@ func (m CLIModel) legendView() string {
 	}
 
 	legend.WriteString("\n👥 Species:\n")
-	for species, symbol := range m.speciesSymbols {
-		style := speciesStyles[species]
-		legend.WriteString(fmt.Sprintf("%s %s\n",
-			style.Render(string(symbol)), strings.Title(species)))
+	// Show actual species names from populations
+	if m.world.SpeciesNaming != nil {
+		for _, pop := range m.world.Populations {
+			if info := m.world.SpeciesNaming.GetSpeciesInfo(pop.Species); info != nil {
+				baseSpecies := info.Species
+				if symbol, exists := m.speciesSymbols[baseSpecies]; exists {
+					if style, exists := speciesStyles[baseSpecies]; exists {
+						legend.WriteString(fmt.Sprintf("%s %s\n",
+							style.Render(string(symbol)), pop.Species))
+					}
+				}
+			}
+		}
+	} else {
+		// Fallback to old behavior
+		for species, symbol := range m.speciesSymbols {
+			style := speciesStyles[species]
+			legend.WriteString(fmt.Sprintf("%s %s\n",
+				style.Render(string(symbol)), strings.Title(species)))
+		}
 	}
 
 	legend.WriteString("\n📊 Numbers = Multiple entities\n")

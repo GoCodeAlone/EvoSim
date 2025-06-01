@@ -65,7 +65,7 @@ func TestWorldAddPopulation(t *testing.T) {
 
 	popConfig := PopulationConfig{
 		Name:    "TestPop",
-		Species: "test",
+		Species: "herbivore",
 		BaseTraits: map[string]float64{
 			"strength": 0.5,
 			"speed":    0.3,
@@ -85,10 +85,17 @@ func TestWorldAddPopulation(t *testing.T) {
 		t.Errorf("Expected 5 entities, got %d", len(world.AllEntities))
 	}
 
-	// Check that entities have correct species
+	// Check that entities have generated species names (not the generic type)
+	var generatedSpeciesName string
 	for _, entity := range world.AllEntities {
-		if entity.Species != "test" {
-			t.Errorf("Expected entity species 'test', got '%s'", entity.Species)
+		if generatedSpeciesName == "" {
+			generatedSpeciesName = entity.Species
+		}
+		if entity.Species != generatedSpeciesName {
+			t.Errorf("Expected all entities to have same species name '%s', got '%s'", generatedSpeciesName, entity.Species)
+		}
+		if entity.Species == "herbivore" {
+			t.Errorf("Expected generated species name, got generic type '%s'", entity.Species)
 		}
 
 		// Check that entities have the base traits
@@ -116,7 +123,7 @@ func TestWorldUpdate(t *testing.T) {
 
 	popConfig := PopulationConfig{
 		Name:    "TestPop",
-		Species: "test",
+		Species: "herbivore",
 		BaseTraits: map[string]float64{
 			"strength": 0.5,
 		},
@@ -172,7 +179,7 @@ func TestWorldGetStats(t *testing.T) {
 	// Add two different populations
 	popConfig1 := PopulationConfig{
 		Name:    "Pop1",
-		Species: "species1",
+		Species: "herbivore",
 		BaseTraits: map[string]float64{
 			"strength": 0.5,
 		},
@@ -183,7 +190,7 @@ func TestWorldGetStats(t *testing.T) {
 
 	popConfig2 := PopulationConfig{
 		Name:    "Pop2",
-		Species: "species2",
+		Species: "predator",
 		BaseTraits: map[string]float64{
 			"strength": 0.8,
 		},
@@ -214,13 +221,14 @@ func TestWorldGetStats(t *testing.T) {
 		t.Errorf("Expected 2 populations in stats, got %d", len(populations))
 	}
 
-	// Check that both species are present
-	if _, exists := populations["species1"]; !exists {
-		t.Errorf("Expected species1 in population stats")
+	// Check that both species are present (should be generated names, not original types)
+	speciesNames := make([]string, 0, len(populations))
+	for name := range populations {
+		speciesNames = append(speciesNames, name)
 	}
-
-	if _, exists := populations["species2"]; !exists {
-		t.Errorf("Expected species2 in population stats")
+	
+	if len(speciesNames) != 2 {
+		t.Errorf("Expected exactly 2 species in stats, got %d: %v", len(speciesNames), speciesNames)
 	}
 }
 
@@ -229,8 +237,8 @@ func TestEntityInteractions(t *testing.T) {
 	pos1 := Position{X: 0, Y: 0}
 	pos2 := Position{X: 3, Y: 4}
 
-	entity1 := NewEntity(1, []string{"strength"}, "test", pos1)
-	entity2 := NewEntity(2, []string{"strength"}, "test", pos2)
+	entity1 := NewEntity(1, []string{"strength"}, "herbivore", pos1)
+	entity2 := NewEntity(2, []string{"strength"}, "herbivore", pos2)
 
 	distance := entity1.DistanceTo(entity2)
 	expectedDistance := 5.0 // 3-4-5 triangle
@@ -242,7 +250,7 @@ func TestEntityInteractions(t *testing.T) {
 
 func TestEntityMovement(t *testing.T) {
 	pos := Position{X: 0, Y: 0}
-	entity := NewEntity(1, []string{"strength"}, "test", pos)
+	entity := NewEntity(1, []string{"strength"}, "herbivore", pos)
 
 	initialEnergy := entity.Energy
 
@@ -306,12 +314,12 @@ func TestEntityMerging(t *testing.T) {
 	pos2 := Position{X: 1, Y: 1}
 
 	// Create two compatible entities of same species
-	entity1 := NewEntity(1, []string{"intelligence", "cooperation"}, "test", pos1)
+	entity1 := NewEntity(1, []string{"intelligence", "cooperation"}, "herbivore", pos1)
 	entity1.SetTrait("intelligence", 0.6)
 	entity1.SetTrait("cooperation", 0.5)
 	entity1.Energy = 60
 
-	entity2 := NewEntity(2, []string{"intelligence", "cooperation"}, "test", pos2)
+	entity2 := NewEntity(2, []string{"intelligence", "cooperation"}, "herbivore", pos2)
 	entity2.SetTrait("intelligence", 0.7)
 	entity2.SetTrait("cooperation", 0.4)
 	entity2.Energy = 60
@@ -333,8 +341,8 @@ func TestEntityMerging(t *testing.T) {
 		t.Errorf("Expected merged entity ID to be 999, got %d", merged.ID)
 	}
 
-	if merged.Species != "test" {
-		t.Errorf("Expected merged entity species to be 'test', got '%s'", merged.Species)
+	if merged.Species != "herbivore" {
+		t.Errorf("Expected merged entity species to be 'herbivore', got '%s'", merged.Species)
 	}
 
 	// Original entities should be dead

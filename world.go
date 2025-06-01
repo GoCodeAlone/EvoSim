@@ -267,6 +267,9 @@ func (w *World) generateBiome(x, y int) BiomeType {
 
 // AddPopulation adds a new population to the world
 func (w *World) AddPopulation(config PopulationConfig) {
+	// Generate a proper species name using the naming system
+	speciesName := w.SpeciesNaming.GenerateSpeciesName(config.Species, "", 0, w.Tick)
+	
 	// Generate trait names based on base traits
 	traitNames := make([]string, 0, len(config.BaseTraits))
 	for name := range config.BaseTraits {
@@ -275,7 +278,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 
 	// Create population with species-specific mutation rate
 	pop := NewPopulation(w.Config.PopulationSize, traitNames, config.BaseMutationRate, 0.2)
-	pop.Species = config.Species
+	pop.Species = speciesName
 
 	// Initialize entities with base traits and positions
 	for _, entity := range pop.Entities {
@@ -287,7 +290,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 			X: config.StartPos.X + math.Cos(angle)*distance,
 			Y: config.StartPos.Y + math.Sin(angle)*distance,
 		}
-		entity.Species = config.Species
+		entity.Species = speciesName
 		entity.ID = w.NextID
 		w.NextID++
 
@@ -302,7 +305,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 		w.AllEntities = append(w.AllEntities, entity)
 	}
 
-	w.Populations[config.Species] = pop
+	w.Populations[speciesName] = pop
 }
 
 // Update simulates one tick of the world
