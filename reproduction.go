@@ -469,6 +469,237 @@ func (rs *ReproductionSystem) GiveBirth(parent *Entity, currentTick int) []*Enti
 	return offspring
 }
 
+// UpdateSeasonalMatingBehaviors adjusts entity mating behaviors based on season
+func (rs *ReproductionSystem) UpdateSeasonalMatingBehaviors(entities []*Entity, currentSeason Season, currentTick int) {
+	for _, entity := range entities {
+		if !entity.IsAlive || entity.ReproductionStatus == nil {
+			continue
+		}
+		
+		status := entity.ReproductionStatus
+		
+		// Seasonal mating readiness
+		switch currentSeason {
+		case Spring:
+			// Peak mating season - high readiness, increased migration
+			status.MatingSeason = true
+			status.ReadyToMate = entity.Energy > 30.0
+			if rand.Float64() < 0.4 { // 40% chance to become migratory
+				status.RequiresMigration = true
+				status.MigrationDistance = 20.0 + rand.Float64()*30.0 // 20-50 units
+			}
+			
+		case Summer:
+			// Active season but less focused on mating
+			status.MatingSeason = entity.Energy > 50.0 // Only if well-fed
+			status.ReadyToMate = status.MatingSeason
+			status.RequiresMigration = rand.Float64() < 0.2 // 20% migratory
+			
+		case Autumn:
+			// Last chance mating before winter
+			status.MatingSeason = true
+			status.ReadyToMate = entity.Energy > 40.0
+			// More territorial behavior - shorter migration distances
+			if status.RequiresMigration {
+				if status.MigrationDistance > 15.0 {
+					status.MigrationDistance = 15.0
+				}
+			}
+			
+		case Winter:
+			// Survival mode - minimal mating
+			status.MatingSeason = entity.Energy > 80.0 // Only if very healthy
+			status.ReadyToMate = status.MatingSeason && rand.Float64() < 0.3 // 30% chance
+			status.RequiresMigration = false // No migration in winter
+		}
+		
+		// Update preferred mating locations based on season
+		if status.MatingSeason && rand.Float64() < 0.1 { // 10% chance to change preference
+			rs.updateSeasonalMatingLocation(status, currentSeason, entity.Position)
+		}
+		
+		// Courtship behavior duration varies by season
+		if status.Strategy == Monogamous && currentSeason == Spring {
+			// Longer courtship in spring
+			status.GestationPeriod = int(float64(status.GestationPeriod) * 1.2)
+		}
+	}
+}
+
+// updateSeasonalMatingLocation updates preferred mating location based on season
+func (rs *ReproductionSystem) updateSeasonalMatingLocation(status *ReproductionStatus, season Season, currentPos Position) {
+	switch season {
+	case Spring:
+		// Prefer open areas with good resources
+		status.PreferredMatingLocation = Position{
+			X: currentPos.X + (rand.Float64()-0.5)*40.0,
+			Y: currentPos.Y + (rand.Float64()-0.5)*40.0,
+		}
+	case Summer:
+		// Prefer cooler, shaded areas
+		status.PreferredMatingLocation = Position{
+			X: currentPos.X + (rand.Float64()-0.5)*20.0,
+			Y: currentPos.Y + (rand.Float64()-0.5)*20.0,
+		}
+	case Autumn:
+		// Stay close to current territory
+		status.PreferredMatingLocation = Position{
+			X: currentPos.X + (rand.Float64()-0.5)*10.0,
+			Y: currentPos.Y + (rand.Float64()-0.5)*10.0,
+		}
+	case Winter:
+		// Prefer sheltered locations
+		status.PreferredMatingLocation = currentPos // Stay where they are
+	}
+}
+
+// ImplementTerritorialMating adds territorial control affecting mating success
+func (rs *ReproductionSystem) ImplementTerritorialMating(entities []*Entity, territories map[int]*Territory) {
+	for _, entity := range entities {
+		if !entity.IsAlive || entity.ReproductionStatus == nil {
+			continue
+		}
+		
+		status := entity.ReproductionStatus
+		
+		// Check if entity is in a territory
+		for _, territory := range territories {
+			if rs.isInTerritory(entity.Position, territory) {
+				// Territorial mating success based on dominance
+				dominanceScore := entity.GetTrait("strength") + entity.GetTrait("intelligence")
+				
+				// Territory owner gets mating advantage
+				if territory.OwnerID == entity.ID {
+					status.ReadyToMate = status.ReadyToMate && true // Always ready if in own territory
+					// Bonus to attractiveness
+					entity.Fitness += 0.1
+				} else {
+					// Non-owners need higher dominance to mate in territory
+					territoryOwner := rs.findEntityByID(entities, territory.OwnerID)
+					if territoryOwner != nil {
+						ownerDominance := territoryOwner.GetTrait("strength") + territoryOwner.GetTrait("intelligence")
+						if dominanceScore < ownerDominance*0.8 {
+							status.ReadyToMate = false // Cannot mate in superior's territory
+						}
+					}
+				}
+				break
+			}
+		}
+	}
+}
+
+// Territory represents a territorial area
+type Territory struct {
+	ID      int      `json:"id"`
+	OwnerID int      `json:"owner_id"`
+	Center  Position `json:"center"`
+	Radius  float64  `json:"radius"`
+	Quality float64  `json:"quality"` // Territory quality affects mating success
+}
+
+// isInTerritory checks if a position is within a territory
+func (rs *ReproductionSystem) isInTerritory(pos Position, territory *Territory) bool {
+	dx := pos.X - territory.Center.X
+	dy := pos.Y - territory.Center.Y
+	distance := dx*dx + dy*dy
+	return distance <= territory.Radius*territory.Radius
+}
+
+// findEntityByID finds an entity by ID
+func (rs *ReproductionSystem) findEntityByID(entities []*Entity, id int) *Entity {
+	for _, entity := range entities {
+		if entity.ID == id {
+			return entity
+		}
+	}
+	return nil
+}
+
+// ImplementCrossSpeciesCompatibility allows limited reproduction between related species
+func (rs *ReproductionSystem) ImplementCrossSpeciesCompatibility(entity1, entity2 *Entity) bool {
+	// Same species can always mate
+	if entity1.Species == entity2.Species {
+		return true
+	}
+	
+	// Define compatibility matrix for cross-species mating
+	compatibility := map[string]map[string]float64{
+		"herbivore": {
+			"omnivore": 0.3, // 30% chance of successful cross-species mating
+		},
+		"omnivore": {
+			"herbivore": 0.3,
+			"predator":  0.1, // 10% chance - very rare
+		},
+		"predator": {
+			"omnivore": 0.1,
+		},
+	}
+	
+	// Check if species are compatible
+	if speciesCompat, exists := compatibility[entity1.Species]; exists {
+		if chance, exists := speciesCompat[entity2.Species]; exists {
+			// Additional factors affecting compatibility
+			geneticSimilarity := rs.calculateGeneticSimilarity(entity1, entity2)
+			environmentalSimilarity := rs.calculateEnvironmentalSimilarity(entity1, entity2)
+			
+			// Adjust chance based on similarities
+			adjustedChance := chance * geneticSimilarity * environmentalSimilarity
+			
+			return rand.Float64() < adjustedChance
+		}
+	}
+	
+	return false // No compatibility defined
+}
+
+// calculateGeneticSimilarity compares genetic traits between entities
+func (rs *ReproductionSystem) calculateGeneticSimilarity(entity1, entity2 *Entity) float64 {
+	if len(entity1.Traits) == 0 || len(entity2.Traits) == 0 {
+		return 0.5 // Default similarity
+	}
+	
+	totalDifference := 0.0
+	traitCount := 0
+	
+	for traitName, trait1 := range entity1.Traits {
+		if trait2, exists := entity2.Traits[traitName]; exists {
+			difference := (trait1.Value - trait2.Value)
+			totalDifference += difference * difference
+			traitCount++
+		}
+	}
+	
+	if traitCount == 0 {
+		return 0.5
+	}
+	
+	avgDifference := totalDifference / float64(traitCount)
+	// Convert difference to similarity (0-1 scale)
+	similarity := 1.0 / (1.0 + avgDifference)
+	
+	return similarity
+}
+
+// calculateEnvironmentalSimilarity checks if entities live in similar environments
+func (rs *ReproductionSystem) calculateEnvironmentalSimilarity(entity1, entity2 *Entity) float64 {
+	// Simple distance-based similarity
+	dx := entity1.Position.X - entity2.Position.X
+	dy := entity1.Position.Y - entity2.Position.Y
+	distance := dx*dx + dy*dy
+	
+	// Close entities are more likely to be environmentally similar
+	maxDistance := 50.0 // Maximum distance for full similarity
+	normalizedDistance := distance / (maxDistance * maxDistance)
+	if normalizedDistance > 1.0 {
+		normalizedDistance = 1.0
+	}
+	similarity := 1.0 - normalizedDistance
+	
+	return 0.5 + similarity*0.5 // Range from 0.5 to 1.0
+}
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }

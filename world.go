@@ -1951,6 +1951,15 @@ func (w *World) updateReproductionSystem() {
 	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
 	w.ReproductionSystem.UpdateMatingSeasons(w.AllEntities, seasonToString(currentTimeState.Season))
 	
+	// Enhanced seasonal mating behaviors
+	w.ReproductionSystem.UpdateSeasonalMatingBehaviors(w.AllEntities, currentTimeState.Season, w.Tick)
+	
+	// Implement territorial mating if civilization system is available
+	if w.CivilizationSystem != nil {
+		territories := w.generateTerritories()
+		w.ReproductionSystem.ImplementTerritorialMating(w.AllEntities, territories)
+	}
+	
 	// Check for births from gestation
 	newborns := w.ReproductionSystem.CheckGestation(w.AllEntities, w.Tick)
 	for _, newborn := range newborns {
@@ -2080,8 +2089,16 @@ func (w *World) processMatingAttempts() {
 				continue
 			}
 			
-			// Check compatibility (same species, different gender if applicable)
-			if entity1.Species != entity2.Species {
+			// Check compatibility (same species or cross-species compatibility)
+			canMate := false
+			if entity1.Species == entity2.Species {
+				canMate = true
+			} else {
+				// Check cross-species compatibility
+				canMate = w.ReproductionSystem.ImplementCrossSpeciesCompatibility(entity1, entity2)
+			}
+			
+			if !canMate {
 				continue
 			}
 			
@@ -2166,6 +2183,62 @@ func (w *World) processEntityDeaths() {
 			w.EventLogger.LogWorldEvent(w.Tick, "death", fmt.Sprintf("Entity %d (%s) died at age %d", entity.ID, entity.Species, entity.Age))
 		}
 	}
+}
+
+// generateTerritories creates territories based on civilization system tribes
+func (w *World) generateTerritories() map[int]*Territory {
+	territories := make(map[int]*Territory)
+	
+	if w.CivilizationSystem == nil {
+		return territories
+	}
+	
+	territoryID := 1
+	for _, tribe := range w.CivilizationSystem.Tribes {
+		if len(tribe.Members) == 0 {
+			continue
+		}
+		
+		// Find tribe center based on member positions
+		centerX := 0.0
+		centerY := 0.0
+		strongestEntity := tribe.Members[0]
+		maxStrength := 0.0
+		
+		for _, member := range tribe.Members {
+			centerX += member.Position.X
+			centerY += member.Position.Y
+			
+			strength := member.GetTrait("strength") + member.GetTrait("intelligence")
+			if strength > maxStrength {
+				maxStrength = strength
+				strongestEntity = member
+			}
+		}
+		
+		centerX /= float64(len(tribe.Members))
+		centerY /= float64(len(tribe.Members))
+		
+		// Territory size based on tribe size and leader strength
+		radius := 5.0 + float64(len(tribe.Members))*2.0 + maxStrength*3.0
+		quality := (tribe.Resources["food"] + tribe.Resources["materials"]) / 200.0 // 0-1 scale
+		
+		territory := &Territory{
+			ID:      territoryID,
+			OwnerID: strongestEntity.ID,
+			Center: Position{
+				X: centerX,
+				Y: centerY,
+			},
+			Radius:  radius,
+			Quality: quality,
+		}
+		
+		territories[territoryID] = territory
+		territoryID++
+	}
+	
+	return territories
 }
 
 // applyDecayFertilizer enhances plants near decaying organic matter

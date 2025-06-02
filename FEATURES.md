@@ -181,9 +181,9 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Egg System**: Egg laying and hatching mechanics with time-based development
 - [x] **Emergent Migration**: Entities migrate to preferred mating locations during mating season
 - [x] **Competition for Mates**: Entities compete based on strength, intelligence, and energy levels
-- [ ] **Seasonal Mating Behaviors**: More complex seasonal mating patterns
-- [ ] **Territory-based Mating**: Territorial control affecting mating success
-- [ ] **Cross-species Compatibility**: Limited reproduction between closely related species
+- [x] **Seasonal Mating Behaviors**: Complex seasonal mating patterns with spring peaks, winter dormancy, and season-specific migration behaviors
+- [x] **Territory-based Mating**: Territorial control affecting mating success based on dominance and territory ownership
+- [x] **Cross-species Compatibility**: Limited reproduction between closely related species with genetic and environmental similarity factors
 
 #### Enhanced Storm and Weather Systems (COMPLETED)
 - [x] **Enhanced Environmental Events**: Added 8 new event types (Volcanic Eruption, Lightning Storm, Wildfire, Great Flood, Magnetic Storm, Ash Cloud, Earthquake, Cosmic Radiation)
