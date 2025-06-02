@@ -73,6 +73,8 @@ type ViewData struct {
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
 	Reproduction     ReproductionData     `json:"reproduction"`
+	Statistical      StatisticalData      `json:"statistical"`
+	Anomalies        AnomaliesData        `json:"anomalies"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
 	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
@@ -272,6 +274,54 @@ type TopologyData struct {
 	GeologicalAge  int     `json:"geological_age"`
 }
 
+// StatisticalData represents statistical analysis state
+type StatisticalData struct {
+	TotalEvents      int                     `json:"total_events"`
+	TotalSnapshots   int                     `json:"total_snapshots"`
+	TotalAnomalies   int                     `json:"total_anomalies"`
+	TotalEnergy      float64                 `json:"total_energy"`
+	EnergyChange     float64                 `json:"energy_change"`
+	EnergyTrend      string                  `json:"energy_trend"`
+	PopulationTrend  string                  `json:"population_trend"`
+	RecentEvents     []StatisticalEventData  `json:"recent_events"`
+	LatestSnapshot   *StatisticalSnapshotData `json:"latest_snapshot"`
+}
+
+// AnomaliesData represents anomaly detection state
+type AnomaliesData struct {
+	TotalAnomalies    int                    `json:"total_anomalies"`
+	RecentAnomalies   []AnomalyData          `json:"recent_anomalies"`
+	AnomalyTypes      map[string]int         `json:"anomaly_types"`
+	Recommendations   []string               `json:"recommendations"`
+}
+
+// StatisticalEventData represents a statistical event for web interface
+type StatisticalEventData struct {
+	Tick        int     `json:"tick"`
+	Type        string  `json:"type"`
+	Target      string  `json:"target"`
+	Change      float64 `json:"change"`
+	Description string  `json:"description"`
+}
+
+// StatisticalSnapshotData represents a statistical snapshot for web interface
+type StatisticalSnapshotData struct {
+	Tick            int                    `json:"tick"`
+	TotalEnergy     float64               `json:"total_energy"`
+	PopulationCount int                   `json:"population_count"`
+	TraitAverages   map[string]float64    `json:"trait_averages"`
+	PhysicsMetrics  map[string]float64    `json:"physics_metrics"`
+}
+
+// AnomalyData represents an anomaly for web interface
+type AnomalyData struct {
+	Type        string  `json:"type"`
+	Description string  `json:"description"`
+	Severity    float64 `json:"severity"`
+	Confidence  float64 `json:"confidence"`
+	Tick        int     `json:"tick"`
+}
+
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
 	// Capture historical data every 5 ticks
@@ -305,6 +355,8 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		EmergentBehavior: vm.getEmergentBehaviorData(),
 		FeedbackLoops:    vm.getFeedbackLoopData(),
 		Reproduction:     vm.getReproductionData(),
+		Statistical:      vm.getStatisticalData(),
+		Anomalies:        vm.getAnomaliesData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
 		CommunicationHistory: vm.communicationHistory,
@@ -1308,4 +1360,187 @@ func (vm *ViewManager) formatEventName(eventType string) string {
 		return name
 	}
 	return eventType
+}
+
+// getStatisticalData returns statistical analysis data for web interface
+func (vm *ViewManager) getStatisticalData() StatisticalData {
+	if vm.world.StatisticalReporter == nil {
+		return StatisticalData{}
+	}
+
+	reporter := vm.world.StatisticalReporter
+	
+	// Get recent events (last 20)
+	recentEvents := make([]StatisticalEventData, 0)
+	if len(reporter.Events) > 0 {
+		startIndex := 0
+		if len(reporter.Events) > 20 {
+			startIndex = len(reporter.Events) - 20
+		}
+		for i := startIndex; i < len(reporter.Events); i++ {
+			event := reporter.Events[i]
+			targetID := ""
+			if event.EntityID != 0 {
+				targetID = fmt.Sprintf("entity-%d", event.EntityID)
+			} else if event.PlantID != 0 {
+				targetID = fmt.Sprintf("plant-%d", event.PlantID)
+			} else {
+				targetID = event.Category
+			}
+			
+			description := event.EventType
+			if len(event.Metadata) > 0 {
+				if desc, ok := event.Metadata["description"].(string); ok {
+					description = desc
+				}
+			}
+			
+			recentEvents = append(recentEvents, StatisticalEventData{
+				Tick:        event.Tick,
+				Type:        event.EventType,
+				Target:      targetID,
+				Change:      event.Change,
+				Description: description,
+			})
+		}
+	}
+
+	// Get latest snapshot
+	var latestSnapshot *StatisticalSnapshotData
+	if len(reporter.Snapshots) > 0 {
+		snapshot := reporter.Snapshots[len(reporter.Snapshots)-1]
+		
+		// Calculate total population count
+		totalPop := 0
+		for _, count := range snapshot.PopulationsBySpecies {
+			totalPop += count
+		}
+		
+		// Calculate trait averages from distributions
+		traitAverages := make(map[string]float64)
+		for trait, distribution := range snapshot.TraitDistributions {
+			if len(distribution) > 0 {
+				sum := 0.0
+				for _, value := range distribution {
+					sum += value
+				}
+				traitAverages[trait] = sum / float64(len(distribution))
+			}
+		}
+		
+		latestSnapshot = &StatisticalSnapshotData{
+			Tick:            snapshot.Tick,
+			TotalEnergy:     snapshot.TotalEnergy,
+			PopulationCount: totalPop,
+			TraitAverages:   traitAverages,
+			PhysicsMetrics: map[string]float64{
+				"total_momentum":    snapshot.PhysicsMetrics.TotalMomentum,
+				"kinetic_energy":    snapshot.PhysicsMetrics.TotalKineticEnergy,
+				"collisions":        float64(snapshot.PhysicsMetrics.CollisionCount),
+				"average_velocity":  snapshot.PhysicsMetrics.AverageVelocity,
+			},
+		}
+	}
+
+	// Calculate energy trend
+	energyTrend := "stable"
+	if len(reporter.Snapshots) >= 2 {
+		latest := reporter.Snapshots[len(reporter.Snapshots)-1]
+		previous := reporter.Snapshots[len(reporter.Snapshots)-2]
+		if latest.TotalEnergy > previous.TotalEnergy*1.1 {
+			energyTrend = "increasing"
+		} else if latest.TotalEnergy < previous.TotalEnergy*0.9 {
+			energyTrend = "decreasing"
+		}
+	}
+
+	// Calculate population trend
+	popTrend := "stable"
+	if len(reporter.Snapshots) >= 2 {
+		latest := reporter.Snapshots[len(reporter.Snapshots)-1]
+		previous := reporter.Snapshots[len(reporter.Snapshots)-2]
+		
+		// Calculate population counts
+		latestPop := 0
+		for _, count := range latest.PopulationsBySpecies {
+			latestPop += count
+		}
+		previousPop := 0
+		for _, count := range previous.PopulationsBySpecies {
+			previousPop += count
+		}
+		
+		if latestPop > int(float64(previousPop)*1.1) {
+			popTrend = "growing"
+		} else if latestPop < int(float64(previousPop)*0.9) {
+			popTrend = "declining"
+		}
+	}
+
+	// Calculate total energy
+	totalEnergy := 0.0
+	if latestSnapshot != nil {
+		totalEnergy = latestSnapshot.TotalEnergy
+	}
+
+	return StatisticalData{
+		TotalEvents:     len(reporter.Events),
+		TotalSnapshots:  len(reporter.Snapshots),
+		TotalAnomalies:  len(reporter.Anomalies),
+		TotalEnergy:     totalEnergy,
+		EnergyTrend:     energyTrend,
+		PopulationTrend: popTrend,
+		RecentEvents:    recentEvents,
+		LatestSnapshot:  latestSnapshot,
+	}
+}
+
+// getAnomaliesData returns anomaly detection data for web interface
+func (vm *ViewManager) getAnomaliesData() AnomaliesData {
+	if vm.world.StatisticalReporter == nil {
+		return AnomaliesData{}
+	}
+
+	reporter := vm.world.StatisticalReporter
+	
+	// Get recent anomalies (last 50)
+	allAnomalies := reporter.GetRecentAnomalies(50, vm.world.Tick)
+	recentAnomalies := make([]AnomalyData, 0, len(allAnomalies))
+	for _, anomaly := range allAnomalies {
+		recentAnomalies = append(recentAnomalies, AnomalyData{
+			Type:        string(anomaly.Type),
+			Description: anomaly.Description,
+			Severity:    anomaly.Severity,
+			Confidence:  anomaly.Confidence,
+			Tick:        anomaly.Tick,
+		})
+	}
+
+	// Count anomaly types
+	anomalyTypes := make(map[string]int)
+	for _, anomaly := range allAnomalies {
+		anomalyTypes[string(anomaly.Type)]++
+	}
+
+	// Generate recommendations
+	recommendations := []string{}
+	if anomalyTypes["energy_conservation"] > 0 {
+		recommendations = append(recommendations, "Check entity/plant death and birth rates")
+		recommendations = append(recommendations, "Verify energy gain/loss calculations are balanced")
+	}
+	if anomalyTypes["unrealistic_distribution"] > 0 {
+		recommendations = append(recommendations, "Monitor trait mutation rates and selection pressure")
+		recommendations = append(recommendations, "Check if genetic diversity is adequate")
+	}
+	if anomalyTypes["population_anomaly"] > 0 {
+		recommendations = append(recommendations, "Review carrying capacity and resource availability")
+		recommendations = append(recommendations, "Check reproduction and mortality rates")
+	}
+
+	return AnomaliesData{
+		TotalAnomalies:  len(allAnomalies),
+		RecentAnomalies: recentAnomalies,
+		AnomalyTypes:    anomalyTypes,
+		Recommendations: recommendations,
+	}
 }

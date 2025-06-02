@@ -66,6 +66,7 @@ var keys = struct {
 	signals    key.Binding
 	structures key.Binding
 	physics    key.Binding
+	export     key.Binding
 }{
 	up: key.NewBinding(
 		key.WithKeys("up", "k"),
@@ -127,6 +128,10 @@ var keys = struct {
 		key.WithKeys("p"),
 		key.WithHelp("p", "toggle physics"),
 	),
+	export: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "export data"),
+	),
 }
 
 // Styles
@@ -183,7 +188,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "reproduction"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "reproduction", "statistical", "anomalies"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -285,6 +290,10 @@ func (m CLIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, keys.physics):
 			m.showPhysics = !m.showPhysics
+
+		case key.Matches(msg, keys.export):
+			// Export statistical data
+			m.exportStatisticalData()
 		}
 
 	case tickMsg:
@@ -335,6 +344,10 @@ func (m CLIModel) View() string {
 		content = m.topologyView()
 	case "reproduction":
 		content = m.reproductionView()
+	case "statistical":
+		content = m.statisticalView()
+	case "anomalies":
+		content = m.anomaliesView()
 	default:
 		content = m.gridView()
 	}
@@ -2302,6 +2315,204 @@ func (m *CLIModel) reproductionView() string {
 	}
 	
 	return content.String()
+}
+
+// statisticalView shows comprehensive statistical analysis of the simulation
+func (m *CLIModel) statisticalView() string {
+	if m.world.StatisticalReporter == nil {
+		return "Statistical analysis not available"
+	}
+
+	var content strings.Builder
+	content.WriteString("📊 STATISTICAL ANALYSIS\n\n")
+
+	// Summary statistics
+	summary := m.world.StatisticalReporter.GetSummaryStatistics()
+	content.WriteString("SUMMARY STATISTICS:\n")
+	content.WriteString(fmt.Sprintf("  Total Events: %d\n", summary["total_events"]))
+	content.WriteString(fmt.Sprintf("  Total Snapshots: %d\n", summary["total_snapshots"]))
+	content.WriteString(fmt.Sprintf("  Total Anomalies: %d\n", summary["total_anomalies"]))
+	content.WriteString(fmt.Sprintf("  Latest Tick: %d\n", summary["latest_tick"]))
+	content.WriteString(fmt.Sprintf("  Total Entities: %d\n", summary["total_entities"]))
+	content.WriteString(fmt.Sprintf("  Total Plants: %d\n", summary["total_plants"]))
+	content.WriteString(fmt.Sprintf("  Total Energy: %.2f\n", summary["total_energy"]))
+	content.WriteString(fmt.Sprintf("  Species Count: %d\n", summary["species_count"]))
+	
+	if baseline, ok := summary["energy_baseline"].(float64); ok && baseline > 0 {
+		currentEnergy := summary["total_energy"].(float64)
+		change := ((currentEnergy - baseline) / baseline) * 100
+		content.WriteString(fmt.Sprintf("  Energy Change: %.2f%% from baseline\n", change))
+	}
+	content.WriteString("\n")
+
+	// Trends
+	if trend, ok := summary["energy_trend"].(string); ok {
+		content.WriteString(fmt.Sprintf("Energy Trend: %s\n", trend))
+	}
+	if trend, ok := summary["population_trend"].(string); ok {
+		content.WriteString(fmt.Sprintf("Population Trend: %s\n", trend))
+	}
+	content.WriteString("\n")
+
+	// Recent anomalies summary
+	recentAnomalies := m.world.StatisticalReporter.GetRecentAnomalies(100, m.world.Tick)
+	content.WriteString(fmt.Sprintf("RECENT ANOMALIES (%d):\n", len(recentAnomalies)))
+	
+	anomalyCounts := make(map[AnomalyType]int)
+	for _, anomaly := range recentAnomalies {
+		anomalyCounts[anomaly.Type]++
+	}
+	
+	for anomalyType, count := range anomalyCounts {
+		content.WriteString(fmt.Sprintf("  %s: %d\n", anomalyType, count))
+	}
+	content.WriteString("\n")
+
+	// Latest snapshot details
+	if len(m.world.StatisticalReporter.Snapshots) > 0 {
+		latest := m.world.StatisticalReporter.Snapshots[len(m.world.StatisticalReporter.Snapshots)-1]
+		content.WriteString("LATEST SNAPSHOT:\n")
+		content.WriteString(fmt.Sprintf("  Tick: %d\n", latest.Tick))
+		content.WriteString(fmt.Sprintf("  Entities: %d, Plants: %d\n", latest.TotalEntities, latest.TotalPlants))
+		content.WriteString(fmt.Sprintf("  Total Energy: %.2f\n", latest.TotalEnergy))
+		
+		// Physics metrics
+		content.WriteString(fmt.Sprintf("  Total Momentum: %.4f\n", latest.PhysicsMetrics.TotalMomentum))
+		content.WriteString(fmt.Sprintf("  Kinetic Energy: %.4f\n", latest.PhysicsMetrics.TotalKineticEnergy))
+		content.WriteString(fmt.Sprintf("  Avg Velocity: %.4f\n", latest.PhysicsMetrics.AverageVelocity))
+		content.WriteString(fmt.Sprintf("  Collisions: %d\n", latest.PhysicsMetrics.CollisionCount))
+		
+		// Communication metrics
+		content.WriteString(fmt.Sprintf("  Active Signals: %d\n", latest.CommunicationMetrics.ActiveSignals))
+		content.WriteString(fmt.Sprintf("  Signal Efficiency: %.4f\n", latest.CommunicationMetrics.SignalEfficiency))
+	}
+	content.WriteString("\n")
+
+	// Recent events
+	recentEvents := m.world.StatisticalReporter.Events
+	if len(recentEvents) > 10 {
+		recentEvents = recentEvents[len(recentEvents)-10:] // Last 10 events
+	}
+	
+	content.WriteString("RECENT EVENTS:\n")
+	for _, event := range recentEvents {
+		content.WriteString(fmt.Sprintf("  T%d: %s (%s)\n", event.Tick, event.EventType, event.Category))
+		if event.Change != 0 {
+			content.WriteString(fmt.Sprintf("        Change: %.4f\n", event.Change))
+		}
+	}
+
+	content.WriteString("\nControls: [v] Next View [E] Export Data [R] Reset Analysis")
+
+	return content.String()
+}
+
+// anomaliesView shows detected anomalies and statistical issues
+func (m *CLIModel) anomaliesView() string {
+	if m.world.StatisticalReporter == nil {
+		return "Statistical analysis not available"
+	}
+
+	var content strings.Builder
+	content.WriteString("⚠️  ANOMALY DETECTION\n\n")
+
+	recentAnomalies := m.world.StatisticalReporter.GetRecentAnomalies(50, m.world.Tick)
+	
+	if len(recentAnomalies) == 0 {
+		content.WriteString("✅ No anomalies detected!\n")
+		content.WriteString("The simulation appears to be running within expected parameters.\n\n")
+	} else {
+		content.WriteString(fmt.Sprintf("Found %d anomalies:\n\n", len(recentAnomalies)))
+		
+		// Group anomalies by type
+		anomaliesByType := make(map[AnomalyType][]Anomaly)
+		for _, anomaly := range recentAnomalies {
+			anomaliesByType[anomaly.Type] = append(anomaliesByType[anomaly.Type], anomaly)
+		}
+		
+		// Display each type
+		for anomalyType, anomalies := range anomaliesByType {
+			content.WriteString(fmt.Sprintf("🔍 %s (%d occurrences):\n", anomalyType, len(anomalies)))
+			
+			// Show most recent and most severe
+			var mostRecent, mostSevere Anomaly
+			for i, anomaly := range anomalies {
+				if i == 0 {
+					mostRecent = anomaly
+					mostSevere = anomaly
+				} else {
+					if anomaly.Tick > mostRecent.Tick {
+						mostRecent = anomaly
+					}
+					if anomaly.Severity > mostSevere.Severity {
+						mostSevere = anomaly
+					}
+				}
+			}
+			
+			content.WriteString(fmt.Sprintf("  Most Recent (T%d): %s\n", mostRecent.Tick, mostRecent.Description))
+			content.WriteString(fmt.Sprintf("    Severity: %.2f, Confidence: %.2f\n", mostRecent.Severity, mostRecent.Confidence))
+			
+			if mostSevere.Tick != mostRecent.Tick {
+				content.WriteString(fmt.Sprintf("  Most Severe (T%d): %s\n", mostSevere.Tick, mostSevere.Description))
+				content.WriteString(fmt.Sprintf("    Severity: %.2f, Confidence: %.2f\n", mostSevere.Severity, mostSevere.Confidence))
+			}
+			content.WriteString("\n")
+		}
+		
+		// Recommendations based on anomaly types
+		content.WriteString("RECOMMENDATIONS:\n")
+		
+		if _, hasEnergyIssues := anomaliesByType[AnomalyEnergyConservation]; hasEnergyIssues {
+			content.WriteString("• Energy Conservation: Check entity/plant death and birth rates\n")
+			content.WriteString("• Verify energy gain/loss calculations are balanced\n")
+		}
+		
+		if _, hasDistIssues := anomaliesByType[AnomalyUnrealisticDistribution]; hasDistIssues {
+			content.WriteString("• Distribution Issues: Check mutation algorithms for proper randomization\n")
+			content.WriteString("• Verify trait bounds and initialization\n")
+		}
+		
+		if _, hasPhysicsIssues := anomaliesByType[AnomalyPhysicsViolation]; hasPhysicsIssues {
+			content.WriteString("• Physics Violations: Check momentum and energy conservation in physics engine\n")
+			content.WriteString("• Verify collision and force calculations\n")
+		}
+		
+		if _, hasBioIssues := anomaliesByType[AnomalyBiologicalImplausibility]; hasBioIssues {
+			content.WriteString("• Biological Issues: Check trait evolution and bounds\n")
+			content.WriteString("• Verify species-specific behaviors are realistic\n")
+		}
+		
+		if _, hasPopIssues := anomaliesByType[AnomalyPopulationAnomaly]; hasPopIssues {
+			content.WriteString("• Population Issues: Check carrying capacity and reproduction rates\n")
+			content.WriteString("• Verify death conditions and environmental pressures\n")
+		}
+	}
+
+	content.WriteString("\nControls: [v] Next View [C] Clear Anomalies [A] Auto-Fix")
+
+	return content.String()
+}
+
+// exportStatisticalData exports statistical data to files
+func (m *CLIModel) exportStatisticalData() {
+	if m.world.StatisticalReporter == nil {
+		return
+	}
+
+	// Export to CSV
+	csvFilename := fmt.Sprintf("evosim_stats_%d.csv", m.world.Tick)
+	if err := m.world.StatisticalReporter.ExportToCSV(csvFilename); err == nil {
+		// In a real CLI app, we'd show a notification
+		// For now, this happens silently
+	}
+
+	// Export to JSON
+	jsonFilename := fmt.Sprintf("evosim_analysis_%d.json", m.world.Tick)
+	if err := m.world.StatisticalReporter.ExportToJSON(jsonFilename); err == nil {
+		// In a real CLI app, we'd show a notification
+		// For now, this happens silently
+	}
 }
 
 // RunCLI starts the CLI interface
