@@ -12,6 +12,8 @@ type SpeciesNaming struct {
 	herbivoreNames []string
 	predatorNames  []string
 	omnivoreNames  []string
+	microbeNames   []string
+	simpleNames    []string
 
 	// Name registry to track used names and evolutionary relationships
 	nameRegistry map[string]*SpeciesNameInfo
@@ -48,6 +50,16 @@ func NewSpeciesNaming() *SpeciesNaming {
 			"Mixed", "Dual", "Smart", "Curious", "Explorer", "Survivor",
 			"Hybrid", "Multi", "Complex", "Varied", "Diverse", "Broad",
 		},
+		microbeNames: []string{
+			"Micro", "Tiny", "Proto", "Prime", "Basic", "Cell",
+			"Germ", "Spore", "Seed", "Origin", "First", "Ancient",
+			"Simple", "Pure", "Core", "Root", "Base", "Primitive",
+		},
+		simpleNames: []string{
+			"Basic", "Simple", "Early", "Young", "Small", "Plain",
+			"Common", "Regular", "Normal", "Typical", "Standard", "Natural",
+			"Fresh", "New", "Growing", "Developing", "Emerging", "Rising",
+		},
 		nameRegistry: make(map[string]*SpeciesNameInfo),
 		nextID:       1,
 	}
@@ -66,6 +78,10 @@ func (sn *SpeciesNaming) GenerateSpeciesName(species string, parentName string, 
 		namePool = sn.predatorNames
 	case "omnivore":
 		namePool = sn.omnivoreNames
+	case "microbe":
+		namePool = sn.microbeNames
+	case "simple":
+		namePool = sn.simpleNames
 	default:
 		namePool = []string{"Unknown", "Mystery", "Strange", "Odd"}
 	}

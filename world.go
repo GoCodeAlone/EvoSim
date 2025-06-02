@@ -28,6 +28,8 @@ const (
 	BiomeMountain
 	BiomeWater
 	BiomeRadiation
+	BiomeSoil      // Underground/soil environment
+	BiomeAir       // Aerial environment (high altitude)
 )
 
 // Biome represents an environmental zone with specific effects
@@ -241,6 +243,26 @@ func initializeBiomes() map[BiomeType]Biome {
 		Symbol:         '☢',
 	}
 
+	biomes[BiomeSoil] = Biome{
+		Type:           BiomeSoil,
+		Name:           "Soil",
+		Color:          "brown",
+		TraitModifiers: map[string]float64{"digging_ability": 0.3, "size": -0.1, "underground_nav": 0.2},
+		MutationRate:   0.02,
+		EnergyDrain:    0.7,
+		Symbol:         '■',
+	}
+
+	biomes[BiomeAir] = Biome{
+		Type:           BiomeAir,
+		Name:           "Air",
+		Color:          "cyan",
+		TraitModifiers: map[string]float64{"flying_ability": 0.4, "altitude_tolerance": 0.3, "size": -0.2},
+		MutationRate:   0.01,
+		EnergyDrain:    1.0,
+		Symbol:         '☁',
+	}
+
 	return biomes
 }
 
@@ -279,14 +301,18 @@ func (w *World) generateBiome(x, y int) BiomeType {
 
 	// Outer areas tend to be harsh
 	switch {
-	case noise < 0.4:
+	case noise < 0.3:
 		return BiomeDesert
-	case noise < 0.6:
+	case noise < 0.5:
 		return BiomeMountain
-	case noise < 0.8:
+	case noise < 0.65:
 		return BiomeWater
-	case noise < 0.95:
+	case noise < 0.8:
 		return BiomePlains
+	case noise < 0.9:
+		return BiomeSoil
+	case noise < 0.97:
+		return BiomeAir
 	default:
 		return BiomeRadiation
 	}
@@ -480,6 +506,35 @@ func (w *World) Update() {
 	
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
+}
+
+// getBiomeAtPosition returns the biome type at the given world position
+func (w *World) getBiomeAtPosition(x, y float64) BiomeType {
+	// Convert world coordinates to grid coordinates
+	gridX := int((x / w.Config.Width) * float64(w.Config.GridWidth))
+	gridY := int((y / w.Config.Height) * float64(w.Config.GridHeight))
+	
+	// Clamp to grid bounds
+	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+	
+	return w.Grid[gridY][gridX].Biome
+}
+
+// getEntitiesNearPosition returns entities within a given radius of a position
+func (w *World) getEntitiesNearPosition(pos Position, radius float64) []*Entity {
+	nearby := make([]*Entity, 0)
+	
+	for _, entity := range w.AllEntities {
+		if entity.IsAlive {
+			distance := math.Sqrt(math.Pow(entity.Position.X-pos.X, 2) + math.Pow(entity.Position.Y-pos.Y, 2))
+			if distance <= radius {
+				nearby = append(nearby, entity)
+			}
+		}
+	}
+	
+	return nearby
 }
 
 // updateEntitiesSequential updates entities using single-threaded processing

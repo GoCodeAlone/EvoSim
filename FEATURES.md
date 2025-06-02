@@ -128,6 +128,19 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Enhanced CLI Views**: 4 new view modes (DNA, Cellular, Evolution, Topology) with detailed analysis
 - [x] **Comprehensive Testing**: Complete test suite covering DNA, cellular, macro evolution, and topology systems
 
+#### Species Support and Environmental Adaptation (RECENTLY COMPLETED)
+- [x] **Primitive Life Form Evolution**: Support for starting with simple microbes and basic organisms that evolve into complex species
+- [x] **Zero-Species Start Mode**: --primitive flag allows simulation to begin with no complex species and evolve them naturally
+- [x] **Enhanced Aquatic Support**: Complete aquatic adaptation system with swimming mechanics and water-based movement
+- [x] **Soil/Underground Environment**: New soil biome with digging abilities and underground navigation traits
+- [x] **Aerial Environment Support**: New air biome with flying abilities and altitude tolerance traits
+- [x] **Environment-Specific Movement**: Movement efficiency and energy costs vary by biome (water, soil, air, land)
+- [x] **Environment-Driven Evolution**: Entities evolve specialized traits based on environmental pressure
+- [x] **Specialized Species Variants**: 12+ specialized species types (aquatic_herbivore, soil_dweller, aerial_omnivore, etc.)
+- [x] **Adaptive Physics**: Movement physics adapt to environment (swimming, digging, flying, walking)
+- [x] **Environmental Trait System**: 5 new traits (aquatic_adaptation, digging_ability, underground_nav, flying_ability, altitude_tolerance)
+- [x] **Comprehensive Testing**: Full test suite for all environmental adaptations and primitive evolution
+
 ---
 
 ## 🚧 IN PROGRESS

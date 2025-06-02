@@ -12,19 +12,20 @@ import (
 func main() {
 	// Define command-line flags
 	var (
-		help       = flag.Bool("help", false, "Show help message")
-		h          = flag.Bool("h", false, "Show help message (short)")
-		width      = flag.Float64("width", 100.0, "World width")
-		height     = flag.Float64("height", 100.0, "World height")
-		gridWidth  = flag.Int("grid-width", 40, "Grid cells width for visualization")
-		gridHeight = flag.Int("grid-height", 25, "Grid cells height for visualization")
-		popSize    = flag.Int("pop-size", 20, "Population size per species")
-		seed       = flag.Int64("seed", 0, "Random seed (0 for current time)")
-		version    = flag.Bool("version", false, "Show version information")
-		loadState  = flag.String("load", "", "Load simulation state from file")
-		saveState  = flag.String("save", "", "Save simulation state to file and exit")
-		webMode    = flag.Bool("web", false, "Enable web interface mode")
-		webPort    = flag.Int("web-port", 8080, "Port for web interface")
+		help         = flag.Bool("help", false, "Show help message")
+		h            = flag.Bool("h", false, "Show help message (short)")
+		width        = flag.Float64("width", 100.0, "World width")
+		height       = flag.Float64("height", 100.0, "World height")
+		gridWidth    = flag.Int("grid-width", 40, "Grid cells width for visualization")
+		gridHeight   = flag.Int("grid-height", 25, "Grid cells height for visualization")
+		popSize      = flag.Int("pop-size", 20, "Population size per species")
+		seed         = flag.Int64("seed", 0, "Random seed (0 for current time)")
+		version      = flag.Bool("version", false, "Show version information")
+		loadState    = flag.String("load", "", "Load simulation state from file")
+		saveState    = flag.String("save", "", "Save simulation state to file and exit")
+		webMode      = flag.Bool("web", false, "Enable web interface mode")
+		webPort      = flag.Int("web-port", 8080, "Port for web interface")
+		primitive    = flag.Bool("primitive", false, "Start with primitive life forms that can evolve into complex species")
 	)
 
 	flag.Parse()
@@ -36,6 +37,8 @@ func main() {
 		fmt.Println()
 		fmt.Println("A genetic algorithm simulation featuring a complete ecosystem with:")
 		fmt.Println("• Multiple species (herbivores, predators, omnivores)")
+		fmt.Println("• Primitive life form evolution from simple organisms")
+		fmt.Println("• Environment-specific adaptations (aquatic, soil, aerial)")
 		fmt.Println("• Plant life system with 6 plant types")
 		fmt.Println("• Dynamic biomes and world events")
 		fmt.Println("• Evolutionary pressure and species adaptation")
@@ -50,6 +53,11 @@ func main() {
 		fmt.Println()
 		fmt.Println("Options:")
 		flag.PrintDefaults()
+		fmt.Println()
+		fmt.Println("Primitive Evolution Mode:")
+		fmt.Println("  Use --primitive flag to start with basic microbes and simple organisms")
+		fmt.Println("  that can evolve into complex species through environmental pressure.")
+		fmt.Println("  This mode demonstrates evolution from the ground up.")
 		fmt.Println()
 		fmt.Println("Controls (in simulation):")
 		fmt.Println("  space      Pause/Resume simulation")
@@ -121,20 +129,78 @@ func main() {
 			log.Fatalf("Error loading state: %v", err)
 		}
 	} else {
-		// Define predator-prey ecosystem populations only if not loading state
-		populations := []PopulationConfig{
+		var populations []PopulationConfig
+		
+		if *primitive {
+			// Start with primitive life forms that can evolve into complex species
+			populations = []PopulationConfig{
+				{
+					Name:    "Primitive Microbes",
+					Species: "microbe",
+					BaseTraits: map[string]float64{
+						"size":               -1.5, // Very small
+						"speed":              -0.5, // Slow
+						"aggression":         -0.9, // Very peaceful
+						"defense":            -0.5, // Poor defense
+						"cooperation":        0.0,  // Neutral cooperation
+						"intelligence":       -1.0, // Very low intelligence
+						"endurance":          0.8,  // High endurance to survive
+						"strength":           -1.0, // Very weak
+						"aquatic_adaptation": 0.5,  // Good in water (primitive origins)
+						"digging_ability":    -0.8, // Cannot dig
+						"underground_nav":    -0.9, // No underground navigation
+						"flying_ability":     -1.0, // Cannot fly
+						"altitude_tolerance": -1.0, // Cannot survive altitude
+					},
+					StartPos:         Position{X: 30, Y: 30},
+					Spread:           25.0, // Widely spread
+					Color:            "gray",
+					BaseMutationRate: 0.25, // Very high mutation rate for rapid evolution
+				},
+				{
+					Name:    "Simple Organisms",
+					Species: "simple",
+					BaseTraits: map[string]float64{
+						"size":               -1.0, // Small
+						"speed":              -0.2, // Slow
+						"aggression":         -0.6, // Peaceful
+						"defense":            -0.3, // Weak defense
+						"cooperation":        0.1,  // Slight cooperation
+						"intelligence":       -0.7, // Low intelligence
+						"endurance":          0.6,  // Good endurance
+						"strength":           -0.8, // Weak
+						"aquatic_adaptation": 0.2,  // Some water adaptation
+						"digging_ability":    -0.5, // Poor digging
+						"underground_nav":    -0.7, // Poor underground navigation
+						"flying_ability":     -0.9, // Cannot fly
+						"altitude_tolerance": -0.8, // Poor altitude tolerance
+					},
+					StartPos:         Position{X: 70, Y: 40},
+					Spread:           20.0,
+					Color:            "yellow",
+					BaseMutationRate: 0.20, // High mutation rate for evolution
+				},
+			}
+		} else {
+			// Define predator-prey ecosystem populations only if not loading state
+			populations = []PopulationConfig{
 			{
 				Name:    "Herbivores",
 				Species: "herbivore",
 				BaseTraits: map[string]float64{
-					"size":         -0.5, // Smaller
-					"speed":        0.3,  // Moderate speed
-					"aggression":   -0.8, // Very peaceful
-					"defense":      0.2,  // Some defense
-					"cooperation":  0.6,  // Cooperative
-					"intelligence": 0.1,  // Basic intelligence
-					"endurance":    0.4,  // Good endurance
-					"strength":     -0.2, // Weaker
+					"size":               -0.5, // Smaller
+					"speed":              0.3,  // Moderate speed
+					"aggression":         -0.8, // Very peaceful
+					"defense":            0.2,  // Some defense
+					"cooperation":        0.6,  // Cooperative
+					"intelligence":       0.1,  // Basic intelligence
+					"endurance":          0.4,  // Good endurance
+					"strength":           -0.2, // Weaker
+					"aquatic_adaptation": -0.5, // Poor in water initially
+					"digging_ability":    0.1,  // Basic digging
+					"underground_nav":    -0.3, // Poor underground navigation
+					"flying_ability":     -0.8, // Cannot fly
+					"altitude_tolerance": -0.6, // Poor at altitude
 				},
 				StartPos:         Position{X: 20, Y: 20},
 				Spread:           15.0,
@@ -145,14 +211,19 @@ func main() {
 				Name:    "Predators",
 				Species: "predator",
 				BaseTraits: map[string]float64{
-					"size":         0.8,  // Larger
-					"speed":        0.6,  // Fast
-					"aggression":   0.9,  // Very aggressive
-					"defense":      0.4,  // Good defense
-					"cooperation":  -0.2, // Less cooperative
-					"intelligence": 0.7,  // Smart hunters
-					"endurance":    0.3,  // Lower endurance
-					"strength":     0.8,  // Strong
+					"size":               0.8,  // Larger
+					"speed":              0.6,  // Fast
+					"aggression":         0.9,  // Very aggressive
+					"defense":            0.4,  // Good defense
+					"cooperation":        -0.2, // Less cooperative
+					"intelligence":       0.7,  // Smart hunters
+					"endurance":          0.3,  // Lower endurance
+					"strength":           0.8,  // Strong
+					"aquatic_adaptation": -0.2, // Somewhat poor in water
+					"digging_ability":    0.0,  // Average digging
+					"underground_nav":    0.2,  // Decent underground navigation
+					"flying_ability":     -0.5, // Poor flying ability
+					"altitude_tolerance": 0.1,  // Slightly better at altitude
 				},
 				StartPos:         Position{X: 80, Y: 80},
 				Spread:           10.0,
@@ -163,20 +234,26 @@ func main() {
 				Name:    "Omnivores",
 				Species: "omnivore",
 				BaseTraits: map[string]float64{
-					"size":         0.0, // Medium size
-					"speed":        0.4, // Decent speed
-					"aggression":   0.2, // Moderately aggressive
-					"defense":      0.5, // Good defense
-					"cooperation":  0.3, // Somewhat cooperative
-					"intelligence": 0.5, // Intelligent
-					"endurance":    0.6, // Good endurance
-					"strength":     0.3, // Moderate strength
+					"size":               0.0, // Medium size
+					"speed":              0.4, // Decent speed
+					"aggression":         0.2, // Moderately aggressive
+					"defense":            0.5, // Good defense
+					"cooperation":        0.3, // Somewhat cooperative
+					"intelligence":       0.5, // Intelligent
+					"endurance":          0.6, // Good endurance
+					"strength":           0.3, // Moderate strength
+					"aquatic_adaptation": 0.1, // Slightly adapted to water
+					"digging_ability":    0.2, // Good digging ability
+					"underground_nav":    0.1, // Basic underground navigation
+					"flying_ability":     -0.3, // Limited flying ability
+					"altitude_tolerance": 0.0,  // Average altitude tolerance
 				},
 				StartPos:         Position{X: 50, Y: 20},
 				Spread:           12.0,
 				Color:            "blue",
 				BaseMutationRate: 0.10, // Moderate mutation rate - adaptable
 			},
+		}
 		}
 
 		// Add populations to the world
