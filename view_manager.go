@@ -9,13 +9,41 @@ import (
 // ViewManager handles rendering simulation state for different interfaces
 type ViewManager struct {
 	world *World
+	// Historical data tracking
+	populationHistory    []PopulationHistorySnapshot
+	communicationHistory []CommunicationHistorySnapshot
+	physicsHistory       []PhysicsHistorySnapshot
+	maxHistoryLength     int
 }
 
 // NewViewManager creates a new view manager
 func NewViewManager(world *World) *ViewManager {
 	return &ViewManager{
-		world: world,
+		world:            world,
+		maxHistoryLength: 50, // Keep last 50 snapshots
 	}
+}
+
+// Historical data structures
+type PopulationHistorySnapshot struct {
+	Tick        int                `json:"tick"`
+	Timestamp   string             `json:"timestamp"`
+	Populations []PopulationData   `json:"populations"`
+}
+
+type CommunicationHistorySnapshot struct {
+	Tick          int               `json:"tick"`
+	Timestamp     string            `json:"timestamp"`
+	ActiveSignals int               `json:"active_signals"`
+	SignalTypes   map[string]int    `json:"signal_types"`
+}
+
+type PhysicsHistorySnapshot struct {
+	Tick            int     `json:"tick"`
+	Timestamp       string  `json:"timestamp"`
+	Collisions      int     `json:"collisions"`
+	AverageVelocity float64 `json:"average_velocity"`
+	TotalMomentum   float64 `json:"total_momentum"`
 }
 
 // ViewData represents the current state of the simulation for rendering
@@ -44,6 +72,10 @@ type ViewData struct {
 	EnvironmentalMod EnvironmentalModData `json:"environmental_mod"`
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
+	// Historical data
+	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
+	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
+	PhysicsHistory       []PhysicsHistorySnapshot       `json:"physics_history"`
 }
 
 // CellData represents a single grid cell for rendering
@@ -214,6 +246,11 @@ type TopologyData struct {
 
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
+	// Capture historical data every 5 ticks
+	if vm.world.Tick%5 == 0 {
+		vm.captureHistoricalData()
+	}
+	
 	data := &ViewData{
 		Tick:            vm.world.Tick,
 		TimeString:      vm.getTimeString(),
@@ -239,14 +276,66 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		EnvironmentalMod: vm.getEnvironmentalModData(),
 		EmergentBehavior: vm.getEmergentBehaviorData(),
 		FeedbackLoops:    vm.getFeedbackLoopData(),
+		// Include historical data
+		PopulationHistory:    vm.populationHistory,
+		CommunicationHistory: vm.communicationHistory,
+		PhysicsHistory:       vm.physicsHistory,
 	}
 	
 	return data
 }
 
+// captureHistoricalData captures current state for historical tracking
+func (vm *ViewManager) captureHistoricalData() {
+	timestamp := vm.world.Clock.Format("15:04:05")
+	
+	// Capture population history
+	popSnapshot := PopulationHistorySnapshot{
+		Tick:        vm.world.Tick,
+		Timestamp:   timestamp,
+		Populations: vm.getPopulationsData(),
+	}
+	vm.populationHistory = append(vm.populationHistory, popSnapshot)
+	
+	// Capture communication history
+	commData := vm.getCommunicationData()
+	commSnapshot := CommunicationHistorySnapshot{
+		Tick:          vm.world.Tick,
+		Timestamp:     timestamp,
+		ActiveSignals: commData.ActiveSignals,
+		SignalTypes:   commData.SignalTypes,
+	}
+	vm.communicationHistory = append(vm.communicationHistory, commSnapshot)
+	
+	// Capture physics history
+	physicsData := vm.getPhysicsData()
+	physicsSnapshot := PhysicsHistorySnapshot{
+		Tick:            vm.world.Tick,
+		Timestamp:       timestamp,
+		Collisions:      physicsData.CollisionsLastTick,
+		AverageVelocity: physicsData.AverageVelocity,
+		TotalMomentum:   physicsData.TotalMomentum,
+	}
+	vm.physicsHistory = append(vm.physicsHistory, physicsSnapshot)
+	
+	// Trim history to max length
+	if len(vm.populationHistory) > vm.maxHistoryLength {
+		vm.populationHistory = vm.populationHistory[1:]
+	}
+	if len(vm.communicationHistory) > vm.maxHistoryLength {
+		vm.communicationHistory = vm.communicationHistory[1:]
+	}
+	if len(vm.physicsHistory) > vm.maxHistoryLength {
+		vm.physicsHistory = vm.physicsHistory[1:]
+	}
+}
+
 // buildGridData builds the grid representation
 func (vm *ViewManager) buildGridData() [][]CellData {
 	grid := make([][]CellData, vm.world.Config.GridHeight)
+	totalEntities := 0
+	totalPlants := 0
+	
 	for y := 0; y < vm.world.Config.GridHeight; y++ {
 		grid[y] = make([]CellData, vm.world.Config.GridWidth)
 		for x := 0; x < vm.world.Config.GridWidth; x++ {
@@ -258,6 +347,9 @@ func (vm *ViewManager) buildGridData() [][]CellData {
 				PlantCount:  len(cell.Plants),
 				HasEvent:    cell.Event != nil,
 			}
+			
+			totalEntities += len(cell.Entities)
+			totalPlants += len(cell.Plants)
 			
 			// Set biome info
 			cellData.Biome, cellData.BiomeSymbol, cellData.BiomeColor = vm.getBiomeInfo(cell.Biome)
@@ -280,6 +372,13 @@ func (vm *ViewManager) buildGridData() [][]CellData {
 			grid[y][x] = cellData
 		}
 	}
+	
+	// Debug: Log entity and plant counts
+	if vm.world.Tick%20 == 0 { // Log every 20 ticks to avoid spam
+		fmt.Printf("Grid Debug - Tick %d: Total entities in world: %d, entities in grid: %d, plants in grid: %d\n", 
+			vm.world.Tick, len(vm.world.AllEntities), totalEntities, totalPlants)
+	}
+	
 	return grid
 }
 

@@ -352,6 +352,8 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 <button id="pause-btn" onclick="togglePause()">⏸ Pause</button>
                 <button onclick="resetSimulation()">🔄 Reset</button>
                 <button onclick="saveState()">💾 Save</button>
+                <button onclick="loadState()">📁 Load</button>
+                <input type="file" id="load-file" accept=".json" style="display: none;" onchange="handleFileLoad(event)">
             </div>
             
             <div class="view-tabs" id="view-tabs">
@@ -546,11 +548,11 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     break;
                     
                 case 'POPULATIONS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderPopulations(data.populations) + '</div>';
+                    viewContent.innerHTML = '<div class="stats-section">' + renderPopulations(data.populations, data.population_history) + '</div>';
                     break;
                     
                 case 'COMMUNICATION':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderCommunication(data.communication) + '</div>';
+                    viewContent.innerHTML = '<div class="stats-section">' + renderCommunication(data.communication, data.communication_history) + '</div>';
                     break;
                     
                 case 'CIVILIZATION':
@@ -558,7 +560,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     break;
                     
                 case 'PHYSICS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderPhysics(data.physics) + '</div>';
+                    viewContent.innerHTML = '<div class="stats-section">' + renderPhysics(data.physics, data.physics_history) + '</div>';
                     break;
                     
                 case 'WIND':
@@ -608,6 +610,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         
         // Render grid view with rich graphics
         function renderGrid(grid) {
+            if (!grid || grid.length === 0) {
+                return '<div>No grid data available</div>';
+            }
+            
             let result = '<div class="rich-grid">';
             for (let y = 0; y < grid.length; y++) {
                 result += '<div class="grid-row">';
@@ -722,7 +728,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return tooltip;
         }
         
-        // Render stats view
+        // Render stats view with enhanced information
         function renderStats(stats) {
             let html = '<h3>📊 World Statistics</h3>';
             
@@ -734,7 +740,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             }
             
             html += '<h4>System Health:</h4>';
-            if (stats.avg_fitness) {
+            if (stats.avg_fitness !== undefined) {
                 if (stats.avg_fitness < 0.3) {
                     html += '<div style="color: orange;">⚠️ Low average fitness - population struggling</div>';
                 } else if (stats.avg_fitness < 0.6) {
@@ -744,7 +750,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 }
             }
             
-            if (stats.avg_energy) {
+            if (stats.avg_energy !== undefined) {
                 if (stats.avg_energy < 30) {
                     html += '<div style="color: orange;">⚠️ Low energy levels - resource scarcity</div>';
                 } else if (stats.avg_energy < 60) {
@@ -754,6 +760,19 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 }
             }
             
+            // Enhanced ecosystem analysis
+            html += '<h4>🌍 Ecosystem Analysis:</h4>';
+            const fitnessEnergy = (stats.avg_fitness || 0) * (stats.avg_energy || 0) / 100;
+            if (fitnessEnergy < 0.2) {
+                html += '<div style="color: red;">🔥 Critical ecosystem stress</div>';
+            } else if (fitnessEnergy < 0.5) {
+                html += '<div style="color: orange;">⚠️ Ecosystem under pressure</div>';
+            } else if (fitnessEnergy < 0.8) {
+                html += '<div style="color: yellow;">⚡ Stable ecosystem</div>';
+            } else {
+                html += '<div style="color: lightgreen;">🌟 Thriving ecosystem</div>';
+            }
+            
             return html;
         }
         
@@ -761,8 +780,8 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         let previousPopulations = [];
         let populationUpdateIndicators = {};
         
-        // Render populations view with stable ordering
-        function renderPopulations(populations) {
+        // Render populations view with stable ordering and historical data
+        function renderPopulations(populations, populationHistory = []) {
             let html = '<h3>👥 Population Details</h3>';
             
             // Sort populations by name for stable ordering
@@ -802,14 +821,30 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '</div>';
             });
             
+            // Add historical data if available
+            if (populationHistory && populationHistory.length > 0) {
+                html += '<h4>📈 Population History (Last ' + populationHistory.length + ' snapshots):</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                populationHistory.slice(-10).forEach(snapshot => {
+                    html += '<div style="margin: 5px 0; padding: 5px; background-color: #444; border-radius: 3px;">';
+                    html += '<strong>Tick ' + snapshot.tick + '</strong> (' + snapshot.timestamp + ')<br>';
+                    snapshot.populations.forEach(pop => {
+                        html += '<span style="font-size: 0.8em;">' + pop.name + ': ' + pop.count + 
+                               ' (Fitness: ' + pop.avg_fitness.toFixed(2) + ')</span><br>';
+                    });
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
             // Update previous populations for next comparison
             previousPopulations = [...sortedPopulations];
             
             return html;
         }
         
-        // Render communication view
-        function renderCommunication(comm) {
+        // Render communication view with historical data
+        function renderCommunication(comm, commHistory = []) {
             let html = '<h3>📡 Communication System</h3>';
             html += '<h4>Active Signals:</h4>';
             html += '<div>Total Active: ' + comm.active_signals + '</div>';
@@ -842,6 +877,27 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<div>Activity Level: Moderate communication</div>';
             } else {
                 html += '<div>Activity Level: High communication</div>';
+            }
+            
+            // Add historical data if available
+            if (commHistory && commHistory.length > 0) {
+                html += '<h4>📈 Communication History (Last ' + commHistory.length + ' snapshots):</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                commHistory.slice(-10).forEach(snapshot => {
+                    html += '<div style="margin: 5px 0; padding: 5px; background-color: #444; border-radius: 3px;">';
+                    html += '<strong>Tick ' + snapshot.tick + '</strong> (' + snapshot.timestamp + ')<br>';
+                    html += '<span style="font-size: 0.8em;">Active Signals: ' + snapshot.active_signals + '</span><br>';
+                    if (snapshot.signal_types && Object.keys(snapshot.signal_types).length > 0) {
+                        html += '<span style="font-size: 0.7em;">Types: ';
+                        const types = [];
+                        for (const [type, count] of Object.entries(snapshot.signal_types)) {
+                            types.push(type + ': ' + count);
+                        }
+                        html += types.join(', ') + '</span>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
             }
             
             return html;
@@ -912,8 +968,8 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
         
-        // Render physics view
-        function renderPhysics(physics) {
+        // Render physics view with historical data
+        function renderPhysics(physics, physicsHistory = []) {
             let html = '<h3>⚡ Physics System</h3>';
             html += '<h4>Movement Statistics:</h4>';
             html += '<div>Average Velocity: ' + physics.average_velocity.toFixed(2) + '</div>';
@@ -930,24 +986,72 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<br><div>Activity Level: High (active movement)</div>';
             }
             
+            // Add historical data if available
+            if (physicsHistory && physicsHistory.length > 0) {
+                html += '<h4>📈 Physics History (Last ' + physicsHistory.length + ' snapshots):</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                physicsHistory.slice(-10).forEach(snapshot => {
+                    html += '<div style="margin: 5px 0; padding: 5px; background-color: #444; border-radius: 3px;">';
+                    html += '<strong>Tick ' + snapshot.tick + '</strong> (' + snapshot.timestamp + ')<br>';
+                    html += '<span style="font-size: 0.8em;">Collisions: ' + snapshot.collisions + 
+                           ', Velocity: ' + snapshot.average_velocity.toFixed(2) + 
+                           ', Momentum: ' + snapshot.total_momentum.toFixed(2) + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
             return html;
         }
         
-        // Render species view
+        // Render species view with enhanced details
         function renderSpecies(species) {
             let html = '<h3>🐾 Species Tracking</h3>';
             html += '<div>Active Species: ' + species.active_species + '</div>';
             html += '<div>Extinct Species: ' + species.extinct_species + '</div>';
             
+            // Calculate diversity metrics
+            const totalSpecies = species.active_species + species.extinct_species;
+            const survivalRate = totalSpecies > 0 ? (species.active_species / totalSpecies * 100).toFixed(1) : 100;
+            
+            html += '<h4>📈 Diversity Metrics:</h4>';
+            html += '<div>Species Survival Rate: ' + survivalRate + '%</div>';
+            
+            if (survivalRate < 30) {
+                html += '<div style="color: red;">🔥 High extinction rate - evolutionary crisis</div>';
+            } else if (survivalRate < 60) {
+                html += '<div style="color: orange;">⚠️ Moderate extinction pressure</div>';
+            } else if (survivalRate < 85) {
+                html += '<div style="color: yellow;">⚡ Natural selection in progress</div>';
+            } else {
+                html += '<div style="color: lightgreen;">🌟 Species diversity stable</div>';
+            }
+            
             if (species.species_details && species.species_details.length > 0) {
                 html += '<h4>Species Details:</h4>';
-                species.species_details.forEach(detail => {
+                // Sort by population for better display
+                const sortedSpecies = [...species.species_details].sort((a, b) => {
+                    if (a.is_extinct !== b.is_extinct) {
+                        return a.is_extinct ? 1 : -1; // Active species first
+                    }
+                    return b.population - a.population; // Higher population first
+                });
+                
+                sortedSpecies.forEach(detail => {
                     html += '<div class="species-item">';
                     html += '<strong>' + detail.name + '</strong>';
                     if (detail.is_extinct) {
-                        html += ' <span style="color: red;">(Extinct)</span>';
+                        html += ' <span style="color: red;">💀 (Extinct)</span>';
                     } else {
                         html += ' - Population: ' + detail.population;
+                        // Add population health indicator
+                        if (detail.population < 5) {
+                            html += ' <span style="color: orange;">⚠️ Endangered</span>';
+                        } else if (detail.population < 15) {
+                            html += ' <span style="color: yellow;">⚡ Vulnerable</span>';
+                        } else {
+                            html += ' <span style="color: lightgreen;">✅ Stable</span>';
+                        }
                     }
                     html += '</div>';
                 });
@@ -1069,7 +1173,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
 
-        // Render wind view
+        // Render wind view with enhanced information
         function renderWind(wind) {
             let html = '<h3>🌬️ Wind System</h3>';
             html += '<div>Direction: ' + (wind.direction * 180 / Math.PI).toFixed(1) + '°</div>';
@@ -1077,6 +1181,41 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             html += '<div>Turbulence: ' + wind.turbulence_level.toFixed(2) + '</div>';
             html += '<div>Weather: ' + wind.weather_pattern + '</div>';
             html += '<div>Pollen Count: ' + wind.pollen_count + '</div>';
+            
+            // Add detailed analysis
+            html += '<h4>🌪️ Wind Analysis:</h4>';
+            const windDirection = (wind.direction * 180 / Math.PI + 360) % 360;
+            let directionName = '';
+            if (windDirection < 45 || windDirection >= 315) directionName = 'North';
+            else if (windDirection < 135) directionName = 'East';
+            else if (windDirection < 225) directionName = 'South';
+            else directionName = 'West';
+            
+            html += '<div>Cardinal Direction: ' + directionName + '</div>';
+            
+            // Wind strength analysis
+            if (wind.strength < 0.2) {
+                html += '<div style="color: lightblue;">🌿 Gentle breeze - minimal pollen dispersal</div>';
+            } else if (wind.strength < 0.5) {
+                html += '<div style="color: yellow;">💨 Moderate wind - good for plant reproduction</div>';
+            } else if (wind.strength < 0.8) {
+                html += '<div style="color: orange;">🌪️ Strong wind - high pollen dispersal</div>';
+            } else {
+                html += '<div style="color: red;">⛈️ Storm conditions - disrupted ecosystem</div>';
+            }
+            
+            // Pollen dispersal analysis
+            html += '<h4>🌸 Pollen Dispersal:</h4>';
+            if (wind.pollen_count === 0) {
+                html += '<div>No active pollen dispersal</div>';
+            } else if (wind.pollen_count < 10) {
+                html += '<div style="color: lightgreen;">Low pollen activity</div>';
+            } else if (wind.pollen_count < 30) {
+                html += '<div style="color: yellow;">Moderate pollen dispersal</div>';
+            } else {
+                html += '<div style="color: orange;">High pollen activity - peak breeding season</div>';
+            }
+            
             return html;
         }
         
@@ -1100,6 +1239,31 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         function saveState() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({action: 'save_state'}));
+            }
+        }
+        
+        function loadState() {
+            document.getElementById('load-file').click();
+        }
+        
+        function handleFileLoad(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const stateData = JSON.parse(e.target.result);
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                action: 'load_state',
+                                data: stateData
+                            }));
+                        }
+                    } catch (error) {
+                        alert('Error loading file: Invalid JSON format');
+                    }
+                };
+                reader.readAsText(file);
             }
         }
         
@@ -1252,7 +1416,11 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 		
 		// Handle client commands
 		if action, ok := msg["action"].(string); ok {
-			wi.handleClientAction(action)
+			var data interface{}
+			if d, exists := msg["data"]; exists {
+				data = d
+			}
+			wi.handleClientAction(action, data)
 		}
 	}
 	
@@ -1265,7 +1433,7 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 }
 
 // handleClientAction processes actions from web clients
-func (wi *WebInterface) handleClientAction(action string) {
+func (wi *WebInterface) handleClientAction(action string, data interface{}) {
 	switch action {
 	case "toggle_pause":
 		wi.world.TogglePause()
@@ -1287,6 +1455,21 @@ func (wi *WebInterface) handleClientAction(action string) {
 			log.Printf("Error saving state: %v", err)
 		} else {
 			log.Printf("State saved to %s", filename)
+		}
+	
+	case "load_state":
+		log.Printf("Client requested state load")
+		if stateData, ok := data.(map[string]interface{}); ok {
+			// Create state manager and load from provided data
+			stateManager := NewStateManager(wi.world)
+			err := stateManager.LoadFromData(stateData)
+			if err != nil {
+				log.Printf("Error loading state: %v", err)
+			} else {
+				log.Printf("State loaded successfully")
+			}
+		} else {
+			log.Printf("Invalid state data format")
 		}
 	}
 }
