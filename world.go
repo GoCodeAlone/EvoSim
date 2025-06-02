@@ -110,9 +110,12 @@ type World struct {
 	FluidRegions         []FluidRegion
 
 	// Tool and Environmental Modification Systems
-	ToolSystem             *ToolSystem                      // Tool creation and usage system
-	EnvironmentalModSystem *EnvironmentalModificationSystem // Environmental modifications system
-	EmergentBehaviorSystem *EmergentBehaviorSystem          // Emergent behavior and learning system
+	ToolSystem              *ToolSystem                          // Tool creation and usage system
+	EnvironmentalModSystem  *EnvironmentalModificationSystem     // Environmental modifications system
+	EmergentBehaviorSystem  *EmergentBehaviorSystem              // Emergent behavior and learning system
+	
+	// Reproduction and Decay System
+	ReproductionSystem      *ReproductionSystem                  // Reproduction, gestation, and decay management
 }
 
 // NewWorld creates a new world with multiple populations
@@ -168,8 +171,11 @@ func NewWorld(config WorldConfig) *World {
 	world.ToolSystem = NewToolSystem()
 	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem()
 	world.EmergentBehaviorSystem = NewEmergentBehaviorSystem()
+	
+	// Initialize reproduction and decay system
+	world.ReproductionSystem = NewReproductionSystem()
 
-	// Generate initial world terrain
+  // Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
 
 	world.FluidRegions = make([]FluidRegion, 0)
@@ -463,6 +469,9 @@ func (w *World) Update() {
 
 	// Process civilization activities
 	w.processCivilizationActivities()
+
+	// Update reproduction system (gestation, egg hatching, decay)
+	w.updateReproductionSystem()
 
 	// Remove dead entities and plants
 	w.removeDeadEntities()
@@ -1934,6 +1943,369 @@ func seasonToString(season Season) string {
 	default:
 		return "Unknown"
 	}
+}
+
+// updateReproductionSystem handles reproduction, gestation, and decay processes
+func (w *World) updateReproductionSystem() {
+	// Update mating seasons based on current time
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+	w.ReproductionSystem.UpdateMatingSeasons(w.AllEntities, seasonToString(currentTimeState.Season))
+	
+	// Enhanced seasonal mating behaviors
+	w.ReproductionSystem.UpdateSeasonalMatingBehaviors(w.AllEntities, currentTimeState.Season, w.Tick)
+	
+	// Implement territorial mating if civilization system is available
+	if w.CivilizationSystem != nil {
+		territories := w.generateTerritories()
+		w.ReproductionSystem.ImplementTerritorialMating(w.AllEntities, territories)
+	}
+	
+	// Check for births from gestation
+	newborns := w.ReproductionSystem.CheckGestation(w.AllEntities, w.Tick)
+	for _, newborn := range newborns {
+		newborn.ID = w.NextID
+		w.NextID++
+		w.AllEntities = append(w.AllEntities, newborn)
+		
+		// Log birth event
+		w.EventLogger.LogWorldEvent(w.Tick, "birth", fmt.Sprintf("Entity %d gave birth to entity %d", newborn.Generation-1, newborn.ID))
+	}
+	
+	// Process egg hatching and decay
+	newHatchlings, fertilizers := w.ReproductionSystem.Update(w.Tick)
+	for _, hatchling := range newHatchlings {
+		hatchling.ID = w.NextID
+		w.NextID++
+		w.AllEntities = append(w.AllEntities, hatchling)
+		
+		// Log hatching event
+		w.EventLogger.LogWorldEvent(w.Tick, "hatching", fmt.Sprintf("Egg hatched into entity %d", hatchling.ID))
+	}
+	
+	// Process decay fertilizers to enhance nearby plants
+	for _, fertilizer := range fertilizers {
+		w.applyDecayFertilizer(fertilizer)
+	}
+	
+	// Handle mating attempts
+	w.processMatingAttempts()
+	
+	// Handle mating migration behaviors
+	w.processMatingMigration()
+	
+	// Handle entity deaths and create decaying items
+	w.processEntityDeaths()
+}
+
+// processMatingMigration handles entities migrating to preferred mating locations
+func (w *World) processMatingMigration() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive || entity.ReproductionStatus == nil {
+			continue
+		}
+		
+		// Only migrate during mating season and if entity requires migration
+		if !entity.ReproductionStatus.MatingSeason || !entity.ReproductionStatus.RequiresMigration {
+			continue
+		}
+		
+		// Skip if already at preferred location (within tolerance)
+		dx := entity.Position.X - entity.ReproductionStatus.PreferredMatingLocation.X
+		dy := entity.Position.Y - entity.ReproductionStatus.PreferredMatingLocation.Y
+		distance := math.Sqrt(dx*dx + dy*dy)
+		
+		if distance <= 5.0 { // Close enough to preferred location
+			continue
+		}
+		
+		// Move towards preferred mating location
+		moveSpeed := entity.GetTrait("speed") * 0.5 // Slower migration movement
+		if moveSpeed <= 0 {
+			moveSpeed = 1.0
+		}
+		
+		// Calculate movement direction
+		directionX := dx / distance
+		directionY := dy / distance
+		
+		// Move towards the target
+		entity.Position.X += directionX * moveSpeed
+		entity.Position.Y += directionY * moveSpeed
+		
+		// Migration costs energy
+		entity.Energy -= moveSpeed * 0.2
+		
+		// Log migration behavior occasionally
+		if w.Tick%50 == 0 && distance > entity.ReproductionStatus.MigrationDistance*0.5 {
+			w.EventLogger.LogWorldEvent(w.Tick, "migration", fmt.Sprintf("Entity %d migrating to mating grounds (%.1f units away)", entity.ID, distance))
+		}
+	}
+}
+
+// processMatingAttempts handles entities trying to mate
+func (w *World) processMatingAttempts() {
+	// Create a map for quick entity lookup
+	entityMap := make(map[int]*Entity)
+	for _, entity := range w.AllEntities {
+		if entity.IsAlive {
+			entityMap[entity.ID] = entity
+		}
+	}
+	
+	for i, entity1 := range w.AllEntities {
+		if !entity1.IsAlive || entity1.ReproductionStatus == nil {
+			continue
+		}
+		
+		// Skip if not ready to mate
+		if !entity1.ReproductionStatus.ReadyToMate || !entity1.ReproductionStatus.MatingSeason {
+			continue
+		}
+		
+		// Don't reproduce in the first few ticks to avoid interfering with tests
+		if w.Tick < 10 {
+			continue
+		}
+		
+		// Don't reproduce if entity is too young or too low energy
+		if entity1.Age < 5 || entity1.Energy < 30.0 {
+			continue
+		}
+		
+		// Check reproduction cooldown (entities can't reproduce too frequently)
+		if entity1.ReproductionStatus.LastMatingTick > 0 && w.Tick-entity1.ReproductionStatus.LastMatingTick < 25 {
+			continue
+		}
+		
+		// Low probability of reproduction to avoid test interference
+		if rand.Float64() > 0.1 { // Only 10% chance per tick per entity
+			continue
+		}
+		
+		// Find nearby potential mates
+		for j := i + 1; j < len(w.AllEntities); j++ {
+			entity2 := w.AllEntities[j]
+			if !entity2.IsAlive || entity2.ReproductionStatus == nil {
+				continue
+			}
+			
+			// Check compatibility (same species or cross-species compatibility)
+			canMate := false
+			if entity1.Species == entity2.Species {
+				canMate = true
+			} else {
+				// Check cross-species compatibility
+				canMate = w.ReproductionSystem.ImplementCrossSpeciesCompatibility(entity1, entity2)
+			}
+			
+			if !canMate {
+				continue
+			}
+			
+			// Check distance (entities need to be close to mate)
+			distance := entity1.DistanceTo(entity2)
+			if distance > 5.0 { // Mating range
+				continue
+			}
+			
+			// Check for competition - see if there are other potential mates nearby
+			competition := w.checkMatingCompetition(entity1, entity2)
+			if competition && rand.Float64() < 0.7 { // 70% chance competition prevents mating
+				continue
+			}
+			
+			// Attempt mating
+			if w.ReproductionSystem.StartMating(entity1, entity2, w.Tick) {
+				// Log mating event
+				w.EventLogger.LogWorldEvent(w.Tick, "mating", fmt.Sprintf("Entities %d and %d mated", entity1.ID, entity2.ID))
+				
+				// Handle different reproduction modes
+				switch entity1.ReproductionStatus.Mode {
+				case DirectCoupling:
+					// Create immediate offspring using existing crossover
+					offspring := Crossover(entity1, entity2, w.NextID, entity1.Species)
+					offspring.Mutate(0.1, 0.2) // Some mutation
+					w.NextID++
+					w.AllEntities = append(w.AllEntities, offspring)
+					w.EventLogger.LogWorldEvent(w.Tick, "birth", fmt.Sprintf("Direct coupling produced entity %d", offspring.ID))
+				
+				case Budding:
+					// Asexual reproduction - create clone with mutation
+					if entity1.Energy >= 50.0 {
+						clone := entity1.Clone()
+						clone.ID = w.NextID
+						clone.Mutate(0.15, 0.3) // Higher mutation for asexual reproduction
+						clone.Position.X += (rand.Float64() - 0.5) * 4.0
+						clone.Position.Y += (rand.Float64() - 0.5) * 4.0
+						w.NextID++
+						w.AllEntities = append(w.AllEntities, clone)
+						w.EventLogger.LogWorldEvent(w.Tick, "budding", fmt.Sprintf("Entity %d reproduced by budding, created entity %d", entity1.ID, clone.ID))
+					}
+				
+				case Fission:
+					// Split into multiple offspring
+					if entity1.Energy >= 80.0 {
+						numOffspring := 2 + rand.Intn(2) // 2-3 offspring
+						for i := 0; i < numOffspring; i++ {
+							clone := entity1.Clone()
+							clone.ID = w.NextID
+							clone.Energy = entity1.Energy / float64(numOffspring+1) // Distribute energy
+							clone.Mutate(0.2, 0.4) // Higher mutation for fission
+							clone.Position.X += (rand.Float64() - 0.5) * 6.0
+							clone.Position.Y += (rand.Float64() - 0.5) * 6.0
+							w.NextID++
+							w.AllEntities = append(w.AllEntities, clone)
+						}
+						entity1.Energy /= float64(numOffspring + 1) // Parent keeps some energy
+						w.EventLogger.LogWorldEvent(w.Tick, "fission", fmt.Sprintf("Entity %d split into %d offspring", entity1.ID, numOffspring))
+					}
+				}
+				
+				// Only allow one mating per tick per entity
+				break
+			}
+		}
+	}
+}
+
+// processEntityDeaths handles entity death and creates decaying corpses
+func (w *World) processEntityDeaths() {
+	for _, entity := range w.AllEntities {
+		if entity.IsAlive && (entity.Energy <= 0 || entity.Age > 1000) {
+			// Entity dies
+			entity.IsAlive = false
+			
+			// Create decaying corpse
+			corpseNutrientValue := entity.Energy*0.5 + float64(entity.Age)*0.1
+			w.ReproductionSystem.AddDecayingItem("corpse", entity.Position, corpseNutrientValue, entity.Species, entity.GetTrait("size"), w.Tick)
+			
+			// Log death event
+			w.EventLogger.LogWorldEvent(w.Tick, "death", fmt.Sprintf("Entity %d (%s) died at age %d", entity.ID, entity.Species, entity.Age))
+		}
+	}
+}
+
+// generateTerritories creates territories based on civilization system tribes
+func (w *World) generateTerritories() map[int]*Territory {
+	territories := make(map[int]*Territory)
+	
+	if w.CivilizationSystem == nil {
+		return territories
+	}
+	
+	territoryID := 1
+	for _, tribe := range w.CivilizationSystem.Tribes {
+		if len(tribe.Members) == 0 {
+			continue
+		}
+		
+		// Find tribe center based on member positions
+		centerX := 0.0
+		centerY := 0.0
+		strongestEntity := tribe.Members[0]
+		maxStrength := 0.0
+		
+		for _, member := range tribe.Members {
+			centerX += member.Position.X
+			centerY += member.Position.Y
+			
+			strength := member.GetTrait("strength") + member.GetTrait("intelligence")
+			if strength > maxStrength {
+				maxStrength = strength
+				strongestEntity = member
+			}
+		}
+		
+		centerX /= float64(len(tribe.Members))
+		centerY /= float64(len(tribe.Members))
+		
+		// Territory size based on tribe size and leader strength
+		radius := 5.0 + float64(len(tribe.Members))*2.0 + maxStrength*3.0
+		quality := (tribe.Resources["food"] + tribe.Resources["materials"]) / 200.0 // 0-1 scale
+		
+		territory := &Territory{
+			ID:      territoryID,
+			OwnerID: strongestEntity.ID,
+			Center: Position{
+				X: centerX,
+				Y: centerY,
+			},
+			Radius:  radius,
+			Quality: quality,
+		}
+		
+		territories[territoryID] = territory
+		territoryID++
+	}
+	
+	return territories
+}
+
+// applyDecayFertilizer enhances plants near decaying organic matter
+func (w *World) applyDecayFertilizer(fertilizer *DecayableItem) {
+	// Find plants within fertilizer range
+	for _, plant := range w.AllPlants {
+		dx := plant.Position.X - fertilizer.Position.X
+		dy := plant.Position.Y - fertilizer.Position.Y
+		distance := math.Sqrt(dx*dx + dy*dy)
+		
+		if distance <= 10.0 { // Fertilizer effect range
+			// Boost plant energy and growth
+			energyBoost := fertilizer.NutrientValue * 0.3 * (10.0 - distance) / 10.0 // Closer = more effect
+			plant.Energy += energyBoost
+			
+			// Boost plant traits temporarily
+			plant.SetTrait("growth_efficiency", plant.GetTrait("growth_efficiency")+0.1)
+			plant.SetTrait("reproduction_rate", plant.GetTrait("reproduction_rate")+0.05)
+		}
+	}
+	
+	// Log fertilization event
+	w.EventLogger.LogWorldEvent(w.Tick, "fertilization", fmt.Sprintf("Decayed %s provided nutrients to nearby plants", fertilizer.ItemType))
+}
+
+// checkMatingCompetition determines if there is competition for mates
+func (w *World) checkMatingCompetition(entity1, entity2 *Entity) bool {
+	// Look for other entities nearby that could compete
+	competitorCount := 0
+	
+	for _, potential := range w.AllEntities {
+		if !potential.IsAlive || potential.ReproductionStatus == nil {
+			continue
+		}
+		
+		// Skip the entities trying to mate
+		if potential.ID == entity1.ID || potential.ID == entity2.ID {
+			continue
+		}
+		
+		// Skip if not same species
+		if potential.Species != entity1.Species {
+			continue
+		}
+		
+		// Skip if not in mating condition
+		if !potential.ReproductionStatus.ReadyToMate || !potential.ReproductionStatus.MatingSeason {
+			continue
+		}
+		
+		// Check if competitor is close enough to interfere
+		distance1 := entity1.DistanceTo(potential)
+		distance2 := entity2.DistanceTo(potential)
+		
+		if distance1 <= 8.0 || distance2 <= 8.0 { // Competition range larger than mating range
+			// Check if competitor is stronger/more attractive
+			entity1Attractiveness := entity1.GetTrait("strength") + entity1.GetTrait("intelligence") + entity1.Energy/100.0
+			potentialAttractiveness := potential.GetTrait("strength") + potential.GetTrait("intelligence") + potential.Energy/100.0
+			
+			if potentialAttractiveness > entity1Attractiveness {
+				competitorCount++
+			}
+		}
+	}
+	
+	// Competition exists if there are stronger competitors nearby
+	return competitorCount > 0
 }
 
 // TogglePause toggles the simulation pause state

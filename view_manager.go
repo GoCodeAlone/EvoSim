@@ -72,6 +72,7 @@ type ViewData struct {
 	EnvironmentalMod EnvironmentalModData `json:"environmental_mod"`
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
+	Reproduction     ReproductionData     `json:"reproduction"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
 	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
@@ -237,6 +238,21 @@ type FeedbackLoopData struct {
 	EvolutionaryPressure    float64 `json:"evolutionary_pressure"`
 }
 
+// ReproductionData represents reproduction system state
+type ReproductionData struct {
+	ActiveEggs      int                    `json:"active_eggs"`
+	DecayingItems   int                    `json:"decaying_items"`
+	PregnantEntities int                   `json:"pregnant_entities"`
+	ReadyToMate     int                    `json:"ready_to_mate"`
+	MatingSeasonEntities int               `json:"mating_season_entities"`
+	MigratingEntities int                  `json:"migrating_entities"`
+	ReproductionModes map[string]int       `json:"reproduction_modes"`
+	MatingStrategies map[string]int        `json:"mating_strategies"`
+	SeasonalMatingRate float64             `json:"seasonal_mating_rate"`
+	TerritoriesWithMating int              `json:"territories_with_mating"`
+	CrossSpeciesMating int                 `json:"cross_species_mating"`
+}
+
 // TopologyData represents world topology state
 type TopologyData struct {
 	ElevationRange string  `json:"elevation_range"`
@@ -276,6 +292,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		EnvironmentalMod: vm.getEnvironmentalModData(),
 		EmergentBehavior: vm.getEmergentBehaviorData(),
 		FeedbackLoops:    vm.getFeedbackLoopData(),
+		Reproduction:     vm.getReproductionData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
 		CommunicationHistory: vm.communicationHistory,
@@ -1133,6 +1150,100 @@ func (vm *ViewManager) getFeedbackLoopData() FeedbackLoopData {
 	if entityCount > 0 {
 		data.EvolutionaryPressure = totalPressure / float64(entityCount)
 	}
+	
+	return data
+}
+
+// getReproductionData returns reproduction system state data
+func (vm *ViewManager) getReproductionData() ReproductionData {
+	data := ReproductionData{
+		ReproductionModes: make(map[string]int),
+		MatingStrategies:  make(map[string]int),
+	}
+	
+	// Get data from reproduction system
+	if vm.world.ReproductionSystem != nil {
+		data.ActiveEggs = len(vm.world.ReproductionSystem.Eggs)
+		data.DecayingItems = len(vm.world.ReproductionSystem.DecayingItems)
+	}
+	
+	// Count entities by reproductive status
+	pregnantCount := 0
+	readyToMateCount := 0
+	matingSeasonCount := 0
+	migratingCount := 0
+	crossSpeciesMating := 0
+	territoriesWithMating := 0
+	
+	for _, entity := range vm.world.AllEntities {
+		if !entity.IsAlive || entity.ReproductionStatus == nil {
+			continue
+		}
+		
+		rs := entity.ReproductionStatus
+		
+		// Count by reproduction mode and strategy
+		data.ReproductionModes[rs.Mode.String()]++
+		data.MatingStrategies[rs.Strategy.String()]++
+		
+		// Count by status
+		if rs.IsPregnant {
+			pregnantCount++
+		}
+		if rs.ReadyToMate {
+			readyToMateCount++
+		}
+		if rs.MatingSeason {
+			matingSeasonCount++
+		}
+		if rs.RequiresMigration {
+			migratingCount++
+		}
+		
+		// Check for cross-species mating potential
+		if rs.Mate != nil && rs.Mate.Species != entity.Species {
+			crossSpeciesMating++
+		}
+	}
+	
+	data.PregnantEntities = pregnantCount
+	data.ReadyToMate = readyToMateCount
+	data.MatingSeasonEntities = matingSeasonCount
+	data.MigratingEntities = migratingCount
+	data.CrossSpeciesMating = crossSpeciesMating
+	
+	// Calculate seasonal mating rate
+	if vm.world.AdvancedTimeSystem != nil {
+		switch vm.world.AdvancedTimeSystem.Season {
+		case Spring:
+			data.SeasonalMatingRate = 1.5 // 50% increase in spring
+		case Summer:
+			data.SeasonalMatingRate = 1.2 // 20% increase in summer
+		case Autumn:
+			data.SeasonalMatingRate = 0.8 // 20% decrease in autumn
+		case Winter:
+			data.SeasonalMatingRate = 0.5 // 50% decrease in winter
+		}
+	} else {
+		data.SeasonalMatingRate = 1.0
+	}
+	
+	// Count territories with active mating (simplified)
+	if vm.world.CivilizationSystem != nil {
+		for _, tribe := range vm.world.CivilizationSystem.Tribes {
+			hasActiveMating := false
+			for _, entity := range tribe.Members {
+				if entity.ReproductionStatus != nil && entity.ReproductionStatus.ReadyToMate {
+					hasActiveMating = true
+					break
+				}
+			}
+			if hasActiveMating {
+				territoriesWithMating++
+			}
+		}
+	}
+	data.TerritoriesWithMating = territoriesWithMating
 	
 	return data
 }

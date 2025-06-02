@@ -67,6 +67,9 @@ type Entity struct {
 	// Feedback loop systems for evolutionary adaptation
 	DietaryMemory       *DietaryMemory       `json:"dietary_memory"`        // Tracks feeding history for evolutionary dependency
 	EnvironmentalMemory *EnvironmentalMemory `json:"environmental_memory"`  // Tracks environmental pressure for adaptation
+	
+	// Reproduction system
+	ReproductionStatus *ReproductionStatus `json:"reproduction_status"` // Tracks reproduction state and behaviors
 }
 
 // NewEntity creates a new entity with random traits
@@ -99,6 +102,9 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 	// Initialize feedback loop systems
 	entity.DietaryMemory = NewDietaryMemory()
 	entity.EnvironmentalMemory = NewEnvironmentalMemory()
+	
+	// Initialize reproduction system
+	entity.ReproductionStatus = NewReproductionStatus()
 
 	return entity
 }
@@ -199,6 +205,14 @@ func (e *Entity) Clone() *Entity {
 	}
 	if e.EnvironmentalMemory != nil {
 		clone.EnvironmentalMemory = NewEnvironmentalMemory()
+	}
+	
+	// Clone reproduction status
+	if e.ReproductionStatus != nil {
+		clone.ReproductionStatus = NewReproductionStatus()
+		// Copy some heritable traits
+		clone.ReproductionStatus.Mode = e.ReproductionStatus.Mode
+		clone.ReproductionStatus.Strategy = e.ReproductionStatus.Strategy
 	}
 
 	return clone
