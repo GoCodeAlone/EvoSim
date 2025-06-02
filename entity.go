@@ -264,31 +264,36 @@ func (e *Entity) MoveRandomlyWithEnvironment(maxDistance float64, biome BiomeTyp
 	case BiomeWater:
 		aquaticAdaptation := e.GetTrait("aquatic_adaptation")
 		if aquaticAdaptation < 0 {
-			effectiveDistance *= 0.5 // Struggle in water
-			energyCostMultiplier = 2.0
+			effectiveDistance *= (1.0 + aquaticAdaptation*0.5) // Struggle in water
+			energyCostMultiplier = 2.0 + math.Abs(aquaticAdaptation)
 		} else {
-			effectiveDistance *= (1.0 + aquaticAdaptation*0.2)
+			effectiveDistance *= (1.0 + aquaticAdaptation*0.3)
 			energyCostMultiplier = 0.8
 		}
 
 	case BiomeSoil:
 		diggingAbility := e.GetTrait("digging_ability")
-		if diggingAbility < 0 {
-			effectiveDistance *= 0.2 // Very slow underground
-			energyCostMultiplier = 4.0
+		undergroundNav := e.GetTrait("underground_nav")
+		
+		if diggingAbility < 0 || undergroundNav < 0 {
+			effectiveDistance *= 0.4 // Slow underground
+			energyCostMultiplier = 6.0 // Very high energy cost
 		} else {
-			effectiveDistance *= (0.6 + diggingAbility*0.4)
-			energyCostMultiplier = 1.5
+			effectiveDistance *= (0.7 + diggingAbility*0.3)
+			energyCostMultiplier = 1.2 - undergroundNav*0.2
 		}
 
 	case BiomeAir:
 		flyingAbility := e.GetTrait("flying_ability")
+		altitudeTolerance := e.GetTrait("altitude_tolerance")
+		
 		if flyingAbility < -0.5 {
 			effectiveDistance *= 0.1 // Cannot fly properly
-			energyCostMultiplier = 6.0
+			energyCostMultiplier = 5.0
+			e.Energy -= 2.0 // Additional damage from struggling at altitude
 		} else if flyingAbility > 0 {
-			effectiveDistance *= (1.0 + flyingAbility*0.3)
-			energyCostMultiplier = 0.7
+			effectiveDistance *= (1.0 + flyingAbility*0.5)
+			energyCostMultiplier = 0.6 + altitudeTolerance*0.2
 		}
 	}
 
@@ -296,7 +301,8 @@ func (e *Entity) MoveRandomlyWithEnvironment(maxDistance float64, biome BiomeTyp
 	e.Position.Y += math.Sin(angle) * effectiveDistance
 
 	// Apply environment-specific energy cost
-	e.Energy -= effectiveDistance * 0.05 * energyCostMultiplier
+	energyCost := effectiveDistance * 0.1 * energyCostMultiplier
+	e.Energy -= energyCost
 }
 
 // CanKill determines if this entity can kill another based on traits

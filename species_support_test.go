@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -155,6 +156,9 @@ func TestEnvironmentSpecificMovement(t *testing.T) {
 
 // TestAquaticAdaptation tests that aquatic creatures perform better in water
 func TestAquaticAdaptation(t *testing.T) {
+	// Set deterministic seed for testing
+	rand.Seed(12345)
+	
 	// Create two entities - one adapted to water, one not
 	aquaticEntity := &Entity{
 		ID:       1,
@@ -178,28 +182,38 @@ func TestAquaticAdaptation(t *testing.T) {
 	aquaticEntity.SetTrait("aquatic_adaptation", 0.8)
 	landEntity.SetTrait("aquatic_adaptation", -0.8)
 	
-	initialEnergy := 100.0
+	// Test movement in water multiple times to average out randomness
+	totalAquaticLoss := 0.0
+	totalLandLoss := 0.0
+	numTests := 10
 	
-	// Test movement in water
-	aquaticEntity.MoveRandomlyWithEnvironment(5.0, BiomeWater)
-	landEntity.MoveRandomlyWithEnvironment(5.0, BiomeWater)
-	
-	aquaticEnergyLoss := initialEnergy - aquaticEntity.Energy
-	landEnergyLoss := initialEnergy - landEntity.Energy
-	
-	t.Logf("Aquatic entity: aquatic_adaptation=%.2f, energy_loss=%.2f", aquaticEntity.GetTrait("aquatic_adaptation"), aquaticEnergyLoss)
-	t.Logf("Land entity: aquatic_adaptation=%.2f, energy_loss=%.2f", landEntity.GetTrait("aquatic_adaptation"), landEnergyLoss)
-	
-	// Aquatic entity should use less energy in water
-	if aquaticEnergyLoss >= landEnergyLoss {
-		t.Errorf("Expected aquatic entity to use less energy in water. Aquatic: %.2f, Land: %.2f", aquaticEnergyLoss, landEnergyLoss)
+	for i := 0; i < numTests; i++ {
+		aquaticEntity.Energy = 100.0
+		landEntity.Energy = 100.0
+		
+		aquaticEntity.MoveRandomlyWithEnvironment(5.0, BiomeWater)
+		landEntity.MoveRandomlyWithEnvironment(5.0, BiomeWater)
+		
+		totalAquaticLoss += 100.0 - aquaticEntity.Energy
+		totalLandLoss += 100.0 - landEntity.Energy
 	}
 	
-	t.Logf("Water movement energy costs - Aquatic adapted: %.2f, Land adapted: %.2f", aquaticEnergyLoss, landEnergyLoss)
+	avgAquaticLoss := totalAquaticLoss / float64(numTests)
+	avgLandLoss := totalLandLoss / float64(numTests)
+	
+	t.Logf("Average energy loss - Aquatic: %.3f, Land: %.3f", avgAquaticLoss, avgLandLoss)
+	
+	// Aquatic entity should use less energy in water
+	if avgAquaticLoss >= avgLandLoss {
+		t.Errorf("Expected aquatic entity to use less energy in water. Aquatic: %.3f, Land: %.3f", avgAquaticLoss, avgLandLoss)
+	}
 }
 
 // TestSoilDwellerAdaptation tests that soil-dwelling creatures perform better underground
 func TestSoilDwellerAdaptation(t *testing.T) {
+	// Set deterministic seed for testing
+	rand.Seed(12345)
+	
 	// Create two entities - one adapted to soil, one not
 	soilEntity := &Entity{
 		ID:       1,
@@ -225,21 +239,31 @@ func TestSoilDwellerAdaptation(t *testing.T) {
 	surfaceEntity.SetTrait("digging_ability", -0.8)
 	surfaceEntity.SetTrait("underground_nav", -0.9)
 	
-	initialEnergy := 100.0
+	// Test movement in soil multiple times to average out randomness
+	totalSoilLoss := 0.0
+	totalSurfaceLoss := 0.0
+	numTests := 10
 	
-	// Test movement in soil
-	soilEntity.MoveRandomlyWithEnvironment(3.0, BiomeSoil)
-	surfaceEntity.MoveRandomlyWithEnvironment(3.0, BiomeSoil)
-	
-	soilEnergyLoss := initialEnergy - soilEntity.Energy
-	surfaceEnergyLoss := initialEnergy - surfaceEntity.Energy
-	
-	// Soil entity should use less energy underground
-	if soilEnergyLoss >= surfaceEnergyLoss {
-		t.Errorf("Expected soil entity to use less energy underground. Soil adapted: %.2f, Surface adapted: %.2f", soilEnergyLoss, surfaceEnergyLoss)
+	for i := 0; i < numTests; i++ {
+		soilEntity.Energy = 100.0
+		surfaceEntity.Energy = 100.0
+		
+		soilEntity.MoveRandomlyWithEnvironment(3.0, BiomeSoil)
+		surfaceEntity.MoveRandomlyWithEnvironment(3.0, BiomeSoil)
+		
+		totalSoilLoss += 100.0 - soilEntity.Energy
+		totalSurfaceLoss += 100.0 - surfaceEntity.Energy
 	}
 	
-	t.Logf("Soil movement energy costs - Soil adapted: %.2f, Surface adapted: %.2f", soilEnergyLoss, surfaceEnergyLoss)
+	avgSoilLoss := totalSoilLoss / float64(numTests)
+	avgSurfaceLoss := totalSurfaceLoss / float64(numTests)
+	
+	t.Logf("Average energy loss - Soil adapted: %.3f, Surface adapted: %.3f", avgSoilLoss, avgSurfaceLoss)
+	
+	// Soil entity should use less energy underground
+	if avgSoilLoss >= avgSurfaceLoss {
+		t.Errorf("Expected soil entity to use less energy underground. Soil adapted: %.3f, Surface adapted: %.3f", avgSoilLoss, avgSurfaceLoss)
+	}
 }
 
 // TestAerialAdaptation tests that flying creatures perform better in air
