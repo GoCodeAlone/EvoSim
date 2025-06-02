@@ -39,11 +39,11 @@ export default defineConfig({
     ]),
   ],
 
-  // Start local web server before running tests
+  // Start local web server before running tests (but reuse existing if available)
   webServer: {
     command: 'GOWORK=off go run . -web -web-port 8080 -pop-size 3',
     port: 8080,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true, // Always reuse existing server
     timeout: 60000, // Increased timeout for server startup
     stdout: 'pipe',
     stderr: 'pipe',

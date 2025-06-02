@@ -7,7 +7,7 @@ set -e
 echo "Starting EvoSim Web Interface Tests..."
 
 # Test configuration
-WEB_PORT=8081
+WEB_PORT=8080
 PID_FILE="/tmp/evosim_test.pid"
 LOG_FILE="/tmp/evosim_test.log"
 
@@ -123,6 +123,28 @@ done
 end_time=$(date +%s%N)
 duration=$(( (end_time - start_time) / 1000000 ))  # Convert to milliseconds
 echo "✓ Completed 10 requests in ${duration}ms (avg: $((duration/10))ms per request)"
+
+# Test 9: Run Playwright tests
+echo "Test 9: Running Playwright end-to-end tests..."
+echo "Server is running on port $WEB_PORT, executing playwright tests..."
+
+# Set environment variable to prevent playwright from starting its own server
+export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
+export CI=true
+
+# Run playwright tests with timeout
+timeout 300s npm test
+PLAYWRIGHT_EXIT_CODE=$?
+
+if [ $PLAYWRIGHT_EXIT_CODE -eq 0 ]; then
+    echo "✓ All Playwright tests passed"
+elif [ $PLAYWRIGHT_EXIT_CODE -eq 124 ]; then
+    echo "✗ Playwright tests timed out after 5 minutes"
+    exit 1
+else
+    echo "✗ Playwright tests failed with exit code $PLAYWRIGHT_EXIT_CODE"
+    exit 1
+fi
 
 echo ""
 echo "All web interface tests passed! ✓"
