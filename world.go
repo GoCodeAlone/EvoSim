@@ -547,6 +547,9 @@ func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime f
 		// Apply biome effects
 		w.updateEntityWithBiome(entity)
 
+		// Track environmental exposure for feedback loops
+		w.trackEntityEnvironmentalExposure(entity, currentTimeState)
+
 		// Apply time-based effects (circadian preferences)
 		w.applyTimeEffects(entity, currentTimeState)
 
@@ -622,6 +625,9 @@ func (w *World) updateEntitiesConcurrent(currentTimeState TimeState, deltaTime f
 func (w *World) updateSingleEntity(entity *Entity, currentTimeState TimeState, deltaTime float64) {
 	// Apply biome effects
 	w.updateEntityWithBiome(entity)
+
+	// Track environmental exposure for feedback loops
+	w.trackEntityEnvironmentalExposure(entity, currentTimeState)
 
 	// Apply time-based effects (circadian preferences)
 	w.applyTimeEffects(entity, currentTimeState)
@@ -1292,7 +1298,7 @@ func (w *World) handleEntityPlantInteractions() {
 
 			// Check if entity can and wants to eat this plant
 			if entity.CanEatPlant(plant) && rand.Float64() < 0.4 {
-				if entity.EatPlant(plant) {
+				if entity.EatPlant(plant, w.Tick) {
 					// Log successful plant consumption
 					if rand.Float64() < 0.1 { // Log 10% of plant eating events
 						w.EventLogger.LogEcosystemShift(w.Tick,
@@ -1335,9 +1341,9 @@ func (w *World) processEntityInteraction(entity1, entity2 *Entity) {
 
 	// Try to eat dead entities
 	if !entity2.IsAlive && entity1.CanEat(entity2) && rand.Float64() < 0.3 {
-		entity1.Eat(entity2)
+		entity1.Eat(entity2, w.Tick)
 	} else if !entity1.IsAlive && entity2.CanEat(entity1) && rand.Float64() < 0.3 {
-		entity2.Eat(entity1)
+		entity2.Eat(entity1, w.Tick)
 	}
 }
 
@@ -1865,5 +1871,46 @@ func (w *World) processTribeResourceGathering(tribe *Tribe) {
 			member.Energy += foodPerMember
 		}
 		tribe.Resources["food"] -= foodPerMember * float64(len(tribe.Members))
+	}
+}
+
+// trackEntityEnvironmentalExposure tracks environmental conditions for feedback loops
+func (w *World) trackEntityEnvironmentalExposure(entity *Entity, timeState TimeState) {
+	if !entity.IsAlive {
+		return
+	}
+
+	// Get entity's current biome
+	gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+	gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+	cell := &w.Grid[gridY][gridX]
+	biome := cell.Biome
+
+	// Get current event affecting this cell
+	var currentEvent *WorldEvent
+	if cell.Event != nil {
+		currentEvent = cell.Event
+	}
+
+	// Track environmental exposure
+	entity.trackEnvironmentalExposure(biome, seasonToString(timeState.Season), currentEvent, w.Tick)
+}
+
+// seasonToString converts Season enum to string
+func seasonToString(season Season) string {
+	switch season {
+	case Spring:
+		return "Spring"
+	case Summer:
+		return "Summer"
+	case Autumn:
+		return "Autumn"
+	case Winter:
+		return "Winter"
+	default:
+		return "Unknown"
 	}
 }
