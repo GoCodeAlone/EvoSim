@@ -537,6 +537,57 @@ func (ts *TopologySystem) applyGeologicalEventEffects(event *GeologicalEvent) {
 				// Increase water level and erosion
 				ts.TopologyGrid[x][y].WaterLevel += influence * 0.2
 				ts.TopologyGrid[x][y].Erosion += influence * 0.2
+				
+			// New plate tectonics events
+			case "continental_drift":
+				// Gradual elevation changes over large areas
+				change := (rand.Float64() - 0.5) * influence * 0.05 // Very gradual
+				ts.TopologyGrid[x][y].Elevation += change
+				
+			case "seafloor_spreading":
+				// Create new oceanic crust - lower elevation, harder rock
+				if ts.TopologyGrid[x][y].Elevation < 0.2 { // Only in low areas
+					ts.TopologyGrid[x][y].Elevation -= influence * 0.3
+					ts.TopologyGrid[x][y].Hardness = math.Min(1.0, ts.TopologyGrid[x][y].Hardness+influence*0.4)
+				}
+				
+			case "mountain_uplift":
+				// Create mountain ranges - increase elevation and hardness
+				ts.TopologyGrid[x][y].Elevation += influence * 0.8
+				ts.TopologyGrid[x][y].Hardness = math.Min(1.0, ts.TopologyGrid[x][y].Hardness+influence*0.5)
+				ts.TopologyGrid[x][y].SoilDepth = math.Max(0.1, ts.TopologyGrid[x][y].SoilDepth-influence*0.3)
+				
+			case "rift_valley":
+				// Create deep valleys - decrease elevation
+				ts.TopologyGrid[x][y].Elevation -= influence * 0.6
+				ts.TopologyGrid[x][y].Erosion += influence * 0.3
+				ts.TopologyGrid[x][y].Sediment += influence * 0.2
+				
+			case "geyser_formation":
+				// Create localized hot water features
+				if distance < 2.0 { // Very localized effect
+					ts.TopologyGrid[x][y].WaterLevel += influence * 0.4
+					// Mark as potential hot spring location (would need biome integration)
+				}
+				
+			case "hot_spring_creation":
+				// Create hot water features
+				if distance < 3.0 {
+					ts.TopologyGrid[x][y].WaterLevel += influence * 0.3
+					// Mark as hot spring location
+				}
+				
+			case "ice_sheet_advance":
+				// Create ice coverage - affects surface conditions
+				if ts.TopologyGrid[x][y].Elevation > 0.3 { // Higher elevations more susceptible
+					ts.TopologyGrid[x][y].WaterLevel += influence * 0.2 // Ice coverage
+					ts.TopologyGrid[x][y].Erosion += influence * 0.1 // Glacial erosion
+				}
+				
+			case "glacial_retreat":
+				// Remove ice coverage, expose underlying terrain
+				ts.TopologyGrid[x][y].WaterLevel = math.Max(0, ts.TopologyGrid[x][y].WaterLevel-influence*0.2)
+				ts.TopologyGrid[x][y].Sediment += influence * 0.3 // Glacial deposits
 			}
 		}
 	}
@@ -545,7 +596,14 @@ func (ts *TopologySystem) applyGeologicalEventEffects(event *GeologicalEvent) {
 // triggerRandomEvents creates random geological events
 func (ts *TopologySystem) triggerRandomEvents() {
 	if rand.Float64() < ts.TectonicActivity * 0.01 { // 1% chance with tectonic activity
-		eventType := []string{"earthquake", "volcanic_eruption", "landslide", "flood"}[rand.Intn(4)]
+		eventTypes := []string{
+			"earthquake", "volcanic_eruption", "landslide", "flood",
+			// New plate tectonics events
+			"continental_drift", "seafloor_spreading", "mountain_uplift", 
+			"rift_valley", "geyser_formation", "hot_spring_creation",
+			"ice_sheet_advance", "glacial_retreat",
+		}
+		eventType := eventTypes[rand.Intn(len(eventTypes))]
 		
 		centerX := rand.Float64() * float64(ts.Width)
 		centerY := rand.Float64() * float64(ts.Height)
@@ -573,6 +631,47 @@ func (ts *TopologySystem) triggerRandomEvents() {
 			radius = 8.0 + rand.Float64()*20.0
 			intensity = 0.2 + rand.Float64()*0.5
 			duration = 10 + rand.Intn(30)
+			
+		// New plate tectonics events
+		case "continental_drift":
+			radius = 30.0 + rand.Float64()*50.0 // Large scale
+			intensity = 0.1 + rand.Float64()*0.3
+			duration = 100 + rand.Intn(300) // Very long duration
+			
+		case "seafloor_spreading":
+			radius = 15.0 + rand.Float64()*25.0
+			intensity = 0.2 + rand.Float64()*0.4
+			duration = 50 + rand.Intn(150)
+			
+		case "mountain_uplift":
+			radius = 10.0 + rand.Float64()*20.0
+			intensity = 0.4 + rand.Float64()*0.6
+			duration = 20 + rand.Intn(80)
+			
+		case "rift_valley":
+			radius = 12.0 + rand.Float64()*18.0
+			intensity = 0.3 + rand.Float64()*0.5
+			duration = 30 + rand.Intn(100)
+			
+		case "geyser_formation":
+			radius = 1.0 + rand.Float64()*3.0 // Small, localized
+			intensity = 0.6 + rand.Float64()*0.4
+			duration = 50 + rand.Intn(200)
+			
+		case "hot_spring_creation":
+			radius = 2.0 + rand.Float64()*4.0
+			intensity = 0.5 + rand.Float64()*0.3
+			duration = 40 + rand.Intn(150)
+			
+		case "ice_sheet_advance":
+			radius = 20.0 + rand.Float64()*40.0
+			intensity = 0.3 + rand.Float64()*0.5
+			duration = 80 + rand.Intn(200)
+			
+		case "glacial_retreat":
+			radius = 15.0 + rand.Float64()*30.0
+			intensity = 0.2 + rand.Float64()*0.4
+			duration = 60 + rand.Intn(150)
 		}
 		
 		event := GeologicalEvent{

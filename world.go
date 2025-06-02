@@ -30,6 +30,15 @@ const (
 	BiomeRadiation
 	BiomeSoil // Underground/soil environment
 	BiomeAir  // Aerial environment (high altitude)
+	// New biome expansions
+	BiomeIce        // Polar caps, frozen areas
+	BiomeRainforest // Dense tropical forests
+	BiomeDeepWater  // Ocean trenches, deep water
+	BiomeHighAltitude // Very high mountains, low oxygen
+	BiomeHotSpring    // Geysers, hot springs
+	BiomeTundra      // Cold, sparse vegetation
+	BiomeSwamp       // Wetlands, marshes
+	BiomeCanyon      // Deep rocky canyons
 )
 
 // Biome represents an environmental zone with specific effects
@@ -41,6 +50,14 @@ type Biome struct {
 	MutationRate   float64            // Additional mutation rate
 	EnergyDrain    float64            // Energy drain per tick
 	Symbol         rune               // Display symbol
+	// Environmental properties for biome expansions
+	Temperature    float64            // Temperature modifier (-1 to 1, 0 = normal)
+	Pressure       float64            // Pressure level (0 to 2, 1 = normal)
+	OxygenLevel    float64            // Oxygen availability (0 to 1, 1 = normal)
+	Humidity       float64            // Humidity level (0 to 1)
+	IsAquatic      bool               // Whether this is a water-based biome
+	IsUnderground  bool               // Whether this is below ground
+	IsAerial       bool               // Whether this is high altitude/aerial
 }
 
 // WorldEvent represents temporary world-wide effects
@@ -209,6 +226,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.0,
 		EnergyDrain:    0.5,
 		Symbol:         '.',
+		Temperature:    0.0,
+		Pressure:       1.0,
+		OxygenLevel:    1.0,
+		Humidity:       0.5,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeForest] = Biome{
@@ -219,6 +243,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.0,
 		EnergyDrain:    0.8,
 		Symbol:         '♠',
+		Temperature:    0.1,
+		Pressure:       1.0,
+		OxygenLevel:    1.1,
+		Humidity:       0.7,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeDesert] = Biome{
@@ -229,6 +260,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.05,
 		EnergyDrain:    1.5,
 		Symbol:         '~',
+		Temperature:    0.7,
+		Pressure:       1.0,
+		OxygenLevel:    0.9,
+		Humidity:       0.1,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeMountain] = Biome{
@@ -239,6 +277,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.0,
 		EnergyDrain:    1.2,
 		Symbol:         '^',
+		Temperature:    -0.3,
+		Pressure:       0.8,
+		OxygenLevel:    0.8,
+		Humidity:       0.4,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeWater] = Biome{
@@ -249,6 +294,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.0,
 		EnergyDrain:    0.3,
 		Symbol:         '≈',
+		Temperature:    0.0,
+		Pressure:       1.1,
+		OxygenLevel:    0.7,
+		Humidity:       1.0,
+		IsAquatic:      true,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeRadiation] = Biome{
@@ -259,6 +311,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.3,
 		EnergyDrain:    2.0,
 		Symbol:         '☢',
+		Temperature:    0.5,
+		Pressure:       1.2,
+		OxygenLevel:    0.6,
+		Humidity:       0.2,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeSoil] = Biome{
@@ -269,6 +328,13 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.02,
 		EnergyDrain:    0.7,
 		Symbol:         '■',
+		Temperature:    0.2,
+		Pressure:       1.3,
+		OxygenLevel:    0.5,
+		Humidity:       0.8,
+		IsAquatic:      false,
+		IsUnderground:  true,
+		IsAerial:       false,
 	}
 
 	biomes[BiomeAir] = Biome{
@@ -279,61 +345,275 @@ func initializeBiomes() map[BiomeType]Biome {
 		MutationRate:   0.01,
 		EnergyDrain:    1.0,
 		Symbol:         '☁',
+		Temperature:    -0.5,
+		Pressure:       0.6,
+		OxygenLevel:    0.4,
+		Humidity:       0.3,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       true,
+	}
+
+	// New biome expansions
+	biomes[BiomeIce] = Biome{
+		Type:           BiomeIce,
+		Name:           "Ice",
+		Color:          "white",
+		TraitModifiers: map[string]float64{"endurance": 0.4, "size": 0.1, "speed": -0.3, "defense": 0.2},
+		MutationRate:   0.02,
+		EnergyDrain:    2.5,
+		Symbol:         '❅',
+		Temperature:    -0.9,
+		Pressure:       1.0,
+		OxygenLevel:    0.9,
+		Humidity:       0.9,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
+	}
+
+	biomes[BiomeRainforest] = Biome{
+		Type:           BiomeRainforest,
+		Name:           "Rainforest",
+		Color:          "darkgreen",
+		TraitModifiers: map[string]float64{"agility": 0.3, "intelligence": 0.2, "size": -0.1, "cooperation": 0.2},
+		MutationRate:   0.15,
+		EnergyDrain:    0.3,
+		Symbol:         '🌳',
+		Temperature:    0.6,
+		Pressure:       1.0,
+		OxygenLevel:    1.3,
+		Humidity:       1.0,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
+	}
+
+	biomes[BiomeDeepWater] = Biome{
+		Type:           BiomeDeepWater,
+		Name:           "Deep Water",
+		Color:          "darkblue",
+		TraitModifiers: map[string]float64{"aquatic_adaptation": 0.5, "strength": 0.3, "endurance": 0.4, "size": 0.2},
+		MutationRate:   0.05,
+		EnergyDrain:    1.8,
+		Symbol:         '≋',
+		Temperature:    -0.3,
+		Pressure:       2.0,
+		OxygenLevel:    0.3,
+		Humidity:       1.0,
+		IsAquatic:      true,
+		IsUnderground:  false,
+		IsAerial:       false,
+	}
+
+	biomes[BiomeHighAltitude] = Biome{
+		Type:           BiomeHighAltitude,
+		Name:           "High Altitude",
+		Color:          "lightgray",
+		TraitModifiers: map[string]float64{"altitude_tolerance": 0.6, "endurance": 0.5, "flying_ability": 0.3, "size": -0.2},
+		MutationRate:   0.08,
+		EnergyDrain:    3.0,
+		Symbol:         '⛰',
+		Temperature:    -0.8,
+		Pressure:       0.3,
+		OxygenLevel:    0.2,
+		Humidity:       0.1,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       true,
+	}
+
+	biomes[BiomeHotSpring] = Biome{
+		Type:           BiomeHotSpring,
+		Name:           "Hot Spring",
+		Color:          "orange",
+		TraitModifiers: map[string]float64{"endurance": 0.3, "agility": 0.2, "aquatic_adaptation": 0.2, "speed": 0.1},
+		MutationRate:   0.12,
+		EnergyDrain:    0.8,
+		Symbol:         '♨',
+		Temperature:    0.9,
+		Pressure:       1.1,
+		OxygenLevel:    0.8,
+		Humidity:       1.0,
+		IsAquatic:      true,
+		IsUnderground:  false,
+		IsAerial:       false,
+	}
+
+	biomes[BiomeTundra] = Biome{
+		Type:           BiomeTundra,
+		Name:           "Tundra",
+		Color:          "lightblue",
+		TraitModifiers: map[string]float64{"endurance": 0.5, "size": 0.2, "speed": -0.2, "defense": 0.3},
+		MutationRate:   0.03,
+		EnergyDrain:    1.8,
+		Symbol:         '❄',
+		Temperature:    -0.7,
+		Pressure:       1.0,
+		OxygenLevel:    0.9,
+		Humidity:       0.6,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
+	}
+
+	biomes[BiomeSwamp] = Biome{
+		Type:           BiomeSwamp,
+		Name:           "Swamp",
+		Color:          "brown",
+		TraitModifiers: map[string]float64{"aquatic_adaptation": 0.3, "digging_ability": 0.2, "intelligence": 0.1, "defense": 0.2},
+		MutationRate:   0.08,
+		EnergyDrain:    1.2,
+		Symbol:         '🌿',
+		Temperature:    0.3,
+		Pressure:       1.1,
+		OxygenLevel:    0.6,
+		Humidity:       1.0,
+		IsAquatic:      true,
+		IsUnderground:  false,
+		IsAerial:       false,
+	}
+
+	biomes[BiomeCanyon] = Biome{
+		Type:           BiomeCanyon,
+		Name:           "Canyon",
+		Color:          "red",
+		TraitModifiers: map[string]float64{"agility": 0.4, "strength": 0.2, "endurance": 0.2, "size": -0.1},
+		MutationRate:   0.06,
+		EnergyDrain:    1.5,
+		Symbol:         '⫽',
+		Temperature:    0.4,
+		Pressure:       1.2,
+		OxygenLevel:    0.8,
+		Humidity:       0.2,
+		IsAquatic:      false,
+		IsUnderground:  false,
+		IsAerial:       false,
 	}
 
 	return biomes
 }
 
-// generateBiome generates a biome type for a grid cell using Perlin-like noise
+// generateBiome generates a biome type for a grid cell using enhanced noise patterns and topology integration
 func (w *World) generateBiome(x, y int) BiomeType {
-	// Simple biome generation based on position
-	distFromCenter := math.Sqrt(math.Pow(float64(x)-float64(w.Config.GridWidth)/2, 2) +
-		math.Pow(float64(y)-float64(w.Config.GridHeight)/2, 2))
-	maxDist := math.Sqrt(math.Pow(float64(w.Config.GridWidth)/2, 2) +
-		math.Pow(float64(w.Config.GridHeight)/2, 2))
+	// Get topology information if available
+	var elevation, slope float64
+	if w.TopologySystem != nil && x < len(w.TopologySystem.TopologyGrid) && y < len(w.TopologySystem.TopologyGrid[0]) {
+		cell := w.TopologySystem.TopologyGrid[x][y]
+		elevation = cell.Elevation
+		slope = cell.Slope
+	}
 
-	noise := rand.Float64()
+	// Calculate distance from center and edges for zonal distribution
+	centerX, centerY := float64(w.Config.GridWidth)/2, float64(w.Config.GridHeight)/2
+	distFromCenter := math.Sqrt(math.Pow(float64(x)-centerX, 2) + math.Pow(float64(y)-centerY, 2))
+	maxDist := math.Sqrt(math.Pow(centerX, 2) + math.Pow(centerY, 2))
+	
+	// Distance from edges (for polar caps)
+	distFromEdge := math.Min(math.Min(float64(x), float64(w.Config.GridWidth-x)), 
+		math.Min(float64(y), float64(w.Config.GridHeight-y)))
+	
+	// Enhanced noise generation for contiguous features
+	baseNoise := rand.Float64()
+	
+	// Create multiple noise layers for more realistic patterns
+	microNoise := (rand.Float64() - 0.5) * 0.1  // Small local variations
+	regionalNoise := perlinNoise(float64(x)*0.1, float64(y)*0.1) // Larger regional patterns
+	
+	combinedNoise := baseNoise + microNoise + regionalNoise*0.3
+	if combinedNoise < 0 { combinedNoise = 0 }
+	if combinedNoise > 1 { combinedNoise = 1 }
 
-	// Center tends to be plains/forest
-	if distFromCenter < maxDist*0.3 {
-		if noise < 0.6 {
-			return BiomePlains
+	// Polar regions (extreme edges) - Ice and Tundra
+	if distFromEdge < 3 {
+		if combinedNoise < 0.7 {
+			return BiomeIce
 		} else {
-			return BiomeForest
+			return BiomeTundra
 		}
 	}
 
-	// Mid range has variety
-	if distFromCenter < maxDist*0.7 {
-		switch {
-		case noise < 0.3:
-			return BiomeForest
-		case noise < 0.5:
+	// High elevation areas - Mountains and High Altitude
+	if elevation > 0.8 {
+		if elevation > 0.95 {
+			return BiomeHighAltitude
+		} else if slope > 0.7 {
+			return BiomeCanyon
+		} else {
+			return BiomeMountain
+		}
+	}
+
+	// Very low elevation areas - Water features
+	if elevation < 0.2 {
+		if elevation < 0.05 {
+			return BiomeDeepWater
+		} else if combinedNoise < 0.3 {
+			return BiomeSwamp
+		} else {
 			return BiomeWater
-		case noise < 0.7:
+		}
+	}
+
+	// Moderate elevation with specific climate patterns
+	climateZone := distFromCenter / maxDist
+
+	// Tropical/equatorial zones (center) - Rainforests and Hot Springs
+	if climateZone < 0.3 {
+		if combinedNoise < 0.05 {
+			return BiomeHotSpring
+		} else if combinedNoise < 0.6 {
+			return BiomeRainforest
+		} else if combinedNoise < 0.8 {
+			return BiomeForest
+		} else {
+			return BiomePlains
+		}
+	}
+
+	// Temperate zones
+	if climateZone < 0.6 {
+		switch {
+		case combinedNoise < 0.05:
+			return BiomeHotSpring
+		case combinedNoise < 0.35:
+			return BiomeForest
+		case combinedNoise < 0.5:
+			return BiomeWater
+		case combinedNoise < 0.7:
+			return BiomePlains
+		case combinedNoise < 0.8:
 			return BiomeMountain
 		default:
-			return BiomePlains
+			return BiomeSwamp
 		}
 	}
 
-	// Outer areas tend to be harsh
+	// Arid/harsh zones (outer areas)
 	switch {
-	case noise < 0.3:
+	case combinedNoise < 0.02:
+		return BiomeRadiation
+	case combinedNoise < 0.4:
 		return BiomeDesert
-	case noise < 0.5:
+	case combinedNoise < 0.55:
 		return BiomeMountain
-	case noise < 0.65:
+	case combinedNoise < 0.7:
 		return BiomeWater
-	case noise < 0.8:
+	case combinedNoise < 0.8:
 		return BiomePlains
-	case noise < 0.9:
+	case combinedNoise < 0.9:
 		return BiomeSoil
-	case noise < 0.97:
+	case combinedNoise < 0.97:
 		return BiomeAir
 	default:
-		return BiomeRadiation
+		return BiomeTundra
 	}
+}
+
+// perlinNoise provides a simple Perlin-like noise function for terrain generation
+func perlinNoise(x, y float64) float64 {
+	// Simple noise approximation using sine waves
+	return (math.Sin(x*1.7+y*1.3) + math.Sin(x*2.3-y*0.7) + math.Sin(x*0.9+y*2.1)) / 3.0
 }
 
 // AddPopulation adds a new population to the world
@@ -416,6 +696,9 @@ func (w *World) Update() {
 	w.CellularSystem.UpdateCellularOrganisms()
 	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
 	w.TopologySystem.UpdateTopology(w.Tick)
+	
+	// Update biomes based on topology changes
+	w.updateBiomesFromTopology()
 
 	// Clear grid entities and plants
 	w.clearGrid()
@@ -475,6 +758,10 @@ func (w *World) Update() {
 
 	// Handle interactions between entities and with plants
 	w.handleInteractions()
+	
+	// Apply biome environmental effects
+	w.applyBiomeEffects()
+	
 	// 7. Update civilization system
 	w.CivilizationSystem.Update()
 
@@ -2347,6 +2634,135 @@ func (w *World) IsPaused() bool {
 	return w.Paused
 }
 
+// applyBiomeEffects applies environmental effects from biomes to entities
+func (w *World) applyBiomeEffects() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		// Get the biome at entity's position
+		biomeType := w.getBiomeAtPosition(entity.Position.X, entity.Position.Y)
+		biome := w.Biomes[biomeType]
+
+		// Apply environmental pressure based on biome conditions
+		w.applyEnvironmentalPressure(entity, biome)
+
+		// Apply biome-specific effects
+		w.applyBiomeSpecificEffects(entity, biome)
+	}
+}
+
+// applyEnvironmentalPressure applies environmental stress based on biome conditions
+func (w *World) applyEnvironmentalPressure(entity *Entity, biome Biome) {
+	// Calculate environmental stress factors
+	temperatureStress := math.Abs(biome.Temperature) * 0.1
+	pressureStress := math.Abs(biome.Pressure - 1.0) * 0.15
+	oxygenStress := (1.0 - biome.OxygenLevel) * 0.2
+
+	totalStress := temperatureStress + pressureStress + oxygenStress
+
+	// Apply energy drain based on environmental adaptation
+	adaptationBonus := 0.0
+	switch {
+	case biome.IsAquatic && entity.GetTrait("aquatic_adaptation") > 0.5:
+		adaptationBonus = entity.GetTrait("aquatic_adaptation") * 0.3
+	case biome.IsAerial && entity.GetTrait("flying_ability") > 0.5:
+		adaptationBonus = entity.GetTrait("flying_ability") * 0.25
+	case biome.IsUnderground && entity.GetTrait("digging_ability") > 0.5:
+		adaptationBonus = entity.GetTrait("digging_ability") * 0.2
+	case biome.Type == BiomeHighAltitude && entity.GetTrait("altitude_tolerance") > 0.5:
+		adaptationBonus = entity.GetTrait("altitude_tolerance") * 0.4
+	}
+
+	// Calculate final energy cost
+	energyCost := totalStress - adaptationBonus
+	if energyCost > 0 {
+		entity.Energy -= energyCost
+		
+		// Prevent energy from going too negative
+		if entity.Energy < -10 {
+			entity.Energy = -10
+		}
+	}
+}
+
+// applyBiomeSpecificEffects applies special effects for specific biomes
+func (w *World) applyBiomeSpecificEffects(entity *Entity, biome Biome) {
+	switch biome.Type {
+	case BiomeDeepWater:
+		// High pressure effects - entities without strong aquatic adaptation suffer
+		if entity.GetTrait("aquatic_adaptation") < 0.7 {
+			entity.Energy -= 0.5
+			// Increase mutation rate due to pressure stress
+			if rand.Float64() < 0.02 {
+				entity.Mutate(0.1, 0.1)
+			}
+		}
+
+	case BiomeHighAltitude:
+		// Low oxygen effects - entities without altitude tolerance suffer
+		if entity.GetTrait("altitude_tolerance") < 0.6 {
+			entity.Energy -= 0.8
+			// Reduced energy for movement and reproduction
+			if entity.Energy > 0 {
+				entity.Energy -= 0.3
+			}
+		}
+
+	case BiomeIce:
+		// Extreme cold effects
+		if entity.GetTrait("endurance") < 0.6 {
+			entity.Energy -= 1.0
+			// Risk of severe energy loss
+			if entity.Energy < 10 && rand.Float64() < 0.01 {
+				entity.Energy -= 5 // Severe cold damage
+				if entity.Energy <= 0 {
+					entity.IsAlive = false // Death by freezing
+				}
+			}
+		}
+
+	case BiomeHotSpring:
+		// Hot water beneficial for some, harmful for others
+		if entity.GetTrait("aquatic_adaptation") > 0.5 {
+			entity.Energy += 0.3 // Beneficial for aquatic entities
+		} else if entity.GetTrait("endurance") < 0.4 {
+			entity.Energy -= 0.4 // Too hot for weak entities
+		}
+
+	case BiomeRainforest:
+		// High biodiversity promotes intelligence and cooperation
+		if entity.GetTrait("intelligence") > 0.5 {
+			entity.Energy += 0.2
+		}
+		if entity.GetTrait("cooperation") > 0.5 {
+			entity.Energy += 0.1
+		}
+
+	case BiomeRadiation:
+		// Radiation causes mutations and energy loss
+		entity.Energy -= 1.0
+		if rand.Float64() < 0.1 {
+			entity.Mutate(0.2, 0.15)
+		}
+
+	case BiomeCanyon:
+		// Steep terrain favors agile entities
+		if entity.GetTrait("agility") > 0.6 {
+			entity.Energy += 0.1
+		} else {
+			entity.Energy -= 0.3
+		}
+
+	case BiomeSwamp:
+		// Disease risk in wetlands
+		if entity.GetTrait("defense") < 0.5 && rand.Float64() < 0.005 {
+			entity.Energy -= 2.0 // Disease-like energy loss
+		}
+	}
+}
+
 // Reset resets the world to initial state
 func (w *World) Reset() {
 	// Clear existing entities and populations
@@ -2371,4 +2787,191 @@ func (w *World) Reset() {
 	if w.PhysicsSystem != nil {
 		w.PhysicsSystem.ResetCollisionCounters()
 	}
+}
+
+// updateBiomesFromTopology updates biomes based on topology changes from geological events
+func (w *World) updateBiomesFromTopology() {
+	if w.TopologySystem == nil {
+		return
+	}
+	
+	// Check for recent geological events that might change biomes
+	for _, event := range w.TopologySystem.GeologicalEvents {
+		w.applyGeologicalEventToBiomes(event)
+	}
+	
+	// Periodically recalculate biomes based on topology (every 100 ticks)
+	if w.Tick%100 == 0 {
+		w.recalculateBiomesFromTopology()
+	}
+}
+
+// applyGeologicalEventToBiomes changes biomes based on geological events
+func (w *World) applyGeologicalEventToBiomes(event GeologicalEvent) {
+	centerGridX := int((event.Center.X / float64(w.Config.Width)) * float64(w.Config.GridWidth))
+	centerGridY := int((event.Center.Y / float64(w.Config.Height)) * float64(w.Config.GridHeight))
+	gridRadius := int((event.Radius / float64(w.Config.Width)) * float64(w.Config.GridWidth))
+	
+	for x := centerGridX - gridRadius; x <= centerGridX + gridRadius; x++ {
+		for y := centerGridY - gridRadius; y <= centerGridY + gridRadius; y++ {
+			if x < 0 || x >= w.Config.GridWidth || y < 0 || y >= w.Config.GridHeight {
+				continue
+			}
+			
+			distance := math.Sqrt(float64((x-centerGridX)*(x-centerGridX) + (y-centerGridY)*(y-centerGridY)))
+			if distance > float64(gridRadius) {
+				continue
+			}
+			
+			// Get topology information
+			topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
+			topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
+			
+			if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
+				topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
+				
+				// Change biomes based on event type and topology
+				newBiome := w.determineBiomeFromGeology(event.Type, topoCell, w.Grid[y][x].Biome)
+				if newBiome != w.Grid[y][x].Biome {
+					w.Grid[y][x].Biome = newBiome
+				}
+			}
+		}
+	}
+}
+
+// determineBiomeFromGeology determines the new biome based on geological event and topology
+func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCell, currentBiome BiomeType) BiomeType {
+	switch eventType {
+	case "volcanic_eruption":
+		// High elevation volcanic areas become mountains or radiation zones
+		if topoCell.Elevation > 0.8 {
+			return BiomeMountain
+		} else if topoCell.Elevation > 0.6 {
+			return BiomeRadiation // Volcanic ash and heat
+		}
+		
+	case "mountain_uplift":
+		// Mountain uplift creates mountain biomes
+		if topoCell.Elevation > 0.9 {
+			return BiomeHighAltitude
+		} else if topoCell.Elevation > 0.7 {
+			return BiomeMountain
+		}
+		
+	case "seafloor_spreading", "rift_valley":
+		// Creates deep water or water biomes
+		if topoCell.Elevation < -0.3 {
+			return BiomeDeepWater
+		} else if topoCell.Elevation < 0.1 {
+			return BiomeWater
+		}
+		
+	case "geyser_formation", "hot_spring_creation":
+		// Creates hot spring biomes
+		if topoCell.WaterLevel > 0.3 {
+			return BiomeHotSpring
+		}
+		
+	case "ice_sheet_advance":
+		// Creates ice biomes
+		if topoCell.WaterLevel > 0.2 && topoCell.Elevation > 0.3 {
+			return BiomeIce
+		} else if topoCell.Elevation > 0.5 {
+			return BiomeTundra
+		}
+		
+	case "glacial_retreat":
+		// Transitions from ice back to other biomes
+		if currentBiome == BiomeIce {
+			if topoCell.Elevation > 0.7 {
+				return BiomeMountain
+			} else if topoCell.Elevation > 0.3 {
+				return BiomeTundra
+			} else {
+				return BiomePlains
+			}
+		}
+		
+	case "flood":
+		// Creates swamp or water biomes
+		if topoCell.WaterLevel > 0.5 {
+			if topoCell.Elevation > 0.1 {
+				return BiomeSwamp
+			} else {
+				return BiomeWater
+			}
+		}
+	}
+	
+	return currentBiome // No change
+}
+
+// recalculateBiomesFromTopology recalculates biomes based on current topology
+func (w *World) recalculateBiomesFromTopology() {
+	for y := 0; y < w.Config.GridHeight; y++ {
+		for x := 0; x < w.Config.GridWidth; x++ {
+			// Get topology information
+			topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
+			topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
+			
+			if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
+				topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
+				
+				// Determine biome based on topology
+				newBiome := w.determineBiomeFromTopology(topoCell, x, y)
+				if newBiome != w.Grid[y][x].Biome {
+					w.Grid[y][x].Biome = newBiome
+				}
+			}
+		}
+	}
+}
+
+// determineBiomeFromTopology determines biome based on topology characteristics
+func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY int) BiomeType {
+	elevation := topoCell.Elevation
+	waterLevel := topoCell.WaterLevel
+	slope := topoCell.Slope
+	
+	// Distance from edges for polar biomes
+	distFromEdge := math.Min(math.Min(float64(gridX), float64(w.Config.GridWidth-gridX)), 
+		math.Min(float64(gridY), float64(w.Config.GridHeight-gridY)))
+	
+	// Very high elevation - high altitude
+	if elevation > 0.95 {
+		return BiomeHighAltitude
+	}
+	
+	// High elevation - mountains
+	if elevation > 0.8 {
+		return BiomeMountain
+	}
+	
+	// Water-based biomes
+	if waterLevel > 0.5 || elevation < 0.0 {
+		if elevation < -0.5 {
+			return BiomeDeepWater
+		}
+		if waterLevel > 0.8 && elevation > 0.1 {
+			return BiomeSwamp
+		}
+		return BiomeWater
+	}
+	
+	// Edge biomes (polar regions)
+	if distFromEdge < 3 {
+		if waterLevel > 0.3 {
+			return BiomeIce
+		}
+		return BiomeTundra
+	}
+	
+	// Steep slopes - canyons
+	if slope > 0.7 && elevation > 0.4 {
+		return BiomeCanyon
+	}
+	
+	// Use the enhanced biome generation for other areas
+	return w.generateBiome(gridX, gridY)
 }
