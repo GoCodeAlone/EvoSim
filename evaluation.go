@@ -69,7 +69,63 @@ func (e *EvaluationEngine) Evaluate(entity *Entity) float64 {
 		totalFitness += ruleFitness * rule.Weight
 	}
 
+	// Add molecular fitness component
+	molecularFitness := e.calculateMolecularFitness(entity)
+	totalFitness += molecularFitness * 0.3 // 30% weight to molecular fitness
+
 	return totalFitness
+}
+
+// calculateMolecularFitness calculates fitness based on molecular nutritional status
+func (e *EvaluationEngine) calculateMolecularFitness(entity *Entity) float64 {
+	if entity.MolecularNeeds == nil {
+		return 0.0 // No molecular system
+	}
+
+	// Base fitness from nutritional status
+	nutritionalStatus := entity.MolecularNeeds.GetOverallNutritionalStatus()
+	
+	// Bonus for having good molecular metabolism efficiency
+	metabolismBonus := 0.0
+	if entity.MolecularMetabolism != nil {
+		totalEfficiency := 0.0
+		count := 0
+		for _, efficiency := range entity.MolecularMetabolism.Efficiency {
+			totalEfficiency += efficiency
+			count++
+		}
+		if count > 0 {
+			avgEfficiency := totalEfficiency / float64(count)
+			metabolismBonus = avgEfficiency * 0.2
+		}
+	}
+
+	// Penalty for having high deficiencies in critical nutrients
+	criticalDeficiencyPenalty := 0.0
+	criticalNutrients := []MolecularType{
+		ProteinStructural, ProteinEnzymatic, AminoEssential, 
+		CarboSimple, NucleicATP, VitaminWater,
+	}
+	
+	for _, nutrient := range criticalNutrients {
+		if deficiency, exists := entity.MolecularNeeds.Deficiencies[nutrient]; exists {
+			if requirement, reqExists := entity.MolecularNeeds.Requirements[nutrient]; reqExists && requirement > 0 {
+				deficiencyRatio := deficiency / requirement
+				if deficiencyRatio > 0.7 { // High deficiency
+					criticalDeficiencyPenalty += deficiencyRatio * 0.1
+				}
+			}
+		}
+	}
+
+	// Bonus for toxin tolerance (survival advantage)
+	toxinToleranceBonus := 0.0
+	for _, tolerance := range entity.MolecularNeeds.Tolerances {
+		toxinToleranceBonus += tolerance * 0.05
+	}
+
+	molecularFitness := nutritionalStatus + metabolismBonus + toxinToleranceBonus - criticalDeficiencyPenalty
+	return math.Max(0.0, math.Min(1.0, molecularFitness))
 }
 
 // evaluateExpression evaluates a simple mathematical expression using entity traits

@@ -31,6 +31,11 @@ type Entity struct {
 	Species    string           `json:"species"`
 	Generation int              `json:"generation"`
 	TribeID    int              `json:"tribe_id"` // ID of the tribe this entity belongs to (0 = no tribe)
+	
+	// Molecular system components
+	MolecularNeeds     *MolecularNeeds     `json:"molecular_needs"`
+	MolecularMetabolism *MolecularMetabolism `json:"molecular_metabolism"`
+	MolecularProfile   *MolecularProfile    `json:"molecular_profile"` // What this entity is made of (for consumption)
 }
 
 // NewEntity creates a new entity with random traits
@@ -54,6 +59,11 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 			Value: rand.Float64()*2 - 1, // Random value between -1 and 1
 		}
 	}
+
+	// Initialize molecular systems
+	entity.MolecularNeeds = NewMolecularNeeds(entity)
+	entity.MolecularMetabolism = NewMolecularMetabolism(entity)
+	entity.MolecularProfile = CreateEntityMolecularProfile(entity)
 
 	return entity
 }
@@ -357,15 +367,43 @@ func (e *Entity) CanEat(other *Entity) bool {
 	return mySize > theirSize+1.0 && other.GetTrait("aggression") < 0.0
 }
 
-// Eat consumes another entity for energy
+// Eat consumes another entity for energy using molecular system
 func (e *Entity) Eat(other *Entity) bool {
 	if !e.CanEat(other) {
 		return false
 	}
 
-	// Gain energy based on the consumed entity's size and remaining energy
-	energyGain := (other.GetTrait("size")+1.0)*10 + other.Energy*0.5
-	e.Energy += energyGain
+	// Use molecular system for consumption if available
+	if other.MolecularProfile != nil && e.MolecularNeeds != nil && e.MolecularMetabolism != nil {
+		// Calculate molecular desirability 
+		desirability := GetMolecularDesirability(other.MolecularProfile, e.MolecularNeeds)
+		
+		// Base consumption based on prey size
+		consumptionRate := (other.GetTrait("size") + 1.0) * 0.1
+		
+		// Consume nutrients using molecular system
+		energyGained, toxinDamage := other.MolecularProfile.ConsumeNutrients(
+			e.MolecularNeeds,
+			e.MolecularMetabolism,
+			consumptionRate)
+		
+		// Apply molecular energy gain
+		e.Energy += energyGained * 15.0 // Higher energy gain from meat
+		e.Energy -= toxinDamage
+		
+		// Also get remaining energy from the consumed entity
+		e.Energy += other.Energy * 0.3
+		
+		// Desirability affects hunting motivation for future reference
+		if desirability > 0.7 {
+			// High-quality prey - remember this for future behavior evolution
+			e.SetTrait("prey_preference_" + other.Species, math.Min(1.0, e.GetTrait("prey_preference_" + other.Species) + 0.1))
+		}
+	} else {
+		// Fallback to traditional system
+		energyGain := (other.GetTrait("size")+1.0)*10 + other.Energy*0.5
+		e.Energy += energyGain
+	}
 
 	// Eating costs some energy
 	e.Energy -= 5
@@ -515,8 +553,23 @@ func (e *Entity) Update() {
 
 	e.Age++
 
-	// Natural energy decay
-	e.Energy -= 1.0 + float64(e.Age)*0.01
+	// Update molecular needs (deficiencies increase over time)
+	if e.MolecularNeeds != nil {
+		e.MolecularNeeds.UpdateDeficiencies(1.0) // 1 time step
+	}
+
+	// Natural energy decay (affected by nutritional status)
+	baseDecay := 1.0 + float64(e.Age)*0.01
+	
+	// Molecular nutritional status affects energy decay
+	if e.MolecularNeeds != nil {
+		nutritionalStatus := e.MolecularNeeds.GetOverallNutritionalStatus()
+		// Poor nutrition increases energy decay
+		nutritionalMultiplier := 1.0 + (1.0-nutritionalStatus)*0.5
+		baseDecay *= nutritionalMultiplier
+	}
+	
+	e.Energy -= baseDecay
 
 	// Die if energy is too low
 	if e.Energy <= 0 {
@@ -529,6 +582,91 @@ func (e *Entity) Update() {
 	if e.Age > maxAge {
 		e.IsAlive = false
 	}
+}
+
+// SeekNutrition makes the entity move toward the most nutritionally desirable nearby food sources
+func (e *Entity) SeekNutrition(plants []*Plant, entities []*Entity, maxDistance float64) (targetX, targetY float64, found bool) {
+	if !e.IsAlive || e.MolecularNeeds == nil {
+		return 0, 0, false
+	}
+
+	bestDesirability := 0.0
+	bestX, bestY := 0.0, 0.0
+	found = false
+
+	// Check nearby plants
+	for _, plant := range plants {
+		if !plant.IsAlive || plant.MolecularProfile == nil {
+			continue
+		}
+
+		// Calculate distance
+		dx := plant.Position.X - e.Position.X
+		dy := plant.Position.Y - e.Position.Y
+		distance := math.Sqrt(dx*dx + dy*dy)
+
+		if distance > maxDistance {
+			continue
+		}
+
+		// Calculate molecular desirability
+		desirability := GetMolecularDesirability(plant.MolecularProfile, e.MolecularNeeds)
+		
+		// Adjust for distance (closer is better)
+		adjustedDesirability := desirability * (1.0 - distance/maxDistance*0.3)
+
+		if adjustedDesirability > bestDesirability {
+			bestDesirability = adjustedDesirability
+			bestX, bestY = plant.Position.X, plant.Position.Y
+			found = true
+		}
+	}
+
+	// Check nearby dead entities (if carnivorous)
+	if e.GetTrait("aggression") > 0.0 { // Aggressive entities are more carnivorous
+		for _, other := range entities {
+			if other == e || other.IsAlive || other.MolecularProfile == nil {
+				continue
+			}
+
+			// Calculate distance
+			dx := other.Position.X - e.Position.X
+			dy := other.Position.Y - e.Position.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
+
+			if distance > maxDistance {
+				continue
+			}
+
+			// Calculate molecular desirability for meat
+			desirability := GetMolecularDesirability(other.MolecularProfile, e.MolecularNeeds)
+			
+			// Meat is generally more desirable for carnivores
+			if e.GetTrait("aggression") > 0.3 {
+				desirability *= 1.5
+			}
+			
+			// Adjust for distance
+			adjustedDesirability := desirability * (1.0 - distance/maxDistance*0.3)
+
+			if adjustedDesirability > bestDesirability {
+				bestDesirability = adjustedDesirability
+				bestX, bestY = other.Position.X, other.Position.Y
+				found = true
+			}
+		}
+	}
+
+	return bestX, bestY, found
+}
+
+// GetMolecularNutritionalStress returns a value indicating how much nutritional stress the entity is under
+func (e *Entity) GetMolecularNutritionalStress() float64 {
+	if e.MolecularNeeds == nil {
+		return 0.0
+	}
+	
+	return 1.0 - e.MolecularNeeds.GetOverallNutritionalStatus()
 }
 
 // CanEatPlant determines if this entity can eat a plant
@@ -552,30 +690,53 @@ func (e *Entity) CanEatPlant(plant *Plant) bool {
 	}
 }
 
-// EatPlant consumes a plant for energy
+// EatPlant consumes a plant for energy using molecular system
 func (e *Entity) EatPlant(plant *Plant) bool {
 	if !e.CanEatPlant(plant) {
 		return false
 	}
 
 	// Calculate how much to eat based on entity size and hunger
-	eatAmount := 10 + e.GetTrait("size")*5
+	baseEatAmount := 10 + e.GetTrait("size")*5
 	if e.Energy < 30 {
-		eatAmount *= 1.5 // Eat more when hungry
+		baseEatAmount *= 1.5 // Eat more when hungry
 	}
 
-	// Get nutrition and toxicity
-	nutrition := plant.Consume(eatAmount)
-	toxicity := plant.GetToxicity()
+	// Use molecular system to determine desirability and consumption
+	if plant.MolecularProfile != nil && e.MolecularNeeds != nil && e.MolecularMetabolism != nil {
+		// Calculate molecular desirability
+		desirability := GetMolecularDesirability(plant.MolecularProfile, e.MolecularNeeds)
+		
+		// Adjust eating amount based on desirability
+		eatAmount := baseEatAmount * (0.5 + desirability*0.5)
+		
+		// Consume nutrients using molecular system
+		energyGained, toxinDamage := plant.MolecularProfile.ConsumeNutrients(
+			e.MolecularNeeds, 
+			e.MolecularMetabolism, 
+			eatAmount/100.0) // Convert to consumption rate
+		
+		// Apply energy gain and toxin damage
+		e.Energy += energyGained * 10.0 // Scale up energy gain
+		e.Energy -= toxinDamage
+		
+		// Traditional plant consumption for backwards compatibility
+		nutrition := plant.Consume(eatAmount)
+		e.Energy += nutrition * 0.3 // Reduced to avoid double-counting
+	} else {
+		// Fallback to traditional system if molecular system not available
+		nutrition := plant.Consume(baseEatAmount)
+		toxicity := plant.GetToxicity()
 
-	// Apply nutrition
-	e.Energy += nutrition
+		// Apply nutrition
+		e.Energy += nutrition
 
-	// Apply toxicity damage
-	if toxicity > 0 {
-		resistance := e.GetTrait("toxin_resistance")
-		damage := toxicity * (1.0 - resistance*0.5)
-		e.Energy -= damage
+		// Apply toxicity damage
+		if toxicity > 0 {
+			resistance := e.GetTrait("toxin_resistance")
+			damage := toxicity * (1.0 - resistance*0.5)
+			e.Energy -= damage
+		}
 	}
 
 	// Eating costs some energy

@@ -31,6 +31,9 @@ type Plant struct {
 	NutritionVal float64          `json:"nutrition_value"`
 	Toxicity     float64          `json:"toxicity"`
 	GrowthRate   float64          `json:"growth_rate"`
+	
+	// Molecular system
+	MolecularProfile *MolecularProfile `json:"molecular_profile"`
 }
 
 // PlantConfig defines the characteristics of different plant types
@@ -164,6 +167,9 @@ func NewPlant(id int, plantType PlantType, position Position) *Plant {
 	plant.GrowthRate += plant.GetTrait("growth_efficiency") * 0.2
 	plant.NutritionVal += plant.GetTrait("nutrition_density") * 10
 	plant.Toxicity += math.Max(0, plant.GetTrait("toxin_production")*0.3)
+
+	// Initialize molecular profile
+	plant.MolecularProfile = CreatePlantMolecularProfile(plant)
 
 	return plant
 }
