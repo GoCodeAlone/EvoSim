@@ -69,6 +69,9 @@ type EventData struct {
 	Description string `json:"description"`
 	Duration    int    `json:"duration"`
 	Tick        int    `json:"tick"`
+	Type        string `json:"type"`        // "active" or "historical"
+	EventType   string `json:"event_type"` // Type of historical event
+	Timestamp   string `json:"timestamp"`  // When the event occurred
 }
 
 // PopulationData represents population statistics
@@ -458,15 +461,44 @@ func (vm *ViewManager) getStatsData() map[string]interface{} {
 }
 
 func (vm *ViewManager) getEventsData() []EventData {
-	events := make([]EventData, len(vm.world.Events))
-	for i, event := range vm.world.Events {
-		events[i] = EventData{
+	events := make([]EventData, 0)
+	
+	// Add current active events
+	for _, event := range vm.world.Events {
+		events = append(events, EventData{
 			Name:        event.Name,
 			Description: event.Description,
 			Duration:    event.Duration,
 			Tick:        vm.world.Tick,
+			Type:        "active",
+			EventType:   "world_event",
+			Timestamp:   vm.world.Clock.Format("15:04:05"),
+		})
+	}
+	
+	// Add recent historical events from event logger
+	if vm.world.EventLogger != nil {
+		historyCount := 10 // Show last 10 historical events
+		logEvents := vm.world.EventLogger.Events
+		startIdx := 0
+		if len(logEvents) > historyCount {
+			startIdx = len(logEvents) - historyCount
+		}
+		
+		for i := startIdx; i < len(logEvents); i++ {
+			logEvent := logEvents[i]
+			events = append(events, EventData{
+				Name:        vm.formatEventName(logEvent.Type),
+				Description: logEvent.Description,
+				Duration:    0, // Historical events have no duration
+				Tick:        logEvent.Tick,
+				Type:        "historical",
+				EventType:   logEvent.Type,
+				Timestamp:   logEvent.Timestamp.Format("15:04:05"),
+			})
 		}
 	}
+	
 	return events
 }
 
@@ -1004,4 +1036,24 @@ func (vm *ViewManager) getFeedbackLoopData() FeedbackLoopData {
 	}
 	
 	return data
+}
+
+// formatEventName converts event type to display name
+func (vm *ViewManager) formatEventName(eventType string) string {
+	names := map[string]string{
+		"species_extinction": "Species Extinction",
+		"species_evolution":  "Species Evolution",
+		"world_event":        "World Event",
+		"population_boom":    "Population Boom",
+		"population_crash":   "Population Crash",
+		"new_species":        "New Species",
+		"major_mutation":     "Major Mutation",
+		"plant_evolution":    "Plant Evolution",
+		"ecosystem_shift":    "Ecosystem Shift",
+	}
+	
+	if name, exists := names[eventType]; exists {
+		return name
+	}
+	return eventType
 }

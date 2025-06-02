@@ -850,11 +850,17 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         // Render events view
         function renderEvents(events) {
             let html = '<h3>🌪️ World Events & Event Log</h3>';
+            
+            // Separate active and historical events
+            const activeEvents = events.filter(event => event.type === 'active');
+            const historicalEvents = events.filter(event => event.type === 'historical');
+            
+            // Active Events Section
             html += '<h4>Active Events:</h4>';
-            if (events.length === 0) {
+            if (activeEvents.length === 0) {
                 html += '<div>No active events</div>';
             } else {
-                events.forEach(event => {
+                activeEvents.forEach(event => {
                     html += '<div class="event-item">';
                     html += '<strong>' + event.name + '</strong><br>';
                     html += event.description + '<br>';
@@ -862,6 +868,22 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     html += '</div>';
                 });
             }
+            
+            // Historical Events Section
+            html += '<h4>Recent History:</h4>';
+            if (historicalEvents.length === 0) {
+                html += '<div>No historical events recorded</div>';
+            } else {
+                historicalEvents.forEach(event => {
+                    html += '<div class="event-item" style="border-left-color: #888;">';
+                    html += '<strong>' + event.name + '</strong> ';
+                    html += '<small style="color: #aaa;">(' + event.timestamp + ')</small><br>';
+                    html += event.description + '<br>';
+                    html += '<small>Tick: ' + event.tick + '</small>';
+                    html += '</div>';
+                });
+            }
+            
             return html;
         }
         
@@ -1246,16 +1268,26 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 func (wi *WebInterface) handleClientAction(action string) {
 	switch action {
 	case "toggle_pause":
-		// For now, just log the action
-		// In a full implementation, this would control the simulation
-		log.Printf("Client requested pause toggle")
+		wi.world.TogglePause()
+		log.Printf("Client requested pause toggle - now paused: %v", wi.world.IsPaused())
 		
 	case "reset":
 		log.Printf("Client requested reset")
+		wi.world.Reset()
+		// Reinitialize with default populations after reset
+		wi.reinitializeWorld()
 		
 	case "save_state":
 		log.Printf("Client requested state save")
-		// Could trigger a state save here
+		// Create state manager and save to default file
+		stateManager := NewStateManager(wi.world)
+		filename := fmt.Sprintf("web_save_%d.json", time.Now().Unix())
+		err := stateManager.SaveToFile(filename)
+		if err != nil {
+			log.Printf("Error saving state: %v", err)
+		} else {
+			log.Printf("State saved to %s", filename)
+		}
 	}
 }
 
@@ -1334,4 +1366,85 @@ func (wi *WebInterface) sendToClient(ws *websocket.Conn, data *ViewData) {
 // Stop stops the web interface
 func (wi *WebInterface) Stop() {
 	close(wi.stopChan)
+}
+
+// reinitializeWorld reinitializes the world with default populations after reset
+func (wi *WebInterface) reinitializeWorld() {
+	// Add default populations back to the world
+	populations := []PopulationConfig{
+		{
+			Name:    "Herbivores",
+			Species: "herbivore",
+			BaseTraits: map[string]float64{
+				"size":               -0.5, // Smaller
+				"speed":              0.3,  // Moderate speed
+				"aggression":         -0.8, // Very peaceful
+				"defense":            0.2,  // Some defense
+				"cooperation":        0.6,  // Cooperative
+				"intelligence":       0.1,  // Basic intelligence
+				"endurance":          0.4,  // Good endurance
+				"strength":           -0.2, // Weaker
+				"aquatic_adaptation": -0.5, // Poor in water initially
+				"digging_ability":    0.1,  // Basic digging
+				"underground_nav":    -0.2, // Poor underground navigation initially
+				"flying_ability":     -0.8, // Cannot fly initially
+				"altitude_tolerance": -0.6, // Poor altitude tolerance initially
+			},
+			StartPos:         Position{X: 25, Y: 25},
+			Spread:           15.0,
+			Color:            "green",
+			BaseMutationRate: 0.05, // Lower mutation rate - stable herbivores
+		},
+		{
+			Name:    "Predators",
+			Species: "predator",
+			BaseTraits: map[string]float64{
+				"size":               0.4,  // Larger
+				"speed":              0.6,  // Fast
+				"aggression":         0.8,  // Aggressive
+				"defense":            0.4,  // Good defense
+				"cooperation":        -0.3, // Mostly solitary
+				"intelligence":       0.5,  // Higher intelligence
+				"endurance":          0.2,  // Moderate endurance
+				"strength":           0.7,  // Strong
+				"aquatic_adaptation": -0.3, // Moderate water adaptation
+				"digging_ability":    -0.1, // Some digging
+				"underground_nav":    -0.4, // Poor underground navigation initially
+				"flying_ability":     -0.6, // Cannot fly initially
+				"altitude_tolerance": -0.4, // Poor altitude tolerance initially
+			},
+			StartPos:         Position{X: 75, Y: 75},
+			Spread:           10.0,
+			Color:            "red",
+			BaseMutationRate: 0.08, // Moderate mutation rate - adaptive predators
+		},
+		{
+			Name:    "Omnivores",
+			Species: "omnivore",
+			BaseTraits: map[string]float64{
+				"size":               0.0,  // Medium size
+				"speed":              0.4,  // Moderate speed
+				"aggression":         0.1,  // Slightly aggressive
+				"defense":            0.3,  // Moderate defense
+				"cooperation":        0.2,  // Some cooperation
+				"intelligence":       0.4,  // Good intelligence
+				"endurance":          0.3,  // Good endurance
+				"strength":           0.1,  // Moderate strength
+				"aquatic_adaptation": 0.0,  // Neutral water adaptation
+				"digging_ability":    0.2,  // Some digging
+				"underground_nav":    0.0,  // Neutral underground navigation
+				"flying_ability":     -0.5, // Cannot fly initially
+				"altitude_tolerance": -0.2, // Poor altitude tolerance initially
+			},
+			StartPos:         Position{X: 50, Y: 20},
+			Spread:           12.0,
+			Color:            "blue",
+			BaseMutationRate: 0.10, // Moderate mutation rate - adaptable
+		},
+	}
+
+	// Add populations to the world
+	for _, popConfig := range populations {
+		wi.world.AddPopulation(popConfig)
+	}
 }

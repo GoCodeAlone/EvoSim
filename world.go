@@ -87,6 +87,7 @@ type World struct {
 	Tick        int
 	Clock       time.Time
 	LastUpdate  time.Time
+	Paused      bool // Whether the simulation is paused
 	// Advanced feature systems
 	CommunicationSystem *CommunicationSystem
 	GroupBehaviorSystem *GroupBehaviorSystem
@@ -378,6 +379,11 @@ func (w *World) AddPopulation(config PopulationConfig) {
 
 // Update simulates one tick of the world
 func (w *World) Update() {
+	// Skip update if paused
+	if w.Paused {
+		return
+	}
+	
 	w.Tick++
 	now := time.Now()
 	w.Clock = w.Clock.Add(time.Hour) // Each tick = 1 hour world time
@@ -1912,5 +1918,46 @@ func seasonToString(season Season) string {
 		return "Winter"
 	default:
 		return "Unknown"
+	}
+}
+
+// TogglePause toggles the simulation pause state
+func (w *World) TogglePause() {
+	w.Paused = !w.Paused
+}
+
+// SetPaused sets the simulation pause state
+func (w *World) SetPaused(paused bool) {
+	w.Paused = paused
+}
+
+// IsPaused returns the current pause state
+func (w *World) IsPaused() bool {
+	return w.Paused
+}
+
+// Reset resets the world to initial state
+func (w *World) Reset() {
+	// Clear existing entities and populations
+	w.AllEntities = make([]*Entity, 0)
+	w.AllPlants = make([]*Plant, 0)
+	w.Populations = make(map[string]*Population)
+	w.PhysicsComponents = make(map[int]*PhysicsComponent)
+	
+	// Reset counters
+	w.Tick = 0
+	w.NextID = 0
+	w.NextPlantID = 0
+	w.Paused = false
+	
+	// Clear events
+	w.Events = make([]*WorldEvent, 0)
+	
+	// Clear grid
+	w.clearGrid()
+	
+	// Reset physics collision counters
+	if w.PhysicsSystem != nil {
+		w.PhysicsSystem.ResetCollisionCounters()
 	}
 }
