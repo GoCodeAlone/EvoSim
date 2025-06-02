@@ -56,56 +56,56 @@ func (ebs *EmergentBehaviorSystem) initializeBasicBehaviors() {
 	behaviors := []LearnedBehavior{
 		{
 			Name:          "tool_making",
-			Complexity:    0.4,
+			Complexity:    0.3, // Reduced complexity for easier discovery
 			Effectiveness: 0.7,
 			Prerequisites: []string{},
 			Description:   "Creating basic tools from available materials",
 		},
 		{
 			Name:          "tunnel_digging",
-			Complexity:    0.6,
+			Complexity:    0.5, // Reduced complexity
 			Effectiveness: 0.8,
 			Prerequisites: []string{"tool_making"},
 			Description:   "Creating underground passages for protection and travel",
 		},
 		{
 			Name:          "cache_hiding",
-			Complexity:    0.3,
+			Complexity:    0.2, // Reduced complexity for basic behavior
 			Effectiveness: 0.6,
 			Prerequisites: []string{},
 			Description:   "Storing resources in hidden locations for later use",
 		},
 		{
 			Name:          "trap_setting",
-			Complexity:    0.7,
+			Complexity:    0.6, // Slightly reduced complexity
 			Effectiveness: 0.9,
 			Prerequisites: []string{"tool_making"},
 			Description:   "Creating environmental traps to catch prey",
 		},
 		{
 			Name:          "path_making",
-			Complexity:    0.2,
+			Complexity:    0.15, // Very easy to discover
 			Effectiveness: 0.4,
 			Prerequisites: []string{},
 			Description:   "Creating efficient travel routes between locations",
 		},
 		{
 			Name:          "cooperative_building",
-			Complexity:    0.8,
+			Complexity:    0.7, // Reduced complexity
 			Effectiveness: 1.0,
 			Prerequisites: []string{"tool_making"},
 			Description:   "Working together to create complex structures",
 		},
 		{
 			Name:          "resource_sharing",
-			Complexity:    0.5,
+			Complexity:    0.4, // Reduced complexity
 			Effectiveness: 0.6,
 			Prerequisites: []string{"cache_hiding"},
 			Description:   "Sharing stored resources with tribe members",
 		},
 		{
 			Name:          "tool_modification",
-			Complexity:    0.6,
+			Complexity:    0.5, // Reduced complexity
 			Effectiveness: 0.8,
 			Prerequisites: []string{"tool_making"},
 			Description:   "Improving existing tools for better performance",
@@ -119,15 +119,15 @@ func (ebs *EmergentBehaviorSystem) initializeBasicBehaviors() {
 
 // InitializeEntityBehavior creates a behavior pattern for a new entity
 func (ebs *EmergentBehaviorSystem) InitializeEntityBehavior(entity *Entity) {
-	// Increased learning rates and made social learning more accessible
+	// Enhanced learning rates and improved social learning accessibility
 	pattern := &BehaviorPattern{
 		EntityID:            entity.ID,
 		KnownBehaviors:      make(map[string]float64),
 		PreferredActions:    make([]string, 0),
-		LearningRate:        0.2 + entity.GetTrait("intelligence") * 0.4, // Base rate + intelligence bonus
+		LearningRate:        0.25 + entity.GetTrait("intelligence") * 0.5, // Improved base rate
 		Curiosity:           entity.GetTrait("curiosity"),
-		ExplorationTendency: entity.GetTrait("curiosity") * 0.7, // Increased exploration
-		SocialLearning:      entity.GetTrait("cooperation") > 0.2, // Lowered threshold
+		ExplorationTendency: entity.GetTrait("curiosity") * 0.8, // Further increased exploration
+		SocialLearning:      entity.GetTrait("cooperation") > 0.15, // Further lowered threshold
 		ToolPreferences:     make(map[ToolType]float64),
 	}
 	
@@ -155,14 +155,14 @@ func (ebs *EmergentBehaviorSystem) UpdateEntityBehaviors(world *World) {
 			pattern = ebs.BehaviorPatterns[entity.ID]
 		}
 		
-		// Try to discover new behaviors - increased rate and made intelligence-dependent
-		discoveryRate := pattern.Curiosity * entity.GetTrait("intelligence") * 0.02
+		// Try to discover new behaviors - enhanced discovery rate
+		discoveryRate := pattern.Curiosity * entity.GetTrait("intelligence") * 0.03 // Increased rate
 		if rand.Float64() < discoveryRate {
 			ebs.attemptBehaviorDiscovery(entity, pattern, world)
 		}
 		
-		// Try to learn from nearby entities - made trait-dependent
-		socialRate := pattern.Curiosity * entity.GetTrait("cooperation") * 0.08
+		// Try to learn from nearby entities - enhanced social learning
+		socialRate := pattern.Curiosity * entity.GetTrait("cooperation") * 0.12 // Increased rate
 		if pattern.SocialLearning && rand.Float64() < socialRate {
 			ebs.attemptSocialLearning(entity, pattern, world)
 		}
@@ -195,12 +195,12 @@ func (ebs *EmergentBehaviorSystem) attemptBehaviorDiscovery(entity *Entity, patt
 		
 		// Check if entity has sufficient intelligence to discover this behavior
 		intelligence := entity.GetTrait("intelligence")
-		curiosityBonus := pattern.Curiosity * 0.5
-		discoveryChance := (intelligence - behavior.Complexity + curiosityBonus) * 0.15
+		curiosityBonus := pattern.Curiosity * 0.6 // Increased curiosity bonus
+		discoveryChance := (intelligence - behavior.Complexity + curiosityBonus) * 0.18 // Increased discovery multiplier
 		
 		if discoveryChance > 0 && rand.Float64() < discoveryChance {
 			// Successfully discovered behavior!
-			pattern.KnownBehaviors[behaviorName] = 0.1 // Start with basic proficiency
+			pattern.KnownBehaviors[behaviorName] = 0.15 // Start with higher proficiency
 			behavior.Spread++
 			
 			// Log the discovery
@@ -234,7 +234,7 @@ func (ebs *EmergentBehaviorSystem) attemptSocialLearning(entity *Entity, pattern
 		
 		// Try to learn behaviors the other entity knows
 		for behaviorName, otherProficiency := range otherPattern.KnownBehaviors {
-			if otherProficiency <= 0.05 { // Lowered threshold for learning
+			if otherProficiency <= 0.03 { // Further lowered threshold for learning
 				continue
 			}
 			
@@ -243,14 +243,14 @@ func (ebs *EmergentBehaviorSystem) attemptSocialLearning(entity *Entity, pattern
 				continue
 			}
 			
-			// Learning chance based on cooperation and intelligence - increased rates
-			baseChance := entity.GetTrait("cooperation") * entity.GetTrait("intelligence") * 0.08
-			proximityBonus := math.Max(0, (5.0 - distance) / 5.0) * 0.03
+			// Learning chance based on cooperation and intelligence - further increased rates
+			baseChance := entity.GetTrait("cooperation") * entity.GetTrait("intelligence") * 0.12 // Increased
+			proximityBonus := math.Max(0, (5.0 - distance) / 5.0) * 0.05 // Increased proximity bonus
 			learningChance := baseChance + proximityBonus
 			
 			if rand.Float64() < learningChance {
 				// Learn a bit of the behavior - increased learning rate
-				improvement := pattern.LearningRate * 0.15
+				improvement := pattern.LearningRate * 0.2 // Increased improvement rate
 				pattern.KnownBehaviors[behaviorName] = math.Min(otherProficiency, myProficiency + improvement)
 			}
 		}
@@ -277,8 +277,8 @@ func (ebs *EmergentBehaviorSystem) executeEntityBehaviors(entity *Entity, patter
 		}
 	}
 	
-	// Lowered threshold to make behaviors more likely to be executed early
-	if bestBehavior != "" && bestScore > 0.2 {
+	// Further lowered threshold to make behaviors more likely to be executed early
+	if bestBehavior != "" && bestScore > 0.15 {
 		ebs.executeBehavior(entity, bestBehavior, pattern, world)
 	}
 }

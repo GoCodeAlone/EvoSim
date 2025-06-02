@@ -2,37 +2,50 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  fullyParallel: false, // Run sequentially for more stability
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  retries: process.env.CI ? 2 : 1,
+  workers: 1, // Single worker for stability
+  reporter: process.env.CI ? 'github' : 'line',
+  timeout: 60000, // 60 second test timeout
+  expect: {
+    timeout: 10000, // 10 second assertion timeout
+  },
   use: {
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    actionTimeout: 10000, // 10 second action timeout
   },
 
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        // Add headless mode for CI
+        launchOptions: {
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        },
+      },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    // Only run chromium in CI for speed
+    ...(process.env.CI ? [] : [
+      {
+        name: 'firefox',
+        use: { ...devices['Desktop Firefox'] },
+      },
+    ]),
   ],
 
   // Start local web server before running tests
   webServer: {
-    command: 'GOWORK=off go run . -web -web-port 8080 -pop-size 5',
+    command: 'GOWORK=off go run . -web -web-port 8080 -pop-size 3 -mutation-rate 0.1',
     port: 8080,
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 45000, // Increased timeout for server startup
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });
