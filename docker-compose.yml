@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  evosim-web:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - GOWORK=off
+    command: ["./evosim", "--web", "--web-port", "8080"]
+
