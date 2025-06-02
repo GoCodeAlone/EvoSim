@@ -247,6 +247,29 @@ func (sm *StateManager) LoadFromFile(filename string) error {
 	return nil
 }
 
+// LoadFromData loads simulation state from a map (used for web interface)
+func (sm *StateManager) LoadFromData(data map[string]interface{}) error {
+	// Convert map to JSON and then to SimulationState
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal data: %v", err)
+	}
+
+	var state SimulationState
+	err = json.Unmarshal(jsonData, &state)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal state: %v", err)
+	}
+
+	err = sm.restoreState(&state)
+	if err != nil {
+		return fmt.Errorf("failed to restore state: %v", err)
+	}
+
+	fmt.Printf("Simulation state loaded from web interface (saved at %s)\n", state.SavedAt.Format(time.RFC3339))
+	return nil
+}
+
 // createState converts the current world state to a serializable format
 func (sm *StateManager) createState() (*SimulationState, error) {
 	state := &SimulationState{
