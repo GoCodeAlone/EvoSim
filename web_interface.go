@@ -407,13 +407,13 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     . Plains | ♠ Forest | ~ Desert<br>
                     ^ Mountain | ≈ Water | ☢ Radiation<br><br>
                     
-                    <strong>Entities:</strong><br>
-                    H Herbivore | P Predator | O Omnivore<br>
+                    <strong>Entities (single):</strong><br>
+                    🐰 Herbivore | 🐺 Predator | 🐻 Omnivore | 🦋 Generic<br>
                     Numbers = Multiple entities<br><br>
                     
                     <strong>Plants:</strong><br>
-                    . Grass | ♦ Bush | ♠ Tree<br>
-                    ♪ Mushroom | ≈ Algae | † Cactus
+                    🌱 Grass | 🌿 Bush | 🌳 Tree<br>
+                    🍄 Mushroom | 🌊 Algae | 🌵 Cactus
                 </div>
             </div>
         </div>
