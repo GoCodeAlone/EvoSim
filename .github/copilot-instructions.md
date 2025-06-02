@@ -54,12 +54,21 @@ Always consult FEATURES.md before starting new work to understand current priori
 ### Test Stability (CRITICAL)
 **ALL TESTS MUST PASS** before completing any development iteration. This is non-negotiable.
 
-#### Testing Protocol:
+#### Complete Testing Protocol:
 1. **Before making changes**: Run `GOWORK=off go test ./...` to ensure starting state is clean
 2. **After implementing features**: Run full test suite to verify no regressions
-3. **Before completing work**: Final test run must show 100% pass rate
-4. **Flaky tests**: Any intermittently failing tests must be fixed immediately
-5. **Test coverage**: New features require corresponding test coverage
+3. **Web interface validation**: Execute `./test_web_interface.sh` which launches the web app and runs all playwright tests
+4. **Frontend testing**: Run all unit tests for frontend components if applicable
+5. **Before completing work**: Final test run must show 100% pass rate across all testing systems
+6. **Flaky tests**: Any intermittently failing tests must be fixed immediately
+7. **Test coverage**: New features require corresponding test coverage
+
+#### Acceptance Criteria for Issue Completion:
+**Before marking any issue as complete, the following MUST be executed successfully:**
+
+1. **Go Unit Tests**: `GOWORK=off go test ./...` - All tests must pass
+2. **Web Interface Tests**: `./test_web_interface.sh` - Script launches web app and runs all playwright tests
+3. **Frontend Unit Tests**: Run all frontend unit tests if applicable to the changes
 
 #### Test Failure Response:
 - **Immediate action required** if any test fails
@@ -67,7 +76,9 @@ Always consult FEATURES.md before starting new work to understand current priori
 - **Fix implementation** before proceeding with other features
 - **Validation** that fix doesn't break other functionality
 
-**Command to verify test stability**: `GOWORK=off go test ./...`
+**Commands to verify complete test stability:**
+- Backend: `GOWORK=off go test ./...`
+- Web Interface: `./test_web_interface.sh`
 
 ## Core Concepts & Systems
 

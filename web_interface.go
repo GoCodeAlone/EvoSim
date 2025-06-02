@@ -205,6 +205,127 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         .view-tab.active {
             background-color: #6a9bd2;
         }
+        
+        .population-item {
+            background-color: #3a3a3a;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .population-item.updating {
+            border-left-color: #4CAF50;
+            background-color: #2d4a2d;
+        }
+        
+        .update-indicator {
+            color: #4CAF50;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .event-item {
+            background-color: #3a3a3a;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 3px solid #ff6b6b;
+        }
+        
+        .species-item {
+            background-color: #3a3a3a;
+            padding: 5px;
+            margin: 3px 0;
+            border-radius: 3px;
+        }
+        
+        .grid-container {
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 14px;
+            white-space: pre;
+            background-color: #000000;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        /* Rich graphics for grid cells */
+        .grid-cell {
+            display: inline-block;
+            width: 12px;
+            height: 14px;
+            position: relative;
+        }
+        
+        .biome-plains { background-color: #2d5a2d; }
+        .biome-forest { background-color: #1a3d1a; }
+        .biome-desert { background-color: #8b8000; }
+        .biome-mountain { background-color: #696969; }
+        .biome-water { background-color: #191970; }
+        .biome-radiation { background-color: #8b0000; }
+        
+        .entity-herbivore { color: #90ee90; }
+        .entity-predator { color: #ff6b6b; }
+        .entity-omnivore { color: #87ceeb; }
+        
+        .plant-grass { color: #32cd32; }
+        .plant-bush { color: #228b22; }
+        .plant-tree { color: #006400; }
+        .plant-mushroom { color: #9370db; }
+        .plant-algae { color: #00ffff; }
+        .plant-cactus { color: #808000; }
+        
+        .rich-grid {
+            font-family: monospace;
+            line-height: 1;
+            background-color: #000000;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        
+        .grid-row {
+            white-space: nowrap;
+        }
+        
+        .grid-cell {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            position: relative;
+            text-align: center;
+            font-size: 12px;
+            line-height: 16px;
+            border-radius: 1px;
+            margin: 0;
+            vertical-align: top;
+        }
+        
+        .has-event {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+        
+        .event-overlay {
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 8px;
+            color: yellow;
+        }
     </style>
 </head>
 <body>
@@ -304,7 +425,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         const viewModes = [
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
-            'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY'
+            'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR'
         ];
         
         // Initialize view tabs
@@ -420,6 +541,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     viewContent.innerHTML = '<div class="stats-section">' + renderStats(data.stats) + '</div>';
                     break;
                     
+                case 'EVENTS':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEvents(data.events) + '</div>';
+                    break;
+                    
                 case 'POPULATIONS':
                     viewContent.innerHTML = '<div class="stats-section">' + renderPopulations(data.populations) + '</div>';
                     break;
@@ -428,8 +553,52 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     viewContent.innerHTML = '<div class="stats-section">' + renderCommunication(data.communication) + '</div>';
                     break;
                     
+                case 'CIVILIZATION':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderCivilization(data.civilization) + '</div>';
+                    break;
+                    
+                case 'PHYSICS':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderPhysics(data.physics) + '</div>';
+                    break;
+                    
                 case 'WIND':
                     viewContent.innerHTML = '<div class="stats-section">' + renderWind(data.wind) + '</div>';
+                    break;
+                    
+                case 'SPECIES':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderSpecies(data.species) + '</div>';
+                    break;
+                    
+                case 'NETWORK':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderNetwork(data.network) + '</div>';
+                    break;
+                    
+                case 'DNA':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderDNA(data.dna) + '</div>';
+                    break;
+                    
+                case 'CELLULAR':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderCellular(data.cellular) + '</div>';
+                    break;
+                    
+                case 'EVOLUTION':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEvolution(data.evolution) + '</div>';
+                    break;
+                    
+                case 'TOPOLOGY':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderTopology(data.topology) + '</div>';
+                    break;
+                    
+                case 'TOOLS':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderTools(data.tools) + '</div>';
+                    break;
+                    
+                case 'ENVIRONMENT':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEnvironment(data.environmental_mod) + '</div>';
+                    break;
+                    
+                case 'BEHAVIOR':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderBehavior(data.emergent_behavior) + '</div>';
                     break;
                     
                 default:
@@ -437,66 +606,447 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             }
         }
         
-        // Render grid view
+        // Render grid view with rich graphics
         function renderGrid(grid) {
-            let result = '';
+            let result = '<div class="rich-grid">';
             for (let y = 0; y < grid.length; y++) {
+                result += '<div class="grid-row">';
                 for (let x = 0; x < grid[y].length; x++) {
                     const cell = grid[y][x];
+                    let cellClass = 'grid-cell ';
+                    let cellContent = '';
+                    
+                    // Determine biome background
+                    cellClass += getBiomeClass(cell.biome);
+                    
+                    // Determine content (entities take priority over plants over biome)
                     if (cell.entity_count > 0) {
-                        result += cell.entity_symbol;
+                        cellClass += ' ' + getEntityClass(cell.entity_symbol);
+                        cellContent = getEntityDisplay(cell.entity_symbol, cell.entity_count);
                     } else if (cell.plant_count > 0) {
-                        result += cell.plant_symbol;
+                        cellClass += ' ' + getPlantClass(cell.plant_symbol);
+                        cellContent = getPlantDisplay(cell.plant_symbol, cell.plant_count);
                     } else {
-                        result += cell.biome_symbol;
+                        cellContent = getBiomeDisplay(cell.biome_symbol);
                     }
+                    
+                    // Add special indicators
+                    if (cell.has_event) {
+                        cellClass += ' has-event';
+                        cellContent += '<span class="event-overlay">⚡</span>';
+                    }
+                    
+                    result += '<span class="' + cellClass + '" title="' + getCellTooltip(cell) + '">' + cellContent + '</span>';
                 }
-                if (y < grid.length - 1) {
-                    result += '\n';
-                }
+                result += '</div>';
             }
+            result += '</div>';
             return result;
+        }
+        
+        function getBiomeClass(biome) {
+            const biomeClasses = {
+                'Plains': 'biome-plains',
+                'Forest': 'biome-forest', 
+                'Desert': 'biome-desert',
+                'Mountain': 'biome-mountain',
+                'Water': 'biome-water',
+                'Radiation': 'biome-radiation'
+            };
+            return biomeClasses[biome] || 'biome-plains';
+        }
+        
+        function getEntityClass(symbol) {
+            if (symbol === 'H') return 'entity-herbivore';
+            if (symbol === 'P') return 'entity-predator';
+            if (symbol === 'O') return 'entity-omnivore';
+            return 'entity-generic';
+        }
+        
+        function getPlantClass(symbol) {
+            const plantClasses = {
+                '.': 'plant-grass',
+                '♦': 'plant-bush',
+                '♠': 'plant-tree',
+                '♪': 'plant-mushroom',
+                '≈': 'plant-algae',
+                '†': 'plant-cactus'
+            };
+            return plantClasses[symbol] || 'plant-grass';
+        }
+        
+        function getEntityDisplay(symbol, count) {
+            if (count === 1) {
+                // Use styled symbols for single entities
+                const entitySymbols = {
+                    'H': '🐰', // Herbivore
+                    'P': '🐺', // Predator  
+                    'O': '🐻', // Omnivore
+                    'E': '🦋'  // Generic entity
+                };
+                return entitySymbols[symbol] || symbol;
+            } else {
+                // Use count for multiple entities
+                return count < 10 ? count.toString() : '+';
+            }
+        }
+        
+        function getPlantDisplay(symbol, count) {
+            const plantSymbols = {
+                '.': '🌱', // Grass
+                '♦': '🌿', // Bush
+                '♠': '🌳', // Tree
+                '♪': '🍄', // Mushroom
+                '≈': '🌊', // Algae
+                '†': '🌵'  // Cactus
+            };
+            return plantSymbols[symbol] || symbol;
+        }
+        
+        function getBiomeDisplay(symbol) {
+            // For empty biome cells, show subtle background patterns
+            return '&nbsp;';
+        }
+        
+        function getCellTooltip(cell) {
+            let tooltip = 'Biome: ' + cell.biome;
+            if (cell.entity_count > 0) {
+                tooltip += ', Entities: ' + cell.entity_count;
+            }
+            if (cell.plant_count > 0) {
+                tooltip += ', Plants: ' + cell.plant_count;
+            }
+            if (cell.has_event) {
+                tooltip += ', Event Active';
+            }
+            return tooltip;
         }
         
         // Render stats view
         function renderStats(stats) {
-            let html = '<h3>📊 Detailed Statistics</h3>';
+            let html = '<h3>📊 World Statistics</h3>';
+            
+            html += '<h4>General Stats:</h4>';
             for (const [key, value] of Object.entries(stats)) {
-                html += '<div>' + key.replace('_', ' ') + ': ' + (typeof value === 'number' ? value.toFixed(2) : value) + '</div>';
+                const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const displayValue = typeof value === 'number' ? value.toFixed(2) : value;
+                html += '<div>' + displayKey + ': ' + displayValue + '</div>';
             }
+            
+            html += '<h4>System Health:</h4>';
+            if (stats.avg_fitness) {
+                if (stats.avg_fitness < 0.3) {
+                    html += '<div style="color: orange;">⚠️ Low average fitness - population struggling</div>';
+                } else if (stats.avg_fitness < 0.6) {
+                    html += '<div style="color: yellow;">⚡ Moderate fitness - population stable</div>';
+                } else {
+                    html += '<div style="color: lightgreen;">✅ High fitness - population thriving</div>';
+                }
+            }
+            
+            if (stats.avg_energy) {
+                if (stats.avg_energy < 30) {
+                    html += '<div style="color: orange;">⚠️ Low energy levels - resource scarcity</div>';
+                } else if (stats.avg_energy < 60) {
+                    html += '<div style="color: yellow;">⚡ Moderate energy - adequate resources</div>';
+                } else {
+                    html += '<div style="color: lightgreen;">✅ High energy - abundant resources</div>';
+                }
+            }
+            
             return html;
         }
         
-        // Render populations view
+        // Track previous population data for stable ordering
+        let previousPopulations = [];
+        let populationUpdateIndicators = {};
+        
+        // Render populations view with stable ordering
         function renderPopulations(populations) {
             let html = '<h3>👥 Population Details</h3>';
-            populations.forEach(pop => {
-                html += '<div class="stats-section">';
-                html += '<h4>' + pop.name + '</h4>';
+            
+            // Sort populations by name for stable ordering
+            const sortedPopulations = [...populations].sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Track which populations have changed
+            const currentTime = Date.now();
+            sortedPopulations.forEach(pop => {
+                const prevPop = previousPopulations.find(p => p.name === pop.name);
+                if (prevPop && (
+                    prevPop.count !== pop.count || 
+                    Math.abs(prevPop.avg_fitness - pop.avg_fitness) > 0.01 ||
+                    Math.abs(prevPop.avg_energy - pop.avg_energy) > 0.01
+                )) {
+                    populationUpdateIndicators[pop.name] = currentTime;
+                }
+            });
+            
+            sortedPopulations.forEach(pop => {
+                const isUpdating = populationUpdateIndicators[pop.name] && 
+                                 (currentTime - populationUpdateIndicators[pop.name]) < 2000; // Show indicator for 2 seconds
+                
+                html += '<div class="population-item' + (isUpdating ? ' updating' : '') + '">';
+                html += '<h4>' + pop.name + (isUpdating ? ' <span class="update-indicator">●</span>' : '') + '</h4>';
                 html += '<div>Count: ' + pop.count + '</div>';
                 html += '<div>Average Fitness: ' + pop.avg_fitness.toFixed(2) + '</div>';
                 html += '<div>Average Energy: ' + pop.avg_energy.toFixed(2) + '</div>';
                 html += '<div>Average Age: ' + pop.avg_age.toFixed(1) + '</div>';
+                
+                if (pop.trait_averages && Object.keys(pop.trait_averages).length > 0) {
+                    html += '<h5>Average Traits:</h5>';
+                    Object.entries(pop.trait_averages).forEach(([trait, value]) => {
+                        html += '<div style="font-size: 0.9em; margin-left: 10px;">' + 
+                               trait + ': ' + value.toFixed(3) + '</div>';
+                    });
+                }
                 html += '</div>';
             });
+            
+            // Update previous populations for next comparison
+            previousPopulations = [...sortedPopulations];
+            
             return html;
         }
         
         // Render communication view
         function renderCommunication(comm) {
             let html = '<h3>📡 Communication System</h3>';
-            html += '<div>Active Signals: ' + comm.active_signals + '</div>';
+            html += '<h4>Active Signals:</h4>';
+            html += '<div>Total Active: ' + comm.active_signals + '</div>';
             
             if (Object.keys(comm.signal_types).length > 0) {
                 html += '<h4>Signal Types:</h4>';
+                const signalIcons = {
+                    'Danger': '🚨',
+                    'Food': '🍎', 
+                    'Mating': '💕',
+                    'Territory': '🏴',
+                    'Help': '🆘',
+                    'Migration': '🧭'
+                };
+                
                 for (const [type, count] of Object.entries(comm.signal_types)) {
-                    html += '<div>' + type + ': ' + count + '</div>';
+                    const icon = signalIcons[type] || '📡';
+                    html += '<div>' + icon + ' ' + type + ': ' + count + ' active</div>';
+                }
+            } else {
+                html += '<div>No active signals</div>';
+            }
+            
+            html += '<h4>Communication Stats:</h4>';
+            if (comm.active_signals === 0) {
+                html += '<div>Activity Level: Silent</div>';
+            } else if (comm.active_signals < 5) {
+                html += '<div>Activity Level: Low communication</div>';
+            } else if (comm.active_signals < 15) {
+                html += '<div>Activity Level: Moderate communication</div>';
+            } else {
+                html += '<div>Activity Level: High communication</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render events view
+        function renderEvents(events) {
+            let html = '<h3>🌪️ World Events & Event Log</h3>';
+            html += '<h4>Active Events:</h4>';
+            if (events.length === 0) {
+                html += '<div>No active events</div>';
+            } else {
+                events.forEach(event => {
+                    html += '<div class="event-item">';
+                    html += '<strong>' + event.name + '</strong><br>';
+                    html += event.description + '<br>';
+                    html += '<small>Duration: ' + event.duration + ' ticks remaining</small>';
+                    html += '</div>';
+                });
+            }
+            return html;
+        }
+        
+        // Render civilization view
+        function renderCivilization(civilization) {
+            let html = '<h3>🏛️ Civilization System</h3>';
+            html += '<div>Active Tribes: ' + civilization.tribes_count + '</div>';
+            html += '<div>Total Structures: ' + civilization.structure_count + '</div>';
+            html += '<div>Total Resources: ' + civilization.total_resources + '</div>';
+            
+            if (civilization.tribes_count === 0) {
+                html += '<br><div>No tribes formed yet</div>';
+            } else {
+                html += '<br><h4>Development Status:</h4>';
+                if (civilization.structure_count === 0) {
+                    html += '<div>Civilization Level: Primitive</div>';
+                } else if (civilization.structure_count < 5) {
+                    html += '<div>Civilization Level: Developing</div>';
+                } else if (civilization.structure_count < 15) {
+                    html += '<div>Civilization Level: Advanced</div>';
+                } else {
+                    html += '<div>Civilization Level: Highly Advanced</div>';
                 }
             }
             
             return html;
         }
         
+        // Render physics view
+        function renderPhysics(physics) {
+            let html = '<h3>⚡ Physics System</h3>';
+            html += '<h4>Movement Statistics:</h4>';
+            html += '<div>Average Velocity: ' + physics.average_velocity.toFixed(2) + '</div>';
+            html += '<div>Total Momentum: ' + physics.total_momentum.toFixed(2) + '</div>';
+            
+            html += '<h4>Collision Statistics:</h4>';
+            html += '<div>Collisions This Tick: ' + physics.collisions_last_tick + '</div>';
+            
+            if (physics.average_velocity < 0.1) {
+                html += '<br><div>Activity Level: Low (mostly stationary entities)</div>';
+            } else if (physics.average_velocity < 0.5) {
+                html += '<br><div>Activity Level: Medium (moderate movement)</div>';
+            } else {
+                html += '<br><div>Activity Level: High (active movement)</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render species view
+        function renderSpecies(species) {
+            let html = '<h3>🐾 Species Tracking</h3>';
+            html += '<div>Active Species: ' + species.active_species + '</div>';
+            html += '<div>Extinct Species: ' + species.extinct_species + '</div>';
+            
+            if (species.species_details && species.species_details.length > 0) {
+                html += '<h4>Species Details:</h4>';
+                species.species_details.forEach(detail => {
+                    html += '<div class="species-item">';
+                    html += '<strong>' + detail.name + '</strong>';
+                    if (detail.is_extinct) {
+                        html += ' <span style="color: red;">(Extinct)</span>';
+                    } else {
+                        html += ' - Population: ' + detail.population;
+                    }
+                    html += '</div>';
+                });
+            } else {
+                html += '<br><div>No species data available</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render network view
+        function renderNetwork(network) {
+            let html = '<h3>🌐 Plant Network System</h3>';
+            html += '<div>Network Connections: ' + network.connection_count + '</div>';
+            html += '<div>Chemical Signals: ' + network.signal_count + '</div>';
+            html += '<div>Network Clusters: ' + network.cluster_count + '</div>';
+            
+            if (network.connection_count === 0) {
+                html += '<br><div>No plant networks formed yet</div>';
+            } else {
+                html += '<br><h4>Network Status:</h4>';
+                if (network.cluster_count === 0) {
+                    html += '<div>Network Density: Sparse connections</div>';
+                } else if (network.cluster_count < 3) {
+                    html += '<div>Network Density: Few clusters formed</div>';
+                } else {
+                    html += '<div>Network Density: Multiple active clusters</div>';
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render DNA view
+        function renderDNA(dna) {
+            let html = '<h3>🧬 DNA System</h3>';
+            html += '<div>Organisms: ' + dna.organism_count + '</div>';
+            html += '<div>Average Mutations: ' + dna.average_mutations.toFixed(2) + '</div>';
+            html += '<div>Average Complexity: ' + dna.average_complexity.toFixed(2) + '</div>';
+            
+            if (dna.organism_count === 0) {
+                html += '<br><div>No DNA-based organisms present</div>';
+            } else {
+                html += '<br><h4>Genetic Status:</h4>';
+                if (dna.average_complexity < 1.0) {
+                    html += '<div>Complexity Level: Simple organisms</div>';
+                } else if (dna.average_complexity < 3.0) {
+                    html += '<div>Complexity Level: Moderate complexity</div>';
+                } else {
+                    html += '<div>Complexity Level: Complex organisms</div>';
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render cellular view
+        function renderCellular(cellular) {
+            let html = '<h3>🔬 Cellular System</h3>';
+            html += '<div>Total Cells: ' + cellular.total_cells + '</div>';
+            html += '<div>Average Complexity: ' + cellular.average_complexity.toFixed(2) + '</div>';
+            html += '<div>Cell Divisions: ' + cellular.cell_divisions + '</div>';
+            
+            if (cellular.total_cells === 0) {
+                html += '<br><div>No cellular activity detected</div>';
+            } else {
+                html += '<br><h4>Cellular Activity:</h4>';
+                if (cellular.cell_divisions === 0) {
+                    html += '<div>Division Activity: No recent divisions</div>';
+                } else if (cellular.cell_divisions < 10) {
+                    html += '<div>Division Activity: Low division rate</div>';
+                } else {
+                    html += '<div>Division Activity: Active cell division</div>';
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render evolution view
+        function renderEvolution(evolution) {
+            let html = '<h3>🌿 Evolution Tracking</h3>';
+            html += '<div>Speciation Events: ' + evolution.speciation_events + '</div>';
+            html += '<div>Extinction Events: ' + evolution.extinction_events + '</div>';
+            html += '<div>Genetic Diversity: ' + evolution.genetic_diversity.toFixed(2) + '</div>';
+            
+            html += '<br><h4>Evolutionary Status:</h4>';
+            if (evolution.speciation_events === 0) {
+                html += '<div>No speciation detected yet</div>';
+            } else if (evolution.speciation_events < 3) {
+                html += '<div>Early speciation phase</div>';
+            } else {
+                html += '<div>Active evolutionary divergence</div>';
+            }
+            
+            if (evolution.extinction_events > 0) {
+                html += '<div style="color: orange;">Warning: ' + evolution.extinction_events + ' extinction event(s) occurred</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render topology view
+        function renderTopology(topology) {
+            let html = '<h3>🗻 World Topology</h3>';
+            html += '<div>Elevation Range: ' + topology.elevation_range + '</div>';
+            html += '<div>Fluid Regions: ' + topology.fluid_regions + '</div>';
+            html += '<div>Geological Age: ' + topology.geological_age + '</div>';
+            
+            html += '<br><h4>Terrain Analysis:</h4>';
+            if (topology.fluid_regions === 0) {
+                html += '<div>Terrain Type: Dry landscape</div>';
+            } else if (topology.fluid_regions < 3) {
+                html += '<div>Terrain Type: Semi-arid with water sources</div>';
+            } else {
+                html += '<div>Terrain Type: Water-rich environment</div>';
+            }
+            
+            return html;
+        }
+
         // Render wind view
         function renderWind(wind) {
             let html = '<h3>🌬️ Wind System</h3>';
@@ -536,6 +1086,102 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             initViewTabs();
             connect();
         };
+        
+        // Render tools view
+        function renderTools(tools) {
+            let html = '<h3>🔧 Tool System</h3>';
+            html += '<div>Total Tools: ' + tools.total_tools + '</div>';
+            html += '<div>Owned Tools: ' + tools.owned_tools + '</div>';
+            html += '<div>Dropped Tools: ' + tools.dropped_tools + '</div>';
+            html += '<div>Average Durability: ' + tools.avg_durability.toFixed(2) + '</div>';
+            html += '<div>Average Efficiency: ' + tools.avg_efficiency.toFixed(2) + '</div>';
+            
+            if (tools.tool_types && Object.keys(tools.tool_types).length > 0) {
+                html += '<h4>Tool Types:</h4>';
+                Object.entries(tools.tool_types).forEach(([type, count]) => {
+                    html += '<div>' + type + ': ' + count + '</div>';
+                });
+            } else {
+                html += '<br><div>No tools created yet</div>';
+            }
+            
+            html += '<br><h4>Tool Usage:</h4>';
+            if (tools.owned_tools === 0) {
+                html += '<div>Usage Level: No tool use</div>';
+            } else if (tools.owned_tools < 5) {
+                html += '<div>Usage Level: Basic tool use</div>';
+            } else {
+                html += '<div>Usage Level: Advanced tool use</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render environment view
+        function renderEnvironment(envMod) {
+            let html = '<h3>🏗️ Environmental Modification</h3>';
+            html += '<div>Total Modifications: ' + envMod.total_modifications + '</div>';
+            html += '<div>Active Modifications: ' + envMod.active_modifications + '</div>';
+            html += '<div>Inactive Modifications: ' + envMod.inactive_modifications + '</div>';
+            html += '<div>Average Durability: ' + envMod.avg_durability.toFixed(2) + '</div>';
+            html += '<div>Tunnel Networks: ' + envMod.tunnel_networks + '</div>';
+            
+            if (envMod.modification_types && Object.keys(envMod.modification_types).length > 0) {
+                html += '<h4>Modification Types:</h4>';
+                Object.entries(envMod.modification_types).forEach(([type, count]) => {
+                    html += '<div>' + type + ': ' + count + '</div>';
+                });
+            } else {
+                html += '<br><div>No environmental modifications yet</div>';
+            }
+            
+            html += '<br><h4>Modification Activity:</h4>';
+            if (envMod.total_modifications === 0) {
+                html += '<div>Activity Level: No modifications</div>';
+            } else if (envMod.active_modifications < 3) {
+                html += '<div>Activity Level: Low modification activity</div>';
+            } else {
+                html += '<div>Activity Level: High modification activity</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render behavior view
+        function renderBehavior(behavior) {
+            let html = '<h3>🧠 Emergent Behavior</h3>';
+            html += '<div>Total Entities: ' + behavior.total_entities + '</div>';
+            html += '<div>Discovered Behaviors: ' + behavior.discovered_behaviors + '</div>';
+            
+            if (behavior.behavior_spread && Object.keys(behavior.behavior_spread).length > 0) {
+                html += '<h4>Behavior Spread:</h4>';
+                Object.entries(behavior.behavior_spread).forEach(([behavior_name, count]) => {
+                    html += '<div>' + behavior_name + ': ' + count + ' entities</div>';
+                });
+            }
+            
+            if (behavior.avg_proficiency && Object.keys(behavior.avg_proficiency).length > 0) {
+                html += '<h4>Average Proficiency:</h4>';
+                Object.entries(behavior.avg_proficiency).forEach(([behavior_name, proficiency]) => {
+                    html += '<div>' + behavior_name + ': ' + proficiency.toFixed(2) + '</div>';
+                });
+            }
+            
+            if (behavior.discovered_behaviors === 0) {
+                html += '<br><div>No emergent behaviors discovered yet</div>';
+            } else {
+                html += '<br><h4>Behavior Development:</h4>';
+                if (behavior.discovered_behaviors < 3) {
+                    html += '<div>Development Level: Early behavior emergence</div>';
+                } else if (behavior.discovered_behaviors < 8) {
+                    html += '<div>Development Level: Moderate behavior complexity</div>';
+                } else {
+                    html += '<div>Development Level: Advanced behavioral evolution</div>';
+                }
+            }
+            
+            return html;
+        }
     </script>
 </body>
 </html>`
