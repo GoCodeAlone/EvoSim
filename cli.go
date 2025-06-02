@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -844,7 +845,15 @@ func (m CLIModel) populationsView() string {
 	var content strings.Builder
 	content.WriteString(titleStyle.Render("Population Details") + "\n\n")
 
-	for species, pop := range m.world.Populations {
+	// Get sorted population names for consistent ordering
+	var popNames []string
+	for species := range m.world.Populations {
+		popNames = append(popNames, species)
+	}
+	sort.Strings(popNames)
+
+	for _, species := range popNames {
+		pop := m.world.Populations[species]
 		content.WriteString(fmt.Sprintf("=== %s ===\n", strings.ToUpper(species)))
 		content.WriteString(fmt.Sprintf("Population Size: %d\n", len(pop.Entities)))
 		content.WriteString(fmt.Sprintf("Species: %s\n", pop.Species))

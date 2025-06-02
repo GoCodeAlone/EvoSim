@@ -466,12 +466,22 @@ func (vm *ViewManager) buildGridData() [][]CellData {
 // getBiomeInfo returns biome display information
 func (vm *ViewManager) getBiomeInfo(biome BiomeType) (string, string, string) {
 	biomes := map[BiomeType][]string{
-		BiomePlains:    {"Plains", ".", "green"},
-		BiomeForest:    {"Forest", "♠", "darkgreen"},
-		BiomeDesert:    {"Desert", "~", "yellow"},
-		BiomeMountain:  {"Mountain", "^", "gray"},
-		BiomeWater:     {"Water", "≈", "blue"},
-		BiomeRadiation: {"Radiation", "☢", "red"},
+		BiomePlains:       {"Plains", "•", "green"},
+		BiomeForest:       {"Forest", "♠", "darkgreen"},
+		BiomeDesert:       {"Desert", "~", "yellow"},
+		BiomeMountain:     {"Mountain", "^", "gray"},
+		BiomeWater:        {"Water", "≈", "blue"},
+		BiomeRadiation:    {"Radiation", "☢", "red"},
+		BiomeSoil:         {"Soil", "■", "brown"},
+		BiomeAir:          {"Air", "○", "lightblue"},
+		BiomeIce:          {"Ice", "❄", "white"},
+		BiomeRainforest:   {"Rainforest", "🌳", "darkgreen"},
+		BiomeDeepWater:    {"Deep Water", "≈", "darkblue"},
+		BiomeHighAltitude: {"High Altitude", "▲", "lightgray"},
+		BiomeHotSpring:    {"Hot Spring", "◉", "orange"},
+		BiomeTundra:       {"Tundra", "○", "lightgray"},
+		BiomeSwamp:        {"Swamp", "≋", "olive"},
+		BiomeCanyon:       {"Canyon", "◢", "darkgray"},
 	}
 	
 	if info, exists := biomes[biome]; exists {

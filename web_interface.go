@@ -404,8 +404,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 <h3>🌱 Legend</h3>
                 <div>
                     <strong>Biomes:</strong><br>
-                    . Plains | ♠ Forest | ~ Desert<br>
-                    ^ Mountain | ≈ Water | ☢ Radiation<br><br>
+                    • Plains | ♠ Forest | ~ Desert | ^ Mountain<br>
+                    ≈ Water | ☢ Radiation | ■ Soil | ○ Air<br>
+                    ❄ Ice | 🌳 Rainforest | ≈ Deep Water | ▲ High Altitude<br>
+                    ◉ Hot Spring | ○ Tundra | ≋ Swamp | ◢ Canyon<br><br>
                     
                     <strong>Entities (single):</strong><br>
                     🐰 Herbivore | 🐺 Predator | 🐻 Omnivore | 🦋 Generic<br>
