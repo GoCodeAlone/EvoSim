@@ -131,6 +131,27 @@ func (ws *WindSystem) Update(season Season, tick int) {
 	// Update seasonal effects
 	ws.updateSeasonalEffects(season)
 
+	// Add small random variations to base wind values every tick
+	if rand.Float64() < 0.1 { // 10% chance each tick for small variation
+		ws.BaseWindDirection += (rand.Float64() - 0.5) * 0.05 // Very small direction change
+		if ws.BaseWindDirection < 0 {
+			ws.BaseWindDirection += 2 * math.Pi
+		}
+		if ws.BaseWindDirection >= 2*math.Pi {
+			ws.BaseWindDirection -= 2 * math.Pi
+		}
+		
+		// Very small strength variation
+		strengthChange := (rand.Float64() - 0.5) * 0.02 // ±0.01 change
+		ws.BaseWindStrength += strengthChange
+		if ws.BaseWindStrength < 0.1 {
+			ws.BaseWindStrength = 0.1
+		}
+		if ws.BaseWindStrength > 0.9 {
+			ws.BaseWindStrength = 0.9
+		}
+	}
+
 	// Update weather patterns
 	ws.updateWeatherPattern()
 	
@@ -542,6 +563,25 @@ func (ws *WindSystem) updateWeatherPattern() {
 			ws.WeatherDuration = 10 + rand.Intn(20) // Short duration
 		case 4: // Hurricane
 			ws.WeatherDuration = 50 + rand.Intn(100) // Longer duration
+		}
+		
+		// When weather changes, also slightly adjust base wind direction and strength
+		ws.BaseWindDirection += (rand.Float64() - 0.5) * 0.3 // Small direction change
+		if ws.BaseWindDirection < 0 {
+			ws.BaseWindDirection += 2 * math.Pi
+		}
+		if ws.BaseWindDirection >= 2*math.Pi {
+			ws.BaseWindDirection -= 2 * math.Pi
+		}
+		
+		// Adjust base strength slightly
+		strengthChange := (rand.Float64() - 0.5) * 0.2 // ±0.1 change
+		ws.BaseWindStrength += strengthChange
+		if ws.BaseWindStrength < 0.1 {
+			ws.BaseWindStrength = 0.1
+		}
+		if ws.BaseWindStrength > 0.9 {
+			ws.BaseWindStrength = 0.9
 		}
 	}
 }

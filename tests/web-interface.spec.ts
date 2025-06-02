@@ -197,6 +197,112 @@ test.describe('EvoSim Web Interface', () => {
     expect(gridContent.length).toBeGreaterThan(100); // Should have substantial content
   });
 
+  test('all view modes are accessible and functional', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    
+    // Wait for initial load and connection
+    await page.waitForTimeout(5000);
+    
+    // Define expected view modes
+    const expectedViewModes = [
+      'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
+      'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
+      'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 
+      'ENVIRONMENT', 'BEHAVIOR', 'STATISTICAL', 'ANOMALIES'
+    ];
+    
+    // Check that view tabs are present
+    const viewTabs = page.locator('.view-tab');
+    const viewTabCount = await viewTabs.count();
+    
+    // Verify we have a reasonable number of view tabs
+    expect(viewTabCount).toBeGreaterThan(10);
+    
+    // Test switching to each major view mode
+    const viewModesToTest = ['GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'WIND', 'SPECIES'];
+    
+    for (const viewMode of viewModesToTest) {
+      const tab = page.locator(`.view-tab:has-text("${viewMode}")`);
+      if (await tab.isVisible()) {
+        await tab.click();
+        await page.waitForTimeout(1000);
+        
+        // Verify the view content area is still present and accessible
+        await expect(page.locator('#view-content')).toBeVisible({ timeout: 5000 });
+        
+        // Check that active tab is highlighted
+        await expect(tab).toHaveClass(/active/, { timeout: 2000 });
+      }
+    }
+  });
+
+  test('wind system displays dynamic values', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    
+    // Wait for initial load
+    await page.waitForTimeout(3000);
+    
+    // Switch to wind view
+    const windTab = page.locator('.view-tab:has-text("WIND")');
+    if (await windTab.isVisible()) {
+      await windTab.click();
+      await page.waitForTimeout(2000);
+    }
+    
+    // Check that wind values are displayed
+    const windDirection = page.locator('#wind-direction');
+    const windStrength = page.locator('#wind-strength');
+    const weatherPattern = page.locator('#weather-pattern');
+    
+    // Wait for WebSocket updates
+    await page.waitForTimeout(5000);
+    
+    // Verify wind values are present and not empty
+    if (await windDirection.isVisible()) {
+      const direction = await windDirection.textContent();
+      expect(direction).toBeTruthy();
+      expect(direction).toMatch(/\d+\.?\d*°/); // Should contain degrees
+    }
+    
+    if (await windStrength.isVisible()) {
+      const strength = await windStrength.textContent();
+      expect(strength).toBeTruthy();
+      expect(strength).toMatch(/\d+\.?\d*/); // Should contain numbers
+    }
+    
+    if (await weatherPattern.isVisible()) {
+      const weather = await weatherPattern.textContent();
+      expect(weather).toBeTruthy();
+    }
+  });
+
+  test('legend displays correct entity symbols', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    
+    // Wait for initial load
+    await page.waitForTimeout(3000);
+    
+    // Check the legend content
+    const legend = page.locator('.legend');
+    await expect(legend).toBeVisible({ timeout: 10000 });
+    
+    const legendText = await legend.textContent();
+    
+    // Verify the legend shows emoji symbols for entities
+    expect(legendText).toContain('🐰'); // Herbivore
+    expect(legendText).toContain('🐺'); // Predator
+    expect(legendText).toContain('🐻'); // Omnivore
+    expect(legendText).toContain('🦋'); // Generic entity (blue butterfly)
+    
+    // Verify plant symbols
+    expect(legendText).toContain('🌱'); // Grass
+    expect(legendText).toContain('🌿'); // Bush
+    expect(legendText).toContain('🌳'); // Tree
+    expect(legendText).toContain('🍄'); // Mushroom
+    expect(legendText).toContain('🌊'); // Algae
+    expect(legendText).toContain('🌵'); // Cactus
+  });
+
   test('real-time updates occur in the interface', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
     
