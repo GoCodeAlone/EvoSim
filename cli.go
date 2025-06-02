@@ -668,6 +668,16 @@ func (m CLIModel) statsView() string {
 		}
 	}
 
+	// Evolutionary Feedback Loop Statistics
+	content.WriteString("\n\nEvolutionary Feedback Loops:\n")
+	adaptationStats := m.calculateAdaptationStats()
+	content.WriteString(fmt.Sprintf("  Entities with Dietary Memory: %d\n", adaptationStats["dietary_memory_count"]))
+	content.WriteString(fmt.Sprintf("  Entities with Environmental Memory: %d\n", adaptationStats["env_memory_count"]))
+	content.WriteString(fmt.Sprintf("  Avg Dietary Fitness: %.2f\n", adaptationStats["avg_dietary_fitness"]))
+	content.WriteString(fmt.Sprintf("  Avg Environmental Fitness: %.2f\n", adaptationStats["avg_env_fitness"]))
+	content.WriteString(fmt.Sprintf("  Active Plant Preferences: %d\n", adaptationStats["plant_preferences"]))
+	content.WriteString(fmt.Sprintf("  Active Prey Preferences: %d\n", adaptationStats["prey_preferences"]))
+
 	// Biome distribution
 	content.WriteString("\n\nBiome Distribution:\n")
 	biomeCount := make(map[BiomeType]int)
@@ -686,6 +696,63 @@ func (m CLIModel) statsView() string {
 	}
 
 	return content.String()
+}
+
+// calculateAdaptationStats computes feedback loop adaptation statistics
+func (m CLIModel) calculateAdaptationStats() map[string]interface{} {
+	stats := make(map[string]interface{})
+	
+	dietaryMemoryCount := 0
+	envMemoryCount := 0
+	totalDietaryFitness := 0.0
+	totalEnvFitness := 0.0
+	plantPreferences := 0
+	preyPreferences := 0
+	
+	entityCount := 0
+	
+	// Collect data from all entities
+	for _, population := range m.world.Populations {
+		for _, entity := range population.Entities {
+			if !entity.IsAlive {
+				continue
+			}
+			entityCount++
+			
+			// Check dietary memory
+			if entity.DietaryMemory != nil {
+				dietaryMemoryCount++
+				totalDietaryFitness += entity.DietaryMemory.DietaryFitness
+				plantPreferences += len(entity.DietaryMemory.PlantTypePreferences)
+				preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
+			}
+			
+			// Check environmental memory
+			if entity.EnvironmentalMemory != nil {
+				envMemoryCount++
+				totalEnvFitness += entity.EnvironmentalMemory.AdaptationFitness
+			}
+		}
+	}
+	
+	stats["dietary_memory_count"] = dietaryMemoryCount
+	stats["env_memory_count"] = envMemoryCount
+	stats["plant_preferences"] = plantPreferences
+	stats["prey_preferences"] = preyPreferences
+	
+	if dietaryMemoryCount > 0 {
+		stats["avg_dietary_fitness"] = totalDietaryFitness / float64(dietaryMemoryCount)
+	} else {
+		stats["avg_dietary_fitness"] = 0.0
+	}
+	
+	if envMemoryCount > 0 {
+		stats["avg_env_fitness"] = totalEnvFitness / float64(envMemoryCount)
+	} else {
+		stats["avg_env_fitness"] = 0.0
+	}
+	
+	return stats
 }
 
 // eventsView renders active world events and recent event log
@@ -797,6 +864,48 @@ func (m CLIModel) populationsView() string {
 				for trait, sum := range traitSums {
 					avg := sum / float64(aliveCount)
 					content.WriteString(fmt.Sprintf("  %s: %.3f\n", trait, avg))
+				}
+				
+				// Add feedback loop adaptation information
+				dietaryMemoryCount := 0
+				envMemoryCount := 0
+				totalDietaryFitness := 0.0
+				totalEnvFitness := 0.0
+				plantPrefs := 0
+				preyPrefs := 0
+				
+				for _, entity := range pop.Entities {
+					if !entity.IsAlive {
+						continue
+					}
+					
+					if entity.DietaryMemory != nil {
+						dietaryMemoryCount++
+						totalDietaryFitness += entity.DietaryMemory.DietaryFitness
+						plantPrefs += len(entity.DietaryMemory.PlantTypePreferences)
+						preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
+					}
+					
+					if entity.EnvironmentalMemory != nil {
+						envMemoryCount++
+						totalEnvFitness += entity.EnvironmentalMemory.AdaptationFitness
+					}
+				}
+				
+				content.WriteString("\nEvolutionary Adaptations:\n")
+				content.WriteString(fmt.Sprintf("  Dietary adaptations: %d/%d (%.1f%%)\n", 
+					dietaryMemoryCount, aliveCount, float64(dietaryMemoryCount)*100/float64(aliveCount)))
+				content.WriteString(fmt.Sprintf("  Environmental adaptations: %d/%d (%.1f%%)\n", 
+					envMemoryCount, aliveCount, float64(envMemoryCount)*100/float64(aliveCount)))
+				
+				if dietaryMemoryCount > 0 {
+					content.WriteString(fmt.Sprintf("  Avg dietary fitness: %.3f\n", totalDietaryFitness/float64(dietaryMemoryCount)))
+					content.WriteString(fmt.Sprintf("  Plant preferences: %d\n", plantPrefs))
+					content.WriteString(fmt.Sprintf("  Prey preferences: %d\n", preyPrefs))
+				}
+				
+				if envMemoryCount > 0 {
+					content.WriteString(fmt.Sprintf("  Avg environmental fitness: %.3f\n", totalEnvFitness/float64(envMemoryCount)))
 				}
 			}
 		}
@@ -1884,6 +1993,37 @@ func (m *CLIModel) evolutionView() string {
 			}
 		}
 	}
+	
+	// Feedback Loop Evolution Data
+	content.WriteString("\n=== FEEDBACK LOOP EVOLUTION ===\n")
+	adaptationStats := m.calculateAdaptationStats()
+	content.WriteString(fmt.Sprintf("Entities with dietary adaptations: %d\n", adaptationStats["dietary_memory_count"]))
+	content.WriteString(fmt.Sprintf("Entities with environmental adaptations: %d\n", adaptationStats["env_memory_count"]))
+	content.WriteString(fmt.Sprintf("Average dietary fitness: %.3f\n", adaptationStats["avg_dietary_fitness"]))
+	content.WriteString(fmt.Sprintf("Average environmental fitness: %.3f\n", adaptationStats["avg_env_fitness"]))
+	
+	// Show evolutionary pressure indicators
+	highPressureCount := 0
+	for _, population := range m.world.Populations {
+		for _, entity := range population.Entities {
+			if !entity.IsAlive {
+				continue
+			}
+			
+			highPressure := false
+			if entity.EnvironmentalMemory != nil && entity.EnvironmentalMemory.AdaptationFitness < 0.8 {
+				highPressure = true
+			}
+			if entity.DietaryMemory != nil && entity.DietaryMemory.DietaryFitness < 0.6 {
+				highPressure = true
+			}
+			
+			if highPressure {
+				highPressureCount++
+			}
+		}
+	}
+	content.WriteString(fmt.Sprintf("Entities under evolutionary pressure: %d\n", highPressureCount))
 	
 	// Species lineages
 	content.WriteString("\n=== SPECIES LINEAGES ===\n")

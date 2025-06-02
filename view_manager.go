@@ -43,6 +43,7 @@ type ViewData struct {
 	Tools          ToolData               `json:"tools"`
 	EnvironmentalMod EnvironmentalModData `json:"environmental_mod"`
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
+	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
 }
 
 // CellData represents a single grid cell for rendering
@@ -80,6 +81,13 @@ type PopulationData struct {
 	AvgAge       float64            `json:"avg_age"`
 	Generation   int                `json:"generation"`
 	TraitAverages map[string]float64 `json:"trait_averages"`
+	// Feedback loop adaptation data
+	DietaryAdaptationCount  int     `json:"dietary_adaptation_count"`
+	EnvAdaptationCount      int     `json:"env_adaptation_count"`
+	AvgDietaryFitness      float64 `json:"avg_dietary_fitness"`
+	AvgEnvFitness          float64 `json:"avg_env_fitness"`
+	PlantPreferences       int     `json:"plant_preferences"`
+	PreyPreferences        int     `json:"prey_preferences"`
 }
 
 // CommunicationData represents communication system state
@@ -182,6 +190,18 @@ type EmergentBehaviorData struct {
 	DiscoveredBehaviors int                    `json:"discovered_behaviors"`
 }
 
+// FeedbackLoopData represents feedback loop system state
+type FeedbackLoopData struct {
+	DietaryMemoryCount      int     `json:"dietary_memory_count"`
+	EnvMemoryCount          int     `json:"env_memory_count"`
+	AvgDietaryFitness       float64 `json:"avg_dietary_fitness"`
+	AvgEnvFitness           float64 `json:"avg_env_fitness"`
+	TotalPlantPreferences   int     `json:"total_plant_preferences"`
+	TotalPreyPreferences    int     `json:"total_prey_preferences"`
+	HighPressureEntities    int     `json:"high_pressure_entities"`
+	EvolutionaryPressure    float64 `json:"evolutionary_pressure"`
+}
+
 // TopologyData represents world topology state
 type TopologyData struct {
 	ElevationRange string  `json:"elevation_range"`
@@ -215,6 +235,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Tools:           vm.getToolData(),
 		EnvironmentalMod: vm.getEnvironmentalModData(),
 		EmergentBehavior: vm.getEmergentBehaviorData(),
+		FeedbackLoops:    vm.getFeedbackLoopData(),
 	}
 	
 	return data
@@ -467,14 +488,35 @@ func (vm *ViewManager) getPopulationsData() []PopulationData {
 			totalAge := 0.0
 			traitSums := make(map[string]float64)
 			
+			// Feedback loop adaptation data
+			dietaryMemoryCount := 0
+			envMemoryCount := 0
+			totalDietaryFitness := 0.0
+			totalEnvFitness := 0.0
+			plantPrefs := 0
+			preyPrefs := 0
+			
 			for _, entity := range pop.Entities {
-				if entity != nil {
+				if entity != nil && entity.IsAlive {
 					totalFitness += entity.Fitness
 					totalEnergy += entity.Energy
 					totalAge += float64(entity.Age)
 					
 					for traitName, trait := range entity.Traits {
 						traitSums[traitName] += trait.Value
+					}
+					
+					// Feedback loop data
+					if entity.DietaryMemory != nil {
+						dietaryMemoryCount++
+						totalDietaryFitness += entity.DietaryMemory.DietaryFitness
+						plantPrefs += len(entity.DietaryMemory.PlantTypePreferences)
+						preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
+					}
+					
+					if entity.EnvironmentalMemory != nil {
+						envMemoryCount++
+						totalEnvFitness += entity.EnvironmentalMemory.AdaptationFitness
 					}
 				}
 			}
@@ -486,6 +528,20 @@ func (vm *ViewManager) getPopulationsData() []PopulationData {
 			
 			for traitName, sum := range traitSums {
 				data.TraitAverages[traitName] = sum / count
+			}
+			
+			// Add feedback loop data
+			data.DietaryAdaptationCount = dietaryMemoryCount
+			data.EnvAdaptationCount = envMemoryCount
+			data.PlantPreferences = plantPrefs
+			data.PreyPreferences = preyPrefs
+			
+			if dietaryMemoryCount > 0 {
+				data.AvgDietaryFitness = totalDietaryFitness / float64(dietaryMemoryCount)
+			}
+			
+			if envMemoryCount > 0 {
+				data.AvgEnvFitness = totalEnvFitness / float64(envMemoryCount)
 			}
 		}
 		
@@ -860,6 +916,83 @@ func (vm *ViewManager) getEmergentBehaviorData() EmergentBehaviorData {
 		if avgProficiency, ok := stats["avg_proficiency"].(map[string]float64); ok {
 			data.AvgProficiency = avgProficiency
 		}
+	}
+	
+	return data
+}
+
+// getFeedbackLoopData returns feedback loop adaptation system data
+func (vm *ViewManager) getFeedbackLoopData() FeedbackLoopData {
+	data := FeedbackLoopData{}
+	
+	dietaryMemoryCount := 0
+	envMemoryCount := 0
+	totalDietaryFitness := 0.0
+	totalEnvFitness := 0.0
+	plantPreferences := 0
+	preyPreferences := 0
+	highPressureCount := 0
+	totalPressure := 0.0
+	entityCount := 0
+	
+	// Collect data from all entities
+	for _, population := range vm.world.Populations {
+		for _, entity := range population.Entities {
+			if !entity.IsAlive {
+				continue
+			}
+			entityCount++
+			
+			// Check dietary memory
+			if entity.DietaryMemory != nil {
+				dietaryMemoryCount++
+				totalDietaryFitness += entity.DietaryMemory.DietaryFitness
+				plantPreferences += len(entity.DietaryMemory.PlantTypePreferences)
+				preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
+			}
+			
+			// Check environmental memory
+			if entity.EnvironmentalMemory != nil {
+				envMemoryCount++
+				totalEnvFitness += entity.EnvironmentalMemory.AdaptationFitness
+			}
+			
+			// Calculate evolutionary pressure on this entity
+			entityPressure := 0.0
+			if entity.EnvironmentalMemory != nil {
+				entityPressure += entity.EnvironmentalMemory.RadiationPressure * 0.1
+				entityPressure += entity.EnvironmentalMemory.TemperaturePressure * 0.05
+				if entity.EnvironmentalMemory.AdaptationFitness < 0.8 {
+					entityPressure += (0.8 - entity.EnvironmentalMemory.AdaptationFitness) * 0.3
+				}
+			}
+			if entity.DietaryMemory != nil && entity.DietaryMemory.DietaryFitness < 0.6 {
+				entityPressure += (0.6 - entity.DietaryMemory.DietaryFitness) * 0.2
+			}
+			
+			totalPressure += entityPressure
+			if entityPressure > 0.1 { // Threshold for "high pressure"
+				highPressureCount++
+			}
+		}
+	}
+	
+	data.DietaryMemoryCount = dietaryMemoryCount
+	data.EnvMemoryCount = envMemoryCount
+	data.TotalPlantPreferences = plantPreferences
+	data.TotalPreyPreferences = preyPreferences
+	data.HighPressureEntities = highPressureCount
+	
+	if dietaryMemoryCount > 0 {
+		data.AvgDietaryFitness = totalDietaryFitness / float64(dietaryMemoryCount)
+	}
+	
+	if envMemoryCount > 0 {
+		data.AvgEnvFitness = totalEnvFitness / float64(envMemoryCount)
+	}
+	
+	if entityCount > 0 {
+		data.EvolutionaryPressure = totalPressure / float64(entityCount)
 	}
 	
 	return data
