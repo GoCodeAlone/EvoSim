@@ -506,12 +506,16 @@ func (vm *ViewManager) getPopulationsData() []PopulationData {
 						traitSums[traitName] += trait.Value
 					}
 					
-					// Feedback loop data
+					// Feedback loop data - add safety checks
 					if entity.DietaryMemory != nil {
 						dietaryMemoryCount++
 						totalDietaryFitness += entity.DietaryMemory.DietaryFitness
-						plantPrefs += len(entity.DietaryMemory.PlantTypePreferences)
-						preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
+						if entity.DietaryMemory.PlantTypePreferences != nil {
+							plantPrefs += len(entity.DietaryMemory.PlantTypePreferences)
+						}
+						if entity.DietaryMemory.PreySpeciesPreferences != nil {
+							preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
+						}
 					}
 					
 					if entity.EnvironmentalMemory != nil {
@@ -947,8 +951,12 @@ func (vm *ViewManager) getFeedbackLoopData() FeedbackLoopData {
 			if entity.DietaryMemory != nil {
 				dietaryMemoryCount++
 				totalDietaryFitness += entity.DietaryMemory.DietaryFitness
-				plantPreferences += len(entity.DietaryMemory.PlantTypePreferences)
-				preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
+				if entity.DietaryMemory.PlantTypePreferences != nil {
+					plantPreferences += len(entity.DietaryMemory.PlantTypePreferences)
+				}
+				if entity.DietaryMemory.PreySpeciesPreferences != nil {
+					preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
+				}
 			}
 			
 			// Check environmental memory

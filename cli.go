@@ -723,8 +723,12 @@ func (m CLIModel) calculateAdaptationStats() map[string]interface{} {
 			if entity.DietaryMemory != nil {
 				dietaryMemoryCount++
 				totalDietaryFitness += entity.DietaryMemory.DietaryFitness
-				plantPreferences += len(entity.DietaryMemory.PlantTypePreferences)
-				preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
+				if entity.DietaryMemory.PlantTypePreferences != nil {
+					plantPreferences += len(entity.DietaryMemory.PlantTypePreferences)
+				}
+				if entity.DietaryMemory.PreySpeciesPreferences != nil {
+					preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
+				}
 			}
 			
 			// Check environmental memory
@@ -882,8 +886,12 @@ func (m CLIModel) populationsView() string {
 					if entity.DietaryMemory != nil {
 						dietaryMemoryCount++
 						totalDietaryFitness += entity.DietaryMemory.DietaryFitness
-						plantPrefs += len(entity.DietaryMemory.PlantTypePreferences)
-						preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
+						if entity.DietaryMemory.PlantTypePreferences != nil {
+							plantPrefs += len(entity.DietaryMemory.PlantTypePreferences)
+						}
+						if entity.DietaryMemory.PreySpeciesPreferences != nil {
+							preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
+						}
 					}
 					
 					if entity.EnvironmentalMemory != nil {
