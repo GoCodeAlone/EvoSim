@@ -35,3 +35,5 @@ playwright-report/
 # Temporary test files
 /tmp/
 *.tmp
+
+.idea

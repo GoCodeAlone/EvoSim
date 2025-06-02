@@ -204,6 +204,10 @@ func TestNetworkStats(t *testing.T) {
 		"total_resources_transferred", "connections_by_type",
 		"signals_by_type", "average_cluster_size",
 		"max_connection_distance",
+		// New keys expected by CLI
+		"active_connections", "cluster_count", "active_signals",
+		"avg_connection_strength", "connection_types", "signal_activity",
+		"clusters", "resource_sharing", "recent_events", "network_health",
 	}
 
 	for _, key := range expectedKeys {
