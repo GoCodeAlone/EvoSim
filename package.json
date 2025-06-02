@@ -1,0 +1,14 @@
+{
+  "name": "evosim-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for EvoSim web interface",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:validate": "./validate-playwright.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
