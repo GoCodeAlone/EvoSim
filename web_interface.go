@@ -471,6 +471,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             ws.onmessage = function(event) {
                 const data = JSON.parse(event.data);
+                console.log('WebSocket data received, tick:', data.tick, 'entities:', data.entity_count, 'grid length:', data.grid ? data.grid.length : 'null');
                 updateDisplay(data);
             };
             
@@ -536,7 +537,15 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             switch (currentView) {
                 case 'GRID':
-                    viewContent.innerHTML = '<div class="grid-container">' + renderGrid(data.grid) + '</div>';
+                    const gridHtml = renderGrid(data.grid);
+                    console.log('Grid HTML length:', gridHtml.length, 'First 100 chars:', gridHtml.substring(0, 100));
+                    // Update the existing grid container directly
+                    const gridContainer = document.getElementById('grid-view');
+                    if (gridContainer) {
+                        gridContainer.innerHTML = gridHtml;
+                    } else {
+                        viewContent.innerHTML = '<div class="grid-container" id="grid-view">' + gridHtml + '</div>';
+                    }
                     break;
                     
                 case 'STATS':
@@ -636,6 +645,11 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                         cellContent = getBiomeDisplay(cell.biome_symbol);
                     }
                     
+                    // Ensure we always have some content
+                    if (!cellContent || cellContent.trim() === '') {
+                        cellContent = '.'; // Default fallback
+                    }
+                    
                     // Add special indicators
                     if (cell.has_event) {
                         cellClass += ' has-event';
@@ -710,8 +724,8 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         }
         
         function getBiomeDisplay(symbol) {
-            // For empty biome cells, show subtle background patterns
-            return '&nbsp;';
+            // Show biome symbols for empty cells
+            return symbol || '.';
         }
         
         function getCellTooltip(cell) {
