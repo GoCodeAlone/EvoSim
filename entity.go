@@ -70,6 +70,9 @@ type Entity struct {
 	
 	// Reproduction system
 	ReproductionStatus *ReproductionStatus `json:"reproduction_status"` // Tracks reproduction state and behaviors
+	
+	// Caste system
+	CasteStatus *CasteStatus `json:"caste_status"` // Tracks caste role and specialization
 }
 
 // NewEntity creates a new entity with random traits

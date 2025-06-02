@@ -136,6 +136,11 @@ type World struct {
 	
 	// Statistical Analysis System
 	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
+	
+	// Hive Mind, Caste, and Insect Systems
+	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
+	CasteSystem             *CasteSystem                         // Caste-based social organization
+	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
 }
 
 // NewWorld creates a new world with multiple populations
@@ -197,6 +202,11 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
+	
+	// Initialize hive mind, caste, and insect systems
+	world.HiveMindSystem = NewHiveMindSystem()
+	world.CasteSystem = NewCasteSystem()
+	world.InsectSystem = NewInsectSystem()
 
   // Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
@@ -668,6 +678,10 @@ func (w *World) AddPopulation(config PopulationConfig) {
 			entity.SetTrait(traitName, newValue)
 		}
 
+		// Enhance entity with specialized systems
+		AddInsectTraitsToEntity(entity)
+		AddCasteStatusToEntity(entity)
+
 		w.AllEntities = append(w.AllEntities, entity)
 	}
 
@@ -831,6 +845,18 @@ func (w *World) Update() {
 		if w.Tick%w.StatisticalReporter.AnalysisInterval == 0 {
 			w.StatisticalReporter.PerformAnalysis(w)
 		}
+	}
+	
+	// Update hive mind, caste, and insect systems
+	w.HiveMindSystem.Update()
+	w.CasteSystem.Update(w, w.Tick)
+	w.InsectSystem.Update(w.Tick)
+	
+	// Try to form new collective intelligence systems
+	if w.Tick%100 == 0 { // Every 100 ticks
+		w.attemptHiveMindFormation()
+		w.attemptCasteColonyFormation()
+		w.attemptSwarmFormation()
 	}
 }
 
@@ -1782,6 +1808,10 @@ func (w *World) spawnNewEntities() {
 						newEntity.SetTrait(traitName, newValue)
 					}
 				}
+
+				// Enhance entity with specialized systems
+				AddInsectTraitsToEntity(newEntity)
+				AddCasteStatusToEntity(newEntity)
 
 				pop.Entities = append(pop.Entities, newEntity)
 				w.AllEntities = append(w.AllEntities, newEntity)
@@ -2974,4 +3004,257 @@ func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY i
 	
 	// Use the enhanced biome generation for other areas
 	return w.generateBiome(gridX, gridY)
+}
+
+// attemptHiveMindFormation tries to form new hive minds from compatible entities
+func (w *World) attemptHiveMindFormation() {
+	if len(w.AllEntities) < 10 { // Need minimum entities
+		return
+	}
+
+	// Group entities by proximity and compatibility
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive || entity.GetTrait("hive_member") > 0.0 {
+			continue // Skip dead or already in hive
+		}
+
+		// Check if entity is suitable for hive mind
+		intelligence := entity.GetTrait("intelligence")
+		cooperation := entity.GetTrait("cooperation")
+		if intelligence < 0.3 || cooperation < 0.4 {
+			continue
+		}
+
+		// Find nearby compatible entities
+		nearbyEntities := make([]*Entity, 0)
+		nearbyEntities = append(nearbyEntities, entity)
+
+		for _, other := range w.AllEntities {
+			if other == entity || !other.IsAlive || other.GetTrait("hive_member") > 0.0 {
+				continue
+			}
+
+			distance := entity.DistanceTo(other)
+			if distance < 15.0 {
+				otherIntelligence := other.GetTrait("intelligence")
+				otherCooperation := other.GetTrait("cooperation")
+				
+				// Check compatibility
+				intelligenceDiff := math.Abs(intelligence - otherIntelligence)
+				cooperationDiff := math.Abs(cooperation - otherCooperation)
+				
+				if intelligenceDiff < 0.5 && cooperationDiff < 0.3 && 
+					otherIntelligence > 0.3 && otherCooperation > 0.4 {
+					nearbyEntities = append(nearbyEntities, other)
+				}
+			}
+		}
+
+		if len(nearbyEntities) >= 5 { // Minimum for hive mind
+			// Determine hive mind type based on group characteristics
+			avgIntelligence := 0.0
+			avgCooperation := 0.0
+			for _, e := range nearbyEntities {
+				avgIntelligence += e.GetTrait("intelligence")
+				avgCooperation += e.GetTrait("cooperation")
+			}
+			avgIntelligence /= float64(len(nearbyEntities))
+			avgCooperation /= float64(len(nearbyEntities))
+
+			var hiveType HiveMindType
+			if avgIntelligence > 0.8 && avgCooperation > 0.8 {
+				hiveType = QuantumMind
+			} else if avgIntelligence > 0.6 && avgCooperation > 0.7 {
+				hiveType = NeuralNetwork
+			} else if avgCooperation > 0.7 {
+				hiveType = SwarmIntelligence
+			} else {
+				hiveType = SimpleCollective
+			}
+
+			// Try to form hive mind
+			hiveMind := w.HiveMindSystem.TryFormHiveMind(nearbyEntities, hiveType)
+			if hiveMind != nil {
+				w.EventLogger.LogWorldEvent(w.Tick, "hive_mind_formed", 
+					fmt.Sprintf("New %s hive mind formed with %d members", 
+						hiveType, len(hiveMind.Members)))
+			}
+		}
+	}
+}
+
+// attemptCasteColonyFormation tries to form new caste-based colonies
+func (w *World) attemptCasteColonyFormation() {
+	if len(w.AllEntities) < 8 { // Need minimum entities
+		return
+	}
+
+	// Look for entities suitable for caste system formation
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive || entity.TribeID != 0 || entity.CasteStatus != nil {
+			continue // Skip if already in tribe/caste or dead
+		}
+
+		// Check if entity could be a queen
+		intelligence := entity.GetTrait("intelligence")
+		leadership := entity.GetTrait("leadership")
+		reproductiveCapability := entity.GetTrait("reproductive_capability")
+		
+		if intelligence > 0.6 && leadership > 0.4 && reproductiveCapability > 0.5 {
+			// Find nearby compatible entities for colony
+			nearbyEntities := make([]*Entity, 0)
+			nearbyEntities = append(nearbyEntities, entity)
+
+			for _, other := range w.AllEntities {
+				if other == entity || !other.IsAlive || other.TribeID != 0 || other.CasteStatus != nil {
+					continue
+				}
+
+				distance := entity.DistanceTo(other)
+				if distance < 20.0 {
+					otherCooperation := other.GetTrait("cooperation")
+					otherIntelligence := other.GetTrait("intelligence")
+					
+					// Check species compatibility and cooperation
+					if other.Species == entity.Species && 
+						otherCooperation > 0.4 && otherIntelligence > 0.2 {
+						nearbyEntities = append(nearbyEntities, other)
+					}
+				}
+			}
+
+			if len(nearbyEntities) >= 6 { // Minimum for caste colony
+				// Choose nest location
+				nestLocation := entity.Position
+				
+				// Try to form colony
+				colony := w.CasteSystem.TryFormCasteColony(nearbyEntities, nestLocation)
+				if colony != nil {
+					w.EventLogger.LogWorldEvent(w.Tick, "caste_colony_formed",
+						fmt.Sprintf("New caste colony formed with %d members and %d caste types", 
+							colony.ColonySize, len(colony.CasteDistribution)))
+					
+					// Create a corresponding tribe for civilization system integration
+					if w.CivilizationSystem != nil {
+						tribeName := fmt.Sprintf("Colony-%d", colony.ID)
+						tribe := w.CivilizationSystem.FormTribe(nearbyEntities, tribeName)
+						if tribe != nil {
+							tribe.ID = colony.ID // Sync IDs
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// attemptSwarmFormation tries to form new swarm units
+func (w *World) attemptSwarmFormation() {
+	if len(w.AllEntities) < 10 { // Need minimum entities for swarms
+		return
+	}
+
+	// Look for entities with high swarm capability
+	swarmCandidates := make([]*Entity, 0)
+	
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		swarmCapability := entity.GetTrait("swarm_capability")
+		cooperation := entity.GetTrait("cooperation")
+		
+		// Check if already in a swarm
+		if entity.GetTrait("swarm_member") > 0.0 {
+			continue
+		}
+
+		if swarmCapability > 0.3 && cooperation > 0.4 {
+			swarmCandidates = append(swarmCandidates, entity)
+		}
+	}
+
+	if len(swarmCandidates) < 5 {
+		return
+	}
+
+	// Group candidates by proximity and species
+	proximityGroups := make(map[string][]*Entity)
+	
+	for _, entity := range swarmCandidates {
+		// Create a key based on position and species
+		posKey := fmt.Sprintf("%s_%.0f_%.0f", entity.Species, 
+			math.Floor(entity.Position.X/20.0)*20.0, 
+			math.Floor(entity.Position.Y/20.0)*20.0)
+		
+		if _, exists := proximityGroups[posKey]; !exists {
+			proximityGroups[posKey] = make([]*Entity, 0)
+		}
+		proximityGroups[posKey] = append(proximityGroups[posKey], entity)
+	}
+
+	// Try to form swarms from each group
+	for _, group := range proximityGroups {
+		if len(group) >= 5 {
+			// Determine swarm purpose based on group characteristics
+			avgAggression := 0.0
+			avgExploration := 0.0
+			avgEnergy := 0.0
+			
+			for _, entity := range group {
+				avgAggression += entity.GetTrait("aggression")
+				avgExploration += entity.GetTrait("exploration_drive")
+				avgEnergy += entity.Energy
+			}
+			avgAggression /= float64(len(group))
+			avgExploration /= float64(len(group))
+			avgEnergy /= float64(len(group))
+
+			var purpose string
+			if avgEnergy < 30.0 {
+				purpose = "foraging"
+			} else if avgAggression > 0.5 {
+				purpose = "defense"
+			} else if avgExploration > 0.5 {
+				purpose = "exploration"
+			} else {
+				purpose = "migration"
+			}
+
+			// Create swarm
+			swarm := w.InsectSystem.CreateSwarmUnit(group, purpose)
+			if swarm != nil {
+				w.EventLogger.LogWorldEvent(w.Tick, "swarm_formed",
+					fmt.Sprintf("New %s swarm formed with %d members", 
+						purpose, len(swarm.Members)))
+
+				// Create pheromone trail for the swarm
+				if len(swarm.Members) > 0 && swarm.LeaderEntity != nil {
+					// Create trail from swarm center to target
+					w.InsectSystem.CreatePheromoneTrail(swarm.LeaderEntity, TrailPheromone, 
+						swarm.CenterPosition, swarm.TargetPosition)
+				}
+			}
+		}
+	}
+}
+
+// enhanceEntitiesWithSpecializedSystems adds insect traits and caste status to suitable entities
+func (w *World) enhanceEntitiesWithSpecializedSystems() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+
+		// Add insect traits to suitable entities
+		if IsEntityInsectLike(entity) {
+			AddInsectTraitsToEntity(entity)
+		}
+
+		// Add caste status to entities that don't have it
+		if entity.CasteStatus == nil {
+			AddCasteStatusToEntity(entity)
+		}
+	}
 }
