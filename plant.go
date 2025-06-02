@@ -366,3 +366,75 @@ func (p *Plant) GetSymbol() rune {
 	config := GetPlantConfigs()[p.Type]
 	return config.Symbol
 }
+
+// Statistical tracking helper methods for plants
+
+// SetEnergyWithTracking sets plant energy and logs the change for statistical analysis
+func (p *Plant) SetEnergyWithTracking(newEnergy float64, world *World, reason string) {
+	if world.StatisticalReporter != nil {
+		oldEnergy := p.Energy
+		world.StatisticalReporter.LogPlantEvent(world.Tick, "energy_change", p, oldEnergy, newEnergy)
+		
+		// Add detailed metadata about the change
+		metadata := map[string]interface{}{
+			"reason":     reason,
+			"magnitude":  newEnergy - oldEnergy,
+			"plant_type": p.Type,
+		}
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "plant_energy_change", reason, metadata)
+	}
+	p.Energy = newEnergy
+}
+
+// ModifyEnergyWithTracking modifies plant energy by a delta amount and logs the change
+func (p *Plant) ModifyEnergyWithTracking(delta float64, world *World, reason string) {
+	newEnergy := p.Energy + delta
+	p.SetEnergyWithTracking(newEnergy, world, reason)
+}
+
+// SetSizeWithTracking sets plant size and logs the change for statistical analysis
+func (p *Plant) SetSizeWithTracking(newSize float64, world *World, reason string) {
+	if world.StatisticalReporter != nil {
+		oldSize := p.Size
+		world.StatisticalReporter.LogPlantEvent(world.Tick, "size_change", p, oldSize, newSize)
+		
+		metadata := map[string]interface{}{
+			"reason":     reason,
+			"magnitude":  newSize - oldSize,
+			"plant_type": p.Type,
+		}
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "plant_size_change", reason, metadata)
+	}
+	p.Size = newSize
+}
+
+// LogPlantDeath logs when a plant dies with context about the cause
+func (p *Plant) LogPlantDeath(world *World, cause string, contributingFactors map[string]interface{}) {
+	if world.StatisticalReporter != nil {
+		metadata := map[string]interface{}{
+			"cause":      cause,
+			"age":        p.Age,
+			"energy":     p.Energy,
+			"size":       p.Size,
+			"plant_type": p.Type,
+			"factors":    contributingFactors,
+		}
+		world.StatisticalReporter.LogPlantEvent(world.Tick, "plant_death", p, true, false)
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "plant_death", cause, metadata)
+	}
+	p.IsAlive = false
+}
+
+// LogPlantBirth logs when a plant is born/reproduced with parental information
+func (p *Plant) LogPlantBirth(world *World, parent *Plant, reproductionType string) {
+	if world.StatisticalReporter != nil {
+		metadata := map[string]interface{}{
+			"parent_id":         parent.ID,
+			"parent_type":       parent.Type,
+			"reproduction_type": reproductionType,
+		}
+		
+		world.StatisticalReporter.LogPlantEvent(world.Tick, "plant_birth", p, false, true)
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "plant_birth", reproductionType, metadata)
+	}
+}

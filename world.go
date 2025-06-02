@@ -116,6 +116,9 @@ type World struct {
 	
 	// Reproduction and Decay System
 	ReproductionSystem      *ReproductionSystem                  // Reproduction, gestation, and decay management
+	
+	// Statistical Analysis System
+	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
 }
 
 // NewWorld creates a new world with multiple populations
@@ -174,6 +177,9 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize reproduction and decay system
 	world.ReproductionSystem = NewReproductionSystem()
+	
+	// Initialize statistical analysis system
+	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
 
   // Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
@@ -526,6 +532,19 @@ func (w *World) Update() {
 
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
+	
+	// Update statistical analysis system
+	if w.StatisticalReporter != nil {
+		// Take snapshot at regular intervals
+		if w.Tick%w.StatisticalReporter.SnapshotInterval == 0 {
+			w.StatisticalReporter.TakeSnapshot(w)
+		}
+		
+		// Perform analysis at regular intervals
+		if w.Tick%w.StatisticalReporter.AnalysisInterval == 0 {
+			w.StatisticalReporter.PerformAnalysis(w)
+		}
+	}
 }
 
 // getBiomeAtPosition returns the biome type at the given world position

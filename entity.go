@@ -1588,3 +1588,89 @@ func (e *Entity) biasedMutation(traitName string, mutation float64) float64 {
 	
 	return biasedMutation
 }
+
+// Statistical tracking helper methods for entities
+
+// SetEnergyWithTracking sets entity energy and logs the change for statistical analysis
+func (e *Entity) SetEnergyWithTracking(newEnergy float64, world *World, reason string) {
+	if world.StatisticalReporter != nil {
+		oldEnergy := e.Energy
+		world.StatisticalReporter.LogEntityEvent(world.Tick, "energy_change", e, oldEnergy, newEnergy, nil)
+		
+		// Add detailed metadata about the change
+		metadata := map[string]interface{}{
+			"reason":     reason,
+			"magnitude": newEnergy - oldEnergy,
+		}
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "entity_energy_change", reason, metadata)
+	}
+	e.Energy = newEnergy
+}
+
+// ModifyEnergyWithTracking modifies entity energy by a delta amount and logs the change
+func (e *Entity) ModifyEnergyWithTracking(delta float64, world *World, reason string) {
+	newEnergy := e.Energy + delta
+	e.SetEnergyWithTracking(newEnergy, world, reason)
+}
+
+// SetTraitWithTracking sets a trait value and logs the change for statistical analysis
+func (e *Entity) SetTraitWithTracking(name string, value float64, world *World, reason string) {
+	if world.StatisticalReporter != nil {
+		oldValue := e.GetTrait(name)
+		e.SetTrait(name, value)
+		world.StatisticalReporter.LogEntityEvent(world.Tick, "trait_change", e, oldValue, value, nil)
+		
+		// Add detailed metadata
+		metadata := map[string]interface{}{
+			"trait":      name,
+			"reason":     reason,
+			"magnitude":  value - oldValue,
+		}
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "entity_trait_change", reason, metadata)
+	} else {
+		e.SetTrait(name, value)
+	}
+}
+
+// LogEntityDeath logs when an entity dies with context about the cause
+func (e *Entity) LogEntityDeath(world *World, cause string, contributingFactors map[string]interface{}) {
+	if world.StatisticalReporter != nil {
+		metadata := map[string]interface{}{
+			"cause":     cause,
+			"age":       e.Age,
+			"energy":    e.Energy,
+			"species":   e.Species,
+			"factors":   contributingFactors,
+		}
+		world.StatisticalReporter.LogEntityEvent(world.Tick, "entity_death", e, true, false, nil)
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "entity_death", cause, metadata)
+	}
+	e.IsAlive = false
+}
+
+// LogEntityBirth logs when an entity is born with parental information
+func (e *Entity) LogEntityBirth(world *World, parent1, parent2 *Entity) {
+	if world.StatisticalReporter != nil {
+		metadata := map[string]interface{}{
+			"parent1_id":      parent1.ID,
+			"parent1_species": parent1.Species,
+			"parent1_fitness": parent1.Fitness,
+		}
+		
+		if parent2 != nil {
+			metadata["parent2_id"] = parent2.ID
+			metadata["parent2_species"] = parent2.Species
+			metadata["parent2_fitness"] = parent2.Fitness
+		}
+		
+		var impactedEntities []*Entity
+		if parent2 != nil {
+			impactedEntities = []*Entity{parent1, parent2}
+		} else {
+			impactedEntities = []*Entity{parent1}
+		}
+		
+		world.StatisticalReporter.LogEntityEvent(world.Tick, "entity_birth", e, false, true, impactedEntities)
+		world.StatisticalReporter.LogSystemEvent(world.Tick, "entity_birth", "reproduction", metadata)
+	}
+}
