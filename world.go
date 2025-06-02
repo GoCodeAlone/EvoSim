@@ -28,8 +28,8 @@ const (
 	BiomeMountain
 	BiomeWater
 	BiomeRadiation
-	BiomeSoil      // Underground/soil environment
-	BiomeAir       // Aerial environment (high altitude)
+	BiomeSoil // Underground/soil environment
+	BiomeAir  // Aerial environment (high altitude)
 )
 
 // Biome represents an environmental zone with specific effects
@@ -101,18 +101,18 @@ type World struct {
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
-	
+
 	// Micro and Macro Evolution Systems
-	DNASystem           *DNASystem          // DNA-based genetic system
-	CellularSystem      *CellularSystem     // Cellular-level evolution and processes
+	DNASystem            *DNASystem            // DNA-based genetic system
+	CellularSystem       *CellularSystem       // Cellular-level evolution and processes
 	MacroEvolutionSystem *MacroEvolutionSystem // Macro-evolution tracking
-	TopologySystem      *TopologySystem     // World terrain and geological processes
-	FluidRegions        []FluidRegion
-	
+	TopologySystem       *TopologySystem       // World terrain and geological processes
+	FluidRegions         []FluidRegion
+
 	// Tool and Environmental Modification Systems
-	ToolSystem              *ToolSystem                          // Tool creation and usage system
-	EnvironmentalModSystem  *EnvironmentalModificationSystem     // Environmental modifications system
-	EmergentBehaviorSystem  *EmergentBehaviorSystem              // Emergent behavior and learning system
+	ToolSystem             *ToolSystem                      // Tool creation and usage system
+	EnvironmentalModSystem *EnvironmentalModificationSystem // Environmental modifications system
+	EmergentBehaviorSystem *EmergentBehaviorSystem          // Emergent behavior and learning system
 }
 
 // NewWorld creates a new world with multiple populations
@@ -157,21 +157,21 @@ func NewWorld(config WorldConfig) *World {
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem()
 	world.SpeciesNaming = NewSpeciesNaming()
-	
+
 	// Initialize new evolution and topology systems
 	world.DNASystem = NewDNASystem()
 	world.CellularSystem = NewCellularSystem(world.DNASystem)
 	world.MacroEvolutionSystem = NewMacroEvolutionSystem()
 	world.TopologySystem = NewTopologySystem(config.GridWidth, config.GridHeight)
-	
+
 	// Initialize tool and environmental modification systems
 	world.ToolSystem = NewToolSystem()
 	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem()
 	world.EmergentBehaviorSystem = NewEmergentBehaviorSystem()
-	
+
 	// Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
-	
+
 	world.FluidRegions = make([]FluidRegion, 0)
 
 	// Initialize plant life
@@ -323,7 +323,7 @@ func (w *World) generateBiome(x, y int) BiomeType {
 func (w *World) AddPopulation(config PopulationConfig) {
 	// Generate a proper species name using the naming system
 	speciesName := w.SpeciesNaming.GenerateSpeciesName(config.Species, "", 0, w.Tick)
-	
+
 	// Generate trait names based on base traits
 	traitNames := make([]string, 0, len(config.BaseTraits))
 	for name := range config.BaseTraits {
@@ -358,10 +358,10 @@ func (w *World) AddPopulation(config PopulationConfig) {
 
 		// Create DNA for entity
 		dna := w.DNASystem.GenerateRandomDNA(entity.ID, entity.Generation)
-		
+
 		// Create cellular organism
 		w.CellularSystem.CreateSingleCellOrganism(entity.ID, dna)
-		
+
 		// Update entity traits based on DNA expression
 		for traitName := range entity.Traits {
 			dnaValue := w.DNASystem.ExpressTrait(dna, traitName)
@@ -383,7 +383,7 @@ func (w *World) Update() {
 	if w.Paused {
 		return
 	}
-	
+
 	w.Tick++
 	now := time.Now()
 	w.Clock = w.Clock.Add(time.Hour) // Each tick = 1 hour world time
@@ -431,7 +431,7 @@ func (w *World) Update() {
 
 	// Update all entities with biome effects, time effects, and starvation checks
 	deltaTime := 0.1 // Physics time step
-	
+
 	// Use concurrent processing for entity updates if we have many entities
 	if len(w.AllEntities) > 50 {
 		w.updateEntitiesConcurrent(currentTimeState, deltaTime)
@@ -503,13 +503,13 @@ func (w *World) Update() {
 
 	// Update tool system
 	w.ToolSystem.UpdateTools(w.Tick)
-	
+
 	// Update environmental modification system
 	w.EnvironmentalModSystem.UpdateModifications(w.Tick)
-	
+
 	// Update emergent behavior system
 	w.EmergentBehaviorSystem.UpdateEntityBehaviors(w)
-	
+
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
 }
@@ -519,18 +519,18 @@ func (w *World) getBiomeAtPosition(x, y float64) BiomeType {
 	// Convert world coordinates to grid coordinates
 	gridX := int((x / w.Config.Width) * float64(w.Config.GridWidth))
 	gridY := int((y / w.Config.Height) * float64(w.Config.GridHeight))
-	
+
 	// Clamp to grid bounds
 	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-	
+
 	return w.Grid[gridY][gridX].Biome
 }
 
 // getEntitiesNearPosition returns entities within a given radius of a position
 func (w *World) getEntitiesNearPosition(pos Position, radius float64) []*Entity {
 	nearby := make([]*Entity, 0)
-	
+
 	for _, entity := range w.AllEntities {
 		if entity.IsAlive {
 			distance := math.Sqrt(math.Pow(entity.Position.X-pos.X, 2) + math.Pow(entity.Position.Y-pos.Y, 2))
@@ -539,7 +539,7 @@ func (w *World) getEntitiesNearPosition(pos Position, radius float64) []*Entity 
 			}
 		}
 	}
-	
+
 	return nearby
 }
 
@@ -646,7 +646,7 @@ func (w *World) updateSingleEntity(entity *Entity, currentTimeState TimeState, d
 
 	// Note: Physics force calculations and interactions are handled separately
 	// to avoid race conditions between entities
-	
+
 	// Handle entity communication and signaling
 	w.handleEntityCommunication(entity)
 
@@ -1068,7 +1068,7 @@ func (w *World) triggerRandomEvent() {
 		},
 		{
 			Name:           "Cosmic Radiation",
-			Description:    "Interstellar radiation penetrates atmosphere", 
+			Description:    "Interstellar radiation penetrates atmosphere",
 			Duration:       80,
 			GlobalMutation: 0.25,
 			GlobalDamage:   1.0,
@@ -1123,7 +1123,7 @@ func (w *World) generateVolcanicFields() map[Position]BiomeType {
 				x := centerX + int(float64(radius)*math.Cos(radian))
 				y := centerY + int(float64(radius)*math.Sin(radian))
 
-				if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight && 
+				if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight &&
 					rand.Float64() < 0.6 {
 					changes[Position{X: float64(x), Y: float64(y)}] = BiomeRadiation
 				}
@@ -1216,26 +1216,26 @@ func (w *World) generateFloodZones() map[Position]BiomeType {
 // generateSeismicChanges creates mountain ranges from earthquakes
 func (w *World) generateSeismicChanges() map[Position]BiomeType {
 	changes := make(map[Position]BiomeType)
-	
+
 	// Create fault lines that generate mountain ranges
 	numFaults := 1 + rand.Intn(2)
-	
+
 	for i := 0; i < numFaults; i++ {
 		// Random fault line across the map
 		startX := rand.Intn(w.Config.GridWidth)
 		startY := rand.Intn(w.Config.GridHeight)
-		
+
 		// Fault direction
 		angle := rand.Float64() * 2 * math.Pi
 		length := 8 + rand.Intn(12)
-		
+
 		for step := 0; step < length; step++ {
 			x := startX + int(float64(step)*math.Cos(angle))
 			y := startY + int(float64(step)*math.Sin(angle))
-			
+
 			if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
 				changes[Position{X: float64(x), Y: float64(y)}] = BiomeMountain
-				
+
 				// Add nearby elevations
 				for dy := -1; dy <= 1; dy++ {
 					for dx := -1; dx <= 1; dx++ {
@@ -1249,7 +1249,7 @@ func (w *World) generateSeismicChanges() map[Position]BiomeType {
 			}
 		}
 	}
-	
+
 	return changes
 }
 
@@ -1446,6 +1446,21 @@ func (w *World) spawnNewEntities() {
 					value := trait.Value + (rand.Float64()-0.5)*0.5
 					value = math.Max(-2.0, math.Min(2.0, value))
 					newEntity.SetTrait(name, value)
+				}
+
+				// Create DNA and cellular organism for the new entity to maintain evolution chain
+				if w.DNASystem != nil && w.CellularSystem != nil {
+					dna := w.DNASystem.GenerateRandomDNA(newEntity.ID, newEntity.Generation)
+					w.CellularSystem.CreateSingleCellOrganism(newEntity.ID, dna)
+
+					// Update entity traits based on DNA expression
+					for traitName := range newEntity.Traits {
+						dnaValue := w.DNASystem.ExpressTrait(dna, traitName)
+						// Blend DNA value with existing trait (50/50 blend)
+						currentValue := newEntity.GetTrait(traitName)
+						newValue := (currentValue + dnaValue) / 2.0
+						newEntity.SetTrait(traitName, newValue)
+					}
 				}
 
 				pop.Entities = append(pop.Entities, newEntity)
@@ -1943,19 +1958,19 @@ func (w *World) Reset() {
 	w.AllPlants = make([]*Plant, 0)
 	w.Populations = make(map[string]*Population)
 	w.PhysicsComponents = make(map[int]*PhysicsComponent)
-	
+
 	// Reset counters
 	w.Tick = 0
 	w.NextID = 0
 	w.NextPlantID = 0
 	w.Paused = false
-	
+
 	// Clear events
 	w.Events = make([]*WorldEvent, 0)
-	
+
 	// Clear grid
 	w.clearGrid()
-	
+
 	// Reset physics collision counters
 	if w.PhysicsSystem != nil {
 		w.PhysicsSystem.ResetCollisionCounters()

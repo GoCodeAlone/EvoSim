@@ -160,10 +160,15 @@ func (gbs *GroupBehaviorSystem) FormGroup(entities []*Entity, purpose string) *G
 	var leader *Entity
 	maxIntelligence := -1.0
 	for _, entity := range entities {
-		if entity.GetTrait("intelligence") > maxIntelligence {
+		if entity != nil && entity.IsAlive && entity.GetTrait("intelligence") > maxIntelligence {
 			maxIntelligence = entity.GetTrait("intelligence")
 			leader = entity
 		}
+	}
+
+	// Ensure we found a valid leader
+	if leader == nil {
+		return nil // Cannot form group without a leader
 	}
 
 	group := &Group{
@@ -188,13 +193,29 @@ func (gbs *GroupBehaviorSystem) UpdateGroups() {
 		// Remove dead members
 		aliveMembers := make([]*Entity, 0)
 		for _, member := range group.Members {
-			if member.IsAlive {
+			if member != nil && member.IsAlive {
 				aliveMembers = append(aliveMembers, member)
 			}
 		}
 
-		// Disband if too few members or leader is dead
-		if len(aliveMembers) < 2 || !group.Leader.IsAlive {
+		// If leader is dead or nil, try to elect a new one from alive members
+		if group.Leader == nil || !group.Leader.IsAlive {
+			if len(aliveMembers) > 0 {
+				// Find new leader with highest intelligence
+				var newLeader *Entity
+				maxIntelligence := -1.0
+				for _, member := range aliveMembers {
+					if member.GetTrait("intelligence") > maxIntelligence {
+						maxIntelligence = member.GetTrait("intelligence")
+						newLeader = member
+					}
+				}
+				group.Leader = newLeader
+			}
+		}
+
+		// Disband if too few members or leader is dead/nil
+		if len(aliveMembers) < 2 || group.Leader == nil || !group.Leader.IsAlive {
 			continue
 		}
 
@@ -218,8 +239,15 @@ func (gbs *GroupBehaviorSystem) UpdateGroups() {
 
 // coordinateHunting makes group members work together to hunt
 func (gbs *GroupBehaviorSystem) coordinateHunting(group *Group) {
+	if group.Leader == nil || len(group.Members) == 0 {
+		return
+	}
+
 	// Group hunting increases success rate
 	for _, member := range group.Members {
+		if member == nil || !member.IsAlive {
+			continue
+		}
 		// Boost aggression and coordination
 		originalAggression := member.GetTrait("aggression")
 		member.SetTrait("aggression", originalAggression*1.2)
@@ -228,7 +256,7 @@ func (gbs *GroupBehaviorSystem) coordinateHunting(group *Group) {
 
 // coordinateMigration makes group move together toward better biomes
 func (gbs *GroupBehaviorSystem) coordinateMigration(group *Group) {
-	if group.Leader == nil {
+	if group.Leader == nil || !group.Leader.IsAlive {
 		return
 	}
 
@@ -236,7 +264,7 @@ func (gbs *GroupBehaviorSystem) coordinateMigration(group *Group) {
 	leaderPos := group.Leader.Position
 
 	for _, member := range group.Members {
-		if member == group.Leader {
+		if member == nil || !member.IsAlive || member == group.Leader {
 			continue
 		}
 
@@ -248,8 +276,15 @@ func (gbs *GroupBehaviorSystem) coordinateMigration(group *Group) {
 
 // defendTerritory makes group protect an area
 func (gbs *GroupBehaviorSystem) defendTerritory(group *Group) {
+	if group.Leader == nil || len(group.Members) == 0 {
+		return
+	}
+
 	// Increase defensive traits when near territory center
 	for _, member := range group.Members {
+		if member == nil || !member.IsAlive {
+			continue
+		}
 		originalDefense := member.GetTrait("defense")
 		member.SetTrait("defense", originalDefense*1.3)
 	}
