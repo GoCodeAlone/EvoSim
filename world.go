@@ -183,6 +183,11 @@ func NewWorld(config WorldConfig) *World {
 	// Initialize plant life
 	world.initializePlants()
 
+	// Process initial species formation from newly created plants
+	if len(world.AllPlants) > 0 {
+		world.SpeciationSystem.Update(world.AllPlants, 0)
+	}
+
 	return world
 }
 

@@ -157,17 +157,25 @@ type WindData struct {
 
 // SpeciesData represents species tracking state
 type SpeciesData struct {
-	ActiveSpecies   int                    `json:"active_species"`
-	ExtinctSpecies  int                    `json:"extinct_species"`
-	SpeciesDetails  []SpeciesDetailData    `json:"species_details"`
+	ActiveSpecies     int                    `json:"active_species"`
+	ExtinctSpecies    int                    `json:"extinct_species"`
+	SpeciesDetails    []SpeciesDetailData    `json:"species_details"`
+	TotalSpeciesEver  int                    `json:"total_species_ever"`
+	SpeciesWithMembers int                   `json:"species_with_members"`
+	SpeciesAwaitingExtinction int           `json:"species_awaiting_extinction"`
+	HasSpeciationSystem bool                 `json:"has_speciation_system"`
 }
 
 // SpeciesDetailData represents individual species information
 type SpeciesDetailData struct {
-	ID         int    `json:"id"`
-	Name       string `json:"name"`
-	Population int    `json:"population"`
-	IsExtinct  bool   `json:"is_extinct"`
+	ID                int    `json:"id"`
+	Name              string `json:"name"`
+	Population        int    `json:"population"`
+	IsExtinct         bool   `json:"is_extinct"`
+	FormationTick     int    `json:"formation_tick"`
+	ExtinctionTick    int    `json:"extinction_tick"`    // 0 if not extinct/awaiting extinction
+	PeakPopulation    int    `json:"peak_population"`
+	AwaitingExtinction bool  `json:"awaiting_extinction"` // true if has 0 members but not extinct yet
 }
 
 // NetworkData represents plant network state
@@ -193,9 +201,13 @@ type CellularData struct {
 
 // EvolutionData represents evolution tracking state
 type EvolutionData struct {
-	SpeciationEvents int     `json:"speciation_events"`
-	ExtinctionEvents int     `json:"extinction_events"`
-	GeneticDiversity float64 `json:"genetic_diversity"`
+	SpeciationEvents    int     `json:"speciation_events"`
+	ExtinctionEvents    int     `json:"extinction_events"`
+	GeneticDiversity    float64 `json:"genetic_diversity"`
+	HasSpeciationSystem bool    `json:"has_speciation_system"`
+	TotalPlantsTracked  int     `json:"total_plants_tracked"`
+	ActivePlantCount    int     `json:"active_plant_count"`
+	SpeciationDetected  bool    `json:"speciation_detected"`
 }
 
 // ToolData represents tool system state
@@ -807,19 +819,37 @@ func (vm *ViewManager) getWeatherPatternName(pattern int) string {
 
 func (vm *ViewManager) getSpeciesData() SpeciesData {
 	data := SpeciesData{
-		SpeciesDetails: make([]SpeciesDetailData, 0),
+		SpeciesDetails:            make([]SpeciesDetailData, 0),
+		HasSpeciationSystem:       vm.world.SpeciationSystem != nil,
+		SpeciesWithMembers:        0,
+		SpeciesAwaitingExtinction: 0,
 	}
 	
 	if vm.world.SpeciationSystem != nil {
 		data.ActiveSpecies = len(vm.world.SpeciationSystem.ActiveSpecies)
 		data.ExtinctSpecies = len(vm.world.SpeciationSystem.AllSpecies) - len(vm.world.SpeciationSystem.ActiveSpecies)
+		data.TotalSpeciesEver = len(vm.world.SpeciationSystem.AllSpecies)
 		
 		for _, species := range vm.world.SpeciationSystem.ActiveSpecies {
+			population := len(species.Members)
+			awaitingExtinction := population == 0 && species.ExtinctionTick > 0
+			
+			if population > 0 {
+				data.SpeciesWithMembers++
+			}
+			if awaitingExtinction {
+				data.SpeciesAwaitingExtinction++
+			}
+			
 			detail := SpeciesDetailData{
-				ID:         species.ID,
-				Name:       species.Name,
-				Population: len(species.Members),
-				IsExtinct:  species.IsExtinct,
+				ID:                 species.ID,
+				Name:               species.Name,
+				Population:         population,
+				IsExtinct:          species.IsExtinct,
+				FormationTick:      species.FormationTick,
+				ExtinctionTick:     species.ExtinctionTick,
+				PeakPopulation:     species.PeakPopulation,
+				AwaitingExtinction: awaitingExtinction,
 			}
 			data.SpeciesDetails = append(data.SpeciesDetails, detail)
 		}
@@ -892,16 +922,28 @@ func (vm *ViewManager) getCellularData() CellularData {
 }
 
 func (vm *ViewManager) getEvolutionData() EvolutionData {
-	data := EvolutionData{}
+	data := EvolutionData{
+		HasSpeciationSystem: vm.world.SpeciationSystem != nil,
+		ActivePlantCount:    len(vm.world.AllPlants),
+	}
 	
 	if vm.world.SpeciationSystem != nil {
 		data.SpeciationEvents = len(vm.world.SpeciationSystem.SpeciationEvents)
 		data.ExtinctionEvents = len(vm.world.SpeciationSystem.ExtinctionEvents)
+		data.TotalPlantsTracked = len(vm.world.AllPlants)
+		
+		// Consider speciation detected if we have any species or events
+		data.SpeciationDetected = len(vm.world.SpeciationSystem.AllSpecies) > 0 || 
+								  len(vm.world.SpeciationSystem.SpeciationEvents) > 0
 		
 		// Calculate genetic diversity as average distance between species
-		if len(vm.world.SpeciationSystem.ActiveSpecies) > 1 {
+		activeSpeciesCount := len(vm.world.SpeciationSystem.ActiveSpecies)
+		if activeSpeciesCount > 1 {
 			// Simplified diversity calculation
-			data.GeneticDiversity = float64(len(vm.world.SpeciationSystem.ActiveSpecies)) / 10.0
+			data.GeneticDiversity = float64(activeSpeciesCount) / 10.0
+		} else if activeSpeciesCount == 1 {
+			// Single species = low diversity but not zero
+			data.GeneticDiversity = 0.1
 		}
 	}
 	
