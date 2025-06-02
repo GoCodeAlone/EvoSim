@@ -1,0 +1,13 @@
+# Air configuration for EvoSim
+root = "."
+
+[build]
+  cmd = "go build -o evosim"
+  bin = "./evosim"
+  args_bin = ["--web", "--web-port", "8080"]
+  full_bin = ""
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  exclude_dir = ["vendor", "tests"]
+  exclude_file = []
+  follow_symlink = true
+  delay = 1000
