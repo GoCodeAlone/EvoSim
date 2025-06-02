@@ -180,8 +180,8 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Mating Strategies**: Four mating strategies (Monogamous, Polygamous, Sequential, Promiscuous)
 - [x] **Egg System**: Egg laying and hatching mechanics with time-based development
 - [x] **Emergent Migration**: Entities migrate to preferred mating locations during mating season
+- [x] **Competition for Mates**: Entities compete based on strength, intelligence, and energy levels
 - [ ] **Seasonal Mating Behaviors**: More complex seasonal mating patterns
-- [ ] **Competition for Mates**: Entities compete and fight for access to mates
 - [ ] **Territory-based Mating**: Territorial control affecting mating success
 - [ ] **Cross-species Compatibility**: Limited reproduction between closely related species
 

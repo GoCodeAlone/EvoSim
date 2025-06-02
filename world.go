@@ -2076,6 +2076,12 @@ func (w *World) processMatingAttempts() {
 				continue
 			}
 			
+			// Check for competition - see if there are other potential mates nearby
+			competition := w.checkMatingCompetition(entity1, entity2)
+			if competition && rand.Float64() < 0.7 { // 70% chance competition prevents mating
+				continue
+			}
+			
 			// Attempt mating
 			if w.ReproductionSystem.StartMating(entity1, entity2, w.Tick) {
 				// Log mating event
@@ -2168,6 +2174,50 @@ func (w *World) applyDecayFertilizer(fertilizer *DecayableItem) {
 	
 	// Log fertilization event
 	w.EventLogger.LogWorldEvent(w.Tick, "fertilization", fmt.Sprintf("Decayed %s provided nutrients to nearby plants", fertilizer.ItemType))
+}
+
+// checkMatingCompetition determines if there is competition for mates
+func (w *World) checkMatingCompetition(entity1, entity2 *Entity) bool {
+	// Look for other entities nearby that could compete
+	competitorCount := 0
+	
+	for _, potential := range w.AllEntities {
+		if !potential.IsAlive || potential.ReproductionStatus == nil {
+			continue
+		}
+		
+		// Skip the entities trying to mate
+		if potential.ID == entity1.ID || potential.ID == entity2.ID {
+			continue
+		}
+		
+		// Skip if not same species
+		if potential.Species != entity1.Species {
+			continue
+		}
+		
+		// Skip if not in mating condition
+		if !potential.ReproductionStatus.ReadyToMate || !potential.ReproductionStatus.MatingSeason {
+			continue
+		}
+		
+		// Check if competitor is close enough to interfere
+		distance1 := entity1.DistanceTo(potential)
+		distance2 := entity2.DistanceTo(potential)
+		
+		if distance1 <= 8.0 || distance2 <= 8.0 { // Competition range larger than mating range
+			// Check if competitor is stronger/more attractive
+			entity1Attractiveness := entity1.GetTrait("strength") + entity1.GetTrait("intelligence") + entity1.Energy/100.0
+			potentialAttractiveness := potential.GetTrait("strength") + potential.GetTrait("intelligence") + potential.Energy/100.0
+			
+			if potentialAttractiveness > entity1Attractiveness {
+				competitorCount++
+			}
+		}
+	}
+	
+	// Competition exists if there are stronger competitors nearby
+	return competitorCount > 0
 }
 
 // TogglePause toggles the simulation pause state

@@ -335,3 +335,59 @@ func TestReproductionSystemIntegration(t *testing.T) {
 	t.Logf("Test completed: Initial entities: %d, Final entities: %d, Alive: %d", 
 		initialEntityCount, len(world.AllEntities), aliveCount)
 }
+
+func TestMatingCompetition(t *testing.T) {
+	// Create a world to test competition
+	config := WorldConfig{
+		Width:          100.0,
+		Height:         100.0,
+		NumPopulations: 0, // We'll add entities manually
+		PopulationSize: 0,
+		GridWidth:      10,
+		GridHeight:     10,
+	}
+	
+	world := NewWorld(config)
+	
+	// Create test entities manually
+	entity1 := NewEntity(1, []string{"strength", "intelligence"}, "test", Position{X: 10, Y: 10})
+	entity1.SetTrait("strength", 0.5)
+	entity1.SetTrait("intelligence", 0.3)
+	entity1.Energy = 80.0
+	
+	entity2 := NewEntity(2, []string{"strength", "intelligence"}, "test", Position{X: 12, Y: 12})
+	entity2.SetTrait("strength", 0.4)
+	entity2.SetTrait("intelligence", 0.4)
+	entity2.Energy = 70.0
+	
+	// Stronger competitor nearby
+	competitor := NewEntity(3, []string{"strength", "intelligence"}, "test", Position{X: 8, Y: 8})
+	competitor.SetTrait("strength", 0.8)
+	competitor.SetTrait("intelligence", 0.7)
+	competitor.Energy = 90.0
+	
+	world.AllEntities = []*Entity{entity1, entity2, competitor}
+	
+	// Test competition detection
+	hasCompetition := world.checkMatingCompetition(entity1, entity2)
+	if !hasCompetition {
+		t.Error("Should detect competition when stronger entity is nearby")
+	}
+	
+	// Move competitor far away
+	competitor.Position = Position{X: 50, Y: 50}
+	hasCompetition = world.checkMatingCompetition(entity1, entity2)
+	if hasCompetition {
+		t.Error("Should not detect competition when competitor is far away")
+	}
+	
+	// Make competitor weaker
+	competitor.Position = Position{X: 8, Y: 8} // Move back close
+	competitor.SetTrait("strength", 0.1)
+	competitor.SetTrait("intelligence", 0.1)
+	competitor.Energy = 20.0
+	hasCompetition = world.checkMatingCompetition(entity1, entity2)
+	if hasCompetition {
+		t.Error("Should not detect competition when nearby entity is weaker")
+	}
+}
