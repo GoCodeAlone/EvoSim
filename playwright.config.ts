@@ -41,7 +41,7 @@ export default defineConfig({
 
   // Start local web server before running tests
   webServer: {
-    command: 'GOWORK=off go run . -web -web-port 8080 -pop-size 3 -mutation-rate 0.1',
+    command: 'GOWORK=off go run . -web -web-port 8080 -pop-size 3',
     port: 8080,
     reuseExistingServer: !process.env.CI,
     timeout: 45000, // Increased timeout for server startup

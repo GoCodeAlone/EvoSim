@@ -10,7 +10,7 @@ test.describe('EvoSim Web Interface', () => {
     await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
     
     // Check that the main title is present
-    await expect(page.locator('h1')).toContainText('EvoSim - Genetic Algorithm Simulation', { timeout: 15000 });
+    await expect(page.locator('h1')).toContainText('EvoSim - Genetic Ecosystem Simulation', { timeout: 15000 });
     
     // Check for connection status
     const connectionStatus = page.locator('.connection-status');
@@ -109,7 +109,7 @@ test.describe('EvoSim Web Interface', () => {
     
     // Test desktop view
     await page.setViewportSize({ width: 1200, height: 800 });
-    await expect(page.locator('.container')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.main-content')).toBeVisible({ timeout: 10000 });
     
     // Test tablet view  
     await page.setViewportSize({ width: 768, height: 1024 });
@@ -138,9 +138,9 @@ test.describe('EvoSim Web Interface', () => {
     expect(statusResponse.status()).toBe(200);
     
     const statusData = await statusResponse.json();
-    expect(statusData).toHaveProperty('running');
-    expect(statusData).toHaveProperty('generation');
-    expect(statusData).toHaveProperty('population');
+    expect(statusData).toHaveProperty('status');
+    expect(statusData).toHaveProperty('tick');
+    expect(statusData).toHaveProperty('populations');
   });
 
   test('grid view displays simulation entities', async ({ page }) => {
@@ -183,5 +183,4 @@ test.describe('EvoSim Web Interface', () => {
     const updatedContent = await infoPanel.textContent();
     expect(updatedContent).toBeTruthy();
   });
-});
 });
