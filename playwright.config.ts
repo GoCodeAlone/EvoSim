@@ -44,7 +44,7 @@ export default defineConfig({
     command: 'GOWORK=off go run . -web -web-port 8080 -pop-size 3',
     port: 8080,
     reuseExistingServer: !process.env.CI,
-    timeout: 45000, // Increased timeout for server startup
+    timeout: 60000, // Increased timeout for server startup
     stdout: 'pipe',
     stderr: 'pipe',
   },

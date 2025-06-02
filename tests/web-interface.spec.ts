@@ -1,6 +1,38 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('EvoSim Web Interface', () => {
+  test.beforeAll(async ({ request }) => {
+    // Ensure webserver is running before any tests execute
+    console.log('Checking if EvoSim webserver is running...');
+    
+    let retries = 0;
+    const maxRetries = 30; // 30 seconds of retries
+    const baseURL = 'http://localhost:8080';
+    
+    while (retries < maxRetries) {
+      try {
+        const response = await request.get(`${baseURL}/api/status`, { 
+          timeout: 2000,
+          ignoreHTTPSErrors: true 
+        });
+        
+        if (response.status() === 200) {
+          console.log('✓ EvoSim webserver detected and responding');
+          return; // Server is running, proceed with tests
+        }
+      } catch (error) {
+        // Server not responding, continue retrying
+      }
+      
+      retries++;
+      console.log(`Waiting for webserver... (attempt ${retries}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // If we reach here, server is not responding
+    throw new Error(`EvoSim webserver is not running or not responding at ${baseURL}. Please start the server with: GOWORK=off go run . -web -web-port 8080`);
+  });
+
   test.beforeEach(async ({ page }) => {
     // Set longer timeout for navigation in CI
     page.setDefaultTimeout(30000);

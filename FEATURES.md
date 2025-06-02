@@ -128,6 +128,35 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Enhanced CLI Views**: 4 new view modes (DNA, Cellular, Evolution, Topology) with detailed analysis
 - [x] **Comprehensive Testing**: Complete test suite covering DNA, cellular, macro evolution, and topology systems
 
+#### Species Support and Environmental Adaptation (RECENTLY COMPLETED)
+- [x] **Primitive Life Form Evolution**: Support for starting with simple microbes and basic organisms that evolve into complex species
+- [x] **Zero-Species Start Mode**: --primitive flag allows simulation to begin with no complex species and evolve them naturally
+- [x] **Enhanced Aquatic Support**: Complete aquatic adaptation system with swimming mechanics and water-based movement
+- [x] **Soil/Underground Environment**: New soil biome with digging abilities and underground navigation traits
+- [x] **Aerial Environment Support**: New air biome with flying abilities and altitude tolerance traits
+- [x] **Environment-Specific Movement**: Movement efficiency and energy costs vary by biome (water, soil, air, land)
+- [x] **Environment-Driven Evolution**: Entities evolve specialized traits based on environmental pressure
+- [x] **Specialized Species Variants**: 12+ specialized species types (aquatic_herbivore, soil_dweller, aerial_omnivore, etc.)
+- [x] **Adaptive Physics**: Movement physics adapt to environment (swimming, digging, flying, walking)
+- [x] **Environmental Trait System**: 5 new traits (aquatic_adaptation, digging_ability, underground_nav, flying_ability, altitude_tolerance)
+- [x] **Comprehensive Testing**: Full test suite for all environmental adaptations and primitive evolution
+
+#### Molecular Evolution System (RECENTLY COMPLETED)
+- [x] **Comprehensive Molecular Framework**: Complete molecular system with 20+ molecule types including proteins, amino acids, lipids, carbohydrates, nucleic acids, vitamins, minerals, and toxins
+- [x] **Molecular Needs System**: Entities have specific molecular requirements based on their traits, species, and environmental adaptations
+- [x] **Molecular Metabolism**: Entities process different molecules with varying efficiency based on intelligence, size, and genetic traits
+- [x] **Plant Molecular Profiles**: All plant types have unique molecular compositions affecting their nutritional value and toxicity
+- [x] **Entity Molecular Profiles**: Entities have molecular composition profiles that determine their value as prey for other entities
+- [x] **Molecular-Driven Behavior**: Entities seek food sources based on molecular desirability and nutritional needs
+- [x] **Evolutionary Pressure**: Molecular fitness affects overall entity fitness, driving evolution toward better adapted nutritional systems
+- [x] **Prey Preference Evolution**: Entities evolve preferences for specific prey types based on molecular content and past feeding success
+- [x] **Nutritional Status Tracking**: Real-time tracking of nutritional deficiencies and overall health status
+- [x] **Toxin Resistance**: Entities develop tolerance to plant toxins based on traits and evolutionary pressure
+- [x] **Species-Specific Nutrition**: Different species (herbivore, carnivore, omnivore) have distinct molecular profiles and nutritional requirements
+- [x] **Environmental Molecular Adaptation**: Aquatic, aerial, and soil-dwelling entities have specialized molecular compositions and needs
+- [x] **Molecular Fitness Integration**: 30% of entity fitness determined by molecular nutritional status and metabolic efficiency
+- [x] **Comprehensive Testing**: Full test suite covering all molecular system functionality including consumption, evolution, and species-specific profiles
+
 ---
 
 ## 🚧 IN PROGRESS

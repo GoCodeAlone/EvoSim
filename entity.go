@@ -31,6 +31,11 @@ type Entity struct {
 	Species    string           `json:"species"`
 	Generation int              `json:"generation"`
 	TribeID    int              `json:"tribe_id"` // ID of the tribe this entity belongs to (0 = no tribe)
+	
+	// Molecular system components
+	MolecularNeeds     *MolecularNeeds     `json:"molecular_needs"`
+	MolecularMetabolism *MolecularMetabolism `json:"molecular_metabolism"`
+	MolecularProfile   *MolecularProfile    `json:"molecular_profile"` // What this entity is made of (for consumption)
 }
 
 // NewEntity creates a new entity with random traits
@@ -54,6 +59,11 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 			Value: rand.Float64()*2 - 1, // Random value between -1 and 1
 		}
 	}
+
+	// Initialize molecular systems
+	entity.MolecularNeeds = NewMolecularNeeds(entity)
+	entity.MolecularMetabolism = NewMolecularMetabolism(entity)
+	entity.MolecularProfile = CreateEntityMolecularProfile(entity)
 
 	return entity
 }
@@ -127,7 +137,7 @@ func (e *Entity) DistanceTo(other *Entity) float64 {
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
-// MoveTo moves the entity towards a target position
+// MoveTo moves the entity towards a target position with environment-specific adaptations
 func (e *Entity) MoveTo(targetX, targetY float64, speed float64) {
 	if !e.IsAlive {
 		return
@@ -145,13 +155,93 @@ func (e *Entity) MoveTo(targetX, targetY float64, speed float64) {
 		e.Position.X += dx
 		e.Position.Y += dy
 
-		// Moving costs energy
+		// Moving costs energy (base cost)
 		energyCost := speed * 0.1
 		e.Energy -= energyCost
 	}
 }
 
-// MoveRandomly moves the entity in a random direction
+// MoveToWithEnvironment moves the entity with environment-specific adaptations
+func (e *Entity) MoveToWithEnvironment(targetX, targetY float64, speed float64, biome BiomeType) {
+	if !e.IsAlive {
+		return
+	}
+
+	// Calculate environment-specific movement efficiency
+	effectiveSpeed := speed
+	energyMultiplier := 1.0
+
+	switch biome {
+	case BiomeWater:
+		// Aquatic movement - efficiency based on aquatic adaptation
+		aquaticAdaptation := e.GetTrait("aquatic_adaptation")
+		if aquaticAdaptation < 0 {
+			// Poor adaptation - slower and more costly
+			effectiveSpeed *= (1.0 + aquaticAdaptation*0.5) // Reduce speed
+			energyMultiplier = 2.0 + math.Abs(aquaticAdaptation) // Higher energy cost
+		} else {
+			// Good adaptation - potentially faster swimming
+			effectiveSpeed *= (1.0 + aquaticAdaptation*0.3)
+			energyMultiplier = 0.8 // Lower energy cost
+		}
+
+	case BiomeSoil:
+		// Underground movement - efficiency based on digging ability
+		diggingAbility := e.GetTrait("digging_ability")
+		undergroundNav := e.GetTrait("underground_nav")
+		
+		if diggingAbility < 0 || undergroundNav < 0 {
+			// Poor soil adaptation - much slower and more costly
+			effectiveSpeed *= 0.3 // Very slow underground
+			energyMultiplier = 3.0 // Very high energy cost
+		} else {
+			// Good soil adaptation
+			effectiveSpeed *= (0.7 + diggingAbility*0.3)
+			energyMultiplier = 1.5 - undergroundNav*0.3
+		}
+
+	case BiomeAir:
+		// Aerial movement - efficiency based on flying ability
+		flyingAbility := e.GetTrait("flying_ability")
+		altitudeTolerance := e.GetTrait("altitude_tolerance")
+		
+		if flyingAbility < -0.5 {
+			// Cannot fly - fall or struggle
+			effectiveSpeed *= 0.1 // Extremely slow
+			energyMultiplier = 5.0 // Very high energy cost
+			e.Energy -= 2.0 // Additional damage from struggling at altitude
+		} else if flyingAbility > 0 {
+			// Good flying - faster and more efficient
+			effectiveSpeed *= (1.0 + flyingAbility*0.5)
+			energyMultiplier = 0.6 + altitudeTolerance*0.2
+		}
+
+	default:
+		// Land movement - default behavior
+		effectiveSpeed = speed
+		energyMultiplier = 1.0
+	}
+
+	// Apply movement
+	dx := targetX - e.Position.X
+	dy := targetY - e.Position.Y
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	if distance > 0 {
+		// Normalize direction and apply effective speed
+		dx = (dx / distance) * effectiveSpeed
+		dy = (dy / distance) * effectiveSpeed
+
+		e.Position.X += dx
+		e.Position.Y += dy
+
+		// Apply environment-specific energy cost
+		energyCost := effectiveSpeed * 0.1 * energyMultiplier
+		e.Energy -= energyCost
+	}
+}
+
+// MoveRandomly moves the entity in a random direction with environment considerations
 func (e *Entity) MoveRandomly(maxDistance float64) {
 	if !e.IsAlive {
 		return
@@ -165,6 +255,64 @@ func (e *Entity) MoveRandomly(maxDistance float64) {
 
 	// Random movement costs less energy
 	e.Energy -= distance * 0.05
+}
+
+// MoveRandomlyWithEnvironment moves the entity randomly with environment-specific adaptations
+func (e *Entity) MoveRandomlyWithEnvironment(maxDistance float64, biome BiomeType) {
+	if !e.IsAlive {
+		return
+	}
+
+	angle := rand.Float64() * 2 * math.Pi
+	distance := rand.Float64() * maxDistance
+
+	// Apply environment-specific movement constraints
+	effectiveDistance := distance
+	energyCostMultiplier := 1.0
+
+	switch biome {
+	case BiomeWater:
+		aquaticAdaptation := e.GetTrait("aquatic_adaptation")
+		if aquaticAdaptation < 0 {
+			effectiveDistance *= (1.0 + aquaticAdaptation*0.5) // Struggle in water
+			energyCostMultiplier = 2.0 + math.Abs(aquaticAdaptation)
+		} else {
+			effectiveDistance *= (1.0 + aquaticAdaptation*0.3)
+			energyCostMultiplier = 0.8
+		}
+
+	case BiomeSoil:
+		diggingAbility := e.GetTrait("digging_ability")
+		undergroundNav := e.GetTrait("underground_nav")
+		
+		if diggingAbility < 0 || undergroundNav < 0 {
+			effectiveDistance *= 0.4 // Slow underground
+			energyCostMultiplier = 6.0 // Very high energy cost
+		} else {
+			effectiveDistance *= (0.7 + diggingAbility*0.3)
+			energyCostMultiplier = 1.2 - undergroundNav*0.2
+		}
+
+	case BiomeAir:
+		flyingAbility := e.GetTrait("flying_ability")
+		altitudeTolerance := e.GetTrait("altitude_tolerance")
+		
+		if flyingAbility < -0.5 {
+			effectiveDistance *= 0.1 // Cannot fly properly
+			energyCostMultiplier = 5.0
+			e.Energy -= 2.0 // Additional damage from struggling at altitude
+		} else if flyingAbility > 0 {
+			effectiveDistance *= (1.0 + flyingAbility*0.5)
+			energyCostMultiplier = 0.6 + altitudeTolerance*0.2
+		}
+	}
+
+	e.Position.X += math.Cos(angle) * effectiveDistance
+	e.Position.Y += math.Sin(angle) * effectiveDistance
+
+	// Apply environment-specific energy cost
+	energyCost := effectiveDistance * 0.1 * energyCostMultiplier
+	e.Energy -= energyCost
 }
 
 // CanKill determines if this entity can kill another based on traits
@@ -219,15 +367,43 @@ func (e *Entity) CanEat(other *Entity) bool {
 	return mySize > theirSize+1.0 && other.GetTrait("aggression") < 0.0
 }
 
-// Eat consumes another entity for energy
+// Eat consumes another entity for energy using molecular system
 func (e *Entity) Eat(other *Entity) bool {
 	if !e.CanEat(other) {
 		return false
 	}
 
-	// Gain energy based on the consumed entity's size and remaining energy
-	energyGain := (other.GetTrait("size")+1.0)*10 + other.Energy*0.5
-	e.Energy += energyGain
+	// Use molecular system for consumption if available
+	if other.MolecularProfile != nil && e.MolecularNeeds != nil && e.MolecularMetabolism != nil {
+		// Calculate molecular desirability 
+		desirability := GetMolecularDesirability(other.MolecularProfile, e.MolecularNeeds)
+		
+		// Base consumption based on prey size
+		consumptionRate := (other.GetTrait("size") + 1.0) * 0.1
+		
+		// Consume nutrients using molecular system
+		energyGained, toxinDamage := other.MolecularProfile.ConsumeNutrients(
+			e.MolecularNeeds,
+			e.MolecularMetabolism,
+			consumptionRate)
+		
+		// Apply molecular energy gain
+		e.Energy += energyGained * 15.0 // Higher energy gain from meat
+		e.Energy -= toxinDamage
+		
+		// Also get remaining energy from the consumed entity
+		e.Energy += other.Energy * 0.3
+		
+		// Desirability affects hunting motivation for future reference
+		if desirability > 0.7 {
+			// High-quality prey - remember this for future behavior evolution
+			e.SetTrait("prey_preference_" + other.Species, math.Min(1.0, e.GetTrait("prey_preference_" + other.Species) + 0.1))
+		}
+	} else {
+		// Fallback to traditional system
+		energyGain := (other.GetTrait("size")+1.0)*10 + other.Energy*0.5
+		e.Energy += energyGain
+	}
 
 	// Eating costs some energy
 	e.Energy -= 5
@@ -377,8 +553,23 @@ func (e *Entity) Update() {
 
 	e.Age++
 
-	// Natural energy decay
-	e.Energy -= 1.0 + float64(e.Age)*0.01
+	// Update molecular needs (deficiencies increase over time)
+	if e.MolecularNeeds != nil {
+		e.MolecularNeeds.UpdateDeficiencies(1.0) // 1 time step
+	}
+
+	// Natural energy decay (affected by nutritional status)
+	baseDecay := 1.0 + float64(e.Age)*0.01
+	
+	// Molecular nutritional status affects energy decay
+	if e.MolecularNeeds != nil {
+		nutritionalStatus := e.MolecularNeeds.GetOverallNutritionalStatus()
+		// Poor nutrition increases energy decay
+		nutritionalMultiplier := 1.0 + (1.0-nutritionalStatus)*0.5
+		baseDecay *= nutritionalMultiplier
+	}
+	
+	e.Energy -= baseDecay
 
 	// Die if energy is too low
 	if e.Energy <= 0 {
@@ -391,6 +582,91 @@ func (e *Entity) Update() {
 	if e.Age > maxAge {
 		e.IsAlive = false
 	}
+}
+
+// SeekNutrition makes the entity move toward the most nutritionally desirable nearby food sources
+func (e *Entity) SeekNutrition(plants []*Plant, entities []*Entity, maxDistance float64) (targetX, targetY float64, found bool) {
+	if !e.IsAlive || e.MolecularNeeds == nil {
+		return 0, 0, false
+	}
+
+	bestDesirability := 0.0
+	bestX, bestY := 0.0, 0.0
+	found = false
+
+	// Check nearby plants
+	for _, plant := range plants {
+		if !plant.IsAlive || plant.MolecularProfile == nil {
+			continue
+		}
+
+		// Calculate distance
+		dx := plant.Position.X - e.Position.X
+		dy := plant.Position.Y - e.Position.Y
+		distance := math.Sqrt(dx*dx + dy*dy)
+
+		if distance > maxDistance {
+			continue
+		}
+
+		// Calculate molecular desirability
+		desirability := GetMolecularDesirability(plant.MolecularProfile, e.MolecularNeeds)
+		
+		// Adjust for distance (closer is better)
+		adjustedDesirability := desirability * (1.0 - distance/maxDistance*0.3)
+
+		if adjustedDesirability > bestDesirability {
+			bestDesirability = adjustedDesirability
+			bestX, bestY = plant.Position.X, plant.Position.Y
+			found = true
+		}
+	}
+
+	// Check nearby dead entities (if carnivorous)
+	if e.GetTrait("aggression") > 0.0 { // Aggressive entities are more carnivorous
+		for _, other := range entities {
+			if other == e || other.IsAlive || other.MolecularProfile == nil {
+				continue
+			}
+
+			// Calculate distance
+			dx := other.Position.X - e.Position.X
+			dy := other.Position.Y - e.Position.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
+
+			if distance > maxDistance {
+				continue
+			}
+
+			// Calculate molecular desirability for meat
+			desirability := GetMolecularDesirability(other.MolecularProfile, e.MolecularNeeds)
+			
+			// Meat is generally more desirable for carnivores
+			if e.GetTrait("aggression") > 0.3 {
+				desirability *= 1.5
+			}
+			
+			// Adjust for distance
+			adjustedDesirability := desirability * (1.0 - distance/maxDistance*0.3)
+
+			if adjustedDesirability > bestDesirability {
+				bestDesirability = adjustedDesirability
+				bestX, bestY = other.Position.X, other.Position.Y
+				found = true
+			}
+		}
+	}
+
+	return bestX, bestY, found
+}
+
+// GetMolecularNutritionalStress returns a value indicating how much nutritional stress the entity is under
+func (e *Entity) GetMolecularNutritionalStress() float64 {
+	if e.MolecularNeeds == nil {
+		return 0.0
+	}
+	
+	return 1.0 - e.MolecularNeeds.GetOverallNutritionalStatus()
 }
 
 // CanEatPlant determines if this entity can eat a plant
@@ -414,30 +690,53 @@ func (e *Entity) CanEatPlant(plant *Plant) bool {
 	}
 }
 
-// EatPlant consumes a plant for energy
+// EatPlant consumes a plant for energy using molecular system
 func (e *Entity) EatPlant(plant *Plant) bool {
 	if !e.CanEatPlant(plant) {
 		return false
 	}
 
 	// Calculate how much to eat based on entity size and hunger
-	eatAmount := 10 + e.GetTrait("size")*5
+	baseEatAmount := 10 + e.GetTrait("size")*5
 	if e.Energy < 30 {
-		eatAmount *= 1.5 // Eat more when hungry
+		baseEatAmount *= 1.5 // Eat more when hungry
 	}
 
-	// Get nutrition and toxicity
-	nutrition := plant.Consume(eatAmount)
-	toxicity := plant.GetToxicity()
+	// Use molecular system to determine desirability and consumption
+	if plant.MolecularProfile != nil && e.MolecularNeeds != nil && e.MolecularMetabolism != nil {
+		// Calculate molecular desirability
+		desirability := GetMolecularDesirability(plant.MolecularProfile, e.MolecularNeeds)
+		
+		// Adjust eating amount based on desirability
+		eatAmount := baseEatAmount * (0.5 + desirability*0.5)
+		
+		// Consume nutrients using molecular system
+		energyGained, toxinDamage := plant.MolecularProfile.ConsumeNutrients(
+			e.MolecularNeeds, 
+			e.MolecularMetabolism, 
+			eatAmount/100.0) // Convert to consumption rate
+		
+		// Apply energy gain and toxin damage
+		e.Energy += energyGained * 10.0 // Scale up energy gain
+		e.Energy -= toxinDamage
+		
+		// Traditional plant consumption for backwards compatibility
+		nutrition := plant.Consume(eatAmount)
+		e.Energy += nutrition * 0.3 // Reduced to avoid double-counting
+	} else {
+		// Fallback to traditional system if molecular system not available
+		nutrition := plant.Consume(baseEatAmount)
+		toxicity := plant.GetToxicity()
 
-	// Apply nutrition
-	e.Energy += nutrition
+		// Apply nutrition
+		e.Energy += nutrition
 
-	// Apply toxicity damage
-	if toxicity > 0 {
-		resistance := e.GetTrait("toxin_resistance")
-		damage := toxicity * (1.0 - resistance*0.5)
-		e.Energy -= damage
+		// Apply toxicity damage
+		if toxicity > 0 {
+			resistance := e.GetTrait("toxin_resistance")
+			damage := toxicity * (1.0 - resistance*0.5)
+			e.Energy -= damage
+		}
 	}
 
 	// Eating costs some energy
@@ -452,8 +751,99 @@ func (e *Entity) CheckStarvation(world *World) {
 		return
 	}
 
-	// Severe starvation can trigger evolutionary adaptation
-	if e.Energy < 5 && e.Species == "predator" && e.Age > 50 { // Also require mature age
+	// Apply evolutionary pressure based on current conditions and species
+	e.checkEvolutionaryPressure(world)
+}
+
+// checkEvolutionaryPressure applies environmental and survival pressure to drive evolution
+func (e *Entity) checkEvolutionaryPressure(world *World) {
+	if !e.IsAlive {
+		return
+	}
+
+	// Get current biome
+	biome := world.getBiomeAtPosition(e.Position.X, e.Position.Y)
+	
+	// Different evolutionary pressures based on current species and conditions
+	switch e.Species {
+	case "microbe":
+		e.handleMicrobeEvolution(world, biome)
+	case "simple":
+		e.handleSimpleOrganismEvolution(world, biome)
+	case "predator":
+		e.handlePredatorEvolution(world, biome)
+	case "herbivore":
+		e.handleHerbivoreEvolution(world, biome)
+	case "omnivore":
+		e.handleOmnivoreEvolution(world, biome)
+	}
+}
+
+// handleMicrobeEvolution manages evolution from microbes to simple organisms
+func (e *Entity) handleMicrobeEvolution(world *World, biome BiomeType) {
+	// Microbes can evolve when they have sufficient energy and age
+	if e.Energy > 30 && e.Age > 20 {
+		// Chance to evolve based on environmental pressure
+		evolutionChance := 0.001 // Base chance per tick
+		
+		// Increase chance based on biome suitability
+		switch biome {
+		case BiomeWater:
+			if e.GetTrait("aquatic_adaptation") > 0.3 {
+				evolutionChance *= 3.0 // Good water adaptation
+			}
+		case BiomePlains, BiomeForest:
+			evolutionChance *= 2.0 // Good for basic evolution
+		}
+		
+		if rand.Float64() < evolutionChance {
+			e.evolveSpecies("simple", world)
+		}
+	}
+}
+
+// handleSimpleOrganismEvolution manages evolution from simple organisms to complex species
+func (e *Entity) handleSimpleOrganismEvolution(world *World, biome BiomeType) {
+	// Simple organisms can evolve to herbivores, or specialized forms
+	if e.Energy > 40 && e.Age > 30 {
+		evolutionChance := 0.0005
+		targetSpecies := "herbivore" // Default evolution path
+		
+		// Environment influences evolution direction
+		switch biome {
+		case BiomeWater:
+			if e.GetTrait("aquatic_adaptation") > 0.0 {
+				targetSpecies = "aquatic_herbivore"
+				evolutionChance *= 2.0
+			}
+		case BiomeSoil:
+			if e.GetTrait("digging_ability") > -0.5 {
+				targetSpecies = "soil_dweller"
+				evolutionChance *= 1.5
+			}
+		case BiomeAir:
+			if e.GetTrait("flying_ability") > -0.8 {
+				targetSpecies = "aerial_herbivore"
+				evolutionChance *= 1.2
+			}
+		case BiomeForest:
+			// High competition might drive predatory evolution
+			nearbyEntities := world.getEntitiesNearPosition(e.Position, 10.0)
+			if len(nearbyEntities) > 5 {
+				targetSpecies = "predator"
+				evolutionChance *= 0.8
+			}
+		}
+		
+		if rand.Float64() < evolutionChance {
+			e.evolveSpecies(targetSpecies, world)
+		}
+	}
+}
+
+// handlePredatorEvolution manages predator species evolution
+func (e *Entity) handlePredatorEvolution(world *World, biome BiomeType) {
+	if e.Energy < 5 && e.Age > 50 {
 		// Check if there are any herbivores or omnivores nearby
 		hasPreyNearby := false
 		for _, other := range world.AllEntities {
@@ -463,9 +853,81 @@ func (e *Entity) CheckStarvation(world *World) {
 			}
 		}
 
-		// If no prey nearby, consider evolutionary pressure
-		if !hasPreyNearby && rand.Float64() < 0.001 { // 0.1% chance per tick - much lower
-			e.evolveSpecies("omnivore", world)
+		// If no prey nearby, consider evolutionary adaptation
+		if !hasPreyNearby && rand.Float64() < 0.001 {
+			// Environment influences evolution direction
+			switch biome {
+			case BiomeWater:
+				if e.GetTrait("aquatic_adaptation") > -0.5 {
+					e.evolveSpecies("aquatic_predator", world)
+				} else {
+					e.evolveSpecies("omnivore", world)
+				}
+			case BiomeSoil:
+				if e.GetTrait("digging_ability") > -0.3 {
+					e.evolveSpecies("underground_predator", world)
+				} else {
+					e.evolveSpecies("omnivore", world)
+				}
+			default:
+				e.evolveSpecies("omnivore", world)
+			}
+		}
+	}
+}
+
+// handleHerbivoreEvolution manages herbivore species evolution  
+func (e *Entity) handleHerbivoreEvolution(world *World, biome BiomeType) {
+	// Herbivores might evolve under predation pressure
+	if e.Energy < 10 && e.Age > 40 {
+		nearbyPredators := 0
+		for _, other := range world.AllEntities {
+			if other.IsAlive && other.Species == "predator" && e.DistanceTo(other) < 15 {
+				nearbyPredators++
+			}
+		}
+		
+		if nearbyPredators > 2 && rand.Float64() < 0.0005 {
+			// High predation pressure - might evolve defenses or become omnivore
+			if biome == BiomeWater && e.GetTrait("aquatic_adaptation") > 0 {
+				e.evolveSpecies("aquatic_herbivore", world)
+			} else if biome == BiomeSoil && e.GetTrait("digging_ability") > 0 {
+				e.evolveSpecies("soil_dweller", world)
+			} else {
+				e.evolveSpecies("omnivore", world)
+			}
+		}
+	}
+}
+
+// handleOmnivoreEvolution manages omnivore species evolution
+func (e *Entity) handleOmnivoreEvolution(world *World, biome BiomeType) {
+	// Omnivores are generally stable but can specialize
+	if e.Energy > 60 && e.Age > 60 {
+		evolutionChance := 0.0001
+		
+		switch biome {
+		case BiomeWater:
+			if e.GetTrait("aquatic_adaptation") > 0.5 {
+				evolutionChance *= 2.0
+				if rand.Float64() < evolutionChance {
+					e.evolveSpecies("aquatic_omnivore", world)
+				}
+			}
+		case BiomeSoil:
+			if e.GetTrait("digging_ability") > 0.5 {
+				evolutionChance *= 1.5
+				if rand.Float64() < evolutionChance {
+					e.evolveSpecies("underground_omnivore", world)
+				}
+			}
+		case BiomeAir:
+			if e.GetTrait("flying_ability") > 0.3 {
+				evolutionChance *= 1.2
+				if rand.Float64() < evolutionChance {
+					e.evolveSpecies("aerial_omnivore", world)
+				}
+			}
 		}
 	}
 }
@@ -481,24 +943,96 @@ func (e *Entity) evolveSpecies(newSpecies string, world *World) {
 
 	// Adjust traits for new species
 	switch newSpecies {
+	case "simple":
+		// Evolution from microbe to simple organism
+		e.SetTrait("size", e.GetTrait("size")+0.3)
+		e.SetTrait("intelligence", e.GetTrait("intelligence")+0.2)
+		e.SetTrait("speed", e.GetTrait("speed")+0.2)
+		e.SetTrait("strength", e.GetTrait("strength")+0.2)
+
+	case "herbivore":
+		// Evolution to herbivore
+		e.SetTrait("size", e.GetTrait("size")+0.2)
+		e.SetTrait("intelligence", e.GetTrait("intelligence")+0.3)
+		e.SetTrait("cooperation", e.GetTrait("cooperation")+0.4)
+		e.SetTrait("aggression", e.GetTrait("aggression")-0.2)
+
+	case "aquatic_herbivore":
+		// Specialized aquatic herbivore
+		e.SetTrait("aquatic_adaptation", e.GetTrait("aquatic_adaptation")+0.5)
+		e.SetTrait("size", e.GetTrait("size")+0.1)
+		e.SetTrait("speed", e.GetTrait("speed")+0.3) // Fast swimming
+		e.SetTrait("cooperation", e.GetTrait("cooperation")+0.3)
+
+	case "soil_dweller":
+		// Specialized soil-dwelling organism
+		e.SetTrait("digging_ability", e.GetTrait("digging_ability")+0.6)
+		e.SetTrait("underground_nav", e.GetTrait("underground_nav")+0.5)
+		e.SetTrait("size", e.GetTrait("size")-0.2) // Smaller for tunneling
+		e.SetTrait("endurance", e.GetTrait("endurance")+0.3)
+
+	case "aerial_herbivore":
+		// Specialized aerial herbivore  
+		e.SetTrait("flying_ability", e.GetTrait("flying_ability")+0.7)
+		e.SetTrait("altitude_tolerance", e.GetTrait("altitude_tolerance")+0.6)
+		e.SetTrait("size", e.GetTrait("size")-0.3) // Lighter for flying
+		e.SetTrait("speed", e.GetTrait("speed")+0.4)
+
+	case "aquatic_predator":
+		// Aquatic predator evolution
+		e.SetTrait("aquatic_adaptation", e.GetTrait("aquatic_adaptation")+0.6)
+		e.SetTrait("aggression", e.GetTrait("aggression")+0.3)
+		e.SetTrait("strength", e.GetTrait("strength")+0.2)
+		e.SetTrait("speed", e.GetTrait("speed")+0.4)
+
+	case "underground_predator":
+		// Underground predator evolution
+		e.SetTrait("digging_ability", e.GetTrait("digging_ability")+0.7)
+		e.SetTrait("underground_nav", e.GetTrait("underground_nav")+0.6)
+		e.SetTrait("aggression", e.GetTrait("aggression")+0.2)
+		e.SetTrait("strength", e.GetTrait("strength")+0.3)
+
 	case "omnivore":
-		// Develop omnivore traits
+		// Standard omnivore evolution
 		e.SetTrait("diet_flexibility", e.GetTrait("diet_flexibility")+0.3)
 		e.SetTrait("toxin_resistance", e.GetTrait("toxin_resistance")+0.2)
-		e.SetTrait("aggression", e.GetTrait("aggression")-0.1) // Less aggressive
-	case "herbivore":
-		// Develop herbivore traits
-		e.SetTrait("digestion_efficiency", e.GetTrait("digestion_efficiency")+0.4)
-		e.SetTrait("toxin_resistance", e.GetTrait("toxin_resistance")+0.3)
-		e.SetTrait("aggression", e.GetTrait("aggression")-0.3) // Much less aggressive
+		e.SetTrait("aggression", e.GetTrait("aggression")-0.1)
+		e.SetTrait("intelligence", e.GetTrait("intelligence")+0.2)
+
+	case "aquatic_omnivore":
+		// Aquatic omnivore
+		e.SetTrait("aquatic_adaptation", e.GetTrait("aquatic_adaptation")+0.5)
+		e.SetTrait("diet_flexibility", e.GetTrait("diet_flexibility")+0.4)
+		e.SetTrait("intelligence", e.GetTrait("intelligence")+0.3)
+
+	case "underground_omnivore":
+		// Underground omnivore
+		e.SetTrait("digging_ability", e.GetTrait("digging_ability")+0.5)
+		e.SetTrait("underground_nav", e.GetTrait("underground_nav")+0.4)
+		e.SetTrait("diet_flexibility", e.GetTrait("diet_flexibility")+0.3)
+
+	case "aerial_omnivore":
+		// Aerial omnivore
+		e.SetTrait("flying_ability", e.GetTrait("flying_ability")+0.6)
+		e.SetTrait("altitude_tolerance", e.GetTrait("altitude_tolerance")+0.5)
+		e.SetTrait("diet_flexibility", e.GetTrait("diet_flexibility")+0.3)
+		e.SetTrait("size", e.GetTrait("size")-0.2)
+
 	case "predator":
-		// Develop predator traits
+		// Standard predator evolution
 		e.SetTrait("aggression", e.GetTrait("aggression")+0.3)
 		e.SetTrait("strength", e.GetTrait("strength")+0.2)
 		e.SetTrait("speed", e.GetTrait("speed")+0.1)
+		e.SetTrait("intelligence", e.GetTrait("intelligence")+0.2)
+	}
+
+	// Ensure traits stay within bounds
+	for name, trait := range e.Traits {
+		value := math.Max(-2.0, math.Min(2.0, trait.Value))
+		e.SetTrait(name, value)
 	}
 
 	// Log the evolution
-	details := fmt.Sprintf("Evolved due to environmental pressure (energy: %.1f)", e.Energy)
+	details := fmt.Sprintf("Evolved from %s due to environmental pressure (energy: %.1f)", oldSpecies, e.Energy)
 	world.EventLogger.LogSpeciesEvolution(world.Tick, newSpecies, oldSpecies, details)
 }
