@@ -183,7 +183,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "reproduction"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -333,6 +333,8 @@ func (m CLIModel) View() string {
 		content = m.evolutionView()
 	case "topology":
 		content = m.topologyView()
+	case "reproduction":
+		content = m.reproductionView()
 	default:
 		content = m.gridView()
 	}
@@ -2155,6 +2157,148 @@ func (m *CLIModel) topologyView() string {
 			
 			waterCount++
 		}
+	}
+	
+	return content.String()
+}
+
+func (m *CLIModel) reproductionView() string {
+	var content strings.Builder
+	
+	content.WriteString("=== REPRODUCTION & DECAY SYSTEM ===\n\n")
+	
+	// Reproduction system stats
+	if m.world.ReproductionSystem != nil {
+		rs := m.world.ReproductionSystem
+		content.WriteString(fmt.Sprintf("Active eggs: %d\n", len(rs.Eggs)))
+		content.WriteString(fmt.Sprintf("Decaying items: %d\n", len(rs.DecayingItems)))
+		content.WriteString(fmt.Sprintf("Next egg ID: %d\n", rs.NextEggID))
+		content.WriteString(fmt.Sprintf("Next item ID: %d\n", rs.NextItemID))
+		
+		// Egg details
+		if len(rs.Eggs) > 0 {
+			content.WriteString("\n=== ACTIVE EGGS ===\n")
+			for i, egg := range rs.Eggs {
+				if i >= 5 { // Limit display
+					content.WriteString(fmt.Sprintf("... and %d more eggs\n", len(rs.Eggs)-i))
+					break
+				}
+				
+				content.WriteString(fmt.Sprintf("Egg %d:\n", egg.ID))
+				content.WriteString(fmt.Sprintf("  Parents: %d + %d\n", egg.Parent1ID, egg.Parent2ID))
+				content.WriteString(fmt.Sprintf("  Species: %s\n", egg.Species))
+				content.WriteString(fmt.Sprintf("  Age: %d/%d ticks\n", m.world.Tick-egg.LayingTick, egg.HatchingPeriod))
+				content.WriteString(fmt.Sprintf("  Energy: %.1f\n", egg.Energy))
+				content.WriteString(fmt.Sprintf("  Position: (%.1f, %.1f)\n", egg.Position.X, egg.Position.Y))
+				content.WriteString("\n")
+			}
+		}
+		
+		// Decaying items
+		if len(rs.DecayingItems) > 0 {
+			content.WriteString("\n=== DECAYING ITEMS ===\n")
+			for i, item := range rs.DecayingItems {
+				if i >= 5 { // Limit display
+					content.WriteString(fmt.Sprintf("... and %d more items\n", len(rs.DecayingItems)-i))
+					break
+				}
+				
+				content.WriteString(fmt.Sprintf("%s %d:\n", item.ItemType, item.ID))
+				content.WriteString(fmt.Sprintf("  Origin: %s\n", item.OriginSpecies))
+				content.WriteString(fmt.Sprintf("  Age: %d/%d ticks\n", m.world.Tick-item.CreationTick, item.DecayPeriod))
+				content.WriteString(fmt.Sprintf("  Nutrients: %.1f\n", item.NutrientValue))
+				content.WriteString(fmt.Sprintf("  Size: %.1f\n", item.Size))
+				content.WriteString(fmt.Sprintf("  Position: (%.1f, %.1f)\n", item.Position.X, item.Position.Y))
+				content.WriteString("\n")
+			}
+		}
+	}
+	
+	// Entity reproduction status
+	content.WriteString("\n=== ENTITY REPRODUCTION STATUS ===\n")
+	
+	// Count entities by reproduction mode and status
+	modeCount := make(map[string]int)
+	strategyCount := make(map[string]int)
+	pregnantCount := 0
+	readyToMateCount := 0
+	matingSeasonCount := 0
+	migratingCount := 0
+	
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive || entity.ReproductionStatus == nil {
+			continue
+		}
+		
+		rs := entity.ReproductionStatus
+		modeCount[rs.Mode.String()]++
+		strategyCount[rs.Strategy.String()]++
+		
+		if rs.IsPregnant {
+			pregnantCount++
+		}
+		if rs.ReadyToMate {
+			readyToMateCount++
+		}
+		if rs.MatingSeason {
+			matingSeasonCount++
+		}
+		if rs.RequiresMigration {
+			migratingCount++
+		}
+	}
+	
+	content.WriteString("Reproduction Statistics:\n")
+	content.WriteString(fmt.Sprintf("  Pregnant entities: %d\n", pregnantCount))
+	content.WriteString(fmt.Sprintf("  Ready to mate: %d\n", readyToMateCount))
+	content.WriteString(fmt.Sprintf("  In mating season: %d\n", matingSeasonCount))
+	content.WriteString(fmt.Sprintf("  Require migration: %d\n", migratingCount))
+	
+	content.WriteString("\nReproduction Modes:\n")
+	for mode, count := range modeCount {
+		content.WriteString(fmt.Sprintf("  %s: %d\n", mode, count))
+	}
+	
+	content.WriteString("\nMating Strategies:\n")
+	for strategy, count := range strategyCount {
+		content.WriteString(fmt.Sprintf("  %s: %d\n", strategy, count))
+	}
+	
+	// Show some example entities with detailed reproduction info
+	content.WriteString("\n=== SAMPLE ENTITIES ===\n")
+	entityCount := 0
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive || entity.ReproductionStatus == nil {
+			continue
+		}
+		
+		if entityCount >= 3 { // Show only first 3
+			break
+		}
+		
+		rs := entity.ReproductionStatus
+		content.WriteString(fmt.Sprintf("Entity %d (%s):\n", entity.ID, entity.Species))
+		content.WriteString(fmt.Sprintf("  Mode: %s, Strategy: %s\n", rs.Mode.String(), rs.Strategy.String()))
+		content.WriteString(fmt.Sprintf("  Age: %d, Energy: %.1f\n", entity.Age, entity.Energy))
+		
+		if rs.IsPregnant {
+			gestation := m.world.Tick - rs.GestationStartTick
+			content.WriteString(fmt.Sprintf("  PREGNANT (%.1f%% complete)\n", float64(gestation)/float64(rs.GestationPeriod)*100))
+		}
+		
+		if rs.MateID > 0 {
+			content.WriteString(fmt.Sprintf("  Mated to: Entity %d\n", rs.MateID))
+		}
+		
+		if rs.RequiresMigration {
+			dx := entity.Position.X - rs.PreferredMatingLocation.X
+			dy := entity.Position.Y - rs.PreferredMatingLocation.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
+			content.WriteString(fmt.Sprintf("  Migration distance: %.1f units\n", distance))
+		}
+		
+		content.WriteString("\n")
+		entityCount++
 	}
 	
 	return content.String()

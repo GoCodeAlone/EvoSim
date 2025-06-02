@@ -173,6 +173,18 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ## 🚧 IN PROGRESS
 
+#### Reproduction, Gestation, and Decay Systems (IN PROGRESS)
+- [x] **Reproduction Modes**: Multiple reproduction types (DirectCoupling, EggLaying, LiveBirth, Budding, Fission)
+- [x] **Gestation System**: Time-based pregnancy and birth cycles with configurable gestation periods
+- [x] **Death and Decay Tracking**: Entity death creates decaying corpses that fertilize nearby plants
+- [x] **Mating Strategies**: Four mating strategies (Monogamous, Polygamous, Sequential, Promiscuous)
+- [x] **Egg System**: Egg laying and hatching mechanics with time-based development
+- [x] **Emergent Migration**: Entities migrate to preferred mating locations during mating season
+- [ ] **Seasonal Mating Behaviors**: More complex seasonal mating patterns
+- [ ] **Competition for Mates**: Entities compete and fight for access to mates
+- [ ] **Territory-based Mating**: Territorial control affecting mating success
+- [ ] **Cross-species Compatibility**: Limited reproduction between closely related species
+
 #### Enhanced Storm and Weather Systems (COMPLETED)
 - [x] **Enhanced Environmental Events**: Added 8 new event types (Volcanic Eruption, Lightning Storm, Wildfire, Great Flood, Magnetic Storm, Ash Cloud, Earthquake, Cosmic Radiation)
 - [x] **Regional Storm Systems**: Implemented localized weather events with 5 storm types (Thunderstorm, Tornado, Hurricane, Blizzard, Dust Storm)
