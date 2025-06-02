@@ -40,6 +40,9 @@ type ViewData struct {
 	Cellular       CellularData           `json:"cellular"`
 	Evolution      EvolutionData          `json:"evolution"`
 	Topology       TopologyData           `json:"topology"`
+	Tools          ToolData               `json:"tools"`
+	EnvironmentalMod EnvironmentalModData `json:"environmental_mod"`
+	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 }
 
 // CellData represents a single grid cell for rendering
@@ -151,6 +154,34 @@ type EvolutionData struct {
 	GeneticDiversity float64 `json:"genetic_diversity"`
 }
 
+// ToolData represents tool system state
+type ToolData struct {
+	TotalTools    int                    `json:"total_tools"`
+	OwnedTools    int                    `json:"owned_tools"`
+	DroppedTools  int                    `json:"dropped_tools"`
+	AvgDurability float64                `json:"avg_durability"`
+	AvgEfficiency float64                `json:"avg_efficiency"`
+	ToolTypes     map[string]int         `json:"tool_types"`
+}
+
+// EnvironmentalModData represents environmental modification system state
+type EnvironmentalModData struct {
+	TotalModifications    int                    `json:"total_modifications"`
+	ActiveModifications   int                    `json:"active_modifications"`
+	InactiveModifications int                    `json:"inactive_modifications"`
+	AvgDurability         float64                `json:"avg_durability"`
+	TunnelNetworks        int                    `json:"tunnel_networks"`
+	ModificationTypes     map[string]int         `json:"modification_types"`
+}
+
+// EmergentBehaviorData represents emergent behavior system state
+type EmergentBehaviorData struct {
+	TotalEntities       int                    `json:"total_entities"`
+	BehaviorSpread      map[string]int         `json:"behavior_spread"`
+	AvgProficiency      map[string]float64     `json:"avg_proficiency"`
+	DiscoveredBehaviors int                    `json:"discovered_behaviors"`
+}
+
 // TopologyData represents world topology state
 type TopologyData struct {
 	ElevationRange string  `json:"elevation_range"`
@@ -181,6 +212,9 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Cellular:        vm.getCellularData(),
 		Evolution:       vm.getEvolutionData(),
 		Topology:        vm.getTopologyData(),
+		Tools:           vm.getToolData(),
+		EnvironmentalMod: vm.getEnvironmentalModData(),
+		EmergentBehavior: vm.getEmergentBehaviorData(),
 	}
 	
 	return data
@@ -734,6 +768,99 @@ func (vm *ViewManager) GetViewModes() []string {
 	return []string{
 		"GRID", "STATS", "EVENTS", "POPULATIONS", "COMMUNICATION",
 		"CIVILIZATION", "PHYSICS", "WIND", "SPECIES", "NETWORK",
-		"DNA", "CELLULAR", "EVOLUTION", "TOPOLOGY",
+		"DNA", "CELLULAR", "EVOLUTION", "TOPOLOGY", "TOOLS", "ENVIRONMENT", "BEHAVIOR",
 	}
+}
+
+func (vm *ViewManager) getToolData() ToolData {
+	data := ToolData{}
+	
+	if vm.world.ToolSystem != nil {
+		stats := vm.world.ToolSystem.GetToolStats()
+		
+		if totalTools, ok := stats["total_tools"].(int); ok {
+			data.TotalTools = totalTools
+		}
+		if ownedTools, ok := stats["owned_tools"].(int); ok {
+			data.OwnedTools = ownedTools
+		}
+		if droppedTools, ok := stats["dropped_tools"].(int); ok {
+			data.DroppedTools = droppedTools
+		}
+		if avgDurability, ok := stats["avg_durability"].(float64); ok {
+			data.AvgDurability = avgDurability
+		}
+		if avgEfficiency, ok := stats["avg_efficiency"].(float64); ok {
+			data.AvgEfficiency = avgEfficiency
+		}
+		
+		data.ToolTypes = make(map[string]int)
+		if toolTypes, ok := stats["tool_types"].(map[ToolType]int); ok {
+			for toolType, count := range toolTypes {
+				data.ToolTypes[GetToolTypeName(toolType)] = count
+			}
+		}
+	}
+	
+	return data
+}
+
+func (vm *ViewManager) getEnvironmentalModData() EnvironmentalModData {
+	data := EnvironmentalModData{}
+	
+	if vm.world.EnvironmentalModSystem != nil {
+		stats := vm.world.EnvironmentalModSystem.GetModificationStats()
+		
+		if totalMods, ok := stats["total_modifications"].(int); ok {
+			data.TotalModifications = totalMods
+		}
+		if activeMods, ok := stats["active_modifications"].(int); ok {
+			data.ActiveModifications = activeMods
+		}
+		if inactiveMods, ok := stats["inactive_modifications"].(int); ok {
+			data.InactiveModifications = inactiveMods
+		}
+		if avgDurability, ok := stats["avg_durability"].(float64); ok {
+			data.AvgDurability = avgDurability
+		}
+		if tunnelNetworks, ok := stats["tunnel_networks"].(int); ok {
+			data.TunnelNetworks = tunnelNetworks
+		}
+		
+		data.ModificationTypes = make(map[string]int)
+		if modTypes, ok := stats["modification_types"].(map[EnvironmentalModType]int); ok {
+			for modType, count := range modTypes {
+				data.ModificationTypes[GetEnvironmentalModTypeName(modType)] = count
+			}
+		}
+	}
+	
+	return data
+}
+
+func (vm *ViewManager) getEmergentBehaviorData() EmergentBehaviorData {
+	data := EmergentBehaviorData{}
+	
+	if vm.world.EmergentBehaviorSystem != nil {
+		stats := vm.world.EmergentBehaviorSystem.GetBehaviorStats()
+		
+		if totalEntities, ok := stats["total_entities"].(int); ok {
+			data.TotalEntities = totalEntities
+		}
+		if discoveredBehaviors, ok := stats["discovered_behaviors"].(int); ok {
+			data.DiscoveredBehaviors = discoveredBehaviors
+		}
+		
+		data.BehaviorSpread = make(map[string]int)
+		if behaviorSpread, ok := stats["behavior_spread"].(map[string]int); ok {
+			data.BehaviorSpread = behaviorSpread
+		}
+		
+		data.AvgProficiency = make(map[string]float64)
+		if avgProficiency, ok := stats["avg_proficiency"].(map[string]float64); ok {
+			data.AvgProficiency = avgProficiency
+		}
+	}
+	
+	return data
 }

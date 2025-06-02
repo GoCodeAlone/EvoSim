@@ -105,6 +105,11 @@ type World struct {
 	MacroEvolutionSystem *MacroEvolutionSystem // Macro-evolution tracking
 	TopologySystem      *TopologySystem     // World terrain and geological processes
 	FluidRegions        []FluidRegion
+	
+	// Tool and Environmental Modification Systems
+	ToolSystem              *ToolSystem                          // Tool creation and usage system
+	EnvironmentalModSystem  *EnvironmentalModificationSystem     // Environmental modifications system
+	EmergentBehaviorSystem  *EmergentBehaviorSystem              // Emergent behavior and learning system
 }
 
 // NewWorld creates a new world with multiple populations
@@ -155,6 +160,11 @@ func NewWorld(config WorldConfig) *World {
 	world.CellularSystem = NewCellularSystem(world.DNASystem)
 	world.MacroEvolutionSystem = NewMacroEvolutionSystem()
 	world.TopologySystem = NewTopologySystem(config.GridWidth, config.GridHeight)
+	
+	// Initialize tool and environmental modification systems
+	world.ToolSystem = NewToolSystem()
+	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem()
+	world.EmergentBehaviorSystem = NewEmergentBehaviorSystem()
 	
 	// Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
@@ -459,6 +469,15 @@ func (w *World) Update() {
 		}
 	}
 
+	// Update tool system
+	w.ToolSystem.UpdateTools(w.Tick)
+	
+	// Update environmental modification system
+	w.EnvironmentalModSystem.UpdateModifications(w.Tick)
+	
+	// Update emergent behavior system
+	w.EmergentBehaviorSystem.UpdateEntityBehaviors(w)
+	
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
 }
