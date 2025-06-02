@@ -40,6 +40,10 @@ func main() {
 		fmt.Println("• Dynamic biomes and world events")
 		fmt.Println("• Evolutionary pressure and species adaptation")
 		fmt.Println("• Event logging system")
+		fmt.Println("• Tool creation and environmental modification")
+		fmt.Println("• Emergent behavior discovery and social learning")
+		fmt.Println("• Web interface with real-time visualization")
+		fmt.Println("• State persistence for save/load functionality")
 		fmt.Println()
 		fmt.Println("Usage:")
 		fmt.Printf("  %s [options]\n", os.Args[0])
@@ -54,16 +58,36 @@ func main() {
 		fmt.Println("  ?          Toggle help screen")
 		fmt.Println("  q          Quit")
 		fmt.Println()
+		fmt.Println("Web Interface:")
+		fmt.Println("  Use --web flag to enable web interface mode")
+		fmt.Println("  Access via browser at http://localhost:<port> (default: 8080)")
+		fmt.Println("  All 14 view modes available with real-time updates")
+		fmt.Println("  WebSocket-based live simulation streaming")
+		fmt.Println()
+		fmt.Println("State Management:")
+		fmt.Println("  --save <file>   Save simulation state to JSON file")
+		fmt.Println("  --load <file>   Load simulation state from JSON file")
+		fmt.Println("  State includes all entities, tools, behaviors, and environment")
+		fmt.Println()
 		fmt.Println("The simulation will display a real-time grid showing entities, plants,")
-		fmt.Println("and biomes. Different symbols represent different species and plant types.")
-		fmt.Println("Check the in-simulation help (?) for detailed symbol meanings.")
+		fmt.Println("biomes, tools, and environmental modifications. Different symbols represent")
+		fmt.Println("different species and plant types. Check the in-simulation help (?) for")
+		fmt.Println("detailed symbol meanings.")
 		return
 	}
 
 	// Show version
 	if *version {
-		fmt.Println("Genetic Ecosystem Simulation v1.0")
-		fmt.Println("Enhanced with plant life, event logging, and evolutionary pressure")
+		fmt.Println("Genetic Ecosystem Simulation v2.0")
+		fmt.Println("Enhanced with:")
+		fmt.Println("• Plant life, event logging, and evolutionary pressure")
+		fmt.Println("• Tool creation and environmental modification systems")
+		fmt.Println("• Emergent behavior discovery and social learning")
+		fmt.Println("• Web interface with real-time visualization")
+		fmt.Println("• Complete state persistence functionality")
+		fmt.Println("• Underground plant networks and wind dispersal")
+		fmt.Println("• DNA/RNA genetic systems and cellular evolution")
+		fmt.Println("• Species formation and macro evolution tracking")
 		return
 	}
 	// Initialize random seed

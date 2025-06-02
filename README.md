@@ -1,136 +1,212 @@
-# EvoSim: Dynamic Genetic Algorithm in Go
+# EvoSim: Advanced Evolutionary Ecosystem Simulation
 
-A sophisticated genetic algorithm implementation that supports dynamic trait-based entities with configurable evaluation rules.
+A sophisticated genetic algorithm simulation featuring a complete evolutionary ecosystem with entities, plants, tools, environmental modification, emergent behaviors, and real-time visualization.
 
-## Features
+## 🌟 Features
 
-- **Dynamic Entities**: Entities store data as traits that determine their abilities and functionality
-- **Flexible Evaluation**: Dynamic evaluation system that doesn't require hardcoded functions
-- **Genetic Operations**: Mutation, recombination (crossover), and evolution
-- **Population Management**: Tournament selection, elitism, and generation tracking
-- **Expression Parsing**: Mathematical expression evaluation for complex fitness functions
-- **Comprehensive Testing**: Full test coverage with integration tests
+### Core Simulation
+- **Dynamic Genetic System**: 15+ heritable traits with DNA/RNA representation and cellular evolution
+- **Multi-Species Ecosystem**: Herbivores, predators, omnivores with complex interactions
+- **Plant Life System**: 6 plant types with underground networks and wind-based pollen dispersal
+- **Environmental Systems**: Day/night cycles, seasons, weather patterns, and geological events
+- **Species Formation**: Automatic speciation through genetic distance and reproductive barriers
 
-## Architecture
+### Advanced Systems
+- **🔧 Tool Creation**: 10 tool types with crafting, durability, and modification systems
+- **🏗️ Environmental Modification**: 12 modification types including tunnels, traps, shelters, and farms
+- **🧠 Emergent Behaviors**: 8 discoverable behaviors with social learning and natural emergence
+- **🌐 Real-time Web Interface**: WebSocket-based web visualization with all 14 view modes
+- **💾 State Persistence**: Complete save/load functionality with JSON serialization
+- **🔬 Underground Networks**: Plant communication and resource sharing through mycorrhizal networks
 
-### Core Components
+### Visualization & Interface
+- **CLI Interface**: 14 interactive view modes (Grid, Stats, Events, Populations, Communication, etc.)
+- **Web Interface**: Modern, responsive web UI with real-time updates
+- **Multi-zoom Viewport**: Navigate and explore the simulation world at different scales
+- **Comprehensive Statistics**: Track evolution, behaviors, tools, and environmental changes
 
-1. **Entity** (`entity.go`): Represents individuals with dynamic traits
-2. **Population** (`population.go`): Manages collections of entities and evolution
-3. **EvaluationEngine** (`evaluation.go`): Dynamic fitness evaluation system
-4. **Main** (`main.go`): Demonstration application
+## 🚀 Quick Start
 
-### Key Concepts
-
-- **Traits**: Named attributes with floating-point values that define entity capabilities
-- **Fitness Functions**: Dynamically created based on mathematical expressions using trait names
-- **Evolution**: Population-based improvement through selection, crossover, and mutation
-
-## Usage
-
-### Running the Application
-
-Due to a `go.work` file in the parent directory, use one of these methods:
+### Installation
 
 ```bash
-# Option 1: Use the provided script
-./run.sh
+# Clone the repository
+git clone https://github.com/GoCodeAlone/EvoSim.git
+cd EvoSim
 
-# Option 2: Use GOWORK=off directly
+# Run with CLI interface
 GOWORK=off go run .
 
-# Option 3: Standard Go run (if no workspace conflicts)
-go run .
+# Run with web interface
+GOWORK=off go run . --web --web-port 8080
 ```
 
-### Running Tests
+### Basic Commands
 
 ```bash
-# Option 1: Use the provided script
-./test.sh
+# Start simulation with custom parameters
+GOWORK=off go run . --pop-size 50 --width 200 --height 200
 
-# Option 2: Use GOWORK=off directly
-GOWORK=off go test -v
+# Save simulation state
+GOWORK=off go run . --save my_simulation.json
 
-# Option 3: Standard Go test (if no workspace conflicts)
-go test -v
+# Load saved state
+GOWORK=off go run . --load my_simulation.json
+
+# Run web interface
+GOWORK=off go run . --web
+
+# Show all options
+GOWORK=off go run . --help
 ```
 
-## Example Usage
+## 🎮 Controls
 
-```go
-// Create entities with dynamic traits
-traitNames := []string{"strength", "agility", "intelligence"}
-population := NewPopulation(100, traitNames, 0.1, 0.2)
+### CLI Interface
+- **Space**: Pause/Resume simulation
+- **V**: Cycle through view modes
+- **Arrow Keys**: Navigate viewport
+- **+/-**: Zoom in/out
+- **?**: Toggle help screen
+- **Q**: Quit
 
-// Create dynamic evaluation rules
-engine := NewEvaluationEngine()
-engine.AddRule("combat", "strength + agility", 1.0, 2.0, false)
-engine.AddRule("magic", "intelligence * 2", 0.8, 4.0, false)
+### Web Interface
+- Access via browser at `http://localhost:8080`
+- Real-time simulation updates
+- Interactive view switching
+- Responsive design for all devices
 
-// Create fitness function
-fitnessFunc := engine.CreateFitnessFunction()
+## 🔬 Scientific Features
 
-// Evolve population
-for generation := 0; generation < 50; generation++ {
-    population.EvaluateFitness(fitnessFunc)
-    population.Evolve()
-}
+### Genetic Evolution
+- **DNA/RNA System**: Complete nucleotide sequences with realistic inheritance
+- **Cellular Complexity**: 8 cell types and 8 organelle types
+- **Macro Evolution**: Species trees and phylogenetic tracking
+- **Environmental Pressure**: Natural selection based on environmental conditions
 
-// Get results
-best := population.GetBest()
-fmt.Printf("Best entity: %s\n", best.String())
+### Ecosystem Dynamics
+- **Resource Competition**: Limited food sources and territory
+- **Predator-Prey Relationships**: Dynamic population balancing
+- **Communication Systems**: 6 signal types for entity coordination
+- **Seasonal Variation**: Changing environmental conditions affect survival
+
+### Emergent Intelligence
+- **Tool Discovery**: Entities naturally discover tool-making based on intelligence
+- **Social Learning**: Cooperative entities learn behaviors from others
+- **Environmental Adaptation**: Entities modify their environment for survival
+- **Cultural Evolution**: Behaviors spread through populations over time
+
+## 📊 View Modes
+
+1. **Grid**: Main simulation visualization with entities, plants, and environment
+2. **Stats**: Population statistics and trait distributions
+3. **Events**: World events and significant occurrences
+4. **Populations**: Detailed population analysis and demographics
+5. **Communication**: Signal activity and communication patterns
+6. **Civilization**: Tribal structures and technology development
+7. **Physics**: Physics simulation state and forces
+8. **Wind**: Wind patterns and pollen dispersal
+9. **Species**: Species tracking and genetic distance analysis
+10. **Network**: Underground plant network visualization
+11. **DNA**: Genetic sequences and inheritance patterns
+12. **Cellular**: Cell types and organelle development
+13. **Evolution**: Macro evolution tracking and phylogenetic trees
+14. **Topology**: World terrain and geological features
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+GOWORK=off go test ./...
+
+# Run with verbose output
+GOWORK=off go test -v ./...
+
+# Test web interface functionality
+./test_web_interface.sh
+
+# Run benchmarks
+GOWORK=off go test -bench=.
 ```
 
-## Configuration
+## 🏗️ Architecture
 
-### Population Parameters
-- **Size**: Number of entities in the population
-- **Mutation Rate**: Probability of trait mutation (0.0-1.0)
-- **Mutation Strength**: Standard deviation of mutation noise
-- **Elite Size**: Number of top entities preserved each generation
-- **Tournament Size**: Number of entities competing in selection
+### Core Systems
+- **World**: Main simulation manager and update loop
+- **Entities**: Individual organisms with genetic traits and behaviors
+- **Plants**: Plant ecosystem with reproduction and networking
+- **Tools**: Tool creation, usage, and modification system
+- **Environment**: Environmental modifications and persistent structures
+- **Communication**: Signal-based entity communication
+- **Civilization**: Tribal organization and structure building
 
-### Evaluation Rules
-- **Expression**: Mathematical formula using trait names
-- **Weight**: Importance of this rule in overall fitness
-- **Target**: Optimal value for the expression
-- **Minimize**: Whether to minimize or maximize the expression
+### Advanced Features
+- **DNA System**: Genetic representation with chromosomes and alleles
+- **Cellular System**: Cell specialization and organelle development
+- **Behavior System**: Emergent behavior discovery and social learning
+- **Network System**: Underground plant communication networks
+- **Wind System**: Atmospheric simulation with pollen dispersal
+- **Physics System**: Collision detection and environmental forces
 
-## Testing
+## 📈 Examples of Emergent Behavior
 
-The project includes comprehensive tests:
+- **Tool Making**: Intelligent entities discover stone tool creation when needing better equipment
+- **Tunnel Networks**: Entities in dangerous areas learn to dig protective underground passages
+- **Resource Caching**: Entities hide food supplies for later retrieval during scarcity
+- **Trap Setting**: Aggressive entities learn to set traps near food sources
+- **Cooperative Building**: Groups work together to create complex structures
+- **Social Learning**: Successful behaviors spread through cooperative populations
 
-- **Unit Tests**: Individual component testing
-- **Integration Tests**: Full system testing
-- **Convergence Tests**: Evolution effectiveness validation
+## 🌍 Environmental Features
 
-Run all tests with: `./test.sh` or `GOWORK=off go test -v`
+- **Biomes**: Grassland, forest, desert, mountain, lake, and river environments
+- **Weather**: Storms, volcanic eruptions, earthquakes affecting evolution
+- **Seasonal Cycles**: Spring/summer/autumn/winter with varying conditions
+- **Plant Networks**: Underground fungal networks connecting compatible plants
+- **Wind Dispersal**: Realistic pollen movement and cross-pollination
+- **Geological Events**: Terrain changes affecting population distribution
 
-## Project Structure
+## 🔧 Configuration
 
-```
-mutate/
-├── entity.go           # Entity definition and genetic operations
-├── population.go       # Population management and evolution
-├── evaluation.go       # Dynamic evaluation engine
-├── main.go            # Demo application
-├── entity_test.go     # Entity unit tests
-├── population_test.go # Population unit tests
-├── evaluation_test.go # Evaluation unit tests
-├── integration_test.go # Integration tests
-├── run.sh             # Run script (isolated from go.work)
-├── test.sh            # Test script (isolated from go.work)
-├── go.mod             # Go module definition
-└── README.md          # This file
-```
+### Command Line Options
+- `--width`, `--height`: World dimensions
+- `--pop-size`: Initial population size per species
+- `--seed`: Random seed for reproducible results
+- `--web`: Enable web interface mode
+- `--web-port`: Web server port (default: 8080)
+- `--save`: Save simulation state to file
+- `--load`: Load simulation state from file
 
-## Key Features Demonstrated
+### Advanced Configuration
+Most simulation parameters can be adjusted in the source code:
+- Mutation rates and genetic diversity
+- Environmental conditions and biome distributions
+- Tool creation requirements and effectiveness
+- Behavior discovery rates and learning parameters
+- Communication signal strengths and ranges
 
-1. **Dynamic Trait System**: Entities can have any number of named traits
-2. **Expression-Based Fitness**: Fitness functions defined as mathematical expressions
-3. **Genetic Algorithm**: Complete implementation with selection, crossover, and mutation
-4. **Flexible Architecture**: Easy to extend with new traits and evaluation rules
-5. **Real-time Evolution**: Observable improvement over generations
+## 📝 Project Status
 
-The system successfully demonstrates evolution in action, typically showing significant fitness improvements over 50 generations while maintaining genetic diversity through mutation and crossover operations.
+This simulation represents a comprehensive evolutionary ecosystem with:
+- ✅ Complete genetic algorithm implementation
+- ✅ Multi-species ecosystem with realistic interactions
+- ✅ Tool creation and environmental modification systems
+- ✅ Emergent behavior discovery and social learning
+- ✅ Real-time web interface with WebSocket updates
+- ✅ Complete state persistence functionality
+- ✅ Extensive test coverage and validation
+
+See [FEATURES.md](FEATURES.md) for detailed implementation status and roadmap.
+
+## 🤝 Contributing
+
+This project demonstrates advanced evolutionary simulation concepts. Feel free to:
+- Experiment with parameters and configurations
+- Add new tool types or environmental modifications
+- Implement additional emergent behaviors
+- Enhance the web interface with new visualizations
+- Improve genetic algorithms and selection mechanisms
+
+## 📄 License
+
+This project is available for educational and research purposes. See the repository for license details.
