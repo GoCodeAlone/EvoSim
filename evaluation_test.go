@@ -4,6 +4,31 @@ import (
 	"testing"
 )
 
+// newTestEntity creates a simple entity for testing without molecular/feedback systems
+func newTestEntity(id int, traitNames []string, species string, position Position) *Entity {
+	entity := &Entity{
+		ID:         id,
+		Traits:     make(map[string]Trait),
+		Fitness:    0.0,
+		Position:   position,
+		Energy:     100.0,
+		Age:        0,
+		IsAlive:    true,
+		Species:    species,
+		Generation: 0,
+	}
+
+	// Initialize traits only (no molecular or feedback systems)
+	for _, name := range traitNames {
+		entity.Traits[name] = Trait{
+			Name:  name,
+			Value: 0.0, // Initialize to 0 for predictable test results
+		}
+	}
+
+	return entity
+}
+
 func TestNewEvaluationEngine(t *testing.T) {
 	engine := NewEvaluationEngine()
 
@@ -48,7 +73,7 @@ func TestEvaluationEngineEvaluate(t *testing.T) {
 	engine.AddRule("simple", "strength", 1.0, 1.0, false)
 
 	pos := Position{X: 0, Y: 0}
-	entity := NewEntity(1, []string{"strength"}, "test", pos)
+	entity := newTestEntity(1, []string{"strength"}, "test", pos)
 	entity.SetTrait("strength", 0.5)
 
 	fitness := engine.Evaluate(entity)
@@ -65,7 +90,7 @@ func TestEvaluationEngineEvaluateMinimize(t *testing.T) {
 	engine := NewEvaluationEngine()
 	engine.AddRule("minimize_test", "strength", 1.0, 0.0, true)
 	pos := Position{X: 0, Y: 0}
-	entity := NewEntity(1, []string{"strength"}, "test", pos)
+	entity := newTestEntity(1, []string{"strength"}, "test", pos)
 	entity.SetTrait("strength", 0.5)
 
 	fitness := engine.Evaluate(entity)
@@ -149,7 +174,7 @@ func TestEvaluationEngineCreateFitnessFunction(t *testing.T) {
 
 	fitnessFunc := engine.CreateFitnessFunction()
 	pos := Position{X: 0, Y: 0}
-	entity := NewEntity(1, []string{"strength"}, "test", pos)
+	entity := newTestEntity(1, []string{"strength"}, "test", pos)
 	entity.SetTrait("strength", 1.0)
 
 	fitness := fitnessFunc(entity)

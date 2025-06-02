@@ -19,6 +19,33 @@ type Position struct {
 	Y float64 `json:"y"`
 }
 
+// DietaryMemory tracks what an entity has been eating to create evolutionary dependencies
+type DietaryMemory struct {
+	PlantTypePreferences   map[int]float64 `json:"plant_type_preferences"`   // Plant type -> preference strength (0.0-2.0)
+	PreySpeciesPreferences map[string]float64 `json:"prey_species_preferences"` // Species -> preference strength (0.0-2.0)
+	ConsumptionHistory     []ConsumptionRecord `json:"consumption_history"`      // Recent consumption records
+	DietaryFitness         float64 `json:"dietary_fitness"`                     // How well adapted to current diet
+}
+
+// ConsumptionRecord tracks a single feeding event
+type ConsumptionRecord struct {
+	Tick       int    `json:"tick"`        // When it happened
+	FoodType   string `json:"food_type"`   // "plant" or "entity"
+	FoodID     string `json:"food_id"`     // Specific identifier
+	Nutrition  float64 `json:"nutrition"`  // Nutritional value gained
+	Toxicity   float64 `json:"toxicity"`   // Any toxin exposure
+}
+
+// EnvironmentalMemory tracks environmental pressures for evolutionary adaptation  
+type EnvironmentalMemory struct {
+	BiomeExposure        map[BiomeType]float64 `json:"biome_exposure"`         // Biome type -> exposure time ratio
+	TemperaturePressure  float64 `json:"temperature_pressure"`                 // Cumulative temperature stress
+	RadiationPressure    float64 `json:"radiation_pressure"`                   // Cumulative radiation exposure  
+	SeasonalPressure     map[string]float64 `json:"seasonal_pressure"`        // Season -> stress level
+	EventPressure        map[string]float64 `json:"event_pressure"`           // Event type -> cumulative stress
+	AdaptationFitness    float64 `json:"adaptation_fitness"`                   // How well adapted to environment
+}
+
 // Entity represents an individual in the population with dynamic traits
 type Entity struct {
 	ID         int              `json:"id"`
@@ -36,6 +63,10 @@ type Entity struct {
 	MolecularNeeds     *MolecularNeeds     `json:"molecular_needs"`
 	MolecularMetabolism *MolecularMetabolism `json:"molecular_metabolism"`
 	MolecularProfile   *MolecularProfile    `json:"molecular_profile"` // What this entity is made of (for consumption)
+	
+	// Feedback loop systems for evolutionary adaptation
+	DietaryMemory       *DietaryMemory       `json:"dietary_memory"`        // Tracks feeding history for evolutionary dependency
+	EnvironmentalMemory *EnvironmentalMemory `json:"environmental_memory"`  // Tracks environmental pressure for adaptation
 }
 
 // NewEntity creates a new entity with random traits
@@ -65,6 +96,10 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 	entity.MolecularMetabolism = NewMolecularMetabolism(entity)
 	entity.MolecularProfile = CreateEntityMolecularProfile(entity)
 
+	// Initialize feedback loop systems
+	entity.DietaryMemory = NewDietaryMemory()
+	entity.EnvironmentalMemory = NewEnvironmentalMemory()
+
 	return entity
 }
 
@@ -81,12 +116,49 @@ func (e *Entity) SetTrait(name string, value float64) {
 	e.Traits[name] = Trait{Name: name, Value: value}
 }
 
-// Mutate applies random mutations to the entity's traits
+// Mutate applies random mutations to the entity's traits with feedback loop influence
 func (e *Entity) Mutate(mutationRate float64, mutationStrength float64) {
+	// Calculate mutation pressure from feedback loops
+	
+	// Environmental pressure increases mutation rate and strength
+	if e.EnvironmentalMemory != nil {
+		environmentalPressure := 0.0
+		
+		// High radiation exposure increases mutation
+		environmentalPressure += e.EnvironmentalMemory.RadiationPressure * 0.1
+		
+		// Temperature stress increases mutation  
+		environmentalPressure += e.EnvironmentalMemory.TemperaturePressure * 0.05
+		
+		// Poor environmental adaptation increases mutation
+		if e.EnvironmentalMemory.AdaptationFitness < 0.8 {
+			environmentalPressure += (0.8 - e.EnvironmentalMemory.AdaptationFitness) * 0.3
+		}
+		
+		// Apply environmental pressure to mutation
+		mutationRate += environmentalPressure
+		mutationStrength += environmentalPressure * 0.5
+	}
+	
+	// Dietary stress can also influence mutation (starvation drives evolution)
+	if e.DietaryMemory != nil && e.DietaryMemory.DietaryFitness < 0.6 {
+		dietaryStress := (0.6 - e.DietaryMemory.DietaryFitness) * 0.2
+		mutationRate += dietaryStress  
+		mutationStrength += dietaryStress * 0.3
+	}
+	
+	// Cap mutation rate and strength to reasonable values
+	mutationRate = math.Min(mutationRate, 0.5) // Max 50% mutation chance
+	mutationStrength = math.Min(mutationStrength, 0.8) // Max strength
+	
 	for name, trait := range e.Traits {
 		if rand.Float64() < mutationRate {
 			// Apply Gaussian noise for mutation
 			mutation := rand.NormFloat64() * mutationStrength
+			
+			// Bias mutations toward beneficial directions based on feedback
+			mutation = e.biasedMutation(name, mutation)
+			
 			newValue := trait.Value + mutation
 
 			// Clamp values to reasonable bounds
@@ -119,6 +191,14 @@ func (e *Entity) Clone() *Entity {
 			Name:  trait.Name,
 			Value: trait.Value,
 		}
+	}
+
+	// Clone memory systems (shallow clone for now - they'll be updated by inheritance)
+	if e.DietaryMemory != nil {
+		clone.DietaryMemory = NewDietaryMemory()
+	}
+	if e.EnvironmentalMemory != nil {
+		clone.EnvironmentalMemory = NewEnvironmentalMemory()
 	}
 
 	return clone
@@ -368,7 +448,7 @@ func (e *Entity) CanEat(other *Entity) bool {
 }
 
 // Eat consumes another entity for energy using molecular system
-func (e *Entity) Eat(other *Entity) bool {
+func (e *Entity) Eat(other *Entity, tick int) bool {
 	if !e.CanEat(other) {
 		return false
 	}
@@ -407,6 +487,9 @@ func (e *Entity) Eat(other *Entity) bool {
 
 	// Eating costs some energy
 	e.Energy -= 5
+
+	// Record consumption in dietary memory for feedback loop
+	e.recordEntityConsumption(other, tick)
 
 	// Consumed entity dies if it wasn't already dead
 	if other.IsAlive {
@@ -536,6 +619,20 @@ func Crossover(parent1, parent2 *Entity, childID int, species string) *Entity {
 		}
 
 		child.SetTrait(name, childValue)
+	}
+
+	// Initialize memory systems and inherit preferences from parents
+	child.DietaryMemory = NewDietaryMemory()
+	child.EnvironmentalMemory = NewEnvironmentalMemory()
+	
+	// Inherit dietary preferences (averaged from parents)
+	if parent1.DietaryMemory != nil && parent2.DietaryMemory != nil {
+		child.inheritDietaryPreferences(parent1, parent2)
+	}
+	
+	// Inherit environmental adaptations (averaged from parents) 
+	if parent1.EnvironmentalMemory != nil && parent2.EnvironmentalMemory != nil {
+		child.inheritEnvironmentalAdaptations(parent1, parent2)
 	}
 
 	return child
@@ -691,7 +788,7 @@ func (e *Entity) CanEatPlant(plant *Plant) bool {
 }
 
 // EatPlant consumes a plant for energy using molecular system
-func (e *Entity) EatPlant(plant *Plant) bool {
+func (e *Entity) EatPlant(plant *Plant, tick int) bool {
 	if !e.CanEatPlant(plant) {
 		return false
 	}
@@ -741,6 +838,9 @@ func (e *Entity) EatPlant(plant *Plant) bool {
 
 	// Eating costs some energy
 	e.Energy -= 2
+
+	// Record consumption in dietary memory for feedback loop
+	e.recordPlantConsumption(plant, tick)
 
 	return true
 }
@@ -1035,4 +1135,442 @@ func (e *Entity) evolveSpecies(newSpecies string, world *World) {
 	// Log the evolution
 	details := fmt.Sprintf("Evolved from %s due to environmental pressure (energy: %.1f)", oldSpecies, e.Energy)
 	world.EventLogger.LogSpeciesEvolution(world.Tick, newSpecies, oldSpecies, details)
+}
+
+// NewDietaryMemory creates a new dietary memory system for tracking feeding patterns
+func NewDietaryMemory() *DietaryMemory {
+	return &DietaryMemory{
+		PlantTypePreferences:   make(map[int]float64),
+		PreySpeciesPreferences: make(map[string]float64),
+		ConsumptionHistory:     make([]ConsumptionRecord, 0, 100), // Keep last 100 records
+		DietaryFitness:         1.0, // Start neutral
+	}
+}
+
+// NewEnvironmentalMemory creates a new environmental memory system for tracking pressures
+func NewEnvironmentalMemory() *EnvironmentalMemory {
+	return &EnvironmentalMemory{
+		BiomeExposure:     make(map[BiomeType]float64),
+		TemperaturePressure: 0.0,
+		RadiationPressure: 0.0,
+		SeasonalPressure:  make(map[string]float64),
+		EventPressure:     make(map[string]float64),
+		AdaptationFitness: 1.0, // Start neutral
+	}
+}
+
+// inheritDietaryPreferences inherits dietary preferences from parents with some variation
+func (e *Entity) inheritDietaryPreferences(parent1, parent2 *Entity) {
+	// Inherit plant preferences
+	allPlantTypes := make(map[int]bool)
+	for plantType := range parent1.DietaryMemory.PlantTypePreferences {
+		allPlantTypes[plantType] = true
+	}
+	for plantType := range parent2.DietaryMemory.PlantTypePreferences {
+		allPlantTypes[plantType] = true
+	}
+	
+	for plantType := range allPlantTypes {
+		pref1 := parent1.DietaryMemory.PlantTypePreferences[plantType]
+		pref2 := parent2.DietaryMemory.PlantTypePreferences[plantType]
+		avgPref := (pref1 + pref2) / 2.0
+		
+		// Add some variation (mutation in dietary preference)
+		variation := (rand.Float64() - 0.5) * 0.2
+		inheritedPref := math.Max(0.0, math.Min(2.0, avgPref + variation))
+		
+		if inheritedPref > 0.1 { // Only inherit significant preferences
+			e.DietaryMemory.PlantTypePreferences[plantType] = inheritedPref
+		}
+	}
+	
+	// Inherit prey species preferences  
+	allPreySpecies := make(map[string]bool)
+	for species := range parent1.DietaryMemory.PreySpeciesPreferences {
+		allPreySpecies[species] = true
+	}
+	for species := range parent2.DietaryMemory.PreySpeciesPreferences {
+		allPreySpecies[species] = true
+	}
+	
+	for species := range allPreySpecies {
+		pref1 := parent1.DietaryMemory.PreySpeciesPreferences[species]
+		pref2 := parent2.DietaryMemory.PreySpeciesPreferences[species]
+		avgPref := (pref1 + pref2) / 2.0
+		
+		// Add some variation
+		variation := (rand.Float64() - 0.5) * 0.2
+		inheritedPref := math.Max(0.0, math.Min(2.0, avgPref + variation))
+		
+		if inheritedPref > 0.1 {
+			e.DietaryMemory.PreySpeciesPreferences[species] = inheritedPref
+		}
+	}
+}
+
+// inheritEnvironmentalAdaptations inherits environmental adaptations from parents
+func (e *Entity) inheritEnvironmentalAdaptations(parent1, parent2 *Entity) {
+	// Inherit biome exposure patterns (averaged)
+	allBiomes := make(map[BiomeType]bool)
+	for biome := range parent1.EnvironmentalMemory.BiomeExposure {
+		allBiomes[biome] = true
+	}
+	for biome := range parent2.EnvironmentalMemory.BiomeExposure {
+		allBiomes[biome] = true
+	}
+	
+	for biome := range allBiomes {
+		exp1 := parent1.EnvironmentalMemory.BiomeExposure[biome]
+		exp2 := parent2.EnvironmentalMemory.BiomeExposure[biome]
+		avgExp := (exp1 + exp2) / 2.0
+		
+		if avgExp > 0.05 { // Only inherit significant exposures
+			e.EnvironmentalMemory.BiomeExposure[biome] = avgExp
+		}
+	}
+	
+	// Inherit environmental pressures (averaged with some variation)
+	e.EnvironmentalMemory.TemperaturePressure = (parent1.EnvironmentalMemory.TemperaturePressure + parent2.EnvironmentalMemory.TemperaturePressure) / 2.0
+	e.EnvironmentalMemory.RadiationPressure = (parent1.EnvironmentalMemory.RadiationPressure + parent2.EnvironmentalMemory.RadiationPressure) / 2.0
+	
+	// Inherit seasonal pressure patterns
+	allSeasons := make(map[string]bool)
+	for season := range parent1.EnvironmentalMemory.SeasonalPressure {
+		allSeasons[season] = true
+	}
+	for season := range parent2.EnvironmentalMemory.SeasonalPressure {
+		allSeasons[season] = true
+	}
+	
+	for season := range allSeasons {
+		press1 := parent1.EnvironmentalMemory.SeasonalPressure[season]
+		press2 := parent2.EnvironmentalMemory.SeasonalPressure[season]
+		avgPress := (press1 + press2) / 2.0
+		
+		if avgPress > 0.05 {
+			e.EnvironmentalMemory.SeasonalPressure[season] = avgPress
+		}
+	}
+}
+
+// recordPlantConsumption records a plant consumption event and updates dietary preferences
+func (e *Entity) recordPlantConsumption(plant *Plant, tick int) {
+	if e.DietaryMemory == nil {
+		return
+	}
+	
+	// Calculate nutritional value from the consumption
+	var nutrition, toxicity float64
+	if plant.MolecularProfile != nil {
+		// Use molecular profile for accurate nutrition calculation
+		desirability := 0.0
+		if e.MolecularNeeds != nil {
+			desirability = GetMolecularDesirability(plant.MolecularProfile, e.MolecularNeeds)
+		}
+		nutrition = desirability
+		toxicity = plant.MolecularProfile.Toxicity
+	} else {
+		// Fallback estimation
+		nutrition = 0.5
+		toxicity = plant.GetToxicity()
+	}
+	
+	// Record consumption history
+	record := ConsumptionRecord{
+		Tick:     tick,
+		FoodType: "plant",
+		FoodID:   fmt.Sprintf("plant_%d", int(plant.Type)),
+		Nutrition: nutrition,
+		Toxicity: toxicity,
+	}
+	
+	// Add to history (maintain rolling window)
+	e.DietaryMemory.ConsumptionHistory = append(e.DietaryMemory.ConsumptionHistory, record)
+	if len(e.DietaryMemory.ConsumptionHistory) > 100 {
+		e.DietaryMemory.ConsumptionHistory = e.DietaryMemory.ConsumptionHistory[1:]
+	}
+	
+	// Update plant type preference based on success
+	plantType := int(plant.Type)
+	currentPref := e.DietaryMemory.PlantTypePreferences[plantType]
+	
+	// Successful feeding (high nutrition, low toxicity) increases preference
+	success := nutrition - toxicity*0.5
+	preferenceChange := success * 0.1 // Gradual adaptation
+	
+	newPref := math.Max(0.0, math.Min(2.0, currentPref + preferenceChange))
+	e.DietaryMemory.PlantTypePreferences[plantType] = newPref
+	
+	// Update overall dietary fitness based on recent consumption patterns
+	e.updateDietaryFitness()
+}
+
+// recordEntityConsumption records an entity consumption event and updates prey preferences
+func (e *Entity) recordEntityConsumption(prey *Entity, tick int) {
+	if e.DietaryMemory == nil {
+		return
+	}
+	
+	// Calculate nutritional value
+	var nutrition, toxicity float64
+	if prey.MolecularProfile != nil && e.MolecularNeeds != nil {
+		desirability := GetMolecularDesirability(prey.MolecularProfile, e.MolecularNeeds)
+		nutrition = desirability
+		toxicity = prey.MolecularProfile.Toxicity
+	} else {
+		// Fallback estimation based on prey size
+		nutrition = (prey.GetTrait("size") + 1.0) * 0.2
+		toxicity = 0.0
+	}
+	
+	// Record consumption history
+	record := ConsumptionRecord{
+		Tick:     tick,
+		FoodType: "entity",
+		FoodID:   prey.Species,
+		Nutrition: nutrition,
+		Toxicity: toxicity,
+	}
+	
+	// Add to history
+	e.DietaryMemory.ConsumptionHistory = append(e.DietaryMemory.ConsumptionHistory, record)
+	if len(e.DietaryMemory.ConsumptionHistory) > 100 {
+		e.DietaryMemory.ConsumptionHistory = e.DietaryMemory.ConsumptionHistory[1:]
+	}
+	
+	// Update prey species preference
+	species := prey.Species
+	currentPref := e.DietaryMemory.PreySpeciesPreferences[species]
+	
+	success := nutrition - toxicity*0.5
+	preferenceChange := success * 0.1
+	
+	newPref := math.Max(0.0, math.Min(2.0, currentPref + preferenceChange))
+	e.DietaryMemory.PreySpeciesPreferences[species] = newPref
+	
+	// Update overall dietary fitness
+	e.updateDietaryFitness()
+}
+
+// updateDietaryFitness calculates how well-adapted the entity is to its current diet
+func (e *Entity) updateDietaryFitness() {
+	if e.DietaryMemory == nil || len(e.DietaryMemory.ConsumptionHistory) == 0 {
+		e.DietaryMemory.DietaryFitness = 1.0
+		return
+	}
+	
+	// Calculate fitness based on recent consumption success
+	recentHistory := e.DietaryMemory.ConsumptionHistory
+	if len(recentHistory) > 20 {
+		recentHistory = recentHistory[len(recentHistory)-20:] // Last 20 consumptions
+	}
+	
+	totalSuccess := 0.0
+	for _, record := range recentHistory {
+		success := record.Nutrition - record.Toxicity*0.5
+		totalSuccess += success
+	}
+	
+	avgSuccess := totalSuccess / float64(len(recentHistory))
+	// Normalize to 0.0-2.0 range (fitness can be above 1.0 for very well adapted)
+	e.DietaryMemory.DietaryFitness = math.Max(0.0, math.Min(2.0, avgSuccess + 1.0))
+}
+
+// trackEnvironmentalExposure updates environmental memory based on current conditions
+func (e *Entity) trackEnvironmentalExposure(biome BiomeType, season string, event *WorldEvent, tick int) {
+	if e.EnvironmentalMemory == nil {
+		return
+	}
+	
+	// Track biome exposure
+	e.EnvironmentalMemory.BiomeExposure[biome] += 0.01 // Small increment per tick
+	
+	// Track seasonal pressure
+	seasonalStress := 0.0
+	switch season {
+	case "Winter":
+		seasonalStress = 0.2 // Winter is generally stressful
+	case "Summer":
+		seasonalStress = 0.1 // Mild stress
+	case "Spring", "Autumn":
+		seasonalStress = 0.05 // Low stress
+	}
+	
+	current := e.EnvironmentalMemory.SeasonalPressure[season]
+	e.EnvironmentalMemory.SeasonalPressure[season] = current + seasonalStress*0.1
+	
+	// Track environmental events
+	if event != nil {
+		eventStress := event.GlobalDamage * 0.1
+		current := e.EnvironmentalMemory.EventPressure[event.Name]
+		e.EnvironmentalMemory.EventPressure[event.Name] = current + eventStress
+		
+		// Add to radiation pressure if it's a radiation event
+		if event.GlobalMutation > 0 {
+			e.EnvironmentalMemory.RadiationPressure += event.GlobalMutation * 0.1
+		}
+	}
+	
+	// Update adaptation fitness based on environmental match
+	e.updateEnvironmentalFitness(biome)
+}
+
+// updateEnvironmentalFitness calculates how well-adapted the entity is to current environment
+func (e *Entity) updateEnvironmentalFitness(currentBiome BiomeType) {
+	if e.EnvironmentalMemory == nil {
+		e.EnvironmentalMemory.AdaptationFitness = 1.0
+		return
+	}
+	
+	// Check how well entity's traits match the current environment
+	fitness := 1.0
+	
+	switch currentBiome {
+	case BiomeWater:
+		aquaticAdaptation := e.GetTrait("aquatic_adaptation")
+		fitness += aquaticAdaptation * 0.5 // Well-adapted entities get bonus
+	case BiomeSoil:
+		diggingAbility := e.GetTrait("digging_ability")
+		undergroundNav := e.GetTrait("underground_nav")
+		fitness += (diggingAbility + undergroundNav) * 0.25
+	case BiomeAir:
+		flyingAbility := e.GetTrait("flying_ability")
+		altitudeTolerance := e.GetTrait("altitude_tolerance")
+		fitness += (flyingAbility + altitudeTolerance) * 0.25
+	case BiomeRadiation:
+		endurance := e.GetTrait("endurance")
+		fitness += endurance * 0.3 // Endurance helps with radiation
+	case BiomeDesert:
+		endurance := e.GetTrait("endurance")
+		fitness += endurance * 0.4 // Endurance crucial in desert
+	}
+	
+	// Factor in accumulated environmental pressure
+	totalPressure := e.EnvironmentalMemory.TemperaturePressure + e.EnvironmentalMemory.RadiationPressure
+	fitness -= totalPressure * 0.1 // High pressure reduces fitness
+	
+	e.EnvironmentalMemory.AdaptationFitness = math.Max(0.0, math.Min(2.0, fitness))
+}
+
+// biasedMutation applies directional bias to mutations based on feedback loops
+func (e *Entity) biasedMutation(traitName string, mutation float64) float64 {
+	// Start with the base mutation
+	biasedMutation := mutation
+	biasStrength := 0.8 // How strongly to bias the mutation
+	
+	// Environmental bias - encourage traits that help with current environment exposure
+	if e.EnvironmentalMemory != nil {
+		for biome, exposure := range e.EnvironmentalMemory.BiomeExposure {
+			if exposure > 0.2 { // Significant exposure to this biome
+				currentValue := e.GetTrait(traitName)
+				switch biome {
+				case BiomeWater:
+					if traitName == "aquatic_adaptation" && currentValue < 1.0 {
+						// Bias toward positive aquatic adaptation
+						bias := math.Abs(mutation) * biasStrength * exposure
+						if mutation < 0 && currentValue < 0.5 {
+							// Flip negative mutations to positive when trait is poor
+							biasedMutation = bias
+						} else if mutation > 0 {
+							// Amplify positive mutations
+							biasedMutation += bias
+						}
+					}
+				case BiomeSoil:
+					if (traitName == "digging_ability" || traitName == "underground_nav") && currentValue < 1.0 {
+						bias := math.Abs(mutation) * biasStrength * exposure
+						if mutation < 0 && currentValue < 0.5 {
+							biasedMutation = bias
+						} else if mutation > 0 {
+							biasedMutation += bias
+						}
+					}
+				case BiomeAir:
+					if (traitName == "flying_ability" || traitName == "altitude_tolerance") && currentValue < 1.0 {
+						bias := math.Abs(mutation) * biasStrength * exposure
+						if mutation < 0 && currentValue < 0.5 {
+							biasedMutation = bias
+						} else if mutation > 0 {
+							biasedMutation += bias
+						}
+					}
+				case BiomeRadiation:
+					if traitName == "endurance" && currentValue < 1.0 {
+						bias := math.Abs(mutation) * biasStrength * exposure
+						if mutation < 0 && currentValue < 0.5 {
+							biasedMutation = bias
+						} else if mutation > 0 {
+							biasedMutation += bias
+						}
+					}
+				case BiomeDesert:
+					if traitName == "endurance" && currentValue < 1.0 {
+						bias := math.Abs(mutation) * biasStrength * exposure
+						if mutation < 0 && currentValue < 0.5 {
+							biasedMutation = bias
+						} else if mutation > 0 {
+							biasedMutation += bias
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Dietary bias - encourage traits that help with diet specialization or diversification
+	if e.DietaryMemory != nil {
+		// If entity has strong preferences, bias toward supporting traits
+		strongPlantPrefs := 0
+		for _, pref := range e.DietaryMemory.PlantTypePreferences {
+			if pref > 1.3 {
+				strongPlantPrefs++
+			}
+		}
+		
+		strongPreyPrefs := 0
+		for _, pref := range e.DietaryMemory.PreySpeciesPreferences {
+			if pref > 1.3 {
+				strongPreyPrefs++
+			}
+		}
+		
+		currentValue := e.GetTrait(traitName)
+		
+		// If specialized (strong preferences), bias toward supporting traits
+		if strongPlantPrefs > 0 {
+			if traitName == "toxin_resistance" && currentValue < 1.0 {
+				bias := math.Abs(mutation) * biasStrength * 0.5
+				if mutation < 0 && currentValue < 0.5 {
+					biasedMutation = bias
+				} else if mutation > 0 {
+					biasedMutation += bias
+				}
+			}
+		}
+		
+		if strongPreyPrefs > 0 {
+			if (traitName == "aggression" || traitName == "strength" || traitName == "speed") && currentValue < 1.0 {
+				bias := math.Abs(mutation) * biasStrength * 0.4
+				if mutation < 0 && currentValue < 0.5 {
+					biasedMutation = bias
+				} else if mutation > 0 {
+					biasedMutation += bias
+				}
+			}
+		}
+		
+		// If dietary fitness is low, bias toward flexibility traits
+		if e.DietaryMemory.DietaryFitness < 0.7 {
+			if traitName == "diet_flexibility" && currentValue < 1.0 {
+				bias := math.Abs(mutation) * biasStrength * (0.7 - e.DietaryMemory.DietaryFitness)
+				if mutation < 0 && currentValue < 0.5 {
+					biasedMutation = bias
+				} else if mutation > 0 {
+					biasedMutation += bias
+				}
+			}
+		}
+	}
+	
+	return biasedMutation
 }
