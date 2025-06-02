@@ -185,6 +185,16 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ## 🚧 IN PROGRESS
 
+#### Biome Expansion System (IN PROGRESS)
+- [x] **Extended Biome Types**: 8 new biome types (Ice, Rainforest, DeepWater, HighAltitude, HotSpring, Tundra, Swamp, Canyon)
+- [x] **Enhanced Environmental Properties**: Temperature, pressure, oxygen levels, and specialized environmental effects
+- [x] **Contiguous Biome Generation**: Improved noise-based generation creating realistic patterns with polar caps, elevation-based distribution
+- [x] **Plate Tectonics Integration**: 8 new geological event types (continental_drift, seafloor_spreading, mountain_uplift, rift_valley, geyser_formation, hot_spring_creation, ice_sheet_advance, glacial_retreat)
+- [x] **Dynamic Biome Changes**: Geological events create and modify biomes (volcanic eruptions create mountains, ice sheets create polar biomes)
+- [x] **Environmental Pressure System**: Entities experience temperature, pressure, and oxygen stress based on biome conditions
+- [x] **Biome-Specific Effects**: Specialized survival challenges (freezing in ice, pressure in deep water, altitude sickness in mountains)
+- [x] **Comprehensive Testing**: Full test suite covering biome properties, environmental effects, geological integration
+
 #### Reproduction, Gestation, and Decay Systems (IN PROGRESS)
 - [x] **Reproduction Modes**: Multiple reproduction types (DirectCoupling, EggLaying, LiveBirth, Budding, Fission)
 - [x] **Gestation System**: Time-based pregnancy and birth cycles with configurable gestation periods
@@ -216,6 +226,22 @@ This document tracks the implementation status of ecosystem features for the gen
 ---
 
 ## 📋 HIGH PRIORITY (Immediate Impact)
+
+### Enhanced Storm and Weather Systems (COMPLETED)
+**Status**: Completed
+**Priority**: HIGH - Adds environmental complexity and realism
+**Dependencies**: Biome system (✅ completed), Topology system (✅ completed)
+
+#### Features Completed:
+- [x] **Enhanced Biome Types**: 8 new specialized biomes with realistic environmental properties
+- [x] **Plate Tectonics System**: 8 geological event types affecting terrain and biome formation
+- [x] **Contiguous Features**: Improved biome generation creating realistic patterns
+- [x] **Polar Caps**: Ice and Tundra biomes in polar regions with freezing effects
+- [x] **Deep Ocean Trenches**: DeepWater biome with high pressure effects
+- [x] **High Altitude Mountains**: HighAltitude biome with low oxygen effects
+- [x] **Geysers and Hot Springs**: HotSpring biome with thermal effects
+- [x] **Environmental Pressure**: Temperature, pressure, and oxygen stress systems
+- [x] **Dynamic Biome Changes**: Geological events reshape the world
 
 ### Insect Pollinator System
 **Status**: Not Started

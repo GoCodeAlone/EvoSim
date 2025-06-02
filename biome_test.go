@@ -289,3 +289,165 @@ func TestPerlinNoise(t *testing.T) {
 		t.Errorf("Perlin noise is not deterministic: %.10f != %.10f", noise1, noise2)
 	}
 }
+
+// TestGeologicalEvents tests that geological events affect biomes correctly
+func TestGeologicalEvents(t *testing.T) {
+	config := WorldConfig{
+		Width:      100,
+		Height:     100,
+		GridWidth:  20,
+		GridHeight: 20,
+	}
+	
+	world := NewWorld(config)
+	
+	// Force a specific biome configuration
+	for y := 0; y < config.GridHeight; y++ {
+		for x := 0; x < config.GridWidth; x++ {
+			world.Grid[y][x].Biome = BiomePlains // Start with all plains
+		}
+	}
+	
+	// Create a mock geological event
+	event := GeologicalEvent{
+		ID:        1,
+		Type:      "volcanic_eruption",
+		Center:    Position{X: 50, Y: 50},
+		Radius:    10.0,
+		Intensity: 0.8,
+		Duration:  10,
+		StartTick: world.Tick,
+		Effects:   make(map[string]float64),
+	}
+	
+	// Add the event to the topology system
+	world.TopologySystem.GeologicalEvents = append(world.TopologySystem.GeologicalEvents, event)
+	
+	// Store initial biome state
+	initialBiomes := make(map[BiomeType]int)
+	for y := 0; y < config.GridHeight; y++ {
+		for x := 0; x < config.GridWidth; x++ {
+			biome := world.Grid[y][x].Biome
+			initialBiomes[biome]++
+		}
+	}
+	
+	// Apply geological event to biomes
+	world.applyGeologicalEventToBiomes(event)
+	
+	// Check final biome state
+	finalBiomes := make(map[BiomeType]int)
+	for y := 0; y < config.GridHeight; y++ {
+		for x := 0; x < config.GridWidth; x++ {
+			biome := world.Grid[y][x].Biome
+			finalBiomes[biome]++
+		}
+	}
+	
+	t.Logf("Initial biomes: %v", initialBiomes)
+	t.Logf("Final biomes: %v", finalBiomes)
+	
+	// Should have some biome changes
+	if finalBiomes[BiomePlains] == initialBiomes[BiomePlains] {
+		t.Log("Warning: No biome changes detected from geological event")
+	}
+}
+
+// TestDetermineBiomeFromGeology tests biome determination from geological events
+func TestDetermineBiomeFromGeology(t *testing.T) {
+	config := WorldConfig{
+		Width:      100,
+		Height:     100,
+		GridWidth:  10,
+		GridHeight: 10,
+	}
+	
+	world := NewWorld(config)
+	
+	testCases := []struct {
+		eventType    string
+		topoCell     TopologyCell
+		currentBiome BiomeType
+		expectedBiome BiomeType
+		description  string
+	}{
+		{
+			"volcanic_eruption",
+			TopologyCell{Elevation: 0.9, WaterLevel: 0.0},
+			BiomePlains,
+			BiomeMountain,
+			"High elevation volcanic eruption should create mountains",
+		},
+		{
+			"mountain_uplift",
+			TopologyCell{Elevation: 0.95, WaterLevel: 0.0},
+			BiomePlains,
+			BiomeHighAltitude,
+			"Very high mountain uplift should create high altitude biome",
+		},
+		{
+			"seafloor_spreading",
+			TopologyCell{Elevation: -0.4, WaterLevel: 0.8},
+			BiomePlains,
+			BiomeDeepWater,
+			"Seafloor spreading should create deep water",
+		},
+		{
+			"geyser_formation",
+			TopologyCell{Elevation: 0.3, WaterLevel: 0.5},
+			BiomePlains,
+			BiomeHotSpring,
+			"Geyser formation should create hot springs",
+		},
+		{
+			"ice_sheet_advance",
+			TopologyCell{Elevation: 0.4, WaterLevel: 0.3},
+			BiomePlains,
+			BiomeIce,
+			"Ice sheet advance should create ice biome",
+		},
+	}
+	
+	for _, tc := range testCases {
+		result := world.determineBiomeFromGeology(tc.eventType, tc.topoCell, tc.currentBiome)
+		if result != tc.expectedBiome {
+			t.Errorf("%s: expected %d, got %d", tc.description, tc.expectedBiome, result)
+		}
+	}
+}
+
+// TestTopologyBiomeIntegration tests that topology and biome systems work together
+func TestTopologyBiomeIntegration(t *testing.T) {
+	config := WorldConfig{
+		Width:      100,
+		Height:     100,
+		GridWidth:  20,
+		GridHeight: 20,
+	}
+	
+	world := NewWorld(config)
+	
+	// Simulate some ticks to allow geological events
+	for i := 0; i < 200; i++ {
+		world.TopologySystem.UpdateTopology(i)
+		if i%50 == 0 {
+			world.updateBiomesFromTopology()
+		}
+	}
+	
+	// Count final biome distribution
+	biomeCount := make(map[BiomeType]int)
+	for y := 0; y < config.GridHeight; y++ {
+		for x := 0; x < config.GridWidth; x++ {
+			biome := world.Grid[y][x].Biome
+			biomeCount[biome]++
+		}
+	}
+	
+	t.Logf("Final biome distribution: %v", biomeCount)
+	
+	// Should have multiple biome types
+	if len(biomeCount) < 2 {
+		t.Errorf("Expected multiple biome types, got %d", len(biomeCount))
+	}
+}

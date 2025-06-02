@@ -696,6 +696,9 @@ func (w *World) Update() {
 	w.CellularSystem.UpdateCellularOrganisms()
 	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
 	w.TopologySystem.UpdateTopology(w.Tick)
+	
+	// Update biomes based on topology changes
+	w.updateBiomesFromTopology()
 
 	// Clear grid entities and plants
 	w.clearGrid()
@@ -2784,4 +2787,191 @@ func (w *World) Reset() {
 	if w.PhysicsSystem != nil {
 		w.PhysicsSystem.ResetCollisionCounters()
 	}
+}
+
+// updateBiomesFromTopology updates biomes based on topology changes from geological events
+func (w *World) updateBiomesFromTopology() {
+	if w.TopologySystem == nil {
+		return
+	}
+	
+	// Check for recent geological events that might change biomes
+	for _, event := range w.TopologySystem.GeologicalEvents {
+		w.applyGeologicalEventToBiomes(event)
+	}
+	
+	// Periodically recalculate biomes based on topology (every 100 ticks)
+	if w.Tick%100 == 0 {
+		w.recalculateBiomesFromTopology()
+	}
+}
+
+// applyGeologicalEventToBiomes changes biomes based on geological events
+func (w *World) applyGeologicalEventToBiomes(event GeologicalEvent) {
+	centerGridX := int((event.Center.X / float64(w.Config.Width)) * float64(w.Config.GridWidth))
+	centerGridY := int((event.Center.Y / float64(w.Config.Height)) * float64(w.Config.GridHeight))
+	gridRadius := int((event.Radius / float64(w.Config.Width)) * float64(w.Config.GridWidth))
+	
+	for x := centerGridX - gridRadius; x <= centerGridX + gridRadius; x++ {
+		for y := centerGridY - gridRadius; y <= centerGridY + gridRadius; y++ {
+			if x < 0 || x >= w.Config.GridWidth || y < 0 || y >= w.Config.GridHeight {
+				continue
+			}
+			
+			distance := math.Sqrt(float64((x-centerGridX)*(x-centerGridX) + (y-centerGridY)*(y-centerGridY)))
+			if distance > float64(gridRadius) {
+				continue
+			}
+			
+			// Get topology information
+			topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
+			topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
+			
+			if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
+				topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
+				
+				// Change biomes based on event type and topology
+				newBiome := w.determineBiomeFromGeology(event.Type, topoCell, w.Grid[y][x].Biome)
+				if newBiome != w.Grid[y][x].Biome {
+					w.Grid[y][x].Biome = newBiome
+				}
+			}
+		}
+	}
+}
+
+// determineBiomeFromGeology determines the new biome based on geological event and topology
+func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCell, currentBiome BiomeType) BiomeType {
+	switch eventType {
+	case "volcanic_eruption":
+		// High elevation volcanic areas become mountains or radiation zones
+		if topoCell.Elevation > 0.8 {
+			return BiomeMountain
+		} else if topoCell.Elevation > 0.6 {
+			return BiomeRadiation // Volcanic ash and heat
+		}
+		
+	case "mountain_uplift":
+		// Mountain uplift creates mountain biomes
+		if topoCell.Elevation > 0.9 {
+			return BiomeHighAltitude
+		} else if topoCell.Elevation > 0.7 {
+			return BiomeMountain
+		}
+		
+	case "seafloor_spreading", "rift_valley":
+		// Creates deep water or water biomes
+		if topoCell.Elevation < -0.3 {
+			return BiomeDeepWater
+		} else if topoCell.Elevation < 0.1 {
+			return BiomeWater
+		}
+		
+	case "geyser_formation", "hot_spring_creation":
+		// Creates hot spring biomes
+		if topoCell.WaterLevel > 0.3 {
+			return BiomeHotSpring
+		}
+		
+	case "ice_sheet_advance":
+		// Creates ice biomes
+		if topoCell.WaterLevel > 0.2 && topoCell.Elevation > 0.3 {
+			return BiomeIce
+		} else if topoCell.Elevation > 0.5 {
+			return BiomeTundra
+		}
+		
+	case "glacial_retreat":
+		// Transitions from ice back to other biomes
+		if currentBiome == BiomeIce {
+			if topoCell.Elevation > 0.7 {
+				return BiomeMountain
+			} else if topoCell.Elevation > 0.3 {
+				return BiomeTundra
+			} else {
+				return BiomePlains
+			}
+		}
+		
+	case "flood":
+		// Creates swamp or water biomes
+		if topoCell.WaterLevel > 0.5 {
+			if topoCell.Elevation > 0.1 {
+				return BiomeSwamp
+			} else {
+				return BiomeWater
+			}
+		}
+	}
+	
+	return currentBiome // No change
+}
+
+// recalculateBiomesFromTopology recalculates biomes based on current topology
+func (w *World) recalculateBiomesFromTopology() {
+	for y := 0; y < w.Config.GridHeight; y++ {
+		for x := 0; x < w.Config.GridWidth; x++ {
+			// Get topology information
+			topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
+			topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
+			
+			if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
+				topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
+				
+				// Determine biome based on topology
+				newBiome := w.determineBiomeFromTopology(topoCell, x, y)
+				if newBiome != w.Grid[y][x].Biome {
+					w.Grid[y][x].Biome = newBiome
+				}
+			}
+		}
+	}
+}
+
+// determineBiomeFromTopology determines biome based on topology characteristics
+func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY int) BiomeType {
+	elevation := topoCell.Elevation
+	waterLevel := topoCell.WaterLevel
+	slope := topoCell.Slope
+	
+	// Distance from edges for polar biomes
+	distFromEdge := math.Min(math.Min(float64(gridX), float64(w.Config.GridWidth-gridX)), 
+		math.Min(float64(gridY), float64(w.Config.GridHeight-gridY)))
+	
+	// Very high elevation - high altitude
+	if elevation > 0.95 {
+		return BiomeHighAltitude
+	}
+	
+	// High elevation - mountains
+	if elevation > 0.8 {
+		return BiomeMountain
+	}
+	
+	// Water-based biomes
+	if waterLevel > 0.5 || elevation < 0.0 {
+		if elevation < -0.5 {
+			return BiomeDeepWater
+		}
+		if waterLevel > 0.8 && elevation > 0.1 {
+			return BiomeSwamp
+		}
+		return BiomeWater
+	}
+	
+	// Edge biomes (polar regions)
+	if distFromEdge < 3 {
+		if waterLevel > 0.3 {
+			return BiomeIce
+		}
+		return BiomeTundra
+	}
+	
+	// Steep slopes - canyons
+	if slope > 0.7 && elevation > 0.4 {
+		return BiomeCanyon
+	}
+	
+	// Use the enhanced biome generation for other areas
+	return w.generateBiome(gridX, gridY)
 }
