@@ -6,17 +6,17 @@ echo "=========================================="
 echo ""
 
 echo "Building the simulation..."
-GOWORK=off go build -o mutate
+GOWORK=off go build -o evosim
 
 echo ""
 echo "Running simulation with statistical analysis for 30 seconds..."
-echo "Use [Tab] to cycle through views, especially 'statistical' and 'anomalies' views"
+echo "Use [v] to cycle through views, especially 'statistical' and 'anomalies' views"
 echo "Use [E] to export statistical data while running"
 echo "Press [Q] to quit the simulation"
 echo ""
 
 # Run the simulation
-timeout 30s ./mutate --pop 50 --seed 123 || true
+timeout 30s ./evosim --pop-size 50 --seed 123 || true
 
 echo ""
 echo "Demo complete!"
@@ -29,7 +29,7 @@ echo "• Anomaly detection every 50 ticks"
 echo ""
 echo "Key features demonstrated:"
 echo "• Real-time anomaly detection (energy conservation, trait distributions)"
-echo "• Statistical views in CLI (use [Tab] to cycle to 'statistical' and 'anomalies')"
+echo "• Statistical views in CLI (use [v] to cycle to 'statistical' and 'anomalies')"
 echo "• Data export functionality ([E] key during simulation)"
 echo "• Conservation law validation and biological plausibility checks"
 echo ""

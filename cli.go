@@ -2402,7 +2402,7 @@ func (m *CLIModel) statisticalView() string {
 		}
 	}
 
-	content.WriteString("\nControls: [Tab] Next View [E] Export Data [R] Reset Analysis")
+	content.WriteString("\nControls: [v] Next View [E] Export Data [R] Reset Analysis")
 
 	return content.String()
 }
@@ -2489,7 +2489,7 @@ func (m *CLIModel) anomaliesView() string {
 		}
 	}
 
-	content.WriteString("\nControls: [Tab] Next View [C] Clear Anomalies [A] Auto-Fix")
+	content.WriteString("\nControls: [v] Next View [C] Clear Anomalies [A] Auto-Fix")
 
 	return content.String()
 }

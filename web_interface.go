@@ -427,7 +427,8 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         const viewModes = [
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
-            'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR'
+            'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
+            'STATISTICAL', 'ANOMALIES'
         ];
         
         // Initialize view tabs
@@ -610,6 +611,14 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'BEHAVIOR':
                     viewContent.innerHTML = '<div class="stats-section">' + renderBehavior(data.emergent_behavior) + '</div>';
+                    break;
+                    
+                case 'STATISTICAL':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderStatistical(data.statistical) + '</div>';
+                    break;
+                    
+                case 'ANOMALIES':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderAnomalies(data.anomalies) + '</div>';
                     break;
                     
                 default:
@@ -1377,6 +1386,119 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     html += '<div>Development Level: Moderate behavior complexity</div>';
                 } else {
                     html += '<div>Development Level: Advanced behavioral evolution</div>';
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render statistical analysis view
+        function renderStatistical(statistical) {
+            if (!statistical) {
+                return '<h3>📊 Statistical Analysis</h3><div>Statistical analysis not available</div>';
+            }
+            
+            let html = '<h3>📊 Statistical Analysis</h3>';
+            
+            // Summary statistics
+            html += '<h4>Summary Statistics:</h4>';
+            html += '<div>Total Events: ' + statistical.total_events + '</div>';
+            html += '<div>Total Snapshots: ' + statistical.total_snapshots + '</div>';
+            html += '<div>Total Anomalies: ' + statistical.total_anomalies + '</div>';
+            if (statistical.total_energy !== undefined) {
+                html += '<div>Total Energy: ' + statistical.total_energy.toFixed(2) + '</div>';
+            }
+            if (statistical.energy_change !== undefined) {
+                const changePercent = (statistical.energy_change * 100).toFixed(1);
+                html += '<div>Energy Change: ' + changePercent + '% from baseline</div>';
+            }
+            
+            // Trends
+            html += '<h4>Trends:</h4>';
+            html += '<div>Energy Trend: ' + (statistical.energy_trend || 'unknown') + '</div>';
+            html += '<div>Population Trend: ' + (statistical.population_trend || 'unknown') + '</div>';
+            
+            // Recent events
+            if (statistical.recent_events && statistical.recent_events.length > 0) {
+                html += '<h4>Recent Events (' + statistical.recent_events.length + '):</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                statistical.recent_events.slice(0, 10).forEach(event => {
+                    html += '<div style="margin: 5px 0; padding: 5px; background-color: #2a2a2a; border-radius: 3px;">';
+                    html += '<strong>T' + event.tick + '</strong> ';
+                    html += event.type + ' (' + event.target + ')';
+                    if (event.change !== 0) {
+                        html += ': ' + event.change.toFixed(4);
+                    }
+                    if (event.description) {
+                        html += '<br><small>' + event.description + '</small>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Latest snapshot
+            if (statistical.latest_snapshot) {
+                const snapshot = statistical.latest_snapshot;
+                html += '<h4>Latest Snapshot (T' + snapshot.tick + '):</h4>';
+                html += '<div>Total Energy: ' + snapshot.total_energy.toFixed(2) + '</div>';
+                html += '<div>Population Count: ' + snapshot.population_count + '</div>';
+                
+                if (snapshot.trait_averages && Object.keys(snapshot.trait_averages).length > 0) {
+                    html += '<h5>Trait Averages:</h5>';
+                    Object.entries(snapshot.trait_averages).forEach(([trait, avg]) => {
+                        html += '<div>' + trait + ': ' + avg.toFixed(3) + '</div>';
+                    });
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render anomalies detection view
+        function renderAnomalies(anomalies) {
+            if (!anomalies) {
+                return '<h3>⚠️ Anomaly Detection</h3><div>Anomaly detection not available</div>';
+            }
+            
+            let html = '<h3>⚠️ Anomaly Detection</h3>';
+            
+            if (anomalies.total_anomalies === 0) {
+                html += '<div style="color: #4CAF50;">✅ No anomalies detected!</div>';
+                html += '<div>The simulation appears to be running within expected parameters.</div>';
+            } else {
+                html += '<div>Found ' + anomalies.total_anomalies + ' anomalies:</div><br>';
+                
+                // Anomaly types summary
+                if (anomalies.anomaly_types && Object.keys(anomalies.anomaly_types).length > 0) {
+                    html += '<h4>Anomaly Types:</h4>';
+                    Object.entries(anomalies.anomaly_types).forEach(([type, count]) => {
+                        html += '<div>' + type.replace(/_/g, ' ') + ': ' + count + '</div>';
+                    });
+                    html += '<br>';
+                }
+                
+                // Recent anomalies
+                if (anomalies.recent_anomalies && anomalies.recent_anomalies.length > 0) {
+                    html += '<h4>Recent Anomalies:</h4>';
+                    html += '<div style="max-height: 300px; overflow-y: auto;">';
+                    anomalies.recent_anomalies.slice(0, 10).forEach(anomaly => {
+                        html += '<div style="margin: 10px 0; padding: 10px; background-color: #4a2a2a; border-radius: 5px; border-left: 3px solid #ff6b6b;">';
+                        html += '<strong>🔍 ' + anomaly.type.replace(/_/g, ' ') + '</strong>';
+                        html += ' (T' + anomaly.tick + ')';
+                        html += '<br>' + anomaly.description;
+                        html += '<br><small>Severity: ' + anomaly.severity.toFixed(2) + ', Confidence: ' + anomaly.confidence.toFixed(2) + '</small>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                
+                // Recommendations
+                if (anomalies.recommendations && anomalies.recommendations.length > 0) {
+                    html += '<h4>Recommendations:</h4>';
+                    anomalies.recommendations.forEach(rec => {
+                        html += '<div style="margin: 5px 0; padding: 5px; background-color: #2a3a4a; border-radius: 3px; border-left: 3px solid #4CAF50;">• ' + rec + '</div>';
+                    });
                 }
             }
             
