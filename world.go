@@ -134,7 +134,8 @@ type World struct {
 	Grid        [][]GridCell
 	Biomes      map[BiomeType]Biome
 	Events      []*WorldEvent
-	EventLogger *EventLogger // Event logging system
+	EventLogger *EventLogger // Event logging system (legacy)
+	CentralEventBus *CentralEventBus // Unified event system
 	NextID      int
 	NextPlantID int // ID counter for plants
 	Tick        int
@@ -201,6 +202,7 @@ func NewWorld(config WorldConfig) *World {
 		Biomes:      initializeBiomes(),
 		Events:      make([]*WorldEvent, 0),
 		EventLogger: NewEventLogger(1000), // Keep up to 1000 events
+		CentralEventBus: NewCentralEventBus(50000), // Central event bus with 50k events
 		NextID:      0,
 		NextPlantID: 0,
 		Tick:        0,
@@ -256,6 +258,41 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
+	
+	// Connect StatisticalReporter to CentralEventBus
+	world.CentralEventBus.AddListener(func(event CentralEvent) {
+		// Convert CentralEvent to StatisticalEvent format
+		statEvent := StatisticalEvent{
+			Timestamp:   event.Timestamp,
+			Tick:        event.Tick,
+			EventType:   event.Type,
+			Category:    event.Category,
+			EntityID:    event.EntityID,
+			PlantID:     event.PlantID,
+			Position:    event.Position,
+			OldValue:    event.OldValue,
+			NewValue:    event.NewValue,
+			Change:      event.Change,
+			Metadata:    event.Metadata,
+			ImpactedIDs: event.ImpactedIDs,
+		}
+		world.StatisticalReporter.addEvent(statEvent)
+	})
+	
+	// Connect EventLogger to CentralEventBus for legacy event types
+	world.CentralEventBus.AddListener(func(event CentralEvent) {
+		// Convert certain events to legacy LogEvent format
+		if event.Category == "system" || event.Type == "extinction" || event.Type == "birth" || event.Type == "evolution" {
+			logEvent := LogEvent{
+				Timestamp:   event.Timestamp,
+				Tick:        event.Tick,
+				Type:        event.Type,
+				Description: event.Description,
+				Data:        event.Metadata,
+			}
+			world.EventLogger.addEvent(logEvent)
+		}
+	})
 	
 	// Initialize hive mind, caste, and insect systems
 	world.HiveMindSystem = NewHiveMindSystem()
@@ -834,7 +871,7 @@ func (w *World) Update() {
 
 	// 5. Reset collision counters and check collisions
 	w.PhysicsSystem.ResetCollisionCounters()
-	w.CollisionSystem.CheckCollisions(w.AllEntities, w.PhysicsComponents, w.PhysicsSystem)
+	w.CollisionSystem.CheckCollisions(w.AllEntities, w.PhysicsComponents, w.PhysicsSystem, w)
 
 	// Update grid with current entity and plant positions
 	w.updateGrid()

@@ -58,6 +58,9 @@ func RunWebInterface(world *World, port int) error {
 	// Set up HTTP routes
 	http.HandleFunc("/", webInterface.serveHome)
 	http.HandleFunc("/api/status", webInterface.handleStatus)
+	http.HandleFunc("/api/export/events", webInterface.handleExportEvents)
+	http.HandleFunc("/api/export/analysis", webInterface.handleExportAnalysis)
+	http.HandleFunc("/api/export/anomalies", webInterface.handleExportAnomalies)
 	http.Handle("/ws", websocket.Handler(webInterface.handleWebSocket))
 	
 	// Serve static files (CSS, JS)
@@ -2823,6 +2826,194 @@ func (wi *WebInterface) handleStatus(w http.ResponseWriter, r *http.Request) {
 	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
+}
+
+// handleExportEvents exports all events from the central event bus
+func (wi *WebInterface) handleExportEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get query parameters for filtering
+	eventType := r.URL.Query().Get("type")
+	category := r.URL.Query().Get("category")
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+
+	var events []CentralEvent
+	
+	if wi.world.CentralEventBus != nil {
+		if eventType != "" {
+			events = wi.world.CentralEventBus.GetEventsByType(eventType)
+		} else if category != "" {
+			events = wi.world.CentralEventBus.GetEventsByCategory(category)
+		} else {
+			events = wi.world.CentralEventBus.GetAllEvents()
+		}
+	}
+
+	exportData := map[string]interface{}{
+		"events":      events,
+		"total_count": len(events),
+		"export_time": time.Now(),
+		"filters": map[string]string{
+			"type":     eventType,
+			"category": category,
+			"format":   format,
+		},
+	}
+
+	if format == "csv" {
+		wi.exportEventsAsCSV(w, events)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=events_export.json")
+		json.NewEncoder(w).Encode(exportData)
+	}
+}
+
+// handleExportAnalysis exports statistical analysis data
+func (wi *WebInterface) handleExportAnalysis(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+
+	var analysisData map[string]interface{}
+	
+	if wi.world.StatisticalReporter != nil {
+		analysisData = map[string]interface{}{
+			"summary_statistics": wi.world.StatisticalReporter.GetSummaryStatistics(),
+			"recent_events":      wi.world.StatisticalReporter.Events,
+			"snapshots":          wi.world.StatisticalReporter.Snapshots,
+			"export_time":        time.Now(),
+		}
+	} else {
+		analysisData = map[string]interface{}{
+			"error":       "Statistical reporter not available",
+			"export_time": time.Now(),
+		}
+	}
+
+	if format == "csv" {
+		wi.exportAnalysisAsCSV(w, analysisData)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=analysis_export.json")
+		json.NewEncoder(w).Encode(analysisData)
+	}
+}
+
+// handleExportAnomalies exports anomaly detection data
+func (wi *WebInterface) handleExportAnomalies(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+
+	var anomaliesData map[string]interface{}
+	
+	if wi.world.StatisticalReporter != nil {
+		anomaliesData = map[string]interface{}{
+			"anomalies":      wi.world.StatisticalReporter.Anomalies,
+			"total_count":    len(wi.world.StatisticalReporter.Anomalies),
+			"anomaly_types":  wi.world.StatisticalReporter.detectedAnomalies,
+			"export_time":    time.Now(),
+		}
+	} else {
+		anomaliesData = map[string]interface{}{
+			"error":       "Statistical reporter not available",
+			"export_time": time.Now(),
+		}
+	}
+
+	if format == "csv" {
+		wi.exportAnomaliesAsCSV(w, anomaliesData)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=anomalies_export.json")
+		json.NewEncoder(w).Encode(anomaliesData)
+	}
+}
+
+// exportEventsAsCSV exports events in CSV format
+func (wi *WebInterface) exportEventsAsCSV(w http.ResponseWriter, events []CentralEvent) {
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=events_export.csv")
+
+	w.Write([]byte("ID,Timestamp,Tick,Type,Category,SubCategory,Source,Description,EntityID,PlantID,Position,Severity\n"))
+	
+	for _, event := range events {
+		position := ""
+		if event.Position != nil {
+			position = fmt.Sprintf("%.2f;%.2f", event.Position.X, event.Position.Y)
+		}
+		
+		line := fmt.Sprintf("%d,%s,%d,%s,%s,%s,%s,\"%s\",%d,%d,%s,%s\n",
+			event.ID,
+			event.Timestamp.Format("2006-01-02 15:04:05"),
+			event.Tick,
+			event.Type,
+			event.Category,
+			event.SubCategory,
+			event.Source,
+			event.Description,
+			event.EntityID,
+			event.PlantID,
+			position,
+			event.Severity,
+		)
+		w.Write([]byte(line))
+	}
+}
+
+// exportAnalysisAsCSV exports analysis data in CSV format
+func (wi *WebInterface) exportAnalysisAsCSV(w http.ResponseWriter, data map[string]interface{}) {
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=analysis_export.csv")
+
+	// Simple CSV with key-value pairs for analysis data
+	w.Write([]byte("Key,Value\n"))
+	
+	if stats, ok := data["summary_statistics"].(map[string]interface{}); ok {
+		for key, value := range stats {
+			w.Write([]byte(fmt.Sprintf("%s,%v\n", key, value)))
+		}
+	}
+}
+
+// exportAnomaliesAsCSV exports anomalies in CSV format
+func (wi *WebInterface) exportAnomaliesAsCSV(w http.ResponseWriter, data map[string]interface{}) {
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=anomalies_export.csv")
+
+	w.Write([]byte("Type,Severity,Tick,Description,Confidence\n"))
+	
+	if anomalies, ok := data["anomalies"].([]Anomaly); ok {
+		for _, anomaly := range anomalies {
+			line := fmt.Sprintf("%s,%.3f,%d,\"%s\",%.3f\n",
+				anomaly.Type,
+				anomaly.Severity,
+				anomaly.Tick,
+				anomaly.Description,
+				anomaly.Confidence,
+			)
+			w.Write([]byte(line))
+		}
+	}
 }
 
 // handleWebSocket handles WebSocket connections
