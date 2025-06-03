@@ -337,4 +337,75 @@ test.describe('EvoSim Web Interface', () => {
     const updatedContent = await infoPanel.textContent();
     expect(updatedContent).toBeTruthy();
   });
+
+  test('capture screenshots of all visualization modes', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    
+    // Wait for initial data
+    await page.waitForTimeout(5000);
+    
+    // Ensure screenshots directory exists and save to test-specific location
+    const screenshotDir = 'screenshots/test-visualizations';
+    
+    // Define view modes to capture
+    const viewModesToCapture = [
+      'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
+      'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
+      'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 
+      'ENVIRONMENT', 'BEHAVIOR', 'STATISTICAL', 'ANOMALIES'
+    ];
+    
+    for (const viewMode of viewModesToCapture) {
+      const tab = page.locator(`.view-tab:has-text("${viewMode}")`);
+      if (await tab.isVisible()) {
+        await tab.click();
+        await page.waitForTimeout(2000); // Allow view to fully load
+        
+        // Take screenshot with descriptive name for test purposes
+        await page.screenshot({ 
+          path: `${screenshotDir}/${viewMode.toLowerCase()}-view.png`,
+          fullPage: true 
+        });
+      }
+    }
+    
+    // Also capture the main interface overview
+    await page.screenshot({ 
+      path: `${screenshotDir}/main-interface.png`,
+      fullPage: true 
+    });
+  });
+
+  test('capture species gallery and detailed views', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    
+    // Wait for initial data
+    await page.waitForTimeout(5000);
+    
+    // Navigate to species view
+    const speciesTab = page.locator('.view-tab:has-text("SPECIES")');
+    if (await speciesTab.isVisible()) {
+      await speciesTab.click();
+      await page.waitForTimeout(3000);
+      
+      // Capture species gallery
+      await page.screenshot({ 
+        path: 'screenshots/test-visualizations/species-gallery.png',
+        fullPage: true 
+      });
+      
+      // Try to click on the first species if available
+      const firstSpecies = page.locator('.species-item').first();
+      if (await firstSpecies.isVisible()) {
+        await firstSpecies.click();
+        await page.waitForTimeout(2000);
+        
+        // Capture detailed species view
+        await page.screenshot({ 
+          path: 'screenshots/test-visualizations/species-detail.png',
+          fullPage: true 
+        });
+      }
+    }
+  });
 });

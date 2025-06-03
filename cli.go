@@ -1882,29 +1882,54 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 	}
 	visual.WriteString(fmt.Sprintf("Growth:   %s (%.1f)\n", growthDisplay, avgGrowth))
 	
-	// Create a simple "profile" view
-	visual.WriteString("\nProfile View:\n")
-	visual.WriteString("     ╭─────╮\n")
+	// Create a simple "profile" view with enhanced blocky design
+	visual.WriteString("\nProfile View (Blocky Style):\n")
 	
-	// Top varies by growth
-	if avgGrowth > 0.5 {
-		visual.WriteString("    ╱🌿🌿🌿╲\n")
+	// Top crown based on growth (more elaborate)
+	if avgGrowth > 0.7 {
+		visual.WriteString("       ╭🌿╮ ╭🌿╮\n")
+		visual.WriteString("      ╱🌿🌿🌿🌿╲\n")
+	} else if avgGrowth > 0.4 {
+		visual.WriteString("        ╭🌿╮\n")
+		visual.WriteString("       ╱🌿🌿╲\n")
 	} else {
-		visual.WriteString("    ╱ 🌿 ╲\n")
+		visual.WriteString("        🌿\n")
+		visual.WriteString("       ╱▲╲\n")
 	}
 	
-	// Middle varies by size
-	for i := 0; i < int(avgSize/10)+1; i++ {
-		if avgDefense > 0.5 {
-			visual.WriteString("   │ ▣▣▣ │\n") // Armored
+	// Main body sections vary by size with more detail
+	bodyHeight := int(avgSize/5) + 2
+	for i := 0; i < bodyHeight; i++ {
+		if avgDefense > 0.7 {
+			// Heavy armor plating
+			visual.WriteString("      ┃▣▣▣▣▣┃\n")
+		} else if avgDefense > 0.4 {
+			// Moderate armor
+			visual.WriteString("      ┃▣ ● ▣┃\n")
 		} else {
-			visual.WriteString("   │     │\n") // Normal
+			// Normal body
+			visual.WriteString("      ┃  ●  ┃\n")
+		}
+		
+		// Add toxicity indicators inside body
+		if avgToxicity > 0.5 && i == bodyHeight/2 {
+			if avgDefense > 0.4 {
+				visual.WriteString("      ┃▣ ☠ ▣┃\n")
+			} else {
+				visual.WriteString("      ┃  ☠  ┃\n")
+			}
 		}
 	}
 	
-	// Base 
-	visual.WriteString("   └─────┘\n")
-	visual.WriteString("     ╱╲╱╲  (roots)\n")
+	// Base varies by root strength
+	if avgGrowth > 0.5 {
+		visual.WriteString("      └─────┘\n")
+		visual.WriteString("       ╱╲╱╲╱╲  (strong roots)\n")
+		visual.WriteString("      ╱  ╲╱  ╲\n")
+	} else {
+		visual.WriteString("      └─────┘\n")
+		visual.WriteString("       ╱╲╱╲  (roots)\n")
+	}
 	
 	return visual.String()
 }

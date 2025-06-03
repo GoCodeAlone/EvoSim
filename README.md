@@ -25,6 +25,38 @@ A sophisticated genetic algorithm simulation featuring a complete evolutionary e
 - **Multi-zoom Viewport**: Navigate and explore the simulation world at different scales
 - **Comprehensive Statistics**: Track evolution, behaviors, tools, and environmental changes
 
+## 🖼️ Screenshots
+
+### Main Interface
+The EvoSim web interface provides a real-time view of the evolving ecosystem with interactive controls and detailed information panels.
+
+![Main Interface](screenshots/documentation/main-interface.png)
+
+### Grid View
+Watch entities interact in real-time as they move through different biomes, gather resources, and evolve their behaviors.
+
+![Grid View](screenshots/documentation/grid-view.png)
+
+### Statistics View
+Track population dynamics, genetic traits, and evolutionary trends with comprehensive statistical displays.
+
+![Statistics View](screenshots/documentation/stats-view.png)
+
+### Species Visualization
+Explore individual species with detailed trait analysis, cellular structure visualization, and interactive species galleries.
+
+![Species View](screenshots/documentation/species-view.png)
+
+### Cellular View
+Examine organisms at the cellular level with blocky, Minecraft-style visualizations showing organelles and cellular complexity.
+
+![Cellular View](screenshots/documentation/cellular-view.png)
+
+### Topology View
+Explore the world's terrain features with enhanced topographic maps showing elevation, underground structures, and environmental details.
+
+![Topology View](screenshots/documentation/topology-view.png)
+
 ## 🚀 Quick Start
 
 ### Installation

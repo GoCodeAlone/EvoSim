@@ -1393,71 +1393,113 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             };
         }
         
-        // Generate profile view visualization  
+        // Generate profile view visualization with Minecraft/Rimworld style
         function generateProfileView(name, traits) {
             let html = '';
             
-            // Visual representation with ASCII-like art using HTML/CSS
+            // Visual representation with blocky CSS art
             const baseSymbol = getBaseSymbol(name);
-            const sizeScale = 1 + traits.size;
-            const colorIntensity = Math.round(100 + traits.defense * 155);
+            const sizeScale = 1 + (traits.size * 2); // More dramatic size scaling
+            const defenseLevel = Math.floor(traits.defense * 4); // 0-3 defense levels
             
-            html += '<div style="font-size: ' + (2 + sizeScale) + 'em; margin: 20px 0;">';
-            html += '<div style="text-align: center;">' + baseSymbol + '</div>';
-            html += '<div style="font-size: 0.4em; margin-top: 10px; color: #aaa;">' + name + '</div>';
+            html += '<div style="margin: 20px 0; text-align: center;">';
+            
+            // Create a blocky, pixelated representation
+            html += '<div style="display: inline-block; position: relative;">';
+            
+            // Main organism body - blocky style
+            const bodySize = Math.max(40, sizeScale * 30);
+            const bodyColor = getTraitColor(traits.size, '#4a9eff', '#0066cc');
+            
+            html += '<div style="width: ' + bodySize + 'px; height: ' + bodySize + 'px; ';
+            html += 'background: linear-gradient(45deg, ' + bodyColor + ' 25%, transparent 25%), ';
+            html += 'linear-gradient(-45deg, ' + bodyColor + ' 25%, transparent 25%), ';
+            html += 'linear-gradient(45deg, transparent 75%, ' + bodyColor + ' 75%), ';
+            html += 'linear-gradient(-45deg, transparent 75%, ' + bodyColor + ' 75%); ';
+            html += 'background-size: 8px 8px; ';
+            html += 'background-position: 0 0, 0 4px, 4px -4px, -4px 0px; ';
+            html += 'border: 2px solid #333; ';
+            html += 'image-rendering: pixelated; ';
+            html += 'position: relative; ';
+            html += 'margin: 20px auto;">';
+            
+            // Add defense armor if present
+            if (defenseLevel > 0) {
+                const armorColor = '#ff9944';
+                html += '<div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; ';
+                html += 'border: ' + (defenseLevel * 2) + 'px solid ' + armorColor + '; ';
+                html += 'border-style: solid; ';
+                html += 'background: repeating-linear-gradient(45deg, transparent, transparent 2px, ' + armorColor + ' 2px, ' + armorColor + ' 4px);';
+                html += 'opacity: 0.7;"></div>';
+            }
+            
+            // Add toxicity indicators
+            if (traits.toxicity > 0.3) {
+                html += '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); ';
+                html += 'color: #ff4444; font-size: ' + (bodySize / 3) + 'px; font-weight: bold;">☠</div>';
+            }
+            
             html += '</div>';
             
-            // Size visualization
-            html += '<div>Size: ';
-            for (let i = 0; i < 10; i++) {
-                if (i < traits.size * 10) {
-                    html += '<span style="color: #4a9eff;">█</span>';
-                } else {
-                    html += '<span style="color: #333;">█</span>';
-                }
+            // Add appendages based on traits
+            if (traits.size > 0.6) {
+                // Large organisms get extensions
+                html += '<div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); ';
+                html += 'width: 12px; height: 20px; background: ' + bodyColor + '; border: 2px solid #333;"></div>';
             }
-            html += ' (' + (traits.size * 100).toFixed(0) + '%)</div>';
             
-            // Defense visualization
-            html += '<div>Defense: ';
-            for (let i = 0; i < 10; i++) {
-                if (i < traits.defense * 10) {
-                    html += '<span style="color: #ff9944;">▣</span>';
-                } else {
-                    html += '<span style="color: #333;">▣</span>';
-                }
+            if (traits.defense > 0.5) {
+                // Defensive spikes
+                html += '<div style="position: absolute; top: 50%; right: -10px; ';
+                html += 'width: 0; height: 0; border-left: 8px solid #ff9944; ';
+                html += 'border-top: 6px solid transparent; border-bottom: 6px solid transparent;"></div>';
+                html += '<div style="position: absolute; top: 50%; left: -10px; ';
+                html += 'width: 0; height: 0; border-right: 8px solid #ff9944; ';
+                html += 'border-top: 6px solid transparent; border-bottom: 6px solid transparent;"></div>';
             }
-            html += ' (' + (traits.defense * 100).toFixed(0) + '%)</div>';
             
-            // Toxicity visualization
-            html += '<div>Toxicity: ';
-            for (let i = 0; i < 10; i++) {
-                if (i < traits.toxicity * 10) {
-                    html += '<span style="color: #ff4444;">☠</span>';
-                } else {
-                    html += '<span style="color: #333;">☠</span>';
-                }
-            }
-            html += ' (' + (traits.toxicity * 100).toFixed(0) + '%)</div>';
+            html += '</div>';
+            
+            html += '<div style="font-size: 0.8em; margin-top: 10px; color: #aaa; font-family: monospace;">' + name + '</div>';
+            html += '</div>';
+            
+            // Blocky trait bars
+            html += '<div style="margin: 20px 0;">';
+            html += generateBlockyTraitBars(traits);
+            html += '</div>';
             
             return html;
         }
         
-        // Generate trait bars
-        function generateTraitBars(traits) {
+        // Helper function to get trait-based colors
+        function getTraitColor(value, baseColor, intenseColor) {
+            const intensity = Math.max(0, Math.min(1, value));
+            return baseColor; // Simplified for now
+        }
+        
+        // Generate blocky trait bars Minecraft-style
+        function generateBlockyTraitBars(traits) {
             let html = '';
             
             Object.entries(traits).forEach(([trait, value]) => {
-                const percentage = (value * 100).toFixed(1);
-                const barWidth = value * 100;
+                const blockCount = Math.floor(value * 10);
+                const percentage = (value * 100).toFixed(0);
                 
-                html += '<div style="margin: 8px 0;">';
+                html += '<div style="margin: 8px 0; font-family: monospace;">';
                 html += '<div style="display: flex; justify-content: space-between; margin-bottom: 3px;">';
-                html += '<span style="text-transform: capitalize;">' + trait + '</span>';
-                html += '<span>' + percentage + '%</span>';
+                html += '<span style="text-transform: capitalize; font-weight: bold;">' + trait + '</span>';
+                html += '<span style="color: #aaa;">' + percentage + '%</span>';
                 html += '</div>';
-                html += '<div style="background-color: #333; height: 20px; border-radius: 3px; overflow: hidden;">';
-                html += '<div style="background-color: #44ff44; height: 100%; width: ' + barWidth + '%; transition: width 0.3s;"></div>';
+                
+                // Create blocky progress bar
+                html += '<div style="display: flex; gap: 1px; height: 16px;">';
+                for (let i = 0; i < 10; i++) {
+                    const isActive = i < blockCount;
+                    const blockColor = isActive ? getTraitBlockColor(trait) : '#333';
+                    html += '<div style="width: 16px; height: 16px; background: ' + blockColor + '; ';
+                    html += 'border: 1px solid #555; image-rendering: pixelated; ';
+                    html += 'box-shadow: inset 1px 1px 0 rgba(255,255,255,0.2), inset -1px -1px 0 rgba(0,0,0,0.3);"></div>';
+                }
                 html += '</div>';
                 html += '</div>';
             });
@@ -1465,50 +1507,211 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
         
-        // Generate cellular view
+        // Get color for trait blocks
+        function getTraitBlockColor(trait) {
+            const colors = {
+                'size': '#4a9eff',
+                'defense': '#ff9944', 
+                'toxicity': '#ff4444',
+                'growth': '#44ff44',
+                'hardiness': '#9944ff',
+                'fertility': '#ff44ff'
+            };
+            return colors[trait] || '#44ff44';
+        }
+        
+        // Generate trait bars with blocky Minecraft-style design
+        function generateTraitBars(traits) {
+            let html = '';
+            
+            Object.entries(traits).forEach(([trait, value]) => {
+                const blockCount = Math.floor(value * 10);
+                const percentage = (value * 100).toFixed(1);
+                
+                html += '<div style="margin: 10px 0; font-family: monospace;">';
+                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">';
+                html += '<span style="text-transform: capitalize; font-weight: bold; color: #fff;">' + trait + '</span>';
+                html += '<span style="color: #aaa; font-weight: bold;">' + percentage + '%</span>';
+                html += '</div>';
+                
+                // Create blocky progress bar with 3D effect
+                html += '<div style="display: flex; gap: 2px; background: #1a1a1a; padding: 4px; border-radius: 4px; border: 1px solid #444;">';
+                for (let i = 0; i < 10; i++) {
+                    const isActive = i < blockCount;
+                    const blockColor = isActive ? getTraitBlockColor(trait) : '#333';
+                    const shadowColor = isActive ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.5)';
+                    
+                    html += '<div style="width: 20px; height: 20px; background: ' + blockColor + '; ';
+                    html += 'border: 1px solid ' + (isActive ? '#555' : '#222') + '; ';
+                    html += 'image-rendering: pixelated; ';
+                    html += 'box-shadow: inset 2px 2px 0 ' + shadowColor + ', inset -1px -1px 0 rgba(0,0,0,0.4); ';
+                    html += 'position: relative; ';
+                    html += 'transition: all 0.2s;"></div>';
+                }
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            return html;
+        }
+        
+        // Generate cellular view with blocky, Minecraft-style representation
         function generateCellularView(name, traits) {
             let html = '';
             
-            html += '<div>Simulated cellular structure based on genetic traits:</div>';
-            html += '<div style="margin: 15px 0; font-family: monospace; background-color: #1a1a1a; padding: 15px; border-radius: 5px;">';
+            html += '<div><strong>Cellular Structure (Blocky Representation):</strong></div>';
+            html += '<div style="margin: 15px 0; background: linear-gradient(135deg, #1a1a1a, #2a2a2a); padding: 20px; border-radius: 8px; border: 2px solid #444;">';
             
-            // Create a grid representing cell structure
-            const cellSize = Math.max(3, Math.round(traits.size * 8));
-            for (let row = 0; row < 6; row++) {
-                for (let col = 0; col < cellSize; col++) {
-                    if (row < 2) {
-                        // Top structure
-                        html += '<span style="color: #44ff44;">🌿</span>';
-                    } else if (row < 4) {
-                        // Middle structure
-                        if (traits.defense > 0.5) {
-                            html += '<span style="color: #ffaa44;">▣</span>';
-                        } else {
-                            html += '<span style="color: #aaffaa;">○</span>';
-                        }
+            // Create a larger, more detailed blocky cell structure
+            const cellSize = Math.max(8, Math.round(traits.size * 12));
+            const complexity = Math.max(2, Math.floor(traits.size * 6));
+            
+            html += '<div style="font-family: monospace; line-height: 1.2; text-align: center;">';
+            
+            // Top membrane
+            html += '<div style="margin-bottom: 5px;">';
+            for (let i = 0; i < cellSize; i++) {
+                html += '<span style="color: #666; font-size: 12px;">▄</span>';
+            }
+            html += '</div>';
+            
+            // Cell interior layers
+            for (let row = 0; row < complexity; row++) {
+                html += '<div>';
+                
+                // Left wall
+                html += '<span style="color: #666; font-size: 12px;">█</span>';
+                
+                // Interior content based on traits
+                for (let col = 1; col < cellSize - 1; col++) {
+                    let organelle = ' ';
+                    let color = '#333';
+                    
+                    // Place organelles based on traits and position
+                    if (row === Math.floor(complexity/2) && col === Math.floor(cellSize/2)) {
+                        // Nucleus (center)
+                        organelle = '⬣';
+                        color = '#4a9eff';
+                    } else if (traits.size > 0.5 && (col % 3 === 0)) {
+                        // Mitochondria for larger cells
+                        organelle = '⚡';
+                        color = '#ffaa44';
+                    } else if (traits.toxicity > 0.4 && (col % 4 === 1)) {
+                        // Toxin organelles
+                        organelle = '☠';
+                        color = '#ff4444';
+                    } else if (traits.defense > 0.4 && (col % 5 === 2)) {
+                        // Defense structures
+                        organelle = '▣';
+                        color = '#ff9944';
+                    } else if (traits.growth > 0.5 && (col % 3 === 2)) {
+                        // Growth organelles
+                        organelle = '🌿';
+                        color = '#44ff44';
                     } else {
-                        // Base/roots
-                        html += '<span style="color: #aa8844;">╱</span>';
+                        // Cytoplasm
+                        organelle = '·';
+                        color = '#666';
                     }
+                    
+                    html += '<span style="color: ' + color + '; font-size: 12px;">' + organelle + '</span>';
                 }
-                html += '<br>';
+                
+                // Right wall  
+                html += '<span style="color: #666; font-size: 12px;">█</span>';
+                html += '</div>';
             }
             
+            // Bottom membrane
+            html += '<div style="margin-top: 5px;">';
+            for (let i = 0; i < cellSize; i++) {
+                html += '<span style="color: #666; font-size: 12px;">▀</span>';
+            }
             html += '</div>';
             
-            // Organelle information
-            html += '<div><strong>Organelle Profile:</strong></div>';
-            html += '<div style="font-size: 0.9em; margin-left: 10px;">';
-            html += '⬣ Nucleus: Enhanced for ' + (traits.growth > 0.6 ? 'rapid growth' : 'stability') + '<br>';
-            html += '⚡ Mitochondria: ' + (traits.size > 0.5 ? 'High energy' : 'Standard energy') + ' production<br>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Detailed organelle breakdown with blocky styling
+            html += '<div style="margin-top: 15px;"><strong>Organelle Profile:</strong></div>';
+            html += '<div style="background: #2a2a2a; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #4a9eff;">';
+            
+            // Nucleus info
+            html += '<div style="margin-bottom: 10px; font-family: monospace;">';
+            html += '<span style="color: #4a9eff; font-weight: bold;">⬣ NUCLEUS:</span> ';
+            html += traits.growth > 0.6 ? 
+                '<span style="color: #44ff44;">Enhanced for rapid growth</span>' : 
+                '<span style="color: #aaa;">Standard genetic control</span>';
+            html += '</div>';
+            
+            // Mitochondria
+            html += '<div style="margin-bottom: 10px; font-family: monospace;">';
+            html += '<span style="color: #ffaa44; font-weight: bold;">⚡ MITOCHONDRIA:</span> ';
+            html += traits.size > 0.5 ? 
+                '<span style="color: #ffaa44;">High-energy production</span>' : 
+                '<span style="color: #aaa;">Standard energy output</span>';
+            html += '</div>';
+            
+            // Conditional organelles
             if (traits.toxicity > 0.3) {
-                html += '🗑 Lysosomes: Toxin production organelles present<br>';
+                html += '<div style="margin-bottom: 10px; font-family: monospace;">';
+                html += '<span style="color: #ff4444; font-weight: bold;">☠ TOXIN CHAMBERS:</span> ';
+                html += '<span style="color: #ff4444;">Active poison production</span>';
+                html += '</div>';
             }
+            
             if (traits.defense > 0.4) {
-                html += '📦 Defensive structures: Reinforced cell walls<br>';
+                html += '<div style="margin-bottom: 10px; font-family: monospace;">';
+                html += '<span style="color: #ff9944; font-weight: bold;">▣ ARMOR PLATING:</span> ';
+                html += '<span style="color: #ff9944;">Reinforced cellular walls</span>';
+                html += '</div>';
             }
+            
+            if (traits.growth > 0.5) {
+                html += '<div style="margin-bottom: 10px; font-family: monospace;">';
+                html += '<span style="color: #44ff44; font-weight: bold;">🌿 GROWTH PODS:</span> ';
+                html += '<span style="color: #44ff44;">Accelerated development</span>';
+                html += '</div>';
+            }
+            
             html += '</div>';
             
+            // Cell health/energy indicators
+            html += '<div style="display: flex; gap: 20px; margin-top: 15px;">';
+            
+            // Health indicator
+            const health = (traits.defense + traits.hardiness) / 2;
+            html += '<div style="flex: 1;">';
+            html += '<div style="margin-bottom: 5px; font-weight: bold;">CELL HEALTH:</div>';
+            html += generateBlockyIndicator(health, '#44ff44', '#ff4444');
+            html += '</div>';
+            
+            // Energy indicator  
+            const energy = (traits.size + traits.growth) / 2;
+            html += '<div style="flex: 1;">';
+            html += '<div style="margin-bottom: 5px; font-weight: bold;">ENERGY LEVEL:</div>';
+            html += generateBlockyIndicator(energy, '#ffaa44', '#aa4400');
+            html += '</div>';
+            
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // Helper function to generate blocky indicators
+        function generateBlockyIndicator(value, fullColor, emptyColor) {
+            let html = '<div style="display: flex; gap: 2px;">';
+            const blocks = Math.floor(value * 8);
+            
+            for (let i = 0; i < 8; i++) {
+                const isActive = i < blocks;
+                const color = isActive ? fullColor : emptyColor;
+                html += '<div style="width: 16px; height: 16px; background: ' + color + '; ';
+                html += 'border: 1px solid #333; ';
+                html += 'box-shadow: inset 1px 1px 0 rgba(255,255,255,0.2), inset -1px -1px 0 rgba(0,0,0,0.3);"></div>';
+            }
+            
+            html += '</div>';
             return html;
         }
         
