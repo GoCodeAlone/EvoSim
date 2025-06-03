@@ -1393,79 +1393,109 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             };
         }
         
-        // Generate profile view visualization with Minecraft/Rimworld style
+        // Generate profile view visualization with authentic Minecraft/Rimworld style
         function generateProfileView(name, traits) {
             let html = '';
             
-            // Visual representation with blocky CSS art
-            const baseSymbol = getBaseSymbol(name);
-            const sizeScale = 1 + (traits.size * 2); // More dramatic size scaling
+            // True blocky, pixelated representation like Minecraft blocks
+            const sizeBlocks = Math.max(3, Math.floor(traits.size * 6) + 2); // 3-8 blocks
             const defenseLevel = Math.floor(traits.defense * 4); // 0-3 defense levels
+            const blockSize = 16; // Standard block size like Minecraft
             
             html += '<div style="margin: 20px 0; text-align: center;">';
-            
-            // Create a blocky, pixelated representation
             html += '<div style="display: inline-block; position: relative;">';
             
-            // Main organism body - blocky style
-            const bodySize = Math.max(40, sizeScale * 30);
-            const bodyColor = getTraitColor(traits.size, '#4a9eff', '#0066cc');
+            // Create a grid-based organism using individual blocks
+            const totalSize = sizeBlocks * blockSize;
+            html += '<div style="display: inline-grid; grid-template-columns: repeat(' + sizeBlocks + ', ' + blockSize + 'px); ';
+            html += 'grid-template-rows: repeat(' + sizeBlocks + ', ' + blockSize + 'px); gap: 0; ';
+            html += 'image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges;">';
             
-            html += '<div style="width: ' + bodySize + 'px; height: ' + bodySize + 'px; ';
-            html += 'background: linear-gradient(45deg, ' + bodyColor + ' 25%, transparent 25%), ';
-            html += 'linear-gradient(-45deg, ' + bodyColor + ' 25%, transparent 25%), ';
-            html += 'linear-gradient(45deg, transparent 75%, ' + bodyColor + ' 75%), ';
-            html += 'linear-gradient(-45deg, transparent 75%, ' + bodyColor + ' 75%); ';
-            html += 'background-size: 8px 8px; ';
-            html += 'background-position: 0 0, 0 4px, 4px -4px, -4px 0px; ';
-            html += 'border: 2px solid #333; ';
-            html += 'image-rendering: pixelated; ';
-            html += 'position: relative; ';
-            html += 'margin: 20px auto;">';
+            // Generate organism body as a collection of blocks
+            const centerX = Math.floor(sizeBlocks / 2);
+            const centerY = Math.floor(sizeBlocks / 2);
             
-            // Add defense armor if present
-            if (defenseLevel > 0) {
-                const armorColor = '#ff9944';
-                html += '<div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; ';
-                html += 'border: ' + (defenseLevel * 2) + 'px solid ' + armorColor + '; ';
-                html += 'border-style: solid; ';
-                html += 'background: repeating-linear-gradient(45deg, transparent, transparent 2px, ' + armorColor + ' 2px, ' + armorColor + ' 4px);';
-                html += 'opacity: 0.7;"></div>';
+            for (let y = 0; y < sizeBlocks; y++) {
+                for (let x = 0; x < sizeBlocks; x++) {
+                    const distFromCenter = Math.abs(x - centerX) + Math.abs(y - centerY);
+                    const isBodyBlock = distFromCenter <= Math.floor(sizeBlocks / 2);
+                    const isCore = distFromCenter <= Math.floor(sizeBlocks / 4);
+                    const isEdge = (x === 0 || x === sizeBlocks - 1 || y === 0 || y === sizeBlocks - 1) && isBodyBlock;
+                    
+                    let blockColor = '#222'; // Empty space
+                    let topLight = 'rgba(255,255,255,0.1)';
+                    let bottomShadow = 'rgba(0,0,0,0.3)';
+                    
+                    if (isBodyBlock) {
+                        // Main body blocks
+                        if (isCore) {
+                            blockColor = traits.toxicity > 0.4 ? '#AA3333' : '#4488FF'; // Core is blue or toxic red
+                            topLight = 'rgba(255,255,255,0.4)';
+                        } else {
+                            blockColor = traits.size > 0.6 ? '#3377CC' : '#2266BB'; // Body varies by size
+                            topLight = 'rgba(255,255,255,0.3)';
+                        }
+                        
+                        // Defense armor blocks
+                        if (defenseLevel > 0 && isEdge) {
+                            blockColor = '#BB7722'; // Orange armor blocks
+                            topLight = 'rgba(255,255,255,0.4)';
+                        }
+                        
+                        // Growth/fertility indicators
+                        if (traits.growth > 0.6 && (x + y) % 2 === 0 && !isCore) {
+                            blockColor = '#44AA44'; // Green growth blocks
+                        }
+                    }
+                    
+                    // Create individual block with Minecraft-style shading
+                    html += '<div style="width: ' + blockSize + 'px; height: ' + blockSize + 'px; ';
+                    html += 'background: ' + blockColor + '; ';
+                    html += 'box-shadow: ';
+                    html += 'inset 0 ' + Math.floor(blockSize/4) + 'px 0 ' + topLight + ', '; // Top highlight
+                    html += 'inset 0 -' + Math.floor(blockSize/4) + 'px 0 ' + bottomShadow + ', '; // Bottom shadow
+                    html += 'inset ' + Math.floor(blockSize/4) + 'px 0 0 rgba(255,255,255,0.2), '; // Left highlight
+                    html += 'inset -' + Math.floor(blockSize/4) + 'px 0 0 rgba(0,0,0,0.2); '; // Right shadow
+                    html += 'image-rendering: pixelated; ';
+                    html += 'border: 0;"></div>';
+                }
             }
+            html += '</div>';
             
-            // Add toxicity indicators
-            if (traits.toxicity > 0.3) {
+            // Add toxicity skull overlay if toxic
+            if (traits.toxicity > 0.5) {
                 html += '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); ';
-                html += 'color: #ff4444; font-size: ' + (bodySize / 3) + 'px; font-weight: bold;">☠</div>';
+                html += 'font-size: ' + Math.floor(totalSize / 4) + 'px; z-index: 10;">💀</div>';
+            }
+            
+            // Add defensive spikes as separate blocks
+            if (defenseLevel > 1) {
+                const spikeOffset = totalSize / 2 + blockSize / 2;
+                // Top spike
+                html += '<div style="position: absolute; top: -' + blockSize + 'px; left: 50%; transform: translateX(-50%); ';
+                html += 'width: ' + blockSize + 'px; height: ' + blockSize + 'px; ';
+                html += 'background: #BB7722; ';
+                html += 'box-shadow: inset 0 4px 0 rgba(255,255,255,0.4), inset 0 -4px 0 rgba(0,0,0,0.3); ';
+                html += 'image-rendering: pixelated;"></div>';
+                
+                // Side spikes for high defense
+                if (defenseLevel > 2) {
+                    html += '<div style="position: absolute; top: 50%; left: -' + blockSize + 'px; transform: translateY(-50%); ';
+                    html += 'width: ' + blockSize + 'px; height: ' + blockSize + 'px; ';
+                    html += 'background: #BB7722; ';
+                    html += 'box-shadow: inset 0 4px 0 rgba(255,255,255,0.4), inset 0 -4px 0 rgba(0,0,0,0.3); ';
+                    html += 'image-rendering: pixelated;"></div>';
+                    
+                    html += '<div style="position: absolute; top: 50%; right: -' + blockSize + 'px; transform: translateY(-50%); ';
+                    html += 'width: ' + blockSize + 'px; height: ' + blockSize + 'px; ';
+                    html += 'background: #BB7722; ';
+                    html += 'box-shadow: inset 0 4px 0 rgba(255,255,255,0.4), inset 0 -4px 0 rgba(0,0,0,0.3); ';
+                    html += 'image-rendering: pixelated;"></div>';
+                }
             }
             
             html += '</div>';
-            
-            // Add appendages based on traits
-            if (traits.size > 0.6) {
-                // Large organisms get extensions
-                html += '<div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); ';
-                html += 'width: 12px; height: 20px; background: ' + bodyColor + '; border: 2px solid #333;"></div>';
-            }
-            
-            if (traits.defense > 0.5) {
-                // Defensive spikes
-                html += '<div style="position: absolute; top: 50%; right: -10px; ';
-                html += 'width: 0; height: 0; border-left: 8px solid #ff9944; ';
-                html += 'border-top: 6px solid transparent; border-bottom: 6px solid transparent;"></div>';
-                html += '<div style="position: absolute; top: 50%; left: -10px; ';
-                html += 'width: 0; height: 0; border-right: 8px solid #ff9944; ';
-                html += 'border-top: 6px solid transparent; border-bottom: 6px solid transparent;"></div>';
-            }
-            
-            html += '</div>';
-            
-            html += '<div style="font-size: 0.8em; margin-top: 10px; color: #aaa; font-family: monospace;">' + name + '</div>';
-            html += '</div>';
-            
-            // Blocky trait bars
-            html += '<div style="margin: 20px 0;">';
-            html += generateBlockyTraitBars(traits);
+            html += '<div style="font-size: 0.8em; margin-top: 15px; color: #aaa; font-family: monospace; font-weight: bold;">' + name + '</div>';
             html += '</div>';
             
             return html;
@@ -1520,7 +1550,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return colors[trait] || '#44ff44';
         }
         
-        // Generate trait bars with blocky Minecraft-style design
+        // Generate trait bars with authentic Minecraft-style design
         function generateTraitBars(traits) {
             let html = '';
             
@@ -1530,23 +1560,34 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 
                 html += '<div style="margin: 10px 0; font-family: monospace;">';
                 html += '<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">';
-                html += '<span style="text-transform: capitalize; font-weight: bold; color: #fff;">' + trait + '</span>';
-                html += '<span style="color: #aaa; font-weight: bold;">' + percentage + '%</span>';
+                html += '<span style="text-transform: capitalize; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000;">' + trait + '</span>';
+                html += '<span style="color: #aaa; font-weight: bold; text-shadow: 1px 1px 0 #000;">' + percentage + '%</span>';
                 html += '</div>';
                 
-                // Create blocky progress bar with 3D effect
-                html += '<div style="display: flex; gap: 2px; background: #1a1a1a; padding: 4px; border-radius: 4px; border: 1px solid #444;">';
+                // Create authentic Minecraft-style progress bar with blocks
+                html += '<div style="display: flex; gap: 1px; background: #2a2a2a; padding: 3px; border: 2px inset #444; border-radius: 2px;">';
                 for (let i = 0; i < 10; i++) {
                     const isActive = i < blockCount;
-                    const blockColor = isActive ? getTraitBlockColor(trait) : '#333';
-                    const shadowColor = isActive ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.5)';
+                    const blockColor = isActive ? getMinecraftTraitColor(trait) : '#1a1a1a';
                     
-                    html += '<div style="width: 20px; height: 20px; background: ' + blockColor + '; ';
-                    html += 'border: 1px solid ' + (isActive ? '#555' : '#222') + '; ';
+                    // Create authentic Minecraft block with proper lighting
+                    html += '<div style="width: 18px; height: 18px; ';
+                    html += 'background: ' + blockColor + '; ';
+                    if (isActive) {
+                        html += 'box-shadow: ';
+                        html += 'inset 0 4px 0 rgba(255,255,255,0.4), '; // Top highlight
+                        html += 'inset 0 -4px 0 rgba(0,0,0,0.4), '; // Bottom shadow  
+                        html += 'inset 4px 0 0 rgba(255,255,255,0.2), '; // Left highlight
+                        html += 'inset -4px 0 0 rgba(0,0,0,0.2); '; // Right shadow
+                    } else {
+                        html += 'box-shadow: ';
+                        html += 'inset 0 2px 0 rgba(255,255,255,0.1), '; // Subtle top
+                        html += 'inset 0 -2px 0 rgba(0,0,0,0.3); '; // Subtle bottom
+                    }
+                    html += 'border: none; ';
                     html += 'image-rendering: pixelated; ';
-                    html += 'box-shadow: inset 2px 2px 0 ' + shadowColor + ', inset -1px -1px 0 rgba(0,0,0,0.4); ';
-                    html += 'position: relative; ';
-                    html += 'transition: all 0.2s;"></div>';
+                    html += 'image-rendering: -moz-crisp-edges; ';
+                    html += 'image-rendering: crisp-edges;"></div>';
                 }
                 html += '</div>';
                 html += '</div>';
@@ -1555,165 +1596,185 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
         
+        // Get authentic Minecraft-style colors for trait blocks
+        function getMinecraftTraitColor(trait) {
+            const colors = {
+                'size': '#3366CC',      // Blue like lapis lazuli blocks
+                'defense': '#CC6600',   // Orange like copper blocks
+                'toxicity': '#CC3333',  // Red like redstone blocks
+                'growth': '#33AA33',    // Green like emerald blocks
+                'hardiness': '#6633CC', // Purple like amethyst blocks
+                'fertility': '#CC33AA'  // Pink like coral blocks
+            };
+            return colors[trait] || '#33AA33';
+        }
+        
         // Generate cellular view with blocky, Minecraft-style representation
+        // Generate cellular view with authentic Minecraft-style blocks
         function generateCellularView(name, traits) {
             let html = '';
             
-            html += '<div><strong>Cellular Structure (Blocky Representation):</strong></div>';
-            html += '<div style="margin: 15px 0; background: linear-gradient(135deg, #1a1a1a, #2a2a2a); padding: 20px; border-radius: 8px; border: 2px solid #444;">';
+            html += '<div><strong>Cellular Structure (Minecraft-Style Blocks):</strong></div>';
+            html += '<div style="margin: 15px 0; background: #1a1a1a; padding: 20px; border: 3px solid #333; image-rendering: pixelated;">';
             
-            // Create a larger, more detailed blocky cell structure
-            const cellSize = Math.max(8, Math.round(traits.size * 12));
-            const complexity = Math.max(2, Math.floor(traits.size * 6));
+            // Create authentic blocky cell structure using grid
+            const cellGridSize = Math.max(6, Math.floor(traits.size * 8) + 4); // 6-12 blocks
+            const blockSize = 12;
             
-            html += '<div style="font-family: monospace; line-height: 1.2; text-align: center;">';
+            html += '<div style="display: inline-grid; ';
+            html += 'grid-template-columns: repeat(' + cellGridSize + ', ' + blockSize + 'px); ';
+            html += 'grid-template-rows: repeat(' + cellGridSize + ', ' + blockSize + 'px); ';
+            html += 'gap: 1px; ';
+            html += 'background: #000; ';
+            html += 'padding: 2px; ';
+            html += 'border: 2px solid #444; ';
+            html += 'image-rendering: pixelated; ';
+            html += 'image-rendering: -moz-crisp-edges; ';
+            html += 'image-rendering: crisp-edges;">';
             
-            // Top membrane
-            html += '<div style="margin-bottom: 5px;">';
-            for (let i = 0; i < cellSize; i++) {
-                html += '<span style="color: #666; font-size: 12px;">▄</span>';
-            }
-            html += '</div>';
+            // Generate cell as blocks
+            const centerX = Math.floor(cellGridSize / 2);
+            const centerY = Math.floor(cellGridSize / 2);
             
-            // Cell interior layers
-            for (let row = 0; row < complexity; row++) {
-                html += '<div>';
-                
-                // Left wall
-                html += '<span style="color: #666; font-size: 12px;">█</span>';
-                
-                // Interior content based on traits
-                for (let col = 1; col < cellSize - 1; col++) {
-                    let organelle = ' ';
-                    let color = '#333';
+            for (let y = 0; y < cellGridSize; y++) {
+                for (let x = 0; x < cellGridSize; x++) {
+                    const distFromCenter = Math.abs(x - centerX) + Math.abs(y - centerY);
+                    const isMembraneBlock = distFromCenter === Math.floor(cellGridSize / 2);
+                    const isInteriorBlock = distFromCenter < Math.floor(cellGridSize / 2);
+                    const isNucleusBlock = distFromCenter <= 1;
                     
-                    // Place organelles based on traits and position
-                    if (row === Math.floor(complexity/2) && col === Math.floor(cellSize/2)) {
-                        // Nucleus (center)
-                        organelle = '⬣';
-                        color = '#4a9eff';
-                    } else if (traits.size > 0.5 && (col % 3 === 0)) {
-                        // Mitochondria for larger cells
-                        organelle = '⚡';
-                        color = '#ffaa44';
-                    } else if (traits.toxicity > 0.4 && (col % 4 === 1)) {
-                        // Toxin organelles
-                        organelle = '☠';
-                        color = '#ff4444';
-                    } else if (traits.defense > 0.4 && (col % 5 === 2)) {
-                        // Defense structures
-                        organelle = '▣';
-                        color = '#ff9944';
-                    } else if (traits.growth > 0.5 && (col % 3 === 2)) {
-                        // Growth organelles
-                        organelle = '🌿';
-                        color = '#44ff44';
-                    } else {
-                        // Cytoplasm
-                        organelle = '·';
-                        color = '#666';
+                    let blockColor = '#000'; // Background
+                    let topHighlight = 'rgba(255,255,255,0.1)';
+                    let bottomShadow = 'rgba(0,0,0,0.5)';
+                    
+                    if (isMembraneBlock) {
+                        // Cell membrane - brown/orange blocks
+                        blockColor = '#8B4513';
+                        topHighlight = 'rgba(255,255,255,0.3)';
+                        bottomShadow = 'rgba(0,0,0,0.4)';
+                    } else if (isNucleusBlock) {
+                        // Nucleus - blue blocks  
+                        blockColor = '#3366CC';
+                        topHighlight = 'rgba(255,255,255,0.4)';
+                        bottomShadow = 'rgba(0,0,0,0.3)';
+                    } else if (isInteriorBlock) {
+                        // Cytoplasm with organelles
+                        if (traits.toxicity > 0.4 && (x + y) % 4 === 0) {
+                            // Toxin organelles - red blocks
+                            blockColor = '#CC3333';
+                            topHighlight = 'rgba(255,255,255,0.3)';
+                        } else if (traits.defense > 0.4 && (x + y) % 5 === 0) {
+                            // Defense organelles - orange blocks
+                            blockColor = '#CC6600';
+                            topHighlight = 'rgba(255,255,255,0.3)';
+                        } else if (traits.growth > 0.5 && (x + y) % 3 === 0) {
+                            // Growth organelles - green blocks
+                            blockColor = '#33AA33';
+                            topHighlight = 'rgba(255,255,255,0.3)';
+                        } else if (traits.size > 0.5 && (x + y) % 6 === 0) {
+                            // Mitochondria - yellow blocks
+                            blockColor = '#CCAA33';
+                            topHighlight = 'rgba(255,255,255,0.3)';
+                        } else {
+                            // Basic cytoplasm - gray blocks
+                            blockColor = '#555555';
+                            topHighlight = 'rgba(255,255,255,0.2)';
+                        }
+                        bottomShadow = 'rgba(0,0,0,0.3)';
                     }
                     
-                    html += '<span style="color: ' + color + '; font-size: 12px;">' + organelle + '</span>';
+                    // Create individual block with Minecraft lighting
+                    if (blockColor !== '#000') {
+                        html += '<div style="width: ' + blockSize + 'px; height: ' + blockSize + 'px; ';
+                        html += 'background: ' + blockColor + '; ';
+                        html += 'box-shadow: ';
+                        html += 'inset 0 ' + Math.floor(blockSize/3) + 'px 0 ' + topHighlight + ', ';
+                        html += 'inset 0 -' + Math.floor(blockSize/3) + 'px 0 ' + bottomShadow + ', ';
+                        html += 'inset ' + Math.floor(blockSize/3) + 'px 0 0 rgba(255,255,255,0.15), ';
+                        html += 'inset -' + Math.floor(blockSize/3) + 'px 0 0 rgba(0,0,0,0.15); ';
+                        html += 'image-rendering: pixelated; ';
+                        html += 'image-rendering: -moz-crisp-edges; ';
+                        html += 'image-rendering: crisp-edges;"></div>';
+                    } else {
+                        // Empty space block
+                        html += '<div style="width: ' + blockSize + 'px; height: ' + blockSize + 'px; background: #000;"></div>';
+                    }
                 }
-                
-                // Right wall  
-                html += '<span style="color: #666; font-size: 12px;">█</span>';
-                html += '</div>';
-            }
-            
-            // Bottom membrane
-            html += '<div style="margin-top: 5px;">';
-            for (let i = 0; i < cellSize; i++) {
-                html += '<span style="color: #666; font-size: 12px;">▀</span>';
             }
             html += '</div>';
             
-            html += '</div>';
-            html += '</div>';
-            
-            // Detailed organelle breakdown with blocky styling
-            html += '<div style="margin-top: 15px;"><strong>Organelle Profile:</strong></div>';
-            html += '<div style="background: #2a2a2a; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #4a9eff;">';
-            
-            // Nucleus info
-            html += '<div style="margin-bottom: 10px; font-family: monospace;">';
-            html += '<span style="color: #4a9eff; font-weight: bold;">⬣ NUCLEUS:</span> ';
-            html += traits.growth > 0.6 ? 
-                '<span style="color: #44ff44;">Enhanced for rapid growth</span>' : 
-                '<span style="color: #aaa;">Standard genetic control</span>';
-            html += '</div>';
-            
-            // Mitochondria
-            html += '<div style="margin-bottom: 10px; font-family: monospace;">';
-            html += '<span style="color: #ffaa44; font-weight: bold;">⚡ MITOCHONDRIA:</span> ';
-            html += traits.size > 0.5 ? 
-                '<span style="color: #ffaa44;">High-energy production</span>' : 
-                '<span style="color: #aaa;">Standard energy output</span>';
-            html += '</div>';
-            
-            // Conditional organelles
-            if (traits.toxicity > 0.3) {
-                html += '<div style="margin-bottom: 10px; font-family: monospace;">';
-                html += '<span style="color: #ff4444; font-weight: bold;">☠ TOXIN CHAMBERS:</span> ';
-                html += '<span style="color: #ff4444;">Active poison production</span>';
-                html += '</div>';
+            // Legend for organelles
+            html += '<div style="margin-top: 15px; font-size: 0.8em; color: #aaa; text-align: left;">';
+            html += '<div><span style="display: inline-block; width: 12px; height: 12px; background: #8B4513; margin-right: 5px; vertical-align: middle; image-rendering: pixelated;"></span>Cell Membrane</div>';
+            html += '<div><span style="display: inline-block; width: 12px; height: 12px; background: #3366CC; margin-right: 5px; vertical-align: middle; image-rendering: pixelated;"></span>Nucleus</div>';
+            if (traits.toxicity > 0.4) {
+                html += '<div><span style="display: inline-block; width: 12px; height: 12px; background: #CC3333; margin-right: 5px; vertical-align: middle; image-rendering: pixelated;"></span>Toxin Organelles</div>';
             }
-            
             if (traits.defense > 0.4) {
-                html += '<div style="margin-bottom: 10px; font-family: monospace;">';
-                html += '<span style="color: #ff9944; font-weight: bold;">▣ ARMOR PLATING:</span> ';
-                html += '<span style="color: #ff9944;">Reinforced cellular walls</span>';
-                html += '</div>';
+                html += '<div><span style="display: inline-block; width: 12px; height: 12px; background: #CC6600; margin-right: 5px; vertical-align: middle; image-rendering: pixelated;"></span>Defense Structures</div>';
             }
-            
             if (traits.growth > 0.5) {
-                html += '<div style="margin-bottom: 10px; font-family: monospace;">';
-                html += '<span style="color: #44ff44; font-weight: bold;">🌿 GROWTH PODS:</span> ';
-                html += '<span style="color: #44ff44;">Accelerated development</span>';
-                html += '</div>';
+                html += '<div><span style="display: inline-block; width: 12px; height: 12px; background: #33AA33; margin-right: 5px; vertical-align: middle; image-rendering: pixelated;"></span>Growth Centers</div>';
             }
-            
+            if (traits.size > 0.5) {
+                html += '<div><span style="display: inline-block; width: 12px; height: 12px; background: #CCAA33; margin-right: 5px; vertical-align: middle; image-rendering: pixelated;"></span>Energy Organelles</div>';
+            }
             html += '</div>';
             
-            // Cell health/energy indicators
+            // Cell health/energy indicators with Minecraft-style blocks
             html += '<div style="display: flex; gap: 20px; margin-top: 15px;">';
             
             // Health indicator
             const health = (traits.defense + traits.hardiness) / 2;
             html += '<div style="flex: 1;">';
-            html += '<div style="margin-bottom: 5px; font-weight: bold;">CELL HEALTH:</div>';
-            html += generateBlockyIndicator(health, '#44ff44', '#ff4444');
+            html += '<div style="margin-bottom: 5px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000;">CELL HEALTH:</div>';
+            html += generateMinecraftIndicator(health, '#33AA33', '#AA3333');
             html += '</div>';
             
             // Energy indicator  
             const energy = (traits.size + traits.growth) / 2;
             html += '<div style="flex: 1;">';
-            html += '<div style="margin-bottom: 5px; font-weight: bold;">ENERGY LEVEL:</div>';
-            html += generateBlockyIndicator(energy, '#ffaa44', '#aa4400');
+            html += '<div style="margin-bottom: 5px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000;">ENERGY LEVEL:</div>';
+            html += generateMinecraftIndicator(energy, '#CCAA33', '#664400');
             html += '</div>';
             
+            html += '</div>';
             html += '</div>';
             
             return html;
         }
         
-        // Helper function to generate blocky indicators
-        function generateBlockyIndicator(value, fullColor, emptyColor) {
-            let html = '<div style="display: flex; gap: 2px;">';
+        // Helper function to generate Minecraft-style indicators
+        function generateMinecraftIndicator(value, fullColor, emptyColor) {
+            let html = '<div style="display: flex; gap: 1px;">';
             const blocks = Math.floor(value * 8);
             
             for (let i = 0; i < 8; i++) {
                 const isActive = i < blocks;
                 const color = isActive ? fullColor : emptyColor;
                 html += '<div style="width: 16px; height: 16px; background: ' + color + '; ';
-                html += 'border: 1px solid #333; ';
-                html += 'box-shadow: inset 1px 1px 0 rgba(255,255,255,0.2), inset -1px -1px 0 rgba(0,0,0,0.3);"></div>';
+                if (isActive) {
+                    html += 'box-shadow: ';
+                    html += 'inset 0 4px 0 rgba(255,255,255,0.3), ';
+                    html += 'inset 0 -4px 0 rgba(0,0,0,0.3), ';
+                    html += 'inset 4px 0 0 rgba(255,255,255,0.15), ';
+                    html += 'inset -4px 0 0 rgba(0,0,0,0.15); ';
+                } else {
+                    html += 'box-shadow: ';
+                    html += 'inset 0 2px 0 rgba(255,255,255,0.1), ';
+                    html += 'inset 0 -2px 0 rgba(0,0,0,0.4); ';
+                }
+                html += 'border: none; ';
+                html += 'image-rendering: pixelated; ';
+                html += 'image-rendering: -moz-crisp-edges; ';
+                html += 'image-rendering: crisp-edges;"></div>';
             }
             
             html += '</div>';
             return html;
         }
+        
+
         
         // Generate habitat view
         function generateHabitatView(name, traits) {
