@@ -172,6 +172,33 @@ func (rs *ReproductionStatus) CanMate(other *ReproductionStatus, otherEntityID i
 	}
 }
 
+// CanMateWithClassification determines if an entity can mate considering organism classification
+func (rs *ReproductionSystem) CanMateWithClassification(entity1, entity2 *Entity, classifier *OrganismClassifier, currentTick int) bool {
+	if entity1.ReproductionStatus == nil || entity2.ReproductionStatus == nil {
+		return false
+	}
+	
+	// Check basic mating compatibility
+	if !entity1.ReproductionStatus.CanMate(entity2.ReproductionStatus, entity2.ID, currentTick) {
+		return false
+	}
+	
+	if !entity2.ReproductionStatus.CanMate(entity1.ReproductionStatus, entity1.ID, currentTick) {
+		return false
+	}
+	
+	// Check reproductive maturity based on organism classification
+	if !classifier.IsReproductivelyMature(entity1, entity1.Classification) {
+		return false
+	}
+	
+	if !classifier.IsReproductivelyMature(entity2, entity2.Classification) {
+		return false
+	}
+	
+	return true
+}
+
 // StartMating initiates the mating process between two entities
 func (rs *ReproductionSystem) StartMating(entity1, entity2 *Entity, currentTick int) bool {
 	if entity1.ReproductionStatus == nil || entity2.ReproductionStatus == nil {
@@ -208,6 +235,82 @@ func (rs *ReproductionSystem) StartMating(entity1, entity2 *Entity, currentTick 
 	}
 	
 	return false
+}
+
+// StartMatingWithClassification initiates mating using organism classification for maturity checks
+func (rs *ReproductionSystem) StartMatingWithClassification(entity1, entity2 *Entity, classifier *OrganismClassifier, currentTick int) bool {
+	if !rs.CanMateWithClassification(entity1, entity2, classifier, currentTick) {
+		return false
+	}
+	
+	// Calculate reproductive vigor for both parents
+	vigor1 := classifier.CalculateReproductiveVigor(entity1, entity1.Classification)
+	vigor2 := classifier.CalculateReproductiveVigor(entity2, entity2.Classification)
+	
+	// Average vigor affects success rate
+	avgVigor := (vigor1 + vigor2) / 2.0
+	
+	// Record mating with vigor bonus
+	entity1.ReproductionStatus.LastMatingTick = currentTick
+	entity2.ReproductionStatus.LastMatingTick = currentTick
+	entity1.ReproductionStatus.MateID = entity2.ID
+	entity2.ReproductionStatus.MateID = entity1.ID
+	
+	// Higher vigor increases energy efficiency and offspring quality
+	energyCostMultiplier := 1.0 - avgVigor*0.3 // Up to 30% energy savings with high vigor
+	
+	// Determine reproduction outcome based on mode
+	switch entity1.ReproductionStatus.Mode {
+	case DirectCoupling:
+		// Immediate offspring - return success, calling code handles crossover
+		return true
+	
+	case EggLaying:
+		success := rs.LayEgg(entity1, entity2, currentTick)
+		if success {
+			// Adjust energy cost based on vigor
+			entity1.Energy += (1.0 - energyCostMultiplier) * 10.0 // Energy savings
+		}
+		return success
+	
+	case LiveBirth:
+		success := rs.StartGestation(entity1, entity2, currentTick)
+		if success {
+			// Adjust gestation period based on vigor (higher vigor = shorter gestation)
+			gestationReduction := int(float64(entity1.ReproductionStatus.GestationPeriod) * avgVigor * 0.2)
+			entity1.ReproductionStatus.GestationPeriod = maxInt(30, entity1.ReproductionStatus.GestationPeriod - gestationReduction)
+			
+			// Energy savings
+			entity1.Energy += (1.0 - energyCostMultiplier) * 20.0
+			entity2.Energy += (1.0 - energyCostMultiplier) * 10.0
+		}
+		return success
+	
+	case Budding:
+		success := rs.Bud(entity1, currentTick)
+		if success {
+			entity1.Energy += (1.0 - energyCostMultiplier) * 15.0
+		}
+		return success
+	
+	case Fission:
+		success := rs.Split(entity1, currentTick)
+		if success {
+			entity1.Energy += (1.0 - energyCostMultiplier) * 25.0
+		}
+		return success
+	
+	default:
+		return false
+	}
+}
+
+// Helper function to get max of two integers
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // LayEgg creates an egg from two parents

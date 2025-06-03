@@ -2679,8 +2679,15 @@ func (w *World) processMatingAttempts() {
 			continue
 		}
 		
-		// Don't reproduce if entity is too young or too low energy
-		if entity1.Age < 5 || entity1.Energy < 30.0 {
+		// Don't reproduce if entity is too young using classification system
+		if !w.OrganismClassifier.IsReproductivelyMature(entity1, entity1.Classification) {
+			continue
+		}
+		
+		// Don't reproduce if entity has low energy (adjusted for classification)
+		energyThreshold := 30.0
+		maintenanceCost := w.OrganismClassifier.CalculateEnergyMaintenance(entity1, entity1.Classification)
+		if entity1.Energy < energyThreshold + maintenanceCost*5 { // Need 5x maintenance cost as buffer
 			continue
 		}
 		
@@ -2726,8 +2733,8 @@ func (w *World) processMatingAttempts() {
 				continue
 			}
 			
-			// Attempt mating
-			if w.ReproductionSystem.StartMating(entity1, entity2, w.Tick) {
+			// Attempt mating using classification system
+			if w.ReproductionSystem.StartMatingWithClassification(entity1, entity2, w.OrganismClassifier, w.Tick) {
 				// Log mating event
 				w.EventLogger.LogWorldEvent(w.Tick, "mating", fmt.Sprintf("Entities %d and %d mated", entity1.ID, entity2.ID))
 				

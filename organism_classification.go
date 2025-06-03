@@ -290,3 +290,40 @@ func (oc *OrganismClassifier) GetClassificationName(classification OrganismClass
 	}
 	return "Unknown"
 }
+
+// IsReproductivelyMature determines if an entity is old enough to reproduce
+func (oc *OrganismClassifier) IsReproductivelyMature(entity *Entity, classification OrganismClassification) bool {
+	data := oc.LifespanData[classification]
+	return entity.Age >= data.MaturationAge
+}
+
+// GetOptimalReproductiveAge returns the age at which reproduction is most successful
+func (oc *OrganismClassifier) GetOptimalReproductiveAge(classification OrganismClassification) int {
+	data := oc.LifespanData[classification]
+	return data.PeakAge
+}
+
+// CalculateReproductiveVigor calculates how effectively an entity can reproduce based on age
+func (oc *OrganismClassifier) CalculateReproductiveVigor(entity *Entity, classification OrganismClassification) float64 {
+	data := oc.LifespanData[classification]
+	
+	if entity.Age < data.MaturationAge {
+		return 0.0 // Too young to reproduce
+	}
+	
+	if entity.Age >= data.SenescenceAge {
+		// Declining reproductive capability in old age
+		senescenceProgress := float64(entity.Age - data.SenescenceAge) / float64(entity.MaxLifespan - data.SenescenceAge)
+		return 1.0 - senescenceProgress*0.8 // Up to 80% reduction in old age
+	}
+	
+	// Peak vigor at optimal age
+	if entity.Age <= data.PeakAge {
+		// Increasing vigor from maturation to peak
+		progress := float64(entity.Age - data.MaturationAge) / float64(data.PeakAge - data.MaturationAge)
+		return 0.5 + progress*0.5 // 50% to 100% vigor
+	}
+	
+	// Stable vigor from peak to senescence
+	return 1.0
+}
