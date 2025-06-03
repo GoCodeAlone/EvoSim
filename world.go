@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -771,7 +772,7 @@ func (w *World) Update() {
 	}
 	
 	// Process biome transitions (hot spots melting ice, fires spreading, etc.)
-	if w.Tick%5 == 0 { // Process transitions every 5 ticks for performance
+	if w.Tick%20 == 0 { // Process transitions every 20 ticks for stability
 		w.processBiomeTransitions()
 	}
 
@@ -1719,27 +1720,27 @@ func (w *World) processBiomeTransitions() {
 	
 	// Define transition rules
 	transitionRules := []BiomeTransition{
-		// Hot spots melt ice
-		{BiomeIce, BiomeWater, "heat", 0.3},
-		{BiomeIce, BiomePlains, "heat", 0.1}, // Ice melts to plains in some cases
-		// Hot springs create effects
-		{BiomeIce, BiomeWater, "hotspring", 0.8}, // Near hot springs, ice melts rapidly
-		{BiomeWater, BiomeRainforest, "hotspring", 0.2}, // Hot springs create humid environments
-		// Fire effects
-		{BiomeForest, BiomeDesert, "fire", 0.6},
-		{BiomeRainforest, BiomeDesert, "fire", 0.4},
-		{BiomePlains, BiomeDesert, "fire", 0.3},
-		// Fire extinguishing
-		{BiomeDesert, BiomePlains, "water", 0.5}, // Desert recovering after water
-		// Water accumulation effects
-		{BiomePlains, BiomeSwamp, "flood", 0.4},
-		{BiomeDesert, BiomePlains, "flood", 0.6},
-		// Cold effects
-		{BiomeWater, BiomeIce, "cold", 0.2},
-		{BiomeSwamp, BiomeIce, "cold", 0.3},
-		// Volcanic effects
-		{BiomePlains, BiomeMountain, "volcanic", 0.7},
-		{BiomeForest, BiomeRadiation, "volcanic", 0.5}, // Lava burns forest to radiation zones
+		// Hot spots melt ice - very rare natural transitions
+		{BiomeIce, BiomeWater, "heat", 0.02},
+		{BiomeIce, BiomePlains, "heat", 0.01}, // Ice melts to plains in some cases
+		// Hot springs create effects - more likely near hot springs
+		{BiomeIce, BiomeWater, "hotspring", 0.15}, // Near hot springs, ice melts more rapidly
+		{BiomeWater, BiomeRainforest, "hotspring", 0.05}, // Hot springs create humid environments
+		// Fire effects - moderate probability
+		{BiomeForest, BiomeDesert, "fire", 0.1},
+		{BiomeRainforest, BiomeDesert, "fire", 0.08},
+		{BiomePlains, BiomeDesert, "fire", 0.06},
+		// Fire extinguishing - slow recovery
+		{BiomeDesert, BiomePlains, "water", 0.03}, // Desert recovering after water
+		// Water accumulation effects - gradual
+		{BiomePlains, BiomeSwamp, "flood", 0.08},
+		{BiomeDesert, BiomePlains, "flood", 0.1},
+		// Cold effects - slow freezing
+		{BiomeWater, BiomeIce, "cold", 0.03},
+		{BiomeSwamp, BiomeIce, "cold", 0.04},
+		// Volcanic effects - significant but rare
+		{BiomePlains, BiomeMountain, "volcanic", 0.12},
+		{BiomeForest, BiomeRadiation, "volcanic", 0.08}, // Lava burns forest to radiation zones
 	}
 	
 	// Check each grid cell for potential transitions
@@ -2775,8 +2776,21 @@ func (w *World) processMatingAttempts() {
 
 // processEntityDeaths handles entity death and creates decaying corpses
 func (w *World) processEntityDeaths() {
+	deathsThisTick := make(map[string]int) // Track deaths by species
+	totalDeaths := 0
+	
 	for _, entity := range w.AllEntities {
 		if entity.IsAlive && (entity.Energy <= 0 || entity.Age > 1000) {
+			// Determine cause of death
+			cause := "old_age"
+			if entity.Energy <= 0 {
+				cause = "energy_depletion"
+			}
+			
+			// Track death by species
+			deathsThisTick[entity.Species]++
+			totalDeaths++
+			
 			// Entity dies
 			entity.IsAlive = false
 			
@@ -2784,10 +2798,17 @@ func (w *World) processEntityDeaths() {
 			corpseNutrientValue := entity.Energy*0.5 + float64(entity.Age)*0.1
 			w.ReproductionSystem.AddDecayingItem("corpse", entity.Position, corpseNutrientValue, entity.Species, entity.GetTrait("size"), w.Tick)
 			
-			// Log death event
-			w.EventLogger.LogWorldEvent(w.Tick, "death", fmt.Sprintf("Entity %d (%s) died at age %d", entity.ID, entity.Species, entity.Age))
+			// Enhanced death logging with cause tracking
+			contributingFactors := make(map[string]interface{})
+			contributingFactors["energy"] = entity.Energy
+			contributingFactors["age"] = entity.Age
+			contributingFactors["molecular_health"] = w.calculateMolecularHealth(entity)
+			entity.LogEntityDeath(w, cause, contributingFactors)
 		}
 	}
+	
+	// Check for mass die-off events and their environmental impacts
+	w.processMassDieOffImpacts(deathsThisTick, totalDeaths)
 }
 
 // generateTerritories creates territories based on civilization system tribes
@@ -4291,13 +4312,177 @@ func getSeasonName(season Season) string {
 switch season {
 case Spring:
 return "spring"
-case Summer:
-return "summer"
-case Autumn:
-return "autumn"
-case Winter:
-return "winter"
-default:
-return "spring"
+	case Summer:
+		return "summer"
+	case Autumn:
+		return "autumn"
+	case Winter:
+		return "winter"
+	default:
+		return "spring"
+	}
 }
+
+// calculateMolecularHealth calculates entity's overall molecular health status
+func (w *World) calculateMolecularHealth(entity *Entity) float64 {
+	if entity.MolecularNeeds == nil {
+		return 1.0 // Assume healthy if no molecular system
+	}
+	return entity.MolecularNeeds.GetOverallNutritionalStatus()
+}
+
+// processMassDieOffImpacts handles environmental effects of mass death events
+func (w *World) processMassDieOffImpacts(deathsBySpecies map[string]int, totalDeaths int) {
+	populationSize := len(w.AllEntities)
+	if populationSize == 0 {
+		return
+	}
+	
+	// Calculate death rate as percentage of population
+	deathRate := float64(totalDeaths) / float64(populationSize)
+	
+	// Mass die-off thresholds
+	massDieOffThreshold := 0.15 // 15% population death in one tick
+	catastrophicThreshold := 0.30 // 30% population death in one tick
+	
+	if deathRate >= massDieOffThreshold {
+		// Mass die-off detected - enhance resource cycling
+		w.processMassDieOffEffects(deathsBySpecies, totalDeaths, deathRate)
+		
+		// Log the event
+		severity := "mass_die_off"
+		if deathRate >= catastrophicThreshold {
+			severity = "catastrophic_die_off"
+		}
+		
+		eventDetails := make(map[string]interface{})
+		eventDetails["death_rate"] = deathRate
+		eventDetails["total_deaths"] = totalDeaths
+		eventDetails["species_affected"] = deathsBySpecies
+		eventDetails["population_before"] = populationSize + totalDeaths
+		
+		if w.EventLogger != nil {
+			w.EventLogger.LogWorldEvent(w.Tick, severity, 
+				fmt.Sprintf("%s event: %.1f%% population loss (%d deaths)", severity, deathRate*100, totalDeaths))
+		}
+		
+		if w.StatisticalReporter != nil {
+			w.StatisticalReporter.LogSystemEvent(w.Tick, severity, 
+				fmt.Sprintf("%.1f%% population died", deathRate*100), eventDetails)
+		}
+	}
+}
+
+// processMassDieOffEffects applies environmental impacts from mass death events
+func (w *World) processMassDieOffEffects(deathsBySpecies map[string]int, totalDeaths int, deathRate float64) {
+	// Calculate intensity of environmental impact
+	impactIntensity := math.Min(deathRate * 3.0, 1.0) // Cap at 1.0
+	
+	// 1. Nutrient enrichment from mass decomposition
+	w.enhanceNutrientCycling(impactIntensity, totalDeaths)
+	
+	// 2. Disease/contamination effects
+	w.applyContaminationEffects(impactIntensity)
+	
+	// 3. Ecological disruption - remove key species interactions
+	w.processEcologicalDisruption(deathsBySpecies, impactIntensity)
+	
+	// 4. Scavenger opportunities - boost surviving carnivores
+	w.boostScavengerOpportunities(impactIntensity)
+}
+
+// enhanceNutrientCycling increases soil nutrients from mass decomposition
+func (w *World) enhanceNutrientCycling(intensity float64, totalDeaths int) {
+	// Add extra nutrients to random locations based on death count
+	nutrientBoostCount := int(float64(totalDeaths) * intensity * 0.5)
+	
+	for i := 0; i < nutrientBoostCount; i++ {
+		x := rand.Intn(w.Config.GridWidth)
+		y := rand.Intn(w.Config.GridHeight)
+		
+		// Enhance soil nutrients
+		cell := &w.Grid[y][x]
+		if cell.SoilNutrients == nil {
+			cell.SoilNutrients = make(map[string]float64)
+		}
+		
+		// Add decomposition nutrients
+		cell.SoilNutrients["nitrogen"] += 0.3 * intensity
+		cell.SoilNutrients["phosphorus"] += 0.2 * intensity
+		cell.SoilNutrients["organic_matter"] += 0.4 * intensity
+		
+		// Cap nutrients to prevent unrealistic levels
+		for nutrient := range cell.SoilNutrients {
+			cell.SoilNutrients[nutrient] = math.Min(cell.SoilNutrients[nutrient], 2.0)
+		}
+	}
+}
+
+// applyContaminationEffects applies negative effects from decomposition
+func (w *World) applyContaminationEffects(intensity float64) {
+	// Create temporary contamination zones
+	contaminationCount := int(intensity * 10) // More contamination with higher death rates
+	
+	for i := 0; i < contaminationCount; i++ {
+		x := rand.Intn(w.Config.GridWidth)
+		y := rand.Intn(w.Config.GridHeight)
+		
+		cell := &w.Grid[y][x]
+		
+		// Temporary contamination that affects entity health
+		if cell.Event == nil {
+			cell.Event = &WorldEvent{
+				Name:           "contamination",
+				Description:    "Decomposition contamination",
+				Duration:       20 + rand.Intn(20), // 20-40 ticks
+				GlobalDamage:   0.5 * intensity,
+				GlobalMutation: 0.02 * intensity,
+			}
+		}
+	}
+}
+
+// processEcologicalDisruption handles food web disruption from species loss
+func (w *World) processEcologicalDisruption(deathsBySpecies map[string]int, intensity float64) {
+	// For each species that suffered major losses
+	for species, deaths := range deathsBySpecies {
+		if deaths > 5 { // Significant species loss
+			// Reduce prey preferences for this species in surviving entities
+			for _, entity := range w.AllEntities {
+				if entity.IsAlive && entity.DietaryMemory != nil {
+					if pref, exists := entity.DietaryMemory.PreySpeciesPreferences[species]; exists {
+						// Reduce preference as species becomes rarer
+						reductionFactor := math.Min(float64(deaths) * 0.1 * intensity, 0.5)
+						newPref := pref * (1.0 - reductionFactor)
+						if newPref < 0.1 {
+							delete(entity.DietaryMemory.PreySpeciesPreferences, species)
+						} else {
+							entity.DietaryMemory.PreySpeciesPreferences[species] = newPref
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// boostScavengerOpportunities provides benefits to surviving carnivores/omnivores
+func (w *World) boostScavengerOpportunities(intensity float64) {
+	energyBoost := 20.0 * intensity // Energy boost from scavenging opportunities
+	
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		
+		// Carnivores and omnivores benefit from scavenging
+		if strings.Contains(entity.Species, "carnivore") || strings.Contains(entity.Species, "omnivore") {
+			entity.Energy += energyBoost
+			
+			// Improve dietary fitness due to abundance of food
+			if entity.DietaryMemory != nil {
+				entity.DietaryMemory.DietaryFitness = math.Min(1.0, entity.DietaryMemory.DietaryFitness + intensity*0.2)
+			}
+		}
+	}
 }
