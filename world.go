@@ -178,6 +178,9 @@ type World struct {
 	CasteSystem             *CasteSystem                         // Caste-based social organization
 	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
 	
+	// Organism classification and lifespan system
+	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
+	
 	// Player event callback for gamification features
 	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
 	PreviousPopulationCounts map[string]int                                     // Track population counts for extinction detection
@@ -258,6 +261,9 @@ func NewWorld(config WorldConfig) *World {
 	world.HiveMindSystem = NewHiveMindSystem()
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
+	
+	// Initialize organism classification and lifespan system
+	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
 	
 	// Initialize enhanced environmental event system
 	world.EnvironmentalEvents = make([]*EnhancedEnvironmentalEvent, 0)
@@ -984,8 +990,8 @@ func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime f
 		// Check starvation-driven evolution
 		entity.CheckStarvation(w)
 
-		// Update basic entity properties
-		entity.Update()
+		// Update basic entity properties using classification system
+		entity.UpdateWithClassification(w.OrganismClassifier, w.CellularSystem)
 
 		// 4. Apply physics forces and movement
 		physics := w.PhysicsComponents[entity.ID]
@@ -1063,8 +1069,8 @@ func (w *World) updateSingleEntity(entity *Entity, currentTimeState TimeState, d
 	// Check starvation-driven evolution
 	entity.CheckStarvation(w)
 
-	// Update basic entity properties
-	entity.Update()
+	// Update basic entity properties using classification system
+	entity.UpdateWithClassification(w.OrganismClassifier, w.CellularSystem)
 
 	// Note: Physics force calculations and interactions are handled separately
 	// to avoid race conditions between entities
@@ -2780,19 +2786,36 @@ func (w *World) processEntityDeaths() {
 	totalDeaths := 0
 	
 	for _, entity := range w.AllEntities {
-		if entity.IsAlive && (entity.Energy <= 0 || entity.Age > 1000) {
-			// Determine cause of death
-			cause := "old_age"
-			if entity.Energy <= 0 {
-				cause = "energy_depletion"
-			}
-			
+		// Check if entity needs to be processed for death
+		shouldProcessDeath := false
+		cause := ""
+		
+		// Check for death by energy depletion (handled by UpdateWithClassification but might not be processed yet)
+		if entity.IsAlive && entity.Energy <= 0 {
+			shouldProcessDeath = true
+			cause = "energy_depletion"
+			entity.IsAlive = false
+		}
+		
+		// Check for death by old age using new classification system
+		if entity.IsAlive && w.OrganismClassifier.IsDeathByOldAge(entity, entity.Classification, entity.MaxLifespan) {
+			shouldProcessDeath = true
+			cause = "old_age"
+			entity.IsAlive = false
+		}
+		
+		// Fallback: Check for death by old age using old system (for entities not yet classified)
+		if entity.IsAlive && entity.Age > 1000 {
+			shouldProcessDeath = true
+			cause = "old_age_legacy"
+			entity.IsAlive = false
+		}
+		
+		// Check if entity just died this tick (was alive but now marked as dead)
+		if !entity.IsAlive && shouldProcessDeath {
 			// Track death by species
 			deathsThisTick[entity.Species]++
 			totalDeaths++
-			
-			// Entity dies
-			entity.IsAlive = false
 			
 			// Create decaying corpse
 			corpseNutrientValue := entity.Energy*0.5 + float64(entity.Age)*0.1
@@ -2802,6 +2825,8 @@ func (w *World) processEntityDeaths() {
 			contributingFactors := make(map[string]interface{})
 			contributingFactors["energy"] = entity.Energy
 			contributingFactors["age"] = entity.Age
+			contributingFactors["classification"] = w.OrganismClassifier.GetClassificationName(entity.Classification)
+			contributingFactors["max_lifespan"] = entity.MaxLifespan
 			contributingFactors["molecular_health"] = w.calculateMolecularHealth(entity)
 			entity.LogEntityDeath(w, cause, contributingFactors)
 		}
