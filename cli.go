@@ -343,6 +343,12 @@ func (m CLIModel) View() string {
 		content = m.evolutionView()
 	case "topology":
 		content = m.topologyView()
+	case "tools":
+		content = m.toolsView()
+	case "environment":
+		content = m.environmentView()
+	case "behavior":
+		content = m.behaviorView()
 	case "reproduction":
 		content = m.reproductionView()
 	case "statistical":
@@ -3340,6 +3346,324 @@ func (m *CLIModel) exportStatisticalData() {
 		// In a real CLI app, we'd show a notification
 		// For now, this happens silently
 	}
+}
+
+// toolsView renders the tool system information
+func (m CLIModel) toolsView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🔧 Tool System") + "\n\n")
+
+	if m.world.ToolSystem == nil {
+		content.WriteString("Tool system not initialized\n")
+		return content.String()
+	}
+
+	// Get tool statistics from the system
+	stats := m.world.ToolSystem.GetToolStats()
+	
+	// Basic tool statistics
+	content.WriteString("=== TOOL STATISTICS ===\n")
+	if totalTools, ok := stats["total_tools"].(int); ok {
+		content.WriteString(fmt.Sprintf("Total Tools: %d\n", totalTools))
+	}
+	if ownedTools, ok := stats["owned_tools"].(int); ok {
+		content.WriteString(fmt.Sprintf("Owned Tools: %d\n", ownedTools))
+	}
+	if droppedTools, ok := stats["dropped_tools"].(int); ok {
+		content.WriteString(fmt.Sprintf("Dropped Tools: %d\n", droppedTools))
+	}
+	if avgDurability, ok := stats["avg_durability"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Durability: %.2f\n", avgDurability))
+	}
+	if avgEfficiency, ok := stats["avg_efficiency"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Efficiency: %.2f\n", avgEfficiency))
+	}
+
+	// Tool types breakdown
+	content.WriteString("\n=== TOOL TYPES ===\n")
+	if toolTypes, ok := stats["tool_types"].(map[string]int); ok && len(toolTypes) > 0 {
+		for toolType, count := range toolTypes {
+			content.WriteString(fmt.Sprintf("%s: %d\n", toolType, count))
+		}
+	} else {
+		content.WriteString("No tools created yet\n")
+	}
+
+	// Tool usage analysis
+	content.WriteString("\n=== TOOL USAGE ANALYSIS ===\n")
+	if ownedTools, ok := stats["owned_tools"].(int); ok {
+		if ownedTools == 0 {
+			content.WriteString("Usage Level: No tool use\n")
+		} else if ownedTools < 5 {
+			content.WriteString("Usage Level: Basic tool use\n")
+		} else {
+			content.WriteString("Usage Level: Advanced tool use\n")
+		}
+	}
+
+	// Tool distribution by entities
+	content.WriteString("\n=== TOOL DISTRIBUTION ===\n")
+	entityToolCount := make(map[int]int) // entity ID -> tool count
+	toolsWithOwners := 0
+	
+	// Count tools per entity
+	for _, tool := range m.world.ToolSystem.Tools {
+		if tool.Owner != nil {
+			entityToolCount[tool.Owner.ID]++
+			toolsWithOwners++
+		}
+	}
+	
+	content.WriteString(fmt.Sprintf("Entities with tools: %d\n", len(entityToolCount)))
+	content.WriteString(fmt.Sprintf("Tools with owners: %d\n", toolsWithOwners))
+	
+	if len(entityToolCount) > 0 {
+		// Find min, max, average tools per entity
+		minTools, maxTools, totalTools := entityToolCount[0], 0, 0
+		for _, count := range entityToolCount {
+			if count < minTools {
+				minTools = count
+			}
+			if count > maxTools {
+				maxTools = count
+			}
+			totalTools += count
+		}
+		avgTools := float64(totalTools) / float64(len(entityToolCount))
+		
+		content.WriteString(fmt.Sprintf("Tools per entity: min=%d, max=%d, avg=%.1f\n", minTools, maxTools, avgTools))
+	}
+
+	return content.String()
+}
+
+// environmentView renders environmental modification information
+func (m CLIModel) environmentView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🏗️ Environmental Modification") + "\n\n")
+
+	if m.world.EnvironmentalModSystem == nil {
+		content.WriteString("Environmental modification system not initialized\n")
+		return content.String()
+	}
+
+	// Get modification statistics
+	totalMods := len(m.world.EnvironmentalModSystem.Modifications)
+	activeMods := 0
+	inactiveMods := 0
+	totalDurability := 0.0
+	tunnelNetworks := 0
+	modificationTypes := make(map[string]int)
+
+	for _, mod := range m.world.EnvironmentalModSystem.Modifications {
+		if mod.IsActive {
+			activeMods++
+		} else {
+			inactiveMods++
+		}
+		totalDurability += mod.Durability
+
+		// Count modification types
+		modTypeName := m.getModificationTypeName(int(mod.Type))
+		modificationTypes[modTypeName]++
+
+		// Count tunnel networks (simplified)
+		if mod.Type == EnvModTunnel { // Tunnel
+			tunnelNetworks++
+		}
+	}
+
+	avgDurability := 0.0
+	if totalMods > 0 {
+		avgDurability = totalDurability / float64(totalMods)
+	}
+
+	// Basic modification statistics
+	content.WriteString("=== MODIFICATION STATISTICS ===\n")
+	content.WriteString(fmt.Sprintf("Total Modifications: %d\n", totalMods))
+	content.WriteString(fmt.Sprintf("Active Modifications: %d\n", activeMods))
+	content.WriteString(fmt.Sprintf("Inactive Modifications: %d\n", inactiveMods))
+	content.WriteString(fmt.Sprintf("Average Durability: %.2f\n", avgDurability))
+	content.WriteString(fmt.Sprintf("Tunnel Networks: %d\n", tunnelNetworks))
+
+	// Modification types breakdown
+	content.WriteString("\n=== MODIFICATION TYPES ===\n")
+	if len(modificationTypes) > 0 {
+		for modType, count := range modificationTypes {
+			content.WriteString(fmt.Sprintf("%s: %d\n", modType, count))
+		}
+	} else {
+		content.WriteString("No environmental modifications yet\n")
+	}
+
+	// Activity level analysis
+	content.WriteString("\n=== MODIFICATION ACTIVITY ===\n")
+	if totalMods == 0 {
+		content.WriteString("Activity Level: No modifications\n")
+	} else if activeMods < 5 {
+		content.WriteString("Activity Level: Basic environmental shaping\n")
+	} else {
+		content.WriteString("Activity Level: Advanced environmental engineering\n")
+	}
+
+	// Show some recent modifications
+	content.WriteString("\n=== RECENT MODIFICATIONS ===\n")
+	modCount := 0
+	for _, mod := range m.world.EnvironmentalModSystem.Modifications {
+		if modCount >= 5 {
+			remaining := len(m.world.EnvironmentalModSystem.Modifications) - modCount
+			content.WriteString(fmt.Sprintf("... and %d more modifications\n", remaining))
+			break
+		}
+
+		modTypeName := m.getModificationTypeName(int(mod.Type))
+		status := "ACTIVE"
+		if !mod.IsActive {
+			status = "INACTIVE"
+		}
+
+		content.WriteString(fmt.Sprintf("%s %s:\n", modTypeName, status))
+		content.WriteString(fmt.Sprintf("  Position: (%.1f, %.1f)\n", mod.Position.X, mod.Position.Y))
+		content.WriteString(fmt.Sprintf("  Durability: %.2f\n", mod.Durability))
+		if mod.Creator != nil {
+			content.WriteString(fmt.Sprintf("  Creator: Entity %d\n", mod.Creator.ID))
+		}
+		content.WriteString("\n")
+		modCount++
+	}
+
+	return content.String()
+}
+
+// behaviorView renders emergent behavior information
+func (m CLIModel) behaviorView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🧠 Emergent Behavior") + "\n\n")
+
+	if m.world.EmergentBehaviorSystem == nil {
+		content.WriteString("Emergent behavior system not initialized\n")
+		return content.String()
+	}
+
+	// Get behavior statistics
+	stats := m.world.EmergentBehaviorSystem.GetBehaviorStats()
+
+	// Basic behavior statistics
+	content.WriteString("=== BEHAVIOR STATISTICS ===\n")
+	if totalEntities, ok := stats["total_entities"].(int); ok {
+		content.WriteString(fmt.Sprintf("Total Entities: %d\n", totalEntities))
+	}
+	if discoveredBehaviors, ok := stats["discovered_behaviors"].(int); ok {
+		content.WriteString(fmt.Sprintf("Discovered Behaviors: %d\n", discoveredBehaviors))
+	}
+
+	// Behavior spread
+	content.WriteString("\n=== BEHAVIOR SPREAD ===\n")
+	if behaviorSpread, ok := stats["behavior_spread"].(map[string]int); ok && len(behaviorSpread) > 0 {
+		for behaviorName, count := range behaviorSpread {
+			content.WriteString(fmt.Sprintf("%s: %d entities\n", behaviorName, count))
+		}
+	} else {
+		content.WriteString("No behaviors have spread yet\n")
+	}
+
+	// Average proficiency
+	content.WriteString("\n=== AVERAGE PROFICIENCY ===\n")
+	if avgProficiency, ok := stats["avg_proficiency"].(map[string]float64); ok && len(avgProficiency) > 0 {
+		for behaviorName, proficiency := range avgProficiency {
+			content.WriteString(fmt.Sprintf("%s: %.2f\n", behaviorName, proficiency))
+		}
+	} else {
+		content.WriteString("No proficiency data available yet\n")
+	}
+
+	// Behavior development analysis
+	content.WriteString("\n=== BEHAVIOR DEVELOPMENT ===\n")
+	if discoveredBehaviors, ok := stats["discovered_behaviors"].(int); ok {
+		if discoveredBehaviors == 0 {
+			content.WriteString("Development Level: No emergent behaviors discovered yet\n")
+		} else if discoveredBehaviors < 3 {
+			content.WriteString("Development Level: Early behavior emergence\n")
+		} else if discoveredBehaviors < 8 {
+			content.WriteString("Development Level: Moderate behavior complexity\n")
+		} else {
+			content.WriteString("Development Level: Advanced behavioral evolution\n")
+		}
+	}
+
+	// Show behavior trends
+	content.WriteString("\n=== BEHAVIOR TRENDS ===\n")
+	if behaviorSpread, ok := stats["behavior_spread"].(map[string]int); ok {
+		totalBehaviorInstances := 0
+		for _, count := range behaviorSpread {
+			totalBehaviorInstances += count
+		}
+		
+		if totalBehaviorInstances > 0 {
+			content.WriteString("Most Common Behaviors:\n")
+			// Sort behaviors by prevalence
+			type behaviorCount struct {
+				name  string
+				count int
+			}
+			var behaviors []behaviorCount
+			for name, count := range behaviorSpread {
+				behaviors = append(behaviors, behaviorCount{name, count})
+			}
+			
+			// Simple sorting by count (descending)
+			for i := 0; i < len(behaviors)-1; i++ {
+				for j := i + 1; j < len(behaviors); j++ {
+					if behaviors[j].count > behaviors[i].count {
+						behaviors[i], behaviors[j] = behaviors[j], behaviors[i]
+					}
+				}
+			}
+			
+			for i, behavior := range behaviors {
+				if i >= 5 { // Show top 5
+					break
+				}
+				percentage := float64(behavior.count) * 100.0 / float64(totalBehaviorInstances)
+				content.WriteString(fmt.Sprintf("  %s: %.1f%% of behaviors\n", behavior.name, percentage))
+			}
+		}
+	}
+
+	// Behavior innovation rate
+	if totalEntities, ok := stats["total_entities"].(int); ok {
+		if discoveredBehaviors, ok := stats["discovered_behaviors"].(int); ok {
+			if totalEntities > 0 {
+				innovationRate := float64(discoveredBehaviors) / float64(totalEntities) * 100
+				content.WriteString(fmt.Sprintf("\nInnovation Rate: %.2f%% (behaviors per entity)\n", innovationRate))
+			}
+		}
+	}
+
+	return content.String()
+}
+
+// getModificationTypeName returns the name of a modification type
+func (m CLIModel) getModificationTypeName(modType int) string {
+	modNames := map[int]string{
+		int(EnvModTunnel):      "Tunnel",
+		int(EnvModBurrow):      "Burrow",
+		int(EnvModCache):       "Cache",
+		int(EnvModTrap):        "Trap",
+		int(EnvModWaterhole):   "Waterhole",
+		int(EnvModPath):        "Path",
+		int(EnvModMarking):     "Marking",
+		int(EnvModNest):        "Nest",
+		int(EnvModBridge):      "Bridge",
+		int(EnvModBarrier):     "Barrier",
+		int(EnvModTerrace):     "Terrace",
+		int(EnvModDam):         "Dam",
+	}
+	
+	if name, exists := modNames[modType]; exists {
+		return name
+	}
+	return fmt.Sprintf("Type%d", modType)
 }
 
 // RunCLI starts the CLI interface
