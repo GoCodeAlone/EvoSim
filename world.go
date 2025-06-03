@@ -549,8 +549,8 @@ func (w *World) generateBiome(x, y int) BiomeType {
 	}
 
 	// High elevation areas - Mountains and High Altitude
-	if elevation > 0.8 {
-		if elevation > 0.95 {
+	if elevation > 0.3 { // Adjusted from 0.8 to 0.3 for new elevation range
+		if elevation > 0.4 { // Adjusted from 0.95 to 0.4
 			return BiomeHighAltitude
 		} else if slope > 0.7 {
 			return BiomeCanyon
@@ -560,8 +560,8 @@ func (w *World) generateBiome(x, y int) BiomeType {
 	}
 
 	// Very low elevation areas - Water features
-	if elevation < 0.2 {
-		if elevation < 0.05 {
+	if elevation < -0.2 { // Adjusted from 0.2 to -0.2 for new elevation range
+		if elevation < -0.3 { // Adjusted from 0.05 to -0.3
 			return BiomeDeepWater
 		} else if combinedNoise < 0.3 {
 			return BiomeSwamp
@@ -716,8 +716,10 @@ func (w *World) Update() {
 	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
 	w.TopologySystem.UpdateTopology(w.Tick)
 	
-	// Update biomes based on topology changes
-	w.updateBiomesFromTopology()
+	// Update biomes based on topology changes (less frequently to avoid constant map resets)
+	if w.Tick%10 == 0 { // Only update every 10 ticks instead of every tick
+		w.updateBiomesFromTopology()
+	}
 
 	// Clear grid entities and plants
 	w.clearGrid()
@@ -2835,13 +2837,16 @@ func (w *World) updateBiomesFromTopology() {
 		return
 	}
 	
-	// Check for recent geological events that might change biomes
+	// Check for recent geological events that might change biomes (only active events)
 	for _, event := range w.TopologySystem.GeologicalEvents {
-		w.applyGeologicalEventToBiomes(event)
+		// Only apply events that are currently active
+		if event.StartTick > w.Tick-event.Duration && event.Duration > 0 {
+			w.applyGeologicalEventToBiomes(event)
+		}
 	}
 	
-	// Periodically recalculate biomes based on topology (every 100 ticks)
-	if w.Tick%100 == 0 {
+	// Periodically recalculate biomes based on topology (much less frequently)
+	if w.Tick%2000 == 0 { // Changed from 500 to 2000 ticks
 		w.recalculateBiomesFromTopology()
 	}
 }
@@ -2949,20 +2954,27 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 
 // recalculateBiomesFromTopology recalculates biomes based on current topology
 func (w *World) recalculateBiomesFromTopology() {
-	for y := 0; y < w.Config.GridHeight; y++ {
-		for x := 0; x < w.Config.GridWidth; x++ {
-			// Get topology information
-			topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
-			topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
+	// Only do very minimal recalculation to avoid massive map changes
+	// Recalculate only 2% of cells each time to maintain stability
+	totalCells := w.Config.GridWidth * w.Config.GridHeight
+	cellsToUpdate := totalCells / 50 // Update 2% of cells (was 10%)
+	
+	for i := 0; i < cellsToUpdate; i++ {
+		x := rand.Intn(w.Config.GridWidth)
+		y := rand.Intn(w.Config.GridHeight)
+		
+		// Get topology information
+		topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
+		topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
+		
+		if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
+			topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
 			
-			if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
-				topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
-				
-				// Determine biome based on topology
-				newBiome := w.determineBiomeFromTopology(topoCell, x, y)
-				if newBiome != w.Grid[y][x].Biome {
-					w.Grid[y][x].Biome = newBiome
-				}
+			// Determine biome based on topology
+			newBiome := w.determineBiomeFromTopology(topoCell, x, y)
+			// Only change biome if there's a significant reason (large elevation change)
+			if math.Abs(topoCell.Elevation-w.getExpectedElevationForBiome(w.Grid[y][x].Biome)) > 0.3 { // Increased threshold from 0.2 to 0.3
+				w.Grid[y][x].Biome = newBiome
 			}
 		}
 	}
@@ -2978,19 +2990,19 @@ func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY i
 	distFromEdge := math.Min(math.Min(float64(gridX), float64(w.Config.GridWidth-gridX)), 
 		math.Min(float64(gridY), float64(w.Config.GridHeight-gridY)))
 	
-	// Very high elevation - high altitude
-	if elevation > 0.95 {
+	// Very high elevation - high altitude (adjusted thresholds)
+	if elevation > 0.4 { // Adjusted from 0.95 to 0.4
 		return BiomeHighAltitude
 	}
 	
-	// High elevation - mountains
-	if elevation > 0.8 {
+	// High elevation - mountains (adjusted thresholds)
+	if elevation > 0.3 { // Adjusted from 0.8 to 0.3
 		return BiomeMountain
 	}
 	
-	// Water-based biomes
-	if waterLevel > 0.5 || elevation < 0.0 {
-		if elevation < -0.5 {
+	// Water-based biomes (adjusted thresholds)
+	if waterLevel > 0.5 || elevation < -0.2 { // Adjusted from 0.0 to -0.2
+		if elevation < -0.3 { // Adjusted from -0.5 to -0.3
 			return BiomeDeepWater
 		}
 		if waterLevel > 0.8 && elevation > 0.1 {
@@ -3447,4 +3459,22 @@ func (w *World) findPotentialParentSpecies(newSpeciesName string) string {
 		}
 	}
 	return ""
+}
+
+// getExpectedElevationForBiome returns the typical elevation range for a biome type
+func (w *World) getExpectedElevationForBiome(biomeType BiomeType) float64 {
+	switch biomeType {
+	case BiomeHighAltitude:
+		return 0.4
+	case BiomeMountain, BiomeCanyon:
+		return 0.3
+	case BiomeDeepWater:
+		return -0.3
+	case BiomeWater, BiomeSwamp:
+		return -0.1
+	case BiomeIce, BiomeTundra:
+		return 0.0 // Edge biomes, elevation varies
+	default:
+		return 0.0 // Moderate elevation biomes
+	}
 }
