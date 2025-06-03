@@ -165,7 +165,7 @@ func (ts *TopologySystem) generateBaseElevation() {
 		for y := 0; y < ts.Height; y++ {
 			// Multi-octave noise
 			elevation := 0.0
-			amplitude := 1.0
+			amplitude := 0.4 // Reduced amplitude for more reasonable base elevation
 			frequency := 0.01
 			
 			for i := 0; i < 4; i++ {
@@ -173,6 +173,10 @@ func (ts *TopologySystem) generateBaseElevation() {
 				amplitude *= 0.5
 				frequency *= 2.0
 			}
+			
+			// Normalize elevation to reasonable range (-0.5 to 0.5)
+			// Total amplitude sum is 0.4 + 0.2 + 0.1 + 0.05 = 0.75
+			elevation = elevation / 0.75 * 0.5
 			
 			ts.TopologyGrid[x][y].Elevation = elevation
 			
@@ -199,7 +203,7 @@ func (ts *TopologySystem) addMountainRanges() {
 		centerY := rand.Float64() * float64(ts.Height)
 		length := 20.0 + rand.Float64()*50.0
 		width := 5.0 + rand.Float64()*15.0
-		height := 0.5 + rand.Float64()*1.0
+		height := 0.2 + rand.Float64()*0.4 // Reduced mountain height from 0.5-1.5 to 0.2-0.6
 		angle := rand.Float64() * 2 * math.Pi
 		
 		// Create mountain range feature

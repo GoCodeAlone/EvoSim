@@ -297,13 +297,11 @@ func TestBiomeConsistencyAcrossMapResets(t *testing.T) {
 	// Run some ticks to see if biomes change unexpectedly
 	changesDetected := 0
 	for tick := 1; tick <= 20; tick++ {
-		// Update topology system (which might affect biomes)
-		if world.TopologySystem != nil {
-			world.TopologySystem.UpdateTopology(tick)
-		}
+		// Set the world tick to match our test tick
+		world.Tick = tick
 		
-		// Update biomes from topology
-		world.updateBiomesFromTopology()
+		// Use normal world update mechanism which has proper frequency controls
+		world.Update()
 		
 		// Check for changes
 		for y := 0; y < config.GridHeight; y++ {
