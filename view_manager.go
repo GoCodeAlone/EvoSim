@@ -653,6 +653,12 @@ func (vm *ViewManager) getStatsData() map[string]interface{} {
 		stats["avg_energy"] = totalEnergy / count
 		stats["avg_age"] = totalAge / count // Keep raw age for backward compatibility
 		stats["avg_age_percent"] = totalLifespanPercent / count // Age as percentage of lifespan
+	} else {
+		// Provide default values when no entities exist
+		stats["avg_fitness"] = 0.0
+		stats["avg_energy"] = 0.0
+		stats["avg_age"] = 0.0
+		stats["avg_age_percent"] = 0.0
 	}
 	
 	return stats
@@ -901,7 +907,8 @@ func (vm *ViewManager) getSpeciesData() SpeciesData {
 		data.ExtinctSpecies = len(vm.world.SpeciationSystem.AllSpecies) - len(vm.world.SpeciationSystem.ActiveSpecies)
 		data.TotalSpeciesEver = len(vm.world.SpeciationSystem.AllSpecies)
 		
-		for _, species := range vm.world.SpeciationSystem.ActiveSpecies {
+		// Include all species from AllSpecies (both active and extinct)
+		for _, species := range vm.world.SpeciationSystem.AllSpecies {
 			population := len(species.Members)
 			awaitingExtinction := population == 0 && species.ExtinctionTick > 0
 			

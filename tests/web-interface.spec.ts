@@ -197,6 +197,7 @@ test.describe('EvoSim Web Interface', () => {
     expect(gridContent.length).toBeGreaterThan(100); // Should have substantial content
   });
 
+  // Comprehensive view validation tests
   test('all view modes are accessible and functional', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
     
@@ -208,7 +209,7 @@ test.describe('EvoSim Web Interface', () => {
       'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
       'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
       'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 
-      'ENVIRONMENT', 'BEHAVIOR', 'STATISTICAL', 'ANOMALIES'
+      'ENVIRONMENT', 'BEHAVIOR', 'REPRODUCTION', 'STATISTICAL', 'ANOMALIES'
     ];
     
     // Check that view tabs are present
@@ -236,43 +237,303 @@ test.describe('EvoSim Web Interface', () => {
     }
   });
 
-  test('wind system displays dynamic values', async ({ page }) => {
+  // COMPREHENSIVE VIEW DATA VALIDATION TESTS
+
+  test('STATS view displays all required fields with valid data', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
     
-    // Wait for initial load
-    await page.waitForTimeout(3000);
+    const statsTab = page.locator('.view-tab:has-text("STATS")');
+    if (await statsTab.isVisible()) {
+      await statsTab.click();
+      await page.waitForTimeout(2000);
+      
+      // Check for specific stats fields in the info panel (always visible)
+      await expect(page.locator('#avg-fitness')).toBeVisible();
+      await expect(page.locator('#avg-energy')).toBeVisible();
+      await expect(page.locator('#avg-age')).toBeVisible();
+      
+      // Verify the values are numbers
+      const fitnessText = await page.locator('#avg-fitness').textContent();
+      const energyText = await page.locator('#avg-energy').textContent();
+      const ageText = await page.locator('#avg-age').textContent();
+      
+      expect(fitnessText).toMatch(/\d+\.?\d*/);
+      expect(energyText).toMatch(/\d+\.?\d*/);
+      expect(ageText).toMatch(/\d+\.?\d*/);
+    }
+  });
+
+  test('POPULATIONS view displays detailed population data', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
     
-    // Switch to wind view
+    const popTab = page.locator('.view-tab:has-text("POPULATIONS")');
+    if (await popTab.isVisible()) {
+      await popTab.click();
+      await page.waitForTimeout(2000);
+      
+      // Check populations content in info panel
+      const popContent = page.locator('#populations-content');
+      await expect(popContent).toBeVisible();
+      
+      const content = await popContent.textContent();
+      // Should show population data or "No populations"
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('WIND view displays dynamic wind system values', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
     const windTab = page.locator('.view-tab:has-text("WIND")');
     if (await windTab.isVisible()) {
       await windTab.click();
       await page.waitForTimeout(2000);
+      
+      // Check wind values in info panel
+      await expect(page.locator('#wind-direction')).toBeVisible();
+      await expect(page.locator('#wind-strength')).toBeVisible();
+      await expect(page.locator('#weather-pattern')).toBeVisible();
+      
+      // Verify wind direction contains degrees
+      const directionText = await page.locator('#wind-direction').textContent();
+      expect(directionText).toMatch(/\d+\.?\d*°/);
+      
+      // Verify wind strength is a number
+      const strengthText = await page.locator('#wind-strength').textContent();
+      expect(strengthText).toMatch(/\d+\.?\d*/);
+      
+      // Verify weather pattern is not empty
+      const weatherText = await page.locator('#weather-pattern').textContent();
+      expect(weatherText).toBeTruthy();
     }
-    
-    // Check that wind values are displayed
-    const windDirection = page.locator('#wind-direction');
-    const windStrength = page.locator('#wind-strength');
-    const weatherPattern = page.locator('#weather-pattern');
-    
-    // Wait for WebSocket updates
+  });
+
+  test('SPECIES view displays comprehensive species data and individual visualization', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
     await page.waitForTimeout(5000);
     
-    // Verify wind values are present and not empty
-    if (await windDirection.isVisible()) {
-      const direction = await windDirection.textContent();
-      expect(direction).toBeTruthy();
-      expect(direction).toMatch(/\d+\.?\d*°/); // Should contain degrees
+    const speciesTab = page.locator('.view-tab:has-text("SPECIES")');
+    if (await speciesTab.isVisible()) {
+      await speciesTab.click();
+      await page.waitForTimeout(2000);
+      
+      // Wait for species view to load
+      await page.waitForTimeout(1000);
+      
+      // Check main view content for species
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      
+      // Should contain species tracking information
+      expect(content).toContain('Species Tracking');
+      expect(content).toContain('Active Species');
+      expect(content).toContain('Extinct Species');
+      
+      // Check for diversity metrics
+      expect(content).toContain('Diversity Metrics');
+      expect(content).toContain('Species Survival Rate');
+      
+      // Check for individual visualization section
+      expect(content).toContain('Individual Species Visualization');
+      
+      // Species Gallery section or "No species data available" message should be present
+      const hasSpeciesGallery = content.includes('Species Gallery');
+      const hasNoSpeciesMessage = content.includes('No species data available');
+      expect(hasSpeciesGallery || hasNoSpeciesMessage).toBeTruthy();
+      
+      // If we have species gallery, test the interaction
+      if (hasSpeciesGallery) {
+        // Look for clickable species items
+        const speciesItems = page.locator('.species-item');
+        if (await speciesItems.count() > 0) {
+          // Test clicking on first species to see detailed visualization
+          await speciesItems.first().click();
+          await page.waitForTimeout(1000);
+          
+          // Check that species detail modal appears
+          const modal = page.locator('#species-detail-modal');
+          await expect(modal).toBeVisible({ timeout: 5000 });
+          
+          // Check for visualization components
+          const modalContent = await modal.textContent();
+          expect(modalContent).toContain('Individual Visualization');
+          expect(modalContent).toContain('Species Profile View');
+          expect(modalContent).toContain('Genetic Trait Analysis');
+          expect(modalContent).toContain('Cellular Structure View');
+          expect(modalContent).toContain('Environmental Adaptation');
+          
+          // Close modal
+          const closeButton = page.locator('#species-detail-modal button');
+          await closeButton.click();
+          await page.waitForTimeout(500);
+          
+          // Verify modal is closed
+          await expect(modal).not.toBeVisible();
+        }
+      }
     }
+  });
+
+  test('COMMUNICATION view displays signal data', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
     
-    if (await windStrength.isVisible()) {
-      const strength = await windStrength.textContent();
-      expect(strength).toBeTruthy();
-      expect(strength).toMatch(/\d+\.?\d*/); // Should contain numbers
+    const commTab = page.locator('.view-tab:has-text("COMMUNICATION")');
+    if (await commTab.isVisible()) {
+      await commTab.click();
+      await page.waitForTimeout(2000);
+      
+      // Check communication values in info panel
+      await expect(page.locator('#active-signals')).toBeVisible();
+      
+      const signalsText = await page.locator('#active-signals').textContent();
+      expect(signalsText).toMatch(/\d+/);
     }
+  });
+
+  test('EVENTS view displays event history', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
     
-    if (await weatherPattern.isVisible()) {
-      const weather = await weatherPattern.textContent();
-      expect(weather).toBeTruthy();
+    const eventsTab = page.locator('.view-tab:has-text("EVENTS")');
+    if (await eventsTab.isVisible()) {
+      await eventsTab.click();
+      await page.waitForTimeout(2000);
+      
+      // Check that events view content is visible
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('PHYSICS view displays physics metrics', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const physicsTab = page.locator('.view-tab:has-text("PHYSICS")');
+    if (await physicsTab.isVisible()) {
+      await physicsTab.click();
+      await page.waitForTimeout(2000);
+      
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('EVOLUTION view displays evolution tracking data', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const evolutionTab = page.locator('.view-tab:has-text("EVOLUTION")');
+    if (await evolutionTab.isVisible()) {
+      await evolutionTab.click();
+      await page.waitForTimeout(2000);
+      
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('DNA view displays genetic information', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const dnaTab = page.locator('.view-tab:has-text("DNA")');
+    if (await dnaTab.isVisible()) {
+      await dnaTab.click();
+      await page.waitForTimeout(2000);
+      
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('CELLULAR view displays cellular system data', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const cellularTab = page.locator('.view-tab:has-text("CELLULAR")');
+    if (await cellularTab.isVisible()) {
+      await cellularTab.click();
+      await page.waitForTimeout(2000);
+      
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('STATISTICAL view displays analysis data', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const statTab = page.locator('.view-tab:has-text("STATISTICAL")');
+    if (await statTab.isVisible()) {
+      await statTab.click();
+      await page.waitForTimeout(2000);
+      
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('ANOMALIES view displays anomaly detection data', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const anomaliesTab = page.locator('.view-tab:has-text("ANOMALIES")');
+    if (await anomaliesTab.isVisible()) {
+      await anomaliesTab.click();
+      await page.waitForTimeout(2000);
+      
+      const viewContent = page.locator('#view-content');
+      await expect(viewContent).toBeVisible();
+      
+      const content = await viewContent.textContent();
+      expect(content).toBeTruthy();
+    }
+  });
+
+  test('all remaining views load without errors', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(5000);
+    
+    const remainingViews = ['CIVILIZATION', 'NETWORK', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR', 'REPRODUCTION'];
+    
+    for (const viewName of remainingViews) {
+      const tab = page.locator(`.view-tab:has-text("${viewName}")`);
+      if (await tab.isVisible()) {
+        await tab.click();
+        await page.waitForTimeout(1000);
+        
+        const viewContent = page.locator('#view-content');
+        await expect(viewContent).toBeVisible();
+        
+        const content = await viewContent.textContent();
+        expect(content).toBeTruthy();
+      }
     }
   });
 
@@ -376,7 +637,7 @@ test.describe('EvoSim Web Interface', () => {
     });
   });
 
-  test('capture species gallery and detailed views', async ({ page }) => {
+  test('species gallery displays detailed species information', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle', timeout: 45000 });
     
     // Wait for initial data
@@ -405,6 +666,23 @@ test.describe('EvoSim Web Interface', () => {
           path: 'screenshots/test-visualizations/species-detail.png',
           fullPage: true 
         });
+        
+        // Verify species detail modal content
+        const modal = page.locator('#species-detail-modal');
+        await expect(modal).toBeVisible();
+        
+        const modalContent = await modal.textContent();
+        
+        // Check for all expected visualization components
+        expect(modalContent).toContain('Individual Visualization');
+        expect(modalContent).toContain('Species Profile View');
+        expect(modalContent).toContain('Genetic Trait Analysis');
+        expect(modalContent).toContain('Cellular Structure View');
+        expect(modalContent).toContain('Environmental Adaptation');
+        
+        // Close modal
+        const closeButton = page.locator('#species-detail-modal button');
+        await closeButton.click();
       }
     }
   });
