@@ -203,7 +203,7 @@ func (ts *TopologySystem) addMountainRanges() {
 		centerY := rand.Float64() * float64(ts.Height)
 		length := 20.0 + rand.Float64()*50.0
 		width := 5.0 + rand.Float64()*15.0
-		height := 0.2 + rand.Float64()*0.4 // Reduced mountain height from 0.5-1.5 to 0.2-0.6
+		height := 0.15 + rand.Float64()*0.25 // Further reduced mountain height from 0.2-0.6 to 0.15-0.4
 		angle := rand.Float64() * 2 * math.Pi
 		
 		// Create mountain range feature

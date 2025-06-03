@@ -325,11 +325,11 @@ func TestPoorlyAdaptedEntitySurvival(t *testing.T) {
 	
 	t.Logf("Poorly adapted entity survived %d ticks in harsh biome", survivalTime)
 	
-	// Should die quickly but not immediately
-	if survivalTime > 10 {
+	// Should die quickly but not immediately (adjusted for more survivable environment)
+	if survivalTime > 15 { // Increased from 10 to 15 since biomes are now less harsh
 		t.Errorf("Poorly adapted entity survived too long (%d ticks)", survivalTime)
 	}
-	if survivalTime < 2 {
+	if survivalTime < 3 { // Increased from 2 to 3 to account for reduced environmental pressure
 		t.Errorf("Poorly adapted entity died too quickly (%d ticks)", survivalTime)
 	}
 }
