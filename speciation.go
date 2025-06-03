@@ -567,9 +567,9 @@ func (ss *SpeciationSystem) GetActiveSpeciesList() []map[string]interface{} {
 		species = append(species, speciesInfo)
 	}
 
-	// Sort by current population
+	// Sort by name for consistent ordering
 	sort.Slice(species, func(i, j int) bool {
-		return species[i]["current_population"].(int) > species[j]["current_population"].(int)
+		return species[i]["name"].(string) < species[j]["name"].(string)
 	})
 
 	return species

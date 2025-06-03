@@ -681,7 +681,9 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             // Update populations
             let populationsHtml = '';
-            data.populations.forEach(pop => {
+            // Sort populations by name for consistent ordering
+            const sortedPops = [...data.populations].sort((a, b) => a.name.localeCompare(b.name));
+            sortedPops.forEach(pop => {
                 populationsHtml += '<div><strong>' + pop.name + '</strong>: ' + pop.count + 
                                  ' (Fitness: ' + pop.avg_fitness.toFixed(2) + ')</div>';
             });

@@ -604,7 +604,17 @@ func (m CLIModel) legendView() string {
 	legend.WriteString(titleStyle.Render("Legend") + "\n\n")
 
 	legend.WriteString("🌱 Biomes:\n")
-	for biomeType, biome := range m.world.Biomes {
+	// Get sorted biome types for consistent ordering
+	var biomeTypes []BiomeType
+	for biomeType := range m.world.Biomes {
+		biomeTypes = append(biomeTypes, biomeType)
+	}
+	sort.Slice(biomeTypes, func(i, j int) bool {
+		return m.world.Biomes[biomeTypes[i]].Name < m.world.Biomes[biomeTypes[j]].Name
+	})
+	
+	for _, biomeType := range biomeTypes {
+		biome := m.world.Biomes[biomeType]
 		style := biomeColors[biomeType]
 		legend.WriteString(fmt.Sprintf("%s %s\n",
 			style.Render(string(biome.Symbol)), biome.Name))
@@ -704,8 +714,19 @@ func (m CLIModel) statsView() string {
 	}
 
 	total := m.world.Config.GridWidth * m.world.Config.GridHeight
-	for biomeType, count := range biomeCount {
+	
+	// Get sorted biome types for consistent ordering  
+	var sortedBiomes []BiomeType
+	for biomeType := range biomeCount {
+		sortedBiomes = append(sortedBiomes, biomeType)
+	}
+	sort.Slice(sortedBiomes, func(i, j int) bool {
+		return m.world.Biomes[sortedBiomes[i]].Name < m.world.Biomes[sortedBiomes[j]].Name
+	})
+	
+	for _, biomeType := range sortedBiomes {
 		biome := m.world.Biomes[biomeType]
+		count := biomeCount[biomeType]
 		percentage := float64(count) * 100.0 / float64(total)
 		content.WriteString(fmt.Sprintf("  %s: %d cells (%.1f%%)\n",
 			biome.Name, count, percentage))
