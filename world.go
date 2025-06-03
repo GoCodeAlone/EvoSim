@@ -229,15 +229,15 @@ func NewWorld(config WorldConfig) *World {
 			}
 		}
 	} // Initialize advanced systems
-	world.CommunicationSystem = NewCommunicationSystem()
-	world.GroupBehaviorSystem = NewGroupBehaviorSystem()
+	world.CommunicationSystem = NewCommunicationSystem(world.CentralEventBus)
+	world.GroupBehaviorSystem = NewGroupBehaviorSystem(world.CentralEventBus)
 	world.PhysicsSystem = NewPhysicsSystem()
 	world.CollisionSystem = NewCollisionSystem()
 	world.PhysicsComponents = make(map[int]*PhysicsComponent)
 	world.AdvancedTimeSystem = NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
-	world.CivilizationSystem = NewCivilizationSystem()
+	world.CivilizationSystem = NewCivilizationSystem(world.CentralEventBus)
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
-	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height))
+	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem()
 	world.SpeciesNaming = NewSpeciesNaming()
@@ -877,7 +877,7 @@ func (w *World) Update() {
 	w.updateGrid()
 
 	// 6. Update group behavior system
-	w.GroupBehaviorSystem.UpdateGroups()
+	w.GroupBehaviorSystem.UpdateGroups(w.Tick)
 
 	// Try to form new groups based on proximity and compatibility
 	if w.Tick%10 == 0 {
@@ -891,7 +891,7 @@ func (w *World) Update() {
 	w.applyBiomeEffects()
 	
 	// 7. Update civilization system
-	w.CivilizationSystem.Update()
+	w.CivilizationSystem.Update(w.Tick)
 
 	// Process civilization activities
 	w.processCivilizationActivities()
@@ -1250,11 +1250,11 @@ func (w *World) reproducePlants() {
 				pollenAmount = int(float64(pollenAmount) * 0.7) // Cacti conserve resources
 			}
 
-			w.WindSystem.ReleasePollen(plant, pollenAmount)
+			w.WindSystem.ReleasePollen(plant, pollenAmount, w.Tick)
 		}
 	}
 	// Process wind-based cross-pollination
-	crossPollinatedPlants := w.WindSystem.TryPollination(w.AllPlants, w.SpeciationSystem)
+	crossPollinatedPlants := w.WindSystem.TryPollination(w.AllPlants, w.SpeciationSystem, w.Tick)
 
 	// Assign IDs to cross-pollinated plants
 	for _, offspring := range crossPollinatedPlants {
@@ -2289,24 +2289,24 @@ func (w *World) handleEntityCommunication(entity *Entity) {
 			w.CommunicationSystem.SendSignal(entity, SignalDanger, map[string]interface{}{
 				"energy":  entity.Energy,
 				"species": entity.Species,
-			})
+			}, w.Tick)
 		} else if entity.Energy > 80 && rand.Float64() < 0.05 {
 			// Food found signal
 			w.CommunicationSystem.SendSignal(entity, SignalFood, map[string]interface{}{
 				"position": entity.Position,
 				"energy":   entity.Energy,
-			})
+			}, w.Tick)
 		} else if cooperation > 0.6 && rand.Float64() < 0.03 {
 			// Cooperation signal
 			w.CommunicationSystem.SendSignal(entity, SignalHelp, map[string]interface{}{
 				"species":     entity.Species,
 				"cooperation": cooperation,
-			})
+			}, w.Tick)
 		}
 	}
 
 	// Receive and respond to signals
-	receivedSignals := w.CommunicationSystem.ReceiveSignals(entity)
+	receivedSignals := w.CommunicationSystem.ReceiveSignals(entity, w.Tick)
 	for _, signal := range receivedSignals {
 		w.respondToSignal(entity, signal)
 	}
@@ -2413,7 +2413,7 @@ func (w *World) attemptGroupFormation() {
 						purpose = "migration"
 					}
 
-					w.GroupBehaviorSystem.FormGroup(nearbyEntities, purpose)
+					w.GroupBehaviorSystem.FormGroup(nearbyEntities, purpose, w.Tick)
 				}
 			}
 		}
@@ -2423,7 +2423,7 @@ func (w *World) attemptGroupFormation() {
 // processCivilizationActivities handles tribe activities and structure management
 func (w *World) processCivilizationActivities() {
 	// Update civilization system
-	w.CivilizationSystem.Update()
+	w.CivilizationSystem.Update(w.Tick)
 
 	// Process tribe activities
 	for _, tribe := range w.CivilizationSystem.Tribes {
@@ -3505,7 +3505,7 @@ func (w *World) attemptCasteColonyFormation() {
 					// Create a corresponding tribe for civilization system integration
 					if w.CivilizationSystem != nil {
 						tribeName := fmt.Sprintf("Colony-%d", colony.ID)
-						tribe := w.CivilizationSystem.FormTribe(nearbyEntities, tribeName)
+						tribe := w.CivilizationSystem.FormTribe(nearbyEntities, tribeName, w.Tick)
 						if tribe != nil {
 							tribe.ID = colony.ID // Sync IDs
 						}

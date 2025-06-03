@@ -543,7 +543,7 @@ func (cc *CasteColony) performScoutActions(scout *Entity, world *World, tick int
 			"x": targetX,
 			"y": targetY,
 			"quality": 0.8,
-		})
+		}, world.Tick)
 	}
 }
 
@@ -633,7 +633,7 @@ func (cc *CasteColony) performBuilderActions(builder *Entity, world *World, tick
 				tribe := cc.findColonyTribe(world)
 				if tribe != nil && tribe.CanBuild(StructureCache) {
 					tribe.BuildStructure(StructureCache, buildPos, builder, 
-						world.CivilizationSystem.NextStructureID)
+						world.CivilizationSystem.NextStructureID, world.CentralEventBus, world.Tick)
 					world.CivilizationSystem.NextStructureID++
 				}
 			} else {
@@ -786,7 +786,7 @@ func (cc *CasteColony) coordinateColonyActions(specialist *Entity, world *World,
 			world.CommunicationSystem.SendSignal(specialist, SignalHelp, map[string]interface{}{
 				"action": "recruit_workers",
 				"urgency": 0.7,
-			})
+			}, world.Tick)
 		}
 	}
 }
