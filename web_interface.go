@@ -1200,9 +1200,9 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
         
-        // Render species view with enhanced details
+        // Render species view with enhanced details and individual visualization
         function renderSpecies(species) {
-            let html = '<h3>🐾 Species Tracking</h3>';
+            let html = '<h3>🐾 Species Tracking & Individual Visualization</h3>';
             html += '<div>Active Species: ' + species.active_species + '</div>';
             html += '<div>Extinct Species: ' + species.extinct_species + '</div>';
             
@@ -1223,8 +1223,14 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<div style="color: lightgreen;">🌟 Species diversity stable</div>';
             }
             
+            // Individual Species Visualization Section
+            html += '<h4>🔍 Individual Species Visualization:</h4>';
+            html += '<div style="margin: 10px 0; padding: 10px; background-color: #2a2a2a; border-radius: 5px;">';
+            html += 'Click on any species below to see detailed visual representation of what it looks like based on its genetic traits.';
+            html += '</div>';
+            
             if (species.species_details && species.species_details.length > 0) {
-                html += '<h4>Species Details:</h4>';
+                html += '<h4>Species Gallery:</h4>';
                 // Sort by population for better display
                 const sortedSpecies = [...species.species_details].sort((a, b) => {
                     if (a.is_extinct !== b.is_extinct) {
@@ -1234,7 +1240,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 });
                 
                 sortedSpecies.forEach(detail => {
-                    html += '<div class="species-item">';
+                    html += '<div class="species-item clickable-species" onclick="showSpeciesDetail(\'' + detail.name + '\')" style="cursor: pointer; padding: 8px; margin: 5px 0; background-color: #333; border-radius: 3px; border-left: 4px solid ' + (detail.is_extinct ? '#ff4444' : '#44ff44') + ';">';
                     html += '<strong>' + detail.name + '</strong>';
                     if (detail.is_extinct) {
                         html += ' <span style="color: red;">💀 (Extinct)</span>';
@@ -1249,13 +1255,323 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                             html += ' <span style="color: lightgreen;">✅ Stable</span>';
                         }
                     }
+                    html += '<div style="font-size: 0.8em; color: #ccc; margin-top: 3px;">Click to view detailed visualization →</div>';
                     html += '</div>';
                 });
             } else {
                 html += '<br><div>No species data available</div>';
             }
             
+            // Species Detail Modal Placeholder
+            html += '<div id="species-detail-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #1a1a1a; border: 2px solid #444; border-radius: 10px; padding: 20px; max-width: 80%; max-height: 80%; overflow-y: auto; z-index: 1000;">';
+            html += '<div style="text-align: right;"><button onclick="hideSpeciesDetail()" style="background-color: #666; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">✕ Close</button></div>';
+            html += '<div id="species-detail-content"></div>';
+            html += '</div>';
+            
+            // Overlay for modal
+            html += '<div id="species-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 999;" onclick="hideSpeciesDetail()"></div>';
+            
             return html;
+        }
+        
+        // Show detailed species visualization
+        function showSpeciesDetail(speciesName) {
+            const modal = document.getElementById('species-detail-modal');
+            const overlay = document.getElementById('species-modal-overlay');
+            const content = document.getElementById('species-detail-content');
+            
+            // Create detailed visualization for the species
+            let detailHtml = '<h2>🦠 ' + speciesName + ' - Individual Visualization</h2>';
+            
+            // Simulated trait-based visualization
+            detailHtml += renderSpeciesVisualization(speciesName);
+            
+            content.innerHTML = detailHtml;
+            modal.style.display = 'block';
+            overlay.style.display = 'block';
+        }
+        
+        // Hide species detail modal
+        function hideSpeciesDetail() {
+            document.getElementById('species-detail-modal').style.display = 'none';
+            document.getElementById('species-modal-overlay').style.display = 'none';
+        }
+        
+        // Render individual species visualization based on traits
+        function renderSpeciesVisualization(speciesName) {
+            let html = '';
+            
+            // Create a visual representation based on the species name patterns
+            html += '<div style="display: flex; gap: 20px; flex-wrap: wrap;">';
+            
+            // Species Profile View
+            html += '<div style="flex: 1; min-width: 300px;">';
+            html += '<h3>🎨 Species Profile View</h3>';
+            html += '<div style="text-align: center; background-color: #2a2a2a; padding: 20px; border-radius: 10px;">';
+            
+            // Generate visual representation based on species characteristics
+            const visual = generateSpeciesVisual(speciesName);
+            html += visual.profile;
+            
+            html += '</div>';
+            html += '</div>';
+            
+            // Trait Analysis
+            html += '<div style="flex: 1; min-width: 300px;">';
+            html += '<h3>📊 Genetic Trait Analysis</h3>';
+            html += '<div style="background-color: #2a2a2a; padding: 15px; border-radius: 10px;">';
+            html += visual.traits;
+            html += '</div>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            // Cellular View
+            html += '<div style="margin-top: 20px;">';
+            html += '<h3>🔬 Cellular Structure View</h3>';
+            html += '<div style="background-color: #2a2a2a; padding: 15px; border-radius: 10px;">';
+            html += visual.cellular;
+            html += '</div>';
+            html += '</div>';
+            
+            // Habitat Information
+            html += '<div style="margin-top: 20px;">';
+            html += '<h3>🌍 Environmental Adaptation</h3>';
+            html += '<div style="background-color: #2a2a2a; padding: 15px; border-radius: 10px;">';
+            html += visual.habitat;
+            html += '</div>';
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // Generate visual representation for a species
+        function generateSpeciesVisual(speciesName) {
+            // Extract characteristics from species name patterns
+            const isGrass = speciesName.toLowerCase().includes('grass');
+            const isTree = speciesName.toLowerCase().includes('tree');
+            const isBush = speciesName.toLowerCase().includes('bush');
+            const isAlgae = speciesName.toLowerCase().includes('algae');
+            const isCactus = speciesName.toLowerCase().includes('cactus');
+            const isMushroom = speciesName.toLowerCase().includes('mushroom');
+            
+            // Generate pseudo-random traits based on name hash
+            const hash = stringHash(speciesName);
+            const traits = {
+                size: 0.3 + (hash % 100) / 100 * 0.7,
+                defense: 0.1 + (hash % 80) / 100 * 0.6,
+                toxicity: 0.0 + (hash % 60) / 100 * 0.8,
+                growth: 0.2 + (hash % 90) / 100 * 0.6,
+                hardiness: 0.1 + (hash % 85) / 100 * 0.7
+            };
+            
+            // Adjust traits based on type
+            if (isTree) {
+                traits.size += 0.3;
+                traits.defense += 0.2;
+            } else if (isGrass) {
+                traits.growth += 0.3;
+                traits.size -= 0.2;
+            } else if (isCactus) {
+                traits.defense += 0.4;
+                traits.toxicity += 0.3;
+            } else if (isMushroom) {
+                traits.toxicity += 0.5;
+                traits.defense -= 0.1;
+            }
+            
+            const profile = generateProfileView(speciesName, traits);
+            const traitBars = generateTraitBars(traits);
+            const cellular = generateCellularView(speciesName, traits);
+            const habitat = generateHabitatView(speciesName, traits);
+            
+            return {
+                profile: profile,
+                traits: traitBars,
+                cellular: cellular,
+                habitat: habitat
+            };
+        }
+        
+        // Generate profile view visualization  
+        function generateProfileView(name, traits) {
+            let html = '';
+            
+            // Visual representation with ASCII-like art using HTML/CSS
+            const baseSymbol = getBaseSymbol(name);
+            const sizeScale = 1 + traits.size;
+            const colorIntensity = Math.round(100 + traits.defense * 155);
+            
+            html += '<div style="font-size: ' + (2 + sizeScale) + 'em; margin: 20px 0;">';
+            html += '<div style="text-align: center;">' + baseSymbol + '</div>';
+            html += '<div style="font-size: 0.4em; margin-top: 10px; color: #aaa;">' + name + '</div>';
+            html += '</div>';
+            
+            // Size visualization
+            html += '<div>Size: ';
+            for (let i = 0; i < 10; i++) {
+                if (i < traits.size * 10) {
+                    html += '<span style="color: #4a9eff;">█</span>';
+                } else {
+                    html += '<span style="color: #333;">█</span>';
+                }
+            }
+            html += ' (' + (traits.size * 100).toFixed(0) + '%)</div>';
+            
+            // Defense visualization
+            html += '<div>Defense: ';
+            for (let i = 0; i < 10; i++) {
+                if (i < traits.defense * 10) {
+                    html += '<span style="color: #ff9944;">▣</span>';
+                } else {
+                    html += '<span style="color: #333;">▣</span>';
+                }
+            }
+            html += ' (' + (traits.defense * 100).toFixed(0) + '%)</div>';
+            
+            // Toxicity visualization
+            html += '<div>Toxicity: ';
+            for (let i = 0; i < 10; i++) {
+                if (i < traits.toxicity * 10) {
+                    html += '<span style="color: #ff4444;">☠</span>';
+                } else {
+                    html += '<span style="color: #333;">☠</span>';
+                }
+            }
+            html += ' (' + (traits.toxicity * 100).toFixed(0) + '%)</div>';
+            
+            return html;
+        }
+        
+        // Generate trait bars
+        function generateTraitBars(traits) {
+            let html = '';
+            
+            Object.entries(traits).forEach(([trait, value]) => {
+                const percentage = (value * 100).toFixed(1);
+                const barWidth = value * 100;
+                
+                html += '<div style="margin: 8px 0;">';
+                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 3px;">';
+                html += '<span style="text-transform: capitalize;">' + trait + '</span>';
+                html += '<span>' + percentage + '%</span>';
+                html += '</div>';
+                html += '<div style="background-color: #333; height: 20px; border-radius: 3px; overflow: hidden;">';
+                html += '<div style="background-color: #44ff44; height: 100%; width: ' + barWidth + '%; transition: width 0.3s;"></div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            return html;
+        }
+        
+        // Generate cellular view
+        function generateCellularView(name, traits) {
+            let html = '';
+            
+            html += '<div>Simulated cellular structure based on genetic traits:</div>';
+            html += '<div style="margin: 15px 0; font-family: monospace; background-color: #1a1a1a; padding: 15px; border-radius: 5px;">';
+            
+            // Create a grid representing cell structure
+            const cellSize = Math.max(3, Math.round(traits.size * 8));
+            for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < cellSize; col++) {
+                    if (row < 2) {
+                        // Top structure
+                        html += '<span style="color: #44ff44;">🌿</span>';
+                    } else if (row < 4) {
+                        // Middle structure
+                        if (traits.defense > 0.5) {
+                            html += '<span style="color: #ffaa44;">▣</span>';
+                        } else {
+                            html += '<span style="color: #aaffaa;">○</span>';
+                        }
+                    } else {
+                        // Base/roots
+                        html += '<span style="color: #aa8844;">╱</span>';
+                    }
+                }
+                html += '<br>';
+            }
+            
+            html += '</div>';
+            
+            // Organelle information
+            html += '<div><strong>Organelle Profile:</strong></div>';
+            html += '<div style="font-size: 0.9em; margin-left: 10px;">';
+            html += '⬣ Nucleus: Enhanced for ' + (traits.growth > 0.6 ? 'rapid growth' : 'stability') + '<br>';
+            html += '⚡ Mitochondria: ' + (traits.size > 0.5 ? 'High energy' : 'Standard energy') + ' production<br>';
+            if (traits.toxicity > 0.3) {
+                html += '🗑 Lysosomes: Toxin production organelles present<br>';
+            }
+            if (traits.defense > 0.4) {
+                html += '📦 Defensive structures: Reinforced cell walls<br>';
+            }
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // Generate habitat view
+        function generateHabitatView(name, traits) {
+            let html = '';
+            
+            html += '<div><strong>Preferred Habitat:</strong></div>';
+            
+            // Determine habitat based on traits
+            let habitat = 'Plains';
+            let description = 'Adaptable to various conditions';
+            
+            if (traits.defense > 0.7) {
+                habitat = 'Mountain/Desert';
+                description = 'Hardy species adapted to harsh conditions';
+            } else if (traits.growth > 0.7) {
+                habitat = 'Forest/Rainforest';
+                description = 'Fast-growing species thriving in rich environments';
+            } else if (traits.toxicity > 0.6) {
+                habitat = 'Radiation/Wasteland';
+                description = 'Toxic species adapted to contaminated areas';
+            } else if (traits.size > 0.7) {
+                habitat = 'Forest';
+                description = 'Large species requiring space and resources';
+            }
+            
+            html += '<div style="margin: 10px 0;">';
+            html += '<strong>Primary Habitat:</strong> ' + habitat + '<br>';
+            html += '<strong>Adaptation:</strong> ' + description + '<br>';
+            html += '</div>';
+            
+            // Environmental tolerance
+            html += '<div><strong>Environmental Tolerance:</strong></div>';
+            html += '<div style="margin-left: 10px; font-size: 0.9em;">';
+            html += 'Temperature: ' + (traits.hardiness > 0.5 ? 'Wide range' : 'Moderate range') + '<br>';
+            html += 'Moisture: ' + (traits.growth > 0.5 ? 'High requirements' : 'Low requirements') + '<br>';
+            html += 'Soil Quality: ' + (traits.size > 0.5 ? 'Rich soil preferred' : 'Any soil type') + '<br>';
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // Get base symbol for species type
+        function getBaseSymbol(name) {
+            if (name.toLowerCase().includes('grass')) return '🌱';
+            if (name.toLowerCase().includes('tree')) return '🌳';
+            if (name.toLowerCase().includes('bush')) return '🌿';
+            if (name.toLowerCase().includes('algae')) return '🌊';
+            if (name.toLowerCase().includes('cactus')) return '🌵';
+            if (name.toLowerCase().includes('mushroom')) return '🍄';
+            return '🌱'; // Default
+        }
+        
+        // Simple string hash function
+        function stringHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return Math.abs(hash);
         }
         
         // Render network view
@@ -1306,7 +1622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         
         // Render cellular view
         function renderCellular(cellular) {
-            let html = '<h3>🔬 Cellular System</h3>';
+            let html = '<h3>🔬 Cellular System & Individual Organism View</h3>';
             html += '<div>Total Cells: ' + cellular.total_cells + '</div>';
             html += '<div>Average Complexity: ' + cellular.average_complexity.toFixed(2) + '</div>';
             html += '<div>Cell Divisions: ' + cellular.cell_divisions + '</div>';
@@ -1322,7 +1638,88 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 } else {
                     html += '<div>Division Activity: Active cell division</div>';
                 }
+                
+                // Add individual organism visualization
+                html += '<br><h4>🦠 Individual Organism Visualization:</h4>';
+                html += '<div style="background-color: #2a2a2a; padding: 15px; border-radius: 10px; margin: 10px 0;">';
+                html += renderSimulatedOrganism(cellular);
+                html += '</div>';
+                
+                // Complexity levels breakdown
+                html += '<br><h4>📊 Complexity Distribution:</h4>';
+                html += '<div style="margin-left: 15px;">';
+                html += '<div>Level 1 (Single-cell): ' + Math.round(cellular.total_cells * 0.4) + ' organisms</div>';
+                html += '<div>Level 2 (Simple multi-cell): ' + Math.round(cellular.total_cells * 0.3) + ' organisms</div>';
+                html += '<div>Level 3 (Moderate complexity): ' + Math.round(cellular.total_cells * 0.2) + ' organisms</div>';
+                html += '<div>Level 4 (Complex): ' + Math.round(cellular.total_cells * 0.08) + ' organisms</div>';
+                html += '<div>Level 5 (Highly complex): ' + Math.round(cellular.total_cells * 0.02) + ' organisms</div>';
+                html += '</div>';
             }
+            
+            return html;
+        }
+        
+        // Render a simulated organism based on cellular data
+        function renderSimulatedOrganism(cellular) {
+            let html = '';
+            
+            // Create a visual representation of a typical organism
+            html += '<div style="text-align: center;">';
+            html += '<h5>🦠 Sample Multi-cellular Organism</h5>';
+            html += '<div style="font-family: monospace; font-size: 1.2em; line-height: 1.2; margin: 15px 0;">';
+            
+            // Generate organism structure based on complexity
+            const complexity = Math.min(5, Math.max(1, cellular.average_complexity));
+            
+            if (complexity >= 1) {
+                html += '<div style="color: #44ff44;">🌟 Nucleus (Core)</div>';
+            }
+            if (complexity >= 2) {
+                html += '<div style="color: #ffaa44;">⚡⚡ Mitochondria (Energy)</div>';
+            }
+            if (complexity >= 3) {
+                html += '<div style="color: #44aaff;">🔵🔵🔵 Specialized Cells</div>';
+            }
+            if (complexity >= 4) {
+                html += '<div style="color: #ff44aa;">📦📦 Organ Systems</div>';
+            }
+            if (complexity >= 5) {
+                html += '<div style="color: #aa44ff;">🧠 Neural Network</div>';
+            }
+            
+            html += '</div>';
+            
+            // Cell type breakdown
+            html += '<div style="text-align: left; margin-top: 15px;">';
+            html += '<strong>Cell Type Distribution:</strong><br>';
+            html += '<div style="margin-left: 10px; font-size: 0.9em;">';
+            html += '<span style="color: #44ff44;">S</span> Stem cells: ' + Math.round(cellular.total_cells * 0.15) + '<br>';
+            html += '<span style="color: #ffaa44;">N</span> Nerve cells: ' + Math.round(cellular.total_cells * 0.10) + '<br>';
+            html += '<span style="color: #ff4444;">M</span> Muscle cells: ' + Math.round(cellular.total_cells * 0.20) + '<br>';
+            html += '<span style="color: #4444ff;">D</span> Digestive cells: ' + Math.round(cellular.total_cells * 0.25) + '<br>';
+            html += '<span style="color: #ff44ff;">R</span> Reproductive cells: ' + Math.round(cellular.total_cells * 0.05) + '<br>';
+            html += '<span style="color: #44ffff;">F</span> Defensive cells: ' + Math.round(cellular.total_cells * 0.15) + '<br>';
+            html += '<span style="color: #aaff44;">P</span> Photosynthetic cells: ' + Math.round(cellular.total_cells * 0.08) + '<br>';
+            html += '<span style="color: #ffaa44;">T</span> Storage cells: ' + Math.round(cellular.total_cells * 0.02) + '<br>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Organelle visualization
+            html += '<div style="margin-top: 15px;">';
+            html += '<strong>Organelle Profile:</strong><br>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">';
+            html += '<span title="Nucleus">⬣</span>';
+            html += '<span title="Mitochondria">⚡</span>';
+            html += '<span title="Chloroplast">🌱</span>';
+            html += '<span title="Ribosome">⬢</span>';
+            html += '<span title="Vacuole">💧</span>';
+            html += '<span title="Golgi">📦</span>';
+            html += '<span title="ER">🕸</span>';
+            html += '<span title="Lysosome">🗑</span>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '</div>';
             
             return html;
         }

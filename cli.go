@@ -1738,7 +1738,268 @@ func (m CLIModel) speciesView() string {
 		content.WriteString(fmt.Sprintf("Species diversity index: %.3f\n", diversity))
 	}
 
+	// Individual species visualization section
+	content.WriteString("\n=== INDIVIDUAL SPECIES DETAILS ===\n")
+	content.WriteString("Use arrow keys to navigate species, Enter to select for detailed view\n\n")
+	
+	if len(speciesList) > 0 {
+		// For now, show details for the first species - could be enhanced with selection
+		selectedSpecies := speciesList[0]
+		content.WriteString(m.renderSpeciesDetail(selectedSpecies))
+	} else {
+		content.WriteString("No species available for detailed view\n")
+	}
+
 	return content.String()
+}
+
+// renderSpeciesDetail creates a detailed visual representation of a species
+func (m *CLIModel) renderSpeciesDetail(species map[string]interface{}) string {
+	var detail strings.Builder
+	
+	name := species["name"].(string)
+	originType := species["origin_type"].(PlantType)
+	population := species["current_population"].(int)
+	
+	detail.WriteString(fmt.Sprintf("🌱 Species: %s\n", name))
+	detail.WriteString(fmt.Sprintf("Origin Type: %s | Population: %d\n\n", 
+		GetPlantConfigs()[originType].Name, population))
+	
+	// Find actual plants of this species to analyze
+	speciesPlants := make([]*Plant, 0)
+	speciesID := species["id"].(int)
+	
+	// Get the species from the speciation system
+	if m.world.SpeciationSystem != nil {
+		if speciesObj, exists := m.world.SpeciationSystem.ActiveSpecies[speciesID]; exists {
+			speciesPlants = speciesObj.Members
+		}
+	}
+	
+	if len(speciesPlants) == 0 {
+		detail.WriteString("No living plants found for this species\n")
+		return detail.String()
+	}
+	
+	// Visual representation based on plant traits
+	detail.WriteString("Species Visual Representation:\n")
+	detail.WriteString(m.renderSpeciesVisual(speciesPlants, originType))
+	
+	// Trait analysis
+	detail.WriteString("\nGenetic Trait Analysis:\n")
+	detail.WriteString(m.renderSpeciesTraits(speciesPlants))
+	
+	// Environmental adaptation
+	detail.WriteString("\nEnvironmental Adaptation:\n")
+	detail.WriteString(m.renderSpeciesHabitat(speciesPlants))
+	
+	return detail.String()
+}
+
+// renderSpeciesVisual creates a visual representation of what the species looks like
+func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) string {
+	var visual strings.Builder
+	
+	// Analyze average traits to determine visual characteristics
+	avgGrowth := 0.0
+	avgSize := 0.0
+	avgDefense := 0.0
+	avgToxicity := 0.0
+	
+	for _, plant := range plants {
+		if growthTrait, exists := plant.Traits["growth_efficiency"]; exists {
+			avgGrowth += growthTrait.Value
+		}
+		avgSize += plant.Size
+		if defenseTrait, exists := plant.Traits["defense"]; exists {
+			avgDefense += defenseTrait.Value
+		}
+		if toxinTrait, exists := plant.Traits["toxin_production"]; exists {
+			avgToxicity += toxinTrait.Value
+		}
+	}
+	
+	count := float64(len(plants))
+	avgGrowth /= count
+	avgSize /= count
+	avgDefense /= count
+	avgToxicity /= count
+	
+	// Base plant type symbol
+	config := GetPlantConfigs()[originType]
+	baseSymbol := config.Symbol
+	
+	// Visual representation with ASCII art
+	visual.WriteString(fmt.Sprintf("Base Form: %c (%s)\n", baseSymbol, config.Name))
+	
+	// Size representation
+	sizeDisplay := ""
+	if avgSize > 20 {
+		sizeDisplay = "████ Very Large"
+	} else if avgSize > 15 {
+		sizeDisplay = "███  Large"  
+	} else if avgSize > 10 {
+		sizeDisplay = "██   Medium"
+	} else {
+		sizeDisplay = "█    Small"
+	}
+	visual.WriteString(fmt.Sprintf("Size:     %s (%.1f)\n", sizeDisplay, avgSize))
+	
+	// Defense/armor representation
+	defenseDisplay := ""
+	if avgDefense > 0.7 {
+		defenseDisplay = "▣▣▣ Heavily Armored"
+	} else if avgDefense > 0.4 {
+		defenseDisplay = "▣▣  Moderately Armored"
+	} else if avgDefense > 0.1 {
+		defenseDisplay = "▣   Lightly Armored"
+	} else {
+		defenseDisplay = "     No Armor"
+	}
+	visual.WriteString(fmt.Sprintf("Defense:  %s (%.1f)\n", defenseDisplay, avgDefense))
+	
+	// Toxicity representation
+	toxinDisplay := ""
+	if avgToxicity > 0.7 {
+		toxinDisplay = "☠☠☠ Highly Toxic"
+	} else if avgToxicity > 0.4 {
+		toxinDisplay = "☠☠  Moderately Toxic"
+	} else if avgToxicity > 0.1 {
+		toxinDisplay = "☠   Mildly Toxic"
+	} else {
+		toxinDisplay = "     Non-toxic"
+	}
+	visual.WriteString(fmt.Sprintf("Toxicity: %s (%.1f)\n", toxinDisplay, avgToxicity))
+	
+	// Growth pattern
+	growthDisplay := ""
+	if avgGrowth > 0.7 {
+		growthDisplay = "🌿🌿🌿 Rapid Growth"
+	} else if avgGrowth > 0.4 {
+		growthDisplay = "🌿🌿   Moderate Growth"
+	} else {
+		growthDisplay = "🌿     Slow Growth"
+	}
+	visual.WriteString(fmt.Sprintf("Growth:   %s (%.1f)\n", growthDisplay, avgGrowth))
+	
+	// Create a simple "profile" view
+	visual.WriteString("\nProfile View:\n")
+	visual.WriteString("     ╭─────╮\n")
+	
+	// Top varies by growth
+	if avgGrowth > 0.5 {
+		visual.WriteString("    ╱🌿🌿🌿╲\n")
+	} else {
+		visual.WriteString("    ╱ 🌿 ╲\n")
+	}
+	
+	// Middle varies by size
+	for i := 0; i < int(avgSize/10)+1; i++ {
+		if avgDefense > 0.5 {
+			visual.WriteString("   │ ▣▣▣ │\n") // Armored
+		} else {
+			visual.WriteString("   │     │\n") // Normal
+		}
+	}
+	
+	// Base 
+	visual.WriteString("   └─────┘\n")
+	visual.WriteString("     ╱╲╱╲  (roots)\n")
+	
+	return visual.String()
+}
+
+// renderSpeciesTraits shows genetic trait distribution for the species
+func (m *CLIModel) renderSpeciesTraits(plants []*Plant) string {
+	var traits strings.Builder
+	
+	traitSums := make(map[string]float64)
+	traitCounts := make(map[string]int)
+	
+	// Collect all traits
+	for _, plant := range plants {
+		for traitName, trait := range plant.Traits {
+			traitSums[traitName] += trait.Value
+			traitCounts[traitName]++
+		}
+	}
+	
+	// Calculate averages and display as bars
+	for traitName, sum := range traitSums {
+		avg := sum / float64(traitCounts[traitName])
+		bars := int(math.Abs(avg) * 10)
+		if bars > 10 { bars = 10 }
+		
+		traits.WriteString(fmt.Sprintf("%-18s ", traitName))
+		
+		// Visual bar representation
+		if avg >= 0 {
+			traits.WriteString("[")
+			for i := 0; i < 10; i++ {
+				if i < bars {
+					traits.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("46")).Render("█"))
+				} else {
+					traits.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("░"))
+				}
+			}
+			traits.WriteString("]")
+		} else {
+			traits.WriteString("[")
+			for i := 0; i < 10; i++ {
+				if i < bars {
+					traits.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("█"))
+				} else {
+					traits.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("░"))
+				}
+			}
+			traits.WriteString("]")
+		}
+		traits.WriteString(fmt.Sprintf(" %.3f\n", avg))
+	}
+	
+	return traits.String()
+}
+
+// renderSpeciesHabitat shows where the species is found and environmental preferences
+func (m *CLIModel) renderSpeciesHabitat(plants []*Plant) string {
+	var habitat strings.Builder
+	
+	// Analyze biome distribution
+	biomeCount := make(map[BiomeType]int)
+	totalPlants := len(plants)
+	
+	for _, plant := range plants {
+		x, y := int(plant.Position.X), int(plant.Position.Y)
+		if x >= 0 && x < m.world.Config.GridWidth && y >= 0 && y < m.world.Config.GridHeight {
+			biome := m.world.Grid[y][x].Biome
+			biomeCount[biome]++
+		}
+	}
+	
+	habitat.WriteString("Habitat Distribution:\n")
+	for biomeType, count := range biomeCount {
+		if count > 0 {
+			percentage := float64(count) / float64(totalPlants) * 100
+			biomeName := m.world.Biomes[biomeType].Name
+			habitat.WriteString(fmt.Sprintf("  %s: %d plants (%.1f%%)\n", biomeName, count, percentage))
+		}
+	}
+	
+	// Find preferred biome
+	maxCount := 0
+	var preferredBiome BiomeType
+	for biome, count := range biomeCount {
+		if count > maxCount {
+			maxCount = count
+			preferredBiome = biome
+		}
+	}
+	
+	if maxCount > 0 {
+		habitat.WriteString(fmt.Sprintf("\nPreferred Habitat: %s\n", m.world.Biomes[preferredBiome].Name))
+	}
+	
+	return habitat.String()
 }
 
 // Helper map for season names (add this near other constants)
@@ -1938,10 +2199,10 @@ func (m *CLIModel) dnaView() string {
 	return content.String()
 }
 
-// cellularView displays cellular-level information
+// cellularView displays cellular-level information with visual representation
 func (m *CLIModel) cellularView() string {
 	var content strings.Builder
-	content.WriteString("=== CELLULAR ANALYSIS ===\n\n")
+	content.WriteString(titleStyle.Render("Cellular Analysis & Visualization") + "\n\n")
 	
 	if m.world.CellularSystem == nil {
 		content.WriteString("Cellular system not available\n")
@@ -1964,7 +2225,16 @@ func (m *CLIModel) cellularView() string {
 		}
 	}
 	
-	// Sample organism details
+	// Visual representation of selected organism
+	content.WriteString("\n=== INDIVIDUAL ORGANISM VISUALIZATION ===\n")
+	selectedOrganism := m.getSelectedOrganism()
+	if selectedOrganism != nil {
+		content.WriteString(m.renderOrganismVisual(selectedOrganism))
+	} else {
+		content.WriteString("No organism selected. Use arrows to navigate and Enter to select.\n")
+	}
+	
+	// Sample organism details with enhanced visualization
 	content.WriteString("\n=== ORGANISM SAMPLES ===\n")
 	sampleCount := 0
 	for entityID, organism := range m.world.CellularSystem.OrganismMap {
@@ -1979,13 +2249,17 @@ func (m *CLIModel) cellularView() string {
 		content.WriteString(fmt.Sprintf("Cell Divisions: %d\n", organism.CellDivisions))
 		content.WriteString(fmt.Sprintf("Generation: %d\n", organism.Generation))
 		
+		// Visual cell layout representation
+		content.WriteString("Cell Layout Visual:\n")
+		content.WriteString(m.renderCellLayout(organism))
+		
 		// Organ systems
 		content.WriteString("Organ Systems:\n")
 		for systemName, cellIDs := range organism.OrganSystems {
 			content.WriteString(fmt.Sprintf("  %s: %d cells\n", systemName, len(cellIDs)))
 		}
 		
-		// Sample cell details
+		// Sample cell details with visual representation
 		if len(organism.Cells) > 0 {
 			cell := organism.Cells[0]
 			content.WriteString(fmt.Sprintf("Sample Cell (ID %d):\n", cell.ID))
@@ -1996,12 +2270,221 @@ func (m *CLIModel) cellularView() string {
 			content.WriteString(fmt.Sprintf("  Age: %d ticks\n", cell.Age))
 			content.WriteString(fmt.Sprintf("  Activity: %.1f%%\n", cell.Activity*100))
 			content.WriteString(fmt.Sprintf("  Organelles: %d types\n", len(cell.Organelles)))
+			
+			// Visual representation of the cell
+			content.WriteString("  Cell Visual:\n")
+			content.WriteString(m.renderCellVisual(cell))
 		}
 		
 		sampleCount++
 	}
 	
 	return content.String()
+}
+
+// getSelectedOrganism returns the currently selected organism (for now, just return the first one)
+func (m *CLIModel) getSelectedOrganism() *CellularOrganism {
+	if m.world.CellularSystem == nil || len(m.world.CellularSystem.OrganismMap) == 0 {
+		return nil
+	}
+	
+	// For now, return the first organism - later this could be enhanced with selection
+	for _, organism := range m.world.CellularSystem.OrganismMap {
+		return organism
+	}
+	return nil
+}
+
+// renderOrganismVisual creates a visual representation of an entire organism
+func (m *CLIModel) renderOrganismVisual(organism *CellularOrganism) string {
+	var visual strings.Builder
+	
+	visual.WriteString(fmt.Sprintf("🦠 Organism (Complexity Level %d)\n", organism.ComplexityLevel))
+	visual.WriteString(fmt.Sprintf("Energy: %.1f | Cells: %d | Generation: %d\n\n", 
+		organism.TotalEnergy, len(organism.Cells), organism.Generation))
+	
+	// Create a simple grid representation based on cell count and type
+	cellsPerRow := int(math.Sqrt(float64(len(organism.Cells)))) + 1
+	if cellsPerRow > 10 { cellsPerRow = 10 }
+	
+	visual.WriteString("Cellular Structure:\n")
+	for i, cell := range organism.Cells {
+		if i > 0 && i%cellsPerRow == 0 {
+			visual.WriteString("\n")
+		}
+		
+		// Get cell symbol based on type
+		symbol := m.getCellSymbol(int(cell.Type))
+		
+		// Color based on health and energy
+		if cell.Health > 0.8 && cell.Energy > 50 {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("46")).Render(symbol)) // Bright green
+		} else if cell.Health > 0.5 {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Render(symbol)) // Yellow
+		} else {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(symbol)) // Red
+		}
+		visual.WriteString(" ")
+	}
+	visual.WriteString("\n\n")
+	
+	// Organ system visualization
+	visual.WriteString("Organ Systems:\n")
+	for systemName, cellIDs := range organism.OrganSystems {
+		visual.WriteString(fmt.Sprintf("  %s (%d cells): ", systemName, len(cellIDs)))
+		for i, cellID := range cellIDs {
+			if i >= 10 { // Limit display
+				visual.WriteString("...")
+				break
+			}
+			cell := m.findCellByID(organism, cellID)
+			if cell != nil {
+				symbol := m.getCellSymbol(int(cell.Type))
+				visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render(symbol))
+			}
+		}
+		visual.WriteString("\n")
+	}
+	
+	return visual.String()
+}
+
+// renderCellLayout creates a visual layout of cells in an organism
+func (m *CLIModel) renderCellLayout(organism *CellularOrganism) string {
+	var layout strings.Builder
+	
+	// Simple grid layout based on cell count
+	cellsPerRow := 8
+	for i, cell := range organism.Cells {
+		if i > 0 && i%cellsPerRow == 0 {
+			layout.WriteString("\n")
+		}
+		
+		symbol := m.getCellSymbol(int(cell.Type))
+		
+		// Color coding: green=healthy, yellow=medium, red=unhealthy
+		health := cell.Health
+		if health > 0.7 {
+			layout.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("34")).Render(symbol))
+		} else if health > 0.4 {
+			layout.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Render(symbol))
+		} else {
+			layout.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(symbol))
+		}
+		layout.WriteString(" ")
+		
+		// Limit display to avoid too large grids
+		if i >= 63 { // 8x8 grid max
+			layout.WriteString("...")
+			break
+		}
+	}
+	layout.WriteString("\n")
+	
+	return layout.String()
+}
+
+// renderCellVisual creates a detailed visual representation of a single cell
+func (m *CLIModel) renderCellVisual(cell *Cell) string {
+	var visual strings.Builder
+	
+	symbol := m.getCellSymbol(int(cell.Type))
+	
+	// Main cell representation with size indication
+	sizeIndicator := ""
+	if cell.Size > 20 {
+		sizeIndicator = "●●●" // Large cell
+	} else if cell.Size > 10 {
+		sizeIndicator = "●●"  // Medium cell
+	} else {
+		sizeIndicator = "●"   // Small cell
+	}
+	
+	visual.WriteString(fmt.Sprintf("    [%s] %s %s\n", symbol, sizeIndicator, m.world.CellularSystem.CellTypeNames[cell.Type]))
+	
+	// Health bar
+	healthBars := int(cell.Health * 10)
+	visual.WriteString("    Health: [")
+	for i := 0; i < 10; i++ {
+		if i < healthBars {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("46")).Render("█"))
+		} else {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("░"))
+		}
+	}
+	visual.WriteString("]\n")
+	
+	// Energy bar
+	energyBars := int(cell.Energy / 10)
+	if energyBars > 10 { energyBars = 10 }
+	visual.WriteString("    Energy:  [")
+	for i := 0; i < 10; i++ {
+		if i < energyBars {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Render("█"))
+		} else {
+			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("░"))
+		}
+	}
+	visual.WriteString("]\n")
+	
+	// Organelles representation
+	if len(cell.Organelles) > 0 {
+		visual.WriteString("    Organelles: ")
+		organelleSymbols := map[OrganelleType]string{
+			0: "⬣", // Nucleus
+			1: "⚡", // Mitochondria
+			2: "🌱", // Chloroplast
+			3: "⬢", // Ribosome
+			4: "💧", // Vacuole
+			5: "📦", // Golgi
+			6: "🕸", // ER
+			7: "🗑", // Lysosome
+		}
+		
+		for organelleType, organelle := range cell.Organelles {
+			if symbol, exists := organelleSymbols[organelleType]; exists {
+				count := organelle.Count
+				for i := 0; i < count && i < 3; i++ { // Limit display
+					visual.WriteString(symbol)
+				}
+				if count > 3 {
+					visual.WriteString(fmt.Sprintf("(%d)", count))
+				}
+			}
+		}
+		visual.WriteString("\n")
+	}
+	
+	return visual.String()
+}
+
+// getCellSymbol returns a symbol representing the cell type
+func (m *CLIModel) getCellSymbol(cellType int) string {
+	symbols := map[int]string{
+		0: "S", // Stem
+		1: "N", // Nerve
+		2: "M", // Muscle
+		3: "D", // Digestive
+		4: "R", // Reproductive
+		5: "F", // Defensive
+		6: "P", // Photosynthetic
+		7: "T", // Storage
+	}
+	
+	if symbol, exists := symbols[cellType]; exists {
+		return symbol
+	}
+	return "?"
+}
+
+// findCellByID finds a cell in an organism by its ID
+func (m *CLIModel) findCellByID(organism *CellularOrganism, cellID int) *Cell {
+	for _, cell := range organism.Cells {
+		if cell.ID == cellID {
+			return cell
+		}
+	}
+	return nil
 }
 
 // evolutionView displays macro-evolution information
@@ -2121,10 +2604,10 @@ func (m *CLIModel) evolutionView() string {
 	return content.String()
 }
 
-// topologyView displays world terrain and geological information
+// topologyView displays world terrain and geological information with enhanced visualization
 func (m *CLIModel) topologyView() string {
 	var content strings.Builder
-	content.WriteString("=== WORLD TOPOLOGY ===\n\n")
+	content.WriteString(titleStyle.Render("World Topology & Underground Visualization") + "\n\n")
 	
 	if m.world.TopologySystem == nil {
 		content.WriteString("Topology system not available\n")
@@ -2141,6 +2624,23 @@ func (m *CLIModel) topologyView() string {
 	content.WriteString(fmt.Sprintf("Water coverage: %.1f%%\n", stats["water_coverage"].(float64)*100))
 	content.WriteString(fmt.Sprintf("Erosion rate: %.6f\n", stats["erosion_rate"]))
 	content.WriteString(fmt.Sprintf("Tectonic activity: %.2f\n", stats["tectonic_activity"]))
+	
+	// 3D-style visualization controls
+	content.WriteString("\n=== VIEWING ANGLES ===\n")
+	content.WriteString("🔍 [1] Surface View (Default) | [2] Cross-Section | [3] Underground | [4] Isometric\n")
+	content.WriteString("Use number keys to switch viewing angles\n")
+	
+	// Enhanced topographic map with underground features
+	content.WriteString("\n=== ENHANCED TOPOGRAPHIC MAP ===\n")
+	content.WriteString(m.renderTopographicMap())
+	
+	// Underground features visualization
+	content.WriteString("\n=== UNDERGROUND FEATURES ===\n")
+	content.WriteString(m.renderUndergroundMap())
+	
+	// Cross-section view
+	content.WriteString("\n=== CROSS-SECTION VIEW ===\n")
+	content.WriteString(m.renderCrossSectionView())
 	
 	// Terrain features
 	content.WriteString(fmt.Sprintf("\nTerrain features: %v\n", stats["terrain_features"]))
@@ -2159,7 +2659,7 @@ func (m *CLIModel) topologyView() string {
 		}
 	}
 	
-	// Major terrain features
+	// Major terrain features with visual representation
 	content.WriteString("\n=== MAJOR TERRAIN FEATURES ===\n")
 	featureCount := 0
 	for _, feature := range m.world.TopologySystem.TerrainFeatures {
@@ -2170,7 +2670,9 @@ func (m *CLIModel) topologyView() string {
 		}
 		
 		typeName := m.world.TopologySystem.GetTerrainTypeName(feature.Type)
-		content.WriteString(fmt.Sprintf("%s (ID %d):\n", typeName, feature.ID))
+		featureSymbol := m.getTerrainFeatureSymbol(feature.Type)
+		
+		content.WriteString(fmt.Sprintf("%s %s (ID %d):\n", featureSymbol, typeName, feature.ID))
 		content.WriteString(fmt.Sprintf("  Center: (%.1f, %.1f)\n", feature.Center.X, feature.Center.Y))
 		content.WriteString(fmt.Sprintf("  Size: %.1f\n", feature.Radius))
 		content.WriteString(fmt.Sprintf("  Height: %.3f\n", feature.Height))
@@ -2178,10 +2680,15 @@ func (m *CLIModel) topologyView() string {
 		content.WriteString(fmt.Sprintf("  Stability: %.2f\n", feature.Stability))
 		content.WriteString(fmt.Sprintf("  Composition: %s\n", feature.Composition))
 		
+		// Visual mini-profile for each feature
+		content.WriteString("  Profile: ")
+		content.WriteString(m.renderFeatureProfile(feature))
+		content.WriteString("\n")
+		
 		featureCount++
 	}
 	
-	// Major water bodies
+	// Major water bodies with flow visualization
 	if len(m.world.TopologySystem.WaterBodies) > 0 {
 		content.WriteString("\n=== WATER BODIES ===\n")
 		waterCount := 0
@@ -2192,17 +2699,282 @@ func (m *CLIModel) topologyView() string {
 				break
 			}
 			
-			content.WriteString(fmt.Sprintf("%s (ID %d):\n", strings.ToTitle(waterBody.Type), waterBody.ID))
+			waterSymbol := m.getWaterBodySymbol(waterBody.Type)
+			content.WriteString(fmt.Sprintf("%s %s (ID %d):\n", waterSymbol, strings.ToTitle(waterBody.Type), waterBody.ID))
 			content.WriteString(fmt.Sprintf("  Depth: %.2f\n", waterBody.Depth))
 			content.WriteString(fmt.Sprintf("  Flow: %.2f\n", waterBody.Flow))
 			content.WriteString(fmt.Sprintf("  Salinity: %.1f%%\n", waterBody.Salinity*100))
 			content.WriteString(fmt.Sprintf("  Points: %d\n", len(waterBody.Points)))
+			
+			// Flow direction visualization
+			if waterBody.Flow > 0.1 {
+				content.WriteString("  Flow: ")
+				content.WriteString(m.renderWaterFlow(waterBody))
+				content.WriteString("\n")
+			}
 			
 			waterCount++
 		}
 	}
 	
 	return content.String()
+}
+
+// renderTopographicMap creates an enhanced topographic map
+func (m *CLIModel) renderTopographicMap() string {
+	var topo strings.Builder
+	
+	topo.WriteString("Surface Elevation Map (Minecraft/Rimworld style):\n")
+	
+	// Use a smaller sample of the world for display
+	sampleWidth := min(m.world.TopologySystem.Width, 40)
+	sampleHeight := min(m.world.TopologySystem.Height, 20)
+	
+	for y := 0; y < sampleHeight; y++ {
+		for x := 0; x < sampleWidth; x++ {
+			if x < m.world.TopologySystem.Width && y < m.world.TopologySystem.Height {
+				cell := m.world.TopologySystem.TopologyGrid[x][y]
+				symbol := m.getElevationSymbol(cell.Elevation)
+				style := m.getElevationColor(cell.Elevation)
+				topo.WriteString(style.Render(symbol))
+			} else {
+				topo.WriteString(" ")
+			}
+		}
+		topo.WriteString("\n")
+	}
+	
+	// Legend
+	topo.WriteString("\nElevation Legend:\n")
+	topo.WriteString("▲ High mountains   ▲ Medium mountains   △ Hills   . Plains   ~ Low areas   ≈ Water\n")
+	
+	return topo.String()
+}
+
+// renderUndergroundMap shows underground features like tunnels and caves
+func (m *CLIModel) renderUndergroundMap() string {
+	var underground strings.Builder
+	
+	underground.WriteString("Underground Structure Map:\n")
+	
+	// Check for environmental modifications (tunnels, burrows, etc.)
+	if m.world.EnvironmentalModSystem != nil {
+		sampleWidth := min(m.world.Config.GridWidth, 40)
+		sampleHeight := min(m.world.Config.GridHeight, 20)
+		
+		// Create underground map
+		undergroundGrid := make([][]string, sampleHeight)
+		for y := range undergroundGrid {
+			undergroundGrid[y] = make([]string, sampleWidth)
+			for x := range undergroundGrid[y] {
+				undergroundGrid[y][x] = "░" // Empty underground
+			}
+		}
+		
+		// Mark underground modifications
+		for _, mod := range m.world.EnvironmentalModSystem.Modifications {
+			x, y := int(mod.Position.X), int(mod.Position.Y)
+			if x >= 0 && x < sampleWidth && y >= 0 && y < sampleHeight {
+				switch mod.Type {
+				case 0: // Tunnel
+					undergroundGrid[y][x] = "═"
+				case 1: // Burrow
+					undergroundGrid[y][x] = "○"
+				case 2: // Cache
+					undergroundGrid[y][x] = "□"
+				case 9: // Workshop (underground)
+					undergroundGrid[y][x] = "⚒"
+				case 10: // Farm (root system)
+					undergroundGrid[y][x] = "┼"
+				default:
+					undergroundGrid[y][x] = "▓"
+				}
+			}
+		}
+		
+		// Render underground map
+		for y := 0; y < sampleHeight; y++ {
+			for x := 0; x < sampleWidth; x++ {
+				symbol := undergroundGrid[y][x]
+				if symbol == "░" {
+					underground.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(symbol))
+				} else {
+					underground.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render(symbol))
+				}
+			}
+			underground.WriteString("\n")
+		}
+		
+		underground.WriteString("\nUnderground Legend:\n")
+		underground.WriteString("═ Tunnels   ○ Burrows   □ Caches   ⚒ Workshops   ┼ Root Systems   ░ Empty\n")
+	} else {
+		underground.WriteString("No underground modification system available\n")
+	}
+	
+	return underground.String()
+}
+
+// renderCrossSectionView shows a cross-section of the world
+func (m *CLIModel) renderCrossSectionView() string {
+	var section strings.Builder
+	
+	section.WriteString("World Cross-Section (Center slice):\n")
+	
+	// Take a vertical slice through the center of the world
+	centerX := m.world.TopologySystem.Width / 2
+	width := min(60, m.world.TopologySystem.Height) // Display width
+	
+	// Surface line
+	section.WriteString("Surface: ")
+	for y := 0; y < width; y++ {
+		if y < m.world.TopologySystem.Height {
+			cell := m.world.TopologySystem.TopologyGrid[centerX][y]
+			symbol := m.getElevationSymbol(cell.Elevation)
+			section.WriteString(symbol)
+		}
+	}
+	section.WriteString("\n")
+	
+	// Underground layers (simulated)
+	for layer := 1; layer <= 5; layer++ {
+		section.WriteString(fmt.Sprintf("Layer %d: ", layer))
+		for y := 0; y < width; y++ {
+			// Simulate underground layers based on surface topology
+			if y < m.world.TopologySystem.Height {
+				cell := m.world.TopologySystem.TopologyGrid[centerX][y]
+				symbol := m.getUndergroundLayerSymbol(cell, layer)
+				section.WriteString(symbol)
+			}
+		}
+		section.WriteString("\n")
+	}
+	
+	section.WriteString("\nCross-Section Legend:\n")
+	section.WriteString("▓ Rock   ░ Soil   ≈ Groundwater   ● Ore deposits   ○ Air pockets\n")
+	
+	return section.String()
+}
+
+// Helper functions for topology visualization
+
+func (m *CLIModel) getElevationSymbol(elevation float64) string {
+	if elevation > 0.8 {
+		return "▲" // High mountains
+	} else if elevation > 0.6 {
+		return "▲" // Medium mountains
+	} else if elevation > 0.3 {
+		return "△" // Hills
+	} else if elevation > 0.0 {
+		return "." // Plains
+	} else if elevation > -0.3 {
+		return "~" // Low areas
+	} else {
+		return "≈" // Deep water
+	}
+}
+
+func (m *CLIModel) getElevationColor(elevation float64) lipgloss.Style {
+	if elevation > 0.8 {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("15")) // White (snow)
+	} else if elevation > 0.6 {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("244")) // Gray (rock)
+	} else if elevation > 0.3 {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("130")) // Brown (hills)
+	} else if elevation > 0.0 {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("34")) // Green (plains)
+	} else if elevation > -0.3 {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("39")) // Blue (shallow water)
+	} else {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("21")) // Dark blue (deep water)
+	}
+}
+
+func (m *CLIModel) getTerrainFeatureSymbol(featureType TerrainType) string {
+	switch featureType {
+	case 0: // TerrainFlat
+		return "▫"
+	case 1: // TerrainHill
+		return "△"
+	case 2: // TerrainMountain
+		return "▲"
+	case 3: // TerrainValley
+		return "∪"
+	case 4: // TerrainRiver
+		return "≈"
+	case 5: // TerrainLake
+		return "○"
+	case 6: // TerrainCanyon
+		return "◢"
+	case 7: // TerrainCrater
+		return "◯"
+	case 8: // TerrainVolcano
+		return "🌋"
+	case 9: // TerrainGlacier
+		return "❄"
+	default:
+		return "?"
+	}
+}
+
+func (m *CLIModel) getWaterBodySymbol(bodyType string) string {
+	switch bodyType {
+	case "river":
+		return "≈"
+	case "lake":
+		return "○"
+	case "stream":
+		return "~"
+	case "ocean":
+		return "◯"
+	default:
+		return "💧"
+	}
+}
+
+func (m *CLIModel) renderFeatureProfile(feature *TerrainFeature) string {
+	// Create a mini elevation profile
+	profile := ""
+	height := int(feature.Height * 10)
+	for i := 0; i < 10; i++ {
+		if i < height {
+			profile += "█"
+		} else {
+			profile += "░"
+		}
+	}
+	return profile
+}
+
+func (m *CLIModel) renderWaterFlow(waterBody *WaterBody) string {
+	// Simulate flow direction based on water body properties
+	if waterBody.Flow > 0.8 {
+		return "►►► (Strong current)"
+	} else if waterBody.Flow > 0.4 {
+		return "►► (Moderate flow)"
+	} else {
+		return "► (Gentle flow)"
+	}
+}
+
+func (m *CLIModel) getUndergroundLayerSymbol(cell TopologyCell, layer int) string {
+	// Simulate underground composition based on surface features and depth
+	if cell.WaterLevel > 0.5 {
+		return "≈" // Groundwater
+	} else if cell.Elevation > 0.7 && layer <= 2 {
+		return "▓" // Rock in mountains
+	} else if layer == 1 {
+		return "░" // Topsoil
+	} else if layer <= 3 {
+		return "▓" // Bedrock
+	} else {
+		if (int(cell.Elevation*100)+layer*7)%10 == 0 {
+			return "●" // Ore deposits
+		} else if (int(cell.Elevation*100)+layer*3)%15 == 0 {
+			return "○" // Air pockets
+		} else {
+			return "▓" // Rock
+		}
+	}
 }
 
 func (m *CLIModel) reproductionView() string {
