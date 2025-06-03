@@ -1208,6 +1208,57 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
         
+        // Setup event delegation for species modal interactions
+        let speciesModalEventsSetup = false;
+        
+        function setupSpeciesModalEvents() {
+            // Only setup once to avoid multiple event listeners
+            if (speciesModalEventsSetup) {
+                return;
+            }
+            speciesModalEventsSetup = true;
+            
+            // Use event delegation on the document to handle clicks on species items
+            document.addEventListener('click', function(event) {
+                const speciesItem = event.target.closest('.clickable-species');
+                if (speciesItem) {
+                    const speciesName = speciesItem.getAttribute('data-species-name');
+                    if (speciesName) {
+                        showSpeciesDetail(speciesName);
+                    }
+                }
+            });
+        }
+        
+        // Create modal elements once when needed
+        function ensureSpeciesModalExists() {
+            const existingModal = document.getElementById('species-detail-modal');
+            if (!existingModal) {
+                // Create modal
+                const modal = document.createElement('div');
+                modal.id = 'species-detail-modal';
+                modal.style.cssText = 'display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #1a1a1a; border: 2px solid #444; border-radius: 10px; padding: 20px; max-width: 80%; max-height: 80%; overflow-y: auto; z-index: 1000;';
+                
+                const closeButtonHtml = '<div style="text-align: right;"><button id="species-modal-close" style="background-color: #666; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">✕ Close</button></div>';
+                const contentHtml = '<div id="species-detail-content"></div>';
+                modal.innerHTML = closeButtonHtml + contentHtml;
+                
+                // Create overlay
+                const overlay = document.createElement('div');
+                overlay.id = 'species-modal-overlay';
+                overlay.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 999;';
+                
+                // Add close event listeners
+                const closeButton = modal.querySelector('#species-modal-close');
+                closeButton.addEventListener('click', hideSpeciesDetail);
+                overlay.addEventListener('click', hideSpeciesDetail);
+                
+                // Add to body
+                document.body.appendChild(modal);
+                document.body.appendChild(overlay);
+            }
+        }
+        
         // Render species view with enhanced details and individual visualization
         function renderSpecies(species) {
             let html = '<h3>🐾 Species Tracking & Individual Visualization</h3>';
@@ -1248,7 +1299,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 });
                 
                 sortedSpecies.forEach(detail => {
-                    html += '<div class="species-item clickable-species" onclick="showSpeciesDetail(\'' + detail.name + '\')" style="cursor: pointer; padding: 8px; margin: 5px 0; background-color: #333; border-radius: 3px; border-left: 4px solid ' + (detail.is_extinct ? '#ff4444' : '#44ff44') + ';">';
+                    html += '<div class="species-item clickable-species" data-species-name="' + detail.name.replace(/"/g, '&quot;') + '" style="cursor: pointer; padding: 8px; margin: 5px 0; background-color: #333; border-radius: 3px; border-left: 4px solid ' + (detail.is_extinct ? '#ff4444' : '#44ff44') + ';">';
                     html += '<strong>' + detail.name + '</strong>';
                     if (detail.is_extinct) {
                         html += ' <span style="color: red;">💀 (Extinct)</span>';
@@ -1270,23 +1321,22 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<br><div>No species data available</div>';
             }
             
-            // Species Detail Modal Placeholder
-            html += '<div id="species-detail-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #1a1a1a; border: 2px solid #444; border-radius: 10px; padding: 20px; max-width: 80%; max-height: 80%; overflow-y: auto; z-index: 1000;">';
-            html += '<div style="text-align: right;"><button onclick="hideSpeciesDetail()" style="background-color: #666; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">✕ Close</button></div>';
-            html += '<div id="species-detail-content"></div>';
-            html += '</div>';
-            
-            // Overlay for modal
-            html += '<div id="species-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 999;" onclick="hideSpeciesDetail()"></div>';
-            
             return html;
         }
         
         // Show detailed species visualization
         function showSpeciesDetail(speciesName) {
+            // Ensure modal elements exist
+            ensureSpeciesModalExists();
+            
             const modal = document.getElementById('species-detail-modal');
             const overlay = document.getElementById('species-modal-overlay');
             const content = document.getElementById('species-detail-content');
+            
+            if (!modal || !overlay || !content) {
+                console.error('Species modal elements not found');
+                return;
+            }
             
             // Create detailed visualization for the species
             let detailHtml = '<h2>🦠 ' + speciesName + ' - Individual Visualization</h2>';
@@ -1301,8 +1351,15 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         
         // Hide species detail modal
         function hideSpeciesDetail() {
-            document.getElementById('species-detail-modal').style.display = 'none';
-            document.getElementById('species-modal-overlay').style.display = 'none';
+            const modal = document.getElementById('species-detail-modal');
+            const overlay = document.getElementById('species-modal-overlay');
+            
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
         }
         
         // Render individual species visualization based on traits
@@ -2137,6 +2194,9 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             initViewTabs();
             initTraitSliders();
             connect();
+            
+            // Initialize species modal functionality
+            setupSpeciesModalEvents();
         };
         
         // Initialize trait sliders
