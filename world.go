@@ -720,6 +720,11 @@ func (w *World) Update() {
 	if w.Tick%10 == 0 { // Only update every 10 ticks instead of every tick
 		w.updateBiomesFromTopology()
 	}
+	
+	// Process biome transitions (hot spots melting ice, fires spreading, etc.)
+	if w.Tick%5 == 0 { // Process transitions every 5 ticks for performance
+		w.processBiomeTransitions()
+	}
 
 	// Clear grid entities and plants
 	w.clearGrid()
@@ -1609,6 +1614,164 @@ func (w *World) generateSeismicChanges() map[Position]BiomeType {
 	}
 
 	return changes
+}
+
+// BiomeTransition represents a transition between biome states
+type BiomeTransition struct {
+	From        BiomeType
+	To          BiomeType
+	Trigger     string  // "heat", "cold", "fire", "flood", etc.
+	Probability float64 // Base probability of transition
+}
+
+// processBiomeTransitions handles realistic biome state changes
+func (w *World) processBiomeTransitions() {
+	transitions := make(map[Position]BiomeType)
+	
+	// Define transition rules
+	transitionRules := []BiomeTransition{
+		// Hot spots melt ice
+		{BiomeIce, BiomeWater, "heat", 0.3},
+		{BiomeIce, BiomePlains, "heat", 0.1}, // Ice melts to plains in some cases
+		// Hot springs create effects
+		{BiomeIce, BiomeWater, "hotspring", 0.8}, // Near hot springs, ice melts rapidly
+		{BiomeWater, BiomeRainforest, "hotspring", 0.2}, // Hot springs create humid environments
+		// Fire effects
+		{BiomeForest, BiomeDesert, "fire", 0.6},
+		{BiomeRainforest, BiomeDesert, "fire", 0.4},
+		{BiomePlains, BiomeDesert, "fire", 0.3},
+		// Fire extinguishing
+		{BiomeDesert, BiomePlains, "water", 0.5}, // Desert recovering after water
+		// Water accumulation effects
+		{BiomePlains, BiomeSwamp, "flood", 0.4},
+		{BiomeDesert, BiomePlains, "flood", 0.6},
+		// Cold effects
+		{BiomeWater, BiomeIce, "cold", 0.2},
+		{BiomeSwamp, BiomeIce, "cold", 0.3},
+		// Volcanic effects
+		{BiomePlains, BiomeMountain, "volcanic", 0.7},
+		{BiomeForest, BiomeRadiation, "volcanic", 0.5}, // Lava burns forest to radiation zones
+	}
+	
+	// Check each grid cell for potential transitions
+	for y := 0; y < w.Config.GridHeight; y++ {
+		for x := 0; x < w.Config.GridWidth; x++ {
+			currentBiome := w.Grid[y][x].Biome
+			
+			// Check for transition triggers in nearby cells
+			triggers := w.detectTransitionTriggers(x, y)
+			
+			for trigger, intensity := range triggers {
+				for _, rule := range transitionRules {
+					if rule.From == currentBiome && rule.Trigger == trigger {
+						// Probability modified by trigger intensity
+						actualProbability := rule.Probability * intensity
+						if rand.Float64() < actualProbability {
+							transitions[Position{X: float64(x), Y: float64(y)}] = rule.To
+							
+							// Log the transition for events
+							if w.EventLogger != nil {
+								event := LogEvent{
+									Timestamp:   time.Now(),
+									Tick:        w.Tick,
+									Type:        fmt.Sprintf("biome_transition_%s_to_%s", 
+										w.getBiomeName(rule.From), w.getBiomeName(rule.To)),
+									Description: fmt.Sprintf("Biome transition from %s to %s triggered by %s", 
+										w.getBiomeName(rule.From), w.getBiomeName(rule.To), trigger),
+									Data: map[string]interface{}{
+										"trigger": trigger,
+										"intensity": intensity,
+										"from_biome": w.getBiomeName(rule.From),
+										"to_biome": w.getBiomeName(rule.To),
+										"position_x": float64(x),
+										"position_y": float64(y),
+									},
+								}
+								w.EventLogger.addEvent(event)
+							}
+							break // Only one transition per cell per tick
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Apply transitions
+	for pos, newBiome := range transitions {
+		gridX, gridY := int(pos.X), int(pos.Y)
+		if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+			w.Grid[gridY][gridX].Biome = newBiome
+		}
+	}
+}
+
+// detectTransitionTriggers identifies environmental conditions that can cause biome transitions
+func (w *World) detectTransitionTriggers(x, y int) map[string]float64 {
+	triggers := make(map[string]float64)
+	
+	// Check in a 3x3 neighborhood around the cell
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			nx, ny := x+dx, y+dy
+			if nx >= 0 && nx < w.Config.GridWidth && ny >= 0 && ny < w.Config.GridHeight {
+				neighborBiome := w.Grid[ny][nx].Biome
+				distance := math.Sqrt(float64(dx*dx + dy*dy))
+				intensity := 1.0 / (1.0 + distance) // Closer = stronger effect
+				
+				switch neighborBiome {
+				case BiomeHotSpring:
+					triggers["heat"] = math.Max(triggers["heat"], intensity * 0.8)
+					triggers["hotspring"] = math.Max(triggers["hotspring"], intensity)
+				case BiomeRadiation:
+					triggers["heat"] = math.Max(triggers["heat"], intensity * 0.6)
+					triggers["volcanic"] = math.Max(triggers["volcanic"], intensity * 0.7)
+				case BiomeWater, BiomeDeepWater, BiomeSwamp:
+					triggers["water"] = math.Max(triggers["water"], intensity * 0.5)
+					triggers["flood"] = math.Max(triggers["flood"], intensity * 0.3)
+				case BiomeIce, BiomeTundra:
+					triggers["cold"] = math.Max(triggers["cold"], intensity * 0.4)
+				}
+			}
+		}
+	}
+	
+	// Check for fire events - simplified fire detection
+	// In a real implementation, this would check for active fire events
+	if rand.Float64() < 0.01 { // 1% chance of fire starting in flammable biomes
+		currentBiome := w.Grid[y][x].Biome
+		if currentBiome == BiomeForest || currentBiome == BiomeRainforest || currentBiome == BiomePlains {
+			triggers["fire"] = 0.8
+		}
+	}
+	
+	return triggers
+}
+
+// getBiomeName returns human-readable biome name
+func (w *World) getBiomeName(biome BiomeType) string {
+	biomeNames := map[BiomeType]string{
+		BiomePlains:      "plains",
+		BiomeForest:      "forest", 
+		BiomeDesert:      "desert",
+		BiomeMountain:    "mountain",
+		BiomeWater:       "water",
+		BiomeRadiation:   "radiation",
+		BiomeSoil:        "soil",
+		BiomeAir:         "air",
+		BiomeIce:         "ice",
+		BiomeRainforest:  "rainforest",
+		BiomeDeepWater:   "deep_water",
+		BiomeHighAltitude: "high_altitude",
+		BiomeHotSpring:   "hot_spring",
+		BiomeTundra:      "tundra",
+		BiomeSwamp:       "swamp",
+		BiomeCanyon:      "canyon",
+	}
+	if name, exists := biomeNames[biome]; exists {
+		return name
+	}
+	return "unknown"
 }
 
 // handleInteractions processes interactions between nearby entities and with plants
