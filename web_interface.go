@@ -2642,44 +2642,101 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 return '<h3>⚠️ Anomaly Detection</h3><div>Anomaly detection not available</div>';
             }
             
-            let html = '<h3>⚠️ Anomaly Detection</h3>';
+            let html = '<h3>⚠️ Anomaly Detection & Historical Analysis</h3>';
             
             if (anomalies.total_anomalies === 0) {
                 html += '<div style="color: #4CAF50;">✅ No anomalies detected!</div>';
                 html += '<div>The simulation appears to be running within expected parameters.</div>';
+                html += '<div style="margin-top: 10px; color: #888; font-style: italic;">Anomaly detection monitors for unusual patterns in energy conservation, population dynamics, trait distributions, and system behaviors.</div>';
             } else {
-                html += '<div>Found ' + anomalies.total_anomalies + ' anomalies:</div><br>';
+                html += '<div>Found ' + anomalies.total_anomalies + ' anomalies in simulation history:</div><br>';
                 
-                // Anomaly types summary
+                // Anomaly types summary with enhanced information
                 if (anomalies.anomaly_types && Object.keys(anomalies.anomaly_types).length > 0) {
-                    html += '<h4>Anomaly Types:</h4>';
+                    html += '<h4>📊 Anomaly Categories:</h4>';
                     Object.entries(anomalies.anomaly_types).forEach(([type, count]) => {
-                        html += '<div>' + type.replace(/_/g, ' ') + ': ' + count + '</div>';
+                        let severity = '';
+                        let color = '#ffcc00';
+                        if (count > 10) {
+                            severity = ' - High frequency';
+                            color = '#ff6666';
+                        } else if (count > 5) {
+                            severity = ' - Moderate frequency';
+                            color = '#ffaa00';
+                        } else {
+                            severity = ' - Low frequency';
+                            color = '#88cc88';
+                        }
+                        html += '<div style="color: ' + color + ';">• ' + type.replace(/_/g, ' ').toUpperCase() + ': ' + count + ' occurrences' + severity + '</div>';
                     });
                     html += '<br>';
                 }
                 
-                // Recent anomalies
+                // Recent anomalies with enhanced display
                 if (anomalies.recent_anomalies && anomalies.recent_anomalies.length > 0) {
-                    html += '<h4>Recent Anomalies:</h4>';
-                    html += '<div style="max-height: 300px; overflow-y: auto;">';
-                    anomalies.recent_anomalies.slice(0, 10).forEach(anomaly => {
-                        html += '<div style="margin: 10px 0; padding: 10px; background-color: #4a2a2a; border-radius: 5px; border-left: 3px solid #ff6b6b;">';
-                        html += '<strong>🔍 ' + anomaly.type.replace(/_/g, ' ') + '</strong>';
-                        html += ' (T' + anomaly.tick + ')';
-                        html += '<br>' + anomaly.description;
-                        html += '<br><small>Severity: ' + anomaly.severity.toFixed(2) + ', Confidence: ' + anomaly.confidence.toFixed(2) + '</small>';
+                    html += '<h4>📋 Recent Anomaly History (Last ' + anomalies.recent_anomalies.length + ' events):</h4>';
+                    html += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #444; padding: 10px; border-radius: 5px;">';
+                    
+                    // Sort anomalies by tick (newest first)
+                    const sortedAnomalies = [...anomalies.recent_anomalies].sort((a, b) => b.tick - a.tick);
+                    
+                    sortedAnomalies.forEach(anomaly => {
+                        let severityColor = '#ffcc00';
+                        let severityIcon = '⚠️';
+                        let confidenceIcon = '🔍';
+                        
+                        if (anomaly.severity >= 0.8) {
+                            severityColor = '#ff4444';
+                            severityIcon = '🚨';
+                        } else if (anomaly.severity >= 0.6) {
+                            severityColor = '#ff8800';
+                            severityIcon = '⚠️';
+                        } else if (anomaly.severity >= 0.4) {
+                            severityColor = '#ffcc00';
+                            severityIcon = '⚡';
+                        } else {
+                            severityColor = '#88cc88';
+                            severityIcon = 'ℹ️';
+                        }
+                        
+                        if (anomaly.confidence >= 0.8) {
+                            confidenceIcon = '🎯';
+                        } else if (anomaly.confidence >= 0.6) {
+                            confidenceIcon = '🔍';
+                        } else {
+                            confidenceIcon = '❓';
+                        }
+                        
+                        html += '<div style="margin: 8px 0; padding: 8px; background-color: rgba(68, 68, 68, 0.3); border-radius: 3px; border-left: 3px solid ' + severityColor + ';">';
+                        html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+                        html += '<strong>' + severityIcon + ' ' + anomaly.type.replace(/_/g, ' ').toUpperCase() + '</strong>';
+                        html += '<span style="color: #aaa; font-size: 0.9em;">Tick ' + anomaly.tick + '</span>';
+                        html += '</div>';
+                        html += '<div style="margin: 5px 0;">' + anomaly.description + '</div>';
+                        html += '<div style="display: flex; gap: 15px; font-size: 0.9em; color: #ccc;">';
+                        html += '<span>Severity: ' + severityIcon + ' ' + (anomaly.severity * 100).toFixed(0) + '%</span>';
+                        html += '<span>Confidence: ' + confidenceIcon + ' ' + (anomaly.confidence * 100).toFixed(0) + '%</span>';
+                        html += '</div>';
                         html += '</div>';
                     });
                     html += '</div>';
                 }
                 
-                // Recommendations
+                // Recommendations with enhanced formatting
                 if (anomalies.recommendations && anomalies.recommendations.length > 0) {
-                    html += '<h4>Recommendations:</h4>';
+                    html += '<h4>💡 Diagnostic Recommendations:</h4>';
+                    html += '<div style="background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; padding: 10px; border-radius: 3px;">';
                     anomalies.recommendations.forEach(rec => {
-                        html += '<div style="margin: 5px 0; padding: 5px; background-color: #2a3a4a; border-radius: 3px; border-left: 3px solid #4CAF50;">• ' + rec + '</div>';
+                        html += '<div style="margin: 5px 0;">💡 ' + rec + '</div>';
                     });
+                    html += '</div>';
+                } else if (anomalies.total_anomalies > 0) {
+                    html += '<h4>💡 General Recommendations:</h4>';
+                    html += '<div style="background-color: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px; border-radius: 3px;">';
+                    html += '<div>• Monitor system parameters for patterns</div>';
+                    html += '<div>• Check if anomalies correlate with specific events</div>';
+                    html += '<div>• Consider adjusting simulation parameters if anomalies persist</div>';
+                    html += '</div>';
                 }
             }
             

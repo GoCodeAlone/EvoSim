@@ -1190,7 +1190,7 @@ func (w *World) reproducePlants() {
 		}
 
 		// Release pollen for sexual reproduction during flowering
-		if plant.CanReproduce() && currentTimeState.Season == Spring && rand.Float64() < 0.6 {
+		if plant.CanReproduce() && (currentTimeState.Season == Spring || currentTimeState.Season == Summer) && rand.Float64() < 0.4 {
 			// Determine pollen amount based on plant traits and type
 			pollenAmount := int(5 + plant.Size*10 + plant.GetTrait("reproduction_rate")*15)
 
@@ -3422,12 +3422,13 @@ func (w *World) attemptCasteColonyFormation() {
 			continue // Skip if already in tribe/caste or dead
 		}
 
-		// Check if entity could be a queen
+		// Check if entity could be a suitable leader for caste formation
 		intelligence := entity.GetTrait("intelligence")
-		leadership := entity.GetTrait("leadership")
-		reproductiveCapability := entity.GetTrait("reproductive_capability")
+		cooperation := entity.GetTrait("cooperation")
+		endurance := entity.GetTrait("endurance")
 		
-		if intelligence > 0.6 && leadership > 0.4 && reproductiveCapability > 0.5 {
+		// Use available traits with more achievable requirements
+		if intelligence > 0.2 && cooperation > 0.3 && endurance > 0.2 {
 			// Find nearby compatible entities for colony
 			nearbyEntities := make([]*Entity, 0)
 			nearbyEntities = append(nearbyEntities, entity)
@@ -3442,15 +3443,15 @@ func (w *World) attemptCasteColonyFormation() {
 					otherCooperation := other.GetTrait("cooperation")
 					otherIntelligence := other.GetTrait("intelligence")
 					
-					// Check species compatibility and cooperation
+					// Check species compatibility and cooperation (relaxed requirements)
 					if other.Species == entity.Species && 
-						otherCooperation > 0.4 && otherIntelligence > 0.2 {
+						otherCooperation > 0.2 && otherIntelligence > 0.0 {
 						nearbyEntities = append(nearbyEntities, other)
 					}
 				}
 			}
 
-			if len(nearbyEntities) >= 6 { // Minimum for caste colony
+			if len(nearbyEntities) >= 4 { // Minimum for caste colony (reduced from 6)
 				// Choose nest location
 				nestLocation := entity.Position
 				

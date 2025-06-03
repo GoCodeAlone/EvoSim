@@ -680,8 +680,8 @@ func (cs *CivilizationSystem) FormTribe(entities []*Entity, name string) *Tribe 
 		}
 	}
 
-	if bestScore < 0.4 {
-		return nil // Not civilized enough to form a tribe
+	if bestScore < 0.2 {
+		return nil // Not civilized enough to form a tribe (reduced from 0.4)
 	}
 
 	tribe := NewTribe(cs.NextTribeID, name, leader)
