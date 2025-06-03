@@ -14,7 +14,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    screenshot: 'on', // Capture screenshots for all tests
     video: 'retain-on-failure',
     actionTimeout: 10000, // 10 second action timeout
   },

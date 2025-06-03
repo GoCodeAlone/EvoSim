@@ -147,7 +147,7 @@ type WindSystem struct {
 ### Navigation Controls
 - Arrow keys: Move viewport
 - +/- or mouse wheel: Zoom in/out (4 zoom levels)
-- Tab: Cycle through view modes
+- V: Cycle through view modes
 - Space: Pause/resume simulation
 - R: Reset simulation
 - Q: Quit application
@@ -211,8 +211,8 @@ type WindSystem struct {
 
 ### Standard Build
 ```bash
-GOWORK=off go build -o mutate
-./mutate
+GOWORK=off go build -o evosim
+./evosim
 ```
 
 ### Development Build
