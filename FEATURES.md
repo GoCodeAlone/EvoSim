@@ -41,7 +41,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] Environmental conditions and weather
 
 #### User Interface
-- [x] 17 view modes: Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind, Species, Network, DNA, Cellular, Evolution, Topology, Reproduction, Statistical, Anomalies
+- [x] 20 view modes: Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind, Species, Network, DNA, Cellular, Evolution, Topology, Tools, Environment, Behavior, Reproduction, Statistical, Anomalies
 - [x] Multi-zoom viewport navigation (1x, 2x, 4x, 8x)
 - [x] Real-time CLI with controls and statistics
 
@@ -176,23 +176,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Pressure-Driven Mutation Rates**: Environmental stress and dietary inadequacy increase mutation rates
 - [x] **Dynamic Evolutionary Response**: Evolutionary changes emerge from accumulated feedback rather than predetermined rules
 
-#### Statistical Analysis and Reporting System (RECENTLY COMPLETED)
-- [x] **Comprehensive Event Tracking**: Detailed logging of every significant change per tick with full context and impact analysis
-- [x] **Statistical Snapshot System**: Regular capture of complete system state including energy, populations, traits, physics, and communication metrics
-- [x] **Anomaly Detection Engine**: Real-time detection of 6 anomaly types including energy conservation violations, unrealistic distributions, and biological implausibilities
-- [x] **Scientific Data Export**: CSV and JSON export functionality formatted for statistical software and scientific analysis
-- [x] **Real-time Analysis Dashboard**: Two new CLI view modes (statistical, anomalies) for monitoring simulation health and detecting issues
-- [x] **Mathematical Validation**: Conservation law checking, trait distribution analysis, and physics violation detection
-- [x] **Biological Plausibility Checks**: Automated detection of trait values outside realistic bounds and population dynamics anomalies
-- [x] **Trend Analysis**: Energy and population trend tracking with baseline comparison and deviation alerts
-- [x] **Export Controls**: Keyboard shortcuts for real-time data export during simulation
-- [x] **Comprehensive Test Suite**: Full test coverage for all statistical analysis functionality including anomaly detection and data export
-
----
-
-## 🚧 IN PROGRESS
-
-### Gamification and Player Control System (RECENTLY COMPLETED)
+#### Gamification and Player Control System (COMPLETED)
 - [x] **Player Management System**: Complete player registration, species ownership tracking, and activity monitoring
 - [x] **Species Creation Interface**: Web-based species creation with limited trait customization for players
 - [x] **Player Species Control**: Move, gather, and reproduce commands for player-owned species only
@@ -205,7 +189,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Player Event System**: Real-time notifications for species events (extinction, splitting, evolution)
 - [x] **Comprehensive Testing**: Full test suite covering all gamification functionality including event detection
 
-### Hive Mind and Collective Intelligence System (RECENTLY COMPLETED)
+#### Hive Mind and Collective Intelligence System (COMPLETED)
 - [x] **Hive Mind Framework**: Complete collective intelligence system with 4 types (SimpleCollective, SwarmIntelligence, NeuralNetwork, QuantumMind)
 - [x] **Collective Memory**: Shared knowledge systems for food sources, threats, safe zones, and successful behavior patterns
 - [x] **Collective Decision Making**: Group consensus mechanisms with configurable decision thresholds and intelligence-based influence
@@ -215,7 +199,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Emergent Intelligence**: Collective intelligence greater than sum of parts through cooperation synergy
 - [x] **Safety Assessment**: Collective evaluation of position safety based on shared threat/safe zone knowledge
 
-### Caste System and Social Specialization (RECENTLY COMPLETED)
+#### Caste System and Social Specialization (COMPLETED)
 - [x] **8 Caste Roles**: Complete role system (Queen, Worker, Soldier, Drone, Scout, Nurse, Builder, Specialist)
 - [x] **Role Assignment**: Automatic optimal role determination based on entity traits and colony needs
 - [x] **Reproductive Specialization**: Role-based reproductive capabilities (Queens 3.0x, Workers 0.1x, etc.)
@@ -226,7 +210,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Colony Fitness**: Overall colony performance metrics with optimal distribution bonuses
 - [x] **Cross-Species Compatibility**: Advanced entities can join colonies of different species
 
-### Insect Capabilities and Swarm Behavior (RECENTLY COMPLETED)
+#### Insect Capabilities and Swarm Behavior (COMPLETED)
 - [x] **Insect Trait System**: 8 specialized insect traits (swarm_capability, pheromone_sensitivity, pheromone_production, colony_loyalty, etc.)
 - [x] **Pheromone System**: 8 pheromone types (Trail, Alarm, Sex, Queen, Food, Territory, Brood, Aggregation) with trail-based communication
 - [x] **Chemical Trail Following**: Entity navigation based on pheromone sensitivity and trail strength
@@ -238,7 +222,19 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Flight Capabilities**: Flying insect support with altitude tolerance and aerial movement
 - [x] **Pheromone Decay**: Realistic chemical signal fade-out with distance and time
 
-### Biome Expansion System (COMPLETED)
+#### Reproduction, Gestation, and Decay Systems (COMPLETED)
+- [x] **Reproduction Modes**: Multiple reproduction types (DirectCoupling, EggLaying, LiveBirth, Budding, Fission)
+- [x] **Gestation System**: Time-based pregnancy and birth cycles with configurable gestation periods
+- [x] **Death and Decay Tracking**: Entity death creates decaying corpses that fertilize nearby plants
+- [x] **Mating Strategies**: Four mating strategies (Monogamous, Polygamous, Sequential, Promiscuous)
+- [x] **Egg System**: Egg laying and hatching mechanics with time-based development
+- [x] **Emergent Migration**: Entities migrate to preferred mating locations during mating season
+- [x] **Competition for Mates**: Entities compete based on strength, intelligence, and energy levels
+- [x] **Seasonal Mating Behaviors**: Complex seasonal mating patterns with spring peaks, winter dormancy, and season-specific migration behaviors
+- [x] **Territory-based Mating**: Territorial control affecting mating success based on dominance and territory ownership
+- [x] **Cross-species Compatibility**: Limited reproduction between closely related species with genetic and environmental similarity factors
+
+#### Biome Expansion System (COMPLETED)
 - [x] **Extended Biome Types**: 8 new biome types (Ice, Rainforest, DeepWater, HighAltitude, HotSpring, Tundra, Swamp, Canyon)
 - [x] **Enhanced Environmental Properties**: Temperature, pressure, oxygen levels, and specialized environmental effects
 - [x] **Contiguous Biome Generation**: Improved noise-based generation creating realistic patterns with polar caps, elevation-based distribution
@@ -252,18 +248,6 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Environmental Event Enhancement**: 6 enhanced event types (wildfire, storm, volcanic_eruption, flood, hurricane, tornado) with visual representation
 - [x] **Wind-Driven Event Propagation**: Fire spread, storm movement following wind patterns with realistic fire extinguishing by water biomes
 
-#### Reproduction, Gestation, and Decay Systems (IN PROGRESS)
-- [x] **Reproduction Modes**: Multiple reproduction types (DirectCoupling, EggLaying, LiveBirth, Budding, Fission)
-- [x] **Gestation System**: Time-based pregnancy and birth cycles with configurable gestation periods
-- [x] **Death and Decay Tracking**: Entity death creates decaying corpses that fertilize nearby plants
-- [x] **Mating Strategies**: Four mating strategies (Monogamous, Polygamous, Sequential, Promiscuous)
-- [x] **Egg System**: Egg laying and hatching mechanics with time-based development
-- [x] **Emergent Migration**: Entities migrate to preferred mating locations during mating season
-- [x] **Competition for Mates**: Entities compete based on strength, intelligence, and energy levels
-- [x] **Seasonal Mating Behaviors**: Complex seasonal mating patterns with spring peaks, winter dormancy, and season-specific migration behaviors
-- [x] **Territory-based Mating**: Territorial control affecting mating success based on dominance and territory ownership
-- [x] **Cross-species Compatibility**: Limited reproduction between closely related species with genetic and environmental similarity factors
-
 #### Enhanced Storm and Weather Systems (COMPLETED)
 - [x] **Enhanced Environmental Events**: Added 8 new event types (Volcanic Eruption, Lightning Storm, Wildfire, Great Flood, Magnetic Storm, Ash Cloud, Earthquake, Cosmic Radiation)
 - [x] **Regional Storm Systems**: Implemented localized weather events with 5 storm types (Thunderstorm, Tornado, Hurricane, Blizzard, Dust Storm)
@@ -273,7 +257,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Environmental Realism**: Storms create terrain changes and affect biomes
 - [x] **Concurrency Optimization**: Added parallel processing for entity updates with worker pool pattern
 
-#### Advanced Visualization System (RECENTLY COMPLETED)
+#### Advanced Visualization System (COMPLETED)
 - [x] **Individual Species Visualization**: Complete trait-based visual representation system for individual species
 - [x] **Cellular-Level Visualization**: Enhanced cellular view showing organism structure, cell types, organelles, and complexity levels
 - [x] **Species Gallery Interface**: Interactive web interface allowing detailed species examination with trait analysis
@@ -287,37 +271,44 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Cross-Section World Views**: Underground layer visualization showing geology, groundwater, and hidden features
 - [x] **Consistent UI Sorting**: Fixed dynamic sorting issues in populations, species lists, and biome displays
 
-#### Wind System Enhancements (COMPLETED)
-- [x] **Pollen Cloud Formation**: Clustering of pollen grains into dispersal clouds
-- [x] **Advanced Wind Patterns**: Terrain-based wind channeling and regional storm effects
-- [x] **Pollen Viability Factors**: Environmental conditions affecting pollen success
-- [x] **Weather Events**: Storms and weather changes affecting dispersal patterns
-- [x] **Seasonal Wind Variations**: More complex seasonal wind behavior patterns
+---
+
+## 🚧 IN PROGRESS
+
+### Advanced Seed Dispersal
+**Status**: Not Started
+**Priority**: MEDIUM - Expands plant reproduction
+**Dependencies**: Wind system (✅ completed), Physics system (✅ completed)
+
+#### Features to Implement:
+- [ ] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based
+- [ ] **Seed Dormancy**: Seeds wait for optimal conditions to germinate
+- [ ] **Dispersal Timing**: Seeds released at optimal times
+- [ ] **Animal-Mediated Dispersal**: Entities carry seeds to new locations
+- [ ] **Seed Banks**: Accumulated seeds in soil waiting to germinate
+- [ ] **Germination Triggers**: Environmental cues for seed activation
+
+### Chemical Communication Enhancement
+**Status**: Partially Implemented  
+**Priority**: MEDIUM - Enhances existing communication
+**Dependencies**: Communication system (✅ completed), Insect capabilities (✅ completed)
+
+#### Features to Implement:
+- [ ] **Airborne Plant Signals**: Plants release chemical warnings
+- [ ] **Enhanced Pheromone Systems**: More complex chemical marking and tracking beyond current 8 pheromone types
+- [ ] **Chemical Ecology**: Complex chemical interactions between species
+- [ ] **Advanced Scent Trails**: More persistent chemical paths for navigation
+- [ ] **Chemical Defenses**: Plants release toxins when threatened
+- [ ] **Chemical Attractants**: Plants attract beneficial entities
 
 ---
 
 ## 📋 HIGH PRIORITY (Immediate Impact)
 
-### Enhanced Storm and Weather Systems (COMPLETED)
-**Status**: Completed
-**Priority**: HIGH - Adds environmental complexity and realism
-**Dependencies**: Biome system (✅ completed), Topology system (✅ completed)
-
-#### Features Completed:
-- [x] **Enhanced Biome Types**: 8 new specialized biomes with realistic environmental properties
-- [x] **Plate Tectonics System**: 8 geological event types affecting terrain and biome formation
-- [x] **Contiguous Features**: Improved biome generation creating realistic patterns
-- [x] **Polar Caps**: Ice and Tundra biomes in polar regions with freezing effects
-- [x] **Deep Ocean Trenches**: DeepWater biome with high pressure effects
-- [x] **High Altitude Mountains**: HighAltitude biome with low oxygen effects
-- [x] **Geysers and Hot Springs**: HotSpring biome with thermal effects
-- [x] **Environmental Pressure**: Temperature, pressure, and oxygen stress systems
-- [x] **Dynamic Biome Changes**: Geological events reshape the world
-
 ### Insect Pollinator System
 **Status**: Not Started
 **Priority**: HIGH - Adds biological complexity and realism
-**Dependencies**: Wind system (✅ completed), Entity system (✅ completed), Plant Networks (✅ completed)
+**Dependencies**: Wind system (✅ completed), Entity system (✅ completed), Plant Networks (✅ completed), Insect capabilities (✅ completed)
 
 #### Features to Implement:
 - [ ] **Pollinating Insects**: New entity types specialized for pollination
@@ -328,6 +319,32 @@ This document tracks the implementation status of ecosystem features for the gen
 - [ ] **Seasonal Pollinator Activity**: Insect availability varies by season
 - [ ] **Communication Networks**: Insects can use plant networks for navigation
 - [ ] **Pollinator Memory**: Insects remember successful flower locations
+
+### Multi-Colony Warfare and Diplomacy System
+**Status**: Not Started  
+**Priority**: HIGH - Leverages completed caste and hive mind systems
+**Dependencies**: Caste system (✅ completed), Hive mind system (✅ completed), Communication system (✅ completed)
+
+#### Features to Implement:
+- [ ] **Inter-Colony Interactions**: Warfare, alliance, and trade between different colonies
+- [ ] **Resource Competition**: Colonies compete for territories and food sources
+- [ ] **Diplomatic Relations**: Alliance formation, trade agreements, peace treaties
+- [ ] **Colony Expansion**: Territorial growth and border conflicts
+- [ ] **Resource Trading**: Exchange of food, materials, and information between allied colonies
+- [ ] **War Declarations**: Formal conflict initiation with strategic planning
+
+### Enhanced Metamorphosis and Life Stages
+**Status**: Not Started
+**Priority**: HIGH - Natural extension of insect capabilities system  
+**Dependencies**: Insect capabilities (✅ completed), Reproduction system (✅ completed)
+
+#### Features to Implement:
+- [ ] **Life Stage Transitions**: Larva, pupa, adult stages for complex insects
+- [ ] **Stage-Specific Traits**: Different capabilities and vulnerabilities per life stage
+- [ ] **Metamorphosis Triggers**: Environmental and nutritional factors affecting development
+- [ ] **Stage-Specific Behaviors**: Larvae focus on growth, adults on reproduction
+- [ ] **Energy Requirements**: Different nutritional needs per life stage
+- [ ] **Predation Vulnerabilities**: Some stages more vulnerable than others
 
 ### Advanced Seed Dispersal
 **Status**: Not Started
@@ -406,6 +423,11 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Hive mind system tests** - Collective intelligence formation, decision making, and memory systems
 - [x] **Caste system tests** - Role assignment, colony management, and specialized behaviors
 - [x] **Insect capabilities tests** - Pheromone communication, swarm formation, and chemical trail following
+- [x] **Gamification tests** - Player management, species control, and web UI integration
+- [x] **Molecular evolution tests** - Molecular systems, nutritional requirements, and metabolism
+- [x] **Biome distribution tests** - Terrain generation, environmental effects, and geological processes
+- [x] **Reproduction system tests** - All reproduction modes, gestation, and mating strategies
+- [x] **All 20 view modes tested** - Complete CLI and web interface view functionality verified
 
 ### Validation Completed
 - [x] Verify wind system creates realistic genetic mixing
@@ -447,27 +469,28 @@ This document tracks the implementation status of ecosystem features for the gen
 ## 🎯 NEXT STEPS
 
 ### Immediate Tasks (Next Session)
-1. **Plant-Insect Co-evolution**: Implement mutual adaptation between plants and insect pollinators
-2. **Advanced Chemical Communication**: Expand pheromone system with more complex chemical ecology
-3. **Inter-Colony Interactions**: Implement warfare, alliance, and trade between different colonies
-4. **Enhanced Metamorphosis**: Add life stage transitions for insect entities
+1. **Plant-Insect Co-evolution**: Implement mutual adaptation between plants and insect pollinators leveraging completed insect capabilities system
+2. **Inter-Colony Warfare**: Develop conflict and alliance systems between different colonies using completed caste and hive mind systems
+3. **Advanced Metamorphosis**: Add life stage transitions (larva, pupa, adult) for complex insects
+4. **Enhanced Chemical Communication**: Expand plant chemical signaling beyond current pheromone system
 
 ### Short-term Goals (Next 2-3 Sessions)
 1. Complete insect pollinator system with plant-insect mutualism
-2. Add advanced seed dispersal mechanisms beyond wind and pheromones
-3. Implement inter-colony warfare and diplomatic relations
-4. Add metamorphosis stages (larva, pupa, adult) for complex insects
-5. Enhance hive mind system with distributed task allocation
+2. Implement inter-colony warfare and diplomatic relations
+3. Add metamorphosis stages (larva, pupa, adult) for complex insects
+4. Develop advanced seed dispersal mechanisms beyond wind
+5. Create multi-generational hive mind knowledge transfer systems
 
 ### Long-term Vision
 Create a fully realistic evolutionary ecosystem where:
-- Hive minds and collective intelligence emerge naturally from evolutionary pressure
-- Caste systems develop organically based on environmental and social pressures
-- Insect-like species can evolve from simple microbes through natural selection
+- Advanced insect societies with metamorphosis, castes, and collective intelligence compete and cooperate
+- Complex inter-colony politics drive territorial expansion and resource competition
+- Plant-insect mutualism creates intricate ecological webs and co-evolutionary pressure
 - Multiple reproduction and dispersal strategies exist including sophisticated pheromone communication
 - Complex social structures (colonies, hives, castes) interact and compete in dynamic ways
 - Regional weather patterns create diverse microenvironments that drive specialized evolution
 - Extreme weather events drive evolutionary adaptation toward more sophisticated social organization
+- Multi-generational knowledge transfer creates lasting cultural evolution alongside genetic evolution
 
 ---
 
