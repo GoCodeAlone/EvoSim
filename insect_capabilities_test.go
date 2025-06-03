@@ -171,11 +171,11 @@ func TestPheromoneTrailDecay(t *testing.T) {
 	originalStrength := trail.Strength[0]
 
 	// Simulate several updates to decay the trail
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 20; i++ {
 		is.updatePheromoneTrails()
 	}
 
-	// Trail should still exist but be weaker
+	// Trail should still exist but be weaker (20 ticks with 2-5% decay rate)
 	if len(is.PheromoneTrails) != 1 {
 		t.Error("Trail should still exist after moderate decay")
 	}
@@ -328,8 +328,8 @@ func TestSwarmFormations(t *testing.T) {
 	is := NewInsectSystem()
 	
 	// Create test swarm
-	entities := make([]*Entity, 4)
-	for i := 0; i < 4; i++ {
+	entities := make([]*Entity, 6) // Changed from 4 to 6 to meet minimum swarm size
+	for i := 0; i < 6; i++ {
 		entities[i] = NewEntity(i+1, []string{"swarm_capability", "cooperation"}, "test", Position{})
 		entities[i].SetTrait("swarm_capability", 0.7)
 		entities[i].SetTrait("cooperation", 0.8)

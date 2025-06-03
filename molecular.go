@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 	"math/rand"
+	"strings"
 )
 
 // MolecularType represents different types of molecules
@@ -37,13 +38,15 @@ const (
 
 	// Minerals and vitamins
 	MineralTrace // Essential trace minerals
+	MineralSalt  // Sodium and other salts (added for aquatic species)
 	VitaminFat   // Fat-soluble vitamins
 	VitaminWater // Water-soluble vitamins
 
 	// Toxins and defensive compounds
-	ToxinAlkaloid // Plant defensive compounds
-	ToxinGlycoside // Plant toxins
-	ToxinTannin   // Bitter defensive compounds
+	ToxinAlkaloid   // Plant defensive compounds
+	ToxinGlycoside  // Plant toxins
+	ToxinTannin     // Bitter defensive compounds
+	ToxinHeavyMetal // Heavy metal toxins (added for soil species)
 )
 
 // MolecularComponent represents a specific molecule with concentration
@@ -113,11 +116,17 @@ func NewMolecularNeeds(entity *Entity) *MolecularNeeds {
 		VitaminWater:       0.2,
 	}
 
-	// Adjust requirements based on entity traits
+	// Adjust requirements based on entity traits and species
 	strength := entity.GetTrait("strength")
 	intelligence := entity.GetTrait("intelligence")
 	speed := entity.GetTrait("speed")
 	size := entity.GetTrait("size")
+	
+	// Apply species-specific nutritional dependencies
+	needs.applySpeciesNutritionalRequirements(entity.Species)
+	
+	// Apply environmental adaptations to water needs
+	needs.applyEnvironmentalWaterRequirements(entity)
 	aggression := entity.GetTrait("aggression")
 
 	// Stronger entities need more structural proteins
@@ -601,4 +610,120 @@ func GetMolecularDesirability(foodProfile *MolecularProfile, entityNeeds *Molecu
 	// Overall desirability
 	desirability := nutritionalValue + diversityBonus - toxinPenalty*2.0
 	return math.Max(0.0, math.Min(1.0, desirability))
+}
+
+// applySpeciesNutritionalRequirements adjusts molecular needs based on species type
+func (needs *MolecularNeeds) applySpeciesNutritionalRequirements(species string) {
+	// Herbivore species requirements
+	if strings.Contains(species, "herbivore") {
+		// High carbohydrate and fiber needs, low protein needs
+		needs.Requirements[CarboComplex] *= 1.5
+		needs.Requirements[CarboFiber] *= 2.0
+		needs.Requirements[VitaminWater] *= 1.3
+		needs.Requirements[ProteinStructural] *= 0.7
+		needs.Requirements[ProteinEnzymatic] *= 0.6
+		// Improved toxin tolerance for plant consumption
+		needs.Tolerances[ToxinTannin] = 0.8
+		needs.Tolerances[ToxinAlkaloid] = 0.6
+		
+	} else if strings.Contains(species, "carnivore") {
+		// High protein and lipid needs, low carbohydrate needs
+		needs.Requirements[ProteinStructural] *= 1.8
+		needs.Requirements[ProteinEnzymatic] *= 1.6
+		needs.Requirements[AminoEssential] *= 1.5
+		needs.Requirements[LipidSaturated] *= 1.4
+		needs.Requirements[CarboComplex] *= 0.5
+		needs.Requirements[CarboSimple] *= 0.6
+		// Better processing of animal proteins
+		needs.Priorities[ProteinStructural] = 1.0
+		needs.Priorities[AminoEssential] = 0.9
+		
+	} else if strings.Contains(species, "omnivore") {
+		// Balanced requirements, good adaptability
+		needs.Requirements[ProteinStructural] *= 1.2
+		needs.Requirements[CarboComplex] *= 1.2
+		needs.Requirements[VitaminFat] *= 1.1
+		needs.Requirements[VitaminWater] *= 1.1
+		// Moderate toxin tolerance
+		needs.Tolerances[ToxinTannin] = 0.5
+		needs.Tolerances[ToxinAlkaloid] = 0.4
+	}
+	
+	// Size-based species requirements
+	if strings.Contains(species, "large") {
+		// Larger species need more total nutrition
+		for molType := range needs.Requirements {
+			needs.Requirements[molType] *= 1.4
+		}
+	} else if strings.Contains(species, "small") {
+		// Smaller species need less total but higher quality nutrition
+		for molType := range needs.Requirements {
+			needs.Requirements[molType] *= 0.7
+		}
+		// Higher metabolic needs
+		needs.Requirements[NucleicATP] *= 1.3
+		needs.Requirements[MineralTrace] *= 1.2
+	}
+	
+	// Aquatic species requirements
+	if strings.Contains(species, "aquatic") {
+		needs.Requirements[MineralSalt] *= 2.0  // High salt needs
+		needs.Requirements[LipidUnsaturated] *= 1.3  // Insulation
+		needs.Tolerances[MineralSalt] = 1.0  // High salt tolerance
+	}
+	
+	// Aerial species requirements
+	if strings.Contains(species, "aerial") {
+		needs.Requirements[NucleicATP] *= 1.5  // High energy for flight
+		needs.Requirements[CarboSimple] *= 1.4  // Quick energy
+		needs.Requirements[MineralTrace] *= 0.8  // Lighter bones
+	}
+	
+	// Underground species requirements
+	if strings.Contains(species, "soil") || strings.Contains(species, "underground") {
+		needs.Requirements[VitaminWater] *= 0.8  // Less water loss
+		needs.Requirements[MineralTrace] *= 1.3  // Mineral-rich environment
+		needs.Tolerances[ToxinHeavyMetal] = 0.6  // Heavy metal tolerance
+	}
+}
+
+// applyEnvironmentalWaterRequirements adjusts water needs based on environmental adaptations
+func (needs *MolecularNeeds) applyEnvironmentalWaterRequirements(entity *Entity) {
+	baseWaterNeed := needs.Requirements[VitaminWater]
+	
+	// Aquatic adaptation reduces water dependency
+	aquaticAdaptation := entity.GetTrait("aquatic_adaptation")
+	if aquaticAdaptation > 0.5 {
+		needs.Requirements[VitaminWater] = baseWaterNeed * (0.6 + 0.4*aquaticAdaptation)
+		// Aquatic entities need salt balance
+		needs.Requirements[MineralSalt] *= (1.0 + aquaticAdaptation*0.5)
+	}
+	
+	// Desert/endurance adaptation affects water efficiency
+	endurance := entity.GetTrait("endurance")
+	if endurance > 0.7 {
+		// High endurance means efficient water use
+		needs.Requirements[VitaminWater] = baseWaterNeed * (0.8 - endurance*0.2)
+	}
+	
+	// Size affects water needs
+	size := entity.GetTrait("size")
+	waterSizeMultiplier := 1.0 + size*0.5  // Larger entities need more water
+	needs.Requirements[VitaminWater] *= waterSizeMultiplier
+	
+	// Underground navigation reduces surface water needs
+	undergroundNav := entity.GetTrait("underground_nav")
+	if undergroundNav > 0.5 {
+		needs.Requirements[VitaminWater] *= (0.9 - undergroundNav*0.2)
+	}
+	
+	// Flying ability increases water needs (dehydration)
+	flyingAbility := entity.GetTrait("flying_ability")
+	if flyingAbility > 0.5 {
+		needs.Requirements[VitaminWater] *= (1.0 + flyingAbility*0.3)
+	}
+	
+	// Set water priority based on environmental adaptation
+	avgAdaptation := (aquaticAdaptation + endurance + undergroundNav) / 3.0
+	needs.Priorities[VitaminWater] = 0.7 + avgAdaptation*0.3
 }

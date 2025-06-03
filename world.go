@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -68,6 +69,35 @@ type WorldEvent struct {
 	GlobalMutation float64
 	GlobalDamage   float64
 	BiomeChanges   map[Position]BiomeType
+	// Enhanced properties for realistic behavior
+	Position       Position                   // Event center/origin
+	Radius         float64                   // Affected area radius
+	Intensity      float64                   // Event strength (0-1)
+	MovementVector Vector2D                  // For moving events like storms/fires
+	WindInfluenced bool                      // Whether wind affects this event
+	EventType      string                    // "fire", "storm", "volcanic", etc.
+	VisualEffect   map[string]interface{}    // Visual representation data
+}
+
+// EnhancedEnvironmentalEvent represents more sophisticated environmental events
+type EnhancedEnvironmentalEvent struct {
+	ID             int
+	Type           string                    // "wildfire", "storm", "volcanic_eruption", etc.
+	Name           string
+	Description    string
+	StartTick      int
+	Duration       int
+	Position       Position                  // Event center
+	Radius         float64                   // Current affected radius
+	MaxRadius      float64                   // Maximum spread radius
+	Intensity      float64                   // Current strength (0-1)
+	Direction      float64                   // Movement direction (radians)
+	Speed          float64                   // Movement speed
+	WindSensitive  bool                      // Whether wind affects movement/spread
+	AffectedCells  map[Position]BiomeType    // Cells affected and their new types
+	SpreadPattern  string                    // "circular", "directional", "wind_driven"
+	ExtinguishOn   []BiomeType               // Biomes that stop the event (water stops fire)
+	Effects        map[string]float64        // Various effects (mutation, damage, etc.)
 }
 
 // GridCell represents a cell in the world grid
@@ -76,6 +106,12 @@ type GridCell struct {
 	Entities []*Entity
 	Plants   []*Plant    // Plants in this cell
 	Event    *WorldEvent // Current event affecting this cell
+	// Enhanced soil system
+	SoilNutrients   map[string]float64 `json:"soil_nutrients"`   // Available nutrients in soil
+	WaterLevel      float64            `json:"water_level"`      // Available water in cell
+	SoilPH          float64            `json:"soil_ph"`          // Soil acidity (6-8 optimal)
+	SoilCompaction  float64            `json:"soil_compaction"`  // How compacted soil is (0-1)
+	OrganicMatter   float64            `json:"organic_matter"`   // Decomposed organic material
 }
 
 // PopulationConfig defines traits and behavior for a population
@@ -145,6 +181,10 @@ type World struct {
 	// Player event callback for gamification features
 	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
 	PreviousPopulationCounts map[string]int                                     // Track population counts for extinction detection
+	
+	// Enhanced Environmental Event System
+	EnvironmentalEvents     []*EnhancedEnvironmentalEvent                      // Active enhanced environmental events
+	NextEnvironmentalEventID int                                                // ID counter for environmental events
 }
 
 // NewWorld creates a new world with multiple populations
@@ -175,6 +215,12 @@ func NewWorld(config WorldConfig) *World {
 				Entities: make([]*Entity, 0),
 				Plants:   make([]*Plant, 0),
 				Event:    nil,
+				// Initialize soil system
+				SoilNutrients:  initializeSoilNutrients(),
+				WaterLevel:     initializeWaterLevel(world.generateBiome(x, y)),
+				SoilPH:         7.0 + (rand.Float64()-0.5)*2.0, // pH 6-8
+				SoilCompaction: rand.Float64() * 0.3, // 0-30% compaction
+				OrganicMatter:  rand.Float64() * 0.2, // 0-20% organic matter
 			}
 		}
 	} // Initialize advanced systems
@@ -212,6 +258,10 @@ func NewWorld(config WorldConfig) *World {
 	world.HiveMindSystem = NewHiveMindSystem()
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
+	
+	// Initialize enhanced environmental event system
+	world.EnvironmentalEvents = make([]*EnhancedEnvironmentalEvent, 0)
+	world.NextEnvironmentalEventID = 1
 
   // Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
@@ -720,12 +770,20 @@ func (w *World) Update() {
 	if w.Tick%10 == 0 { // Only update every 10 ticks instead of every tick
 		w.updateBiomesFromTopology()
 	}
+	
+	// Process biome transitions (hot spots melting ice, fires spreading, etc.)
+	if w.Tick%20 == 0 { // Process transitions every 20 ticks for stability
+		w.processBiomeTransitions()
+	}
 
 	// Clear grid entities and plants
 	w.clearGrid()
 
 	// Update world events
 	w.updateEvents()
+	// Update enhanced environmental events
+	w.updateEnhancedEnvironmentalEvents()
+	
 	// Maybe trigger new events (less frequent during night)
 	eventChance := 0.01
 	if currentTimeState.IsNight() {
@@ -733,6 +791,12 @@ func (w *World) Update() {
 	}
 	if rand.Float64() < eventChance {
 		w.triggerRandomEvent()
+	}
+	
+	// Maybe trigger enhanced environmental events (lower chance)
+	enhancedEventChance := 0.005 // 0.5% chance per tick
+	if rand.Float64() < enhancedEventChance {
+		w.triggerEnhancedEnvironmentalEvent()
 	}
 	// Update all plants (affected by day/night cycle)
 	w.updatePlants()
@@ -1049,14 +1113,26 @@ func (w *World) updateEntityPhysicsForces() {
 	}
 }
 
-// updatePlants handles plant growth, aging, and death
+// updatePlants handles plant growth, aging, and death with enhanced nutrient system
 func (w *World) updatePlants() {
+	// Get current season for plant nutrient calculations
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+	season := getSeasonName(currentTimeState.Season)
+	
+	// Process decay items and add nutrients to soil
+	if len(w.ReproductionSystem.DecayingItems) > 0 {
+		w.processDecayNutrientsToSoil()
+	}
+	
+	// Process rainfall effects on soil
+	w.processWeatherEffectsOnSoil()
+	
 	for _, plant := range w.AllPlants {
 		if !plant.IsAlive {
 			continue
 		}
 
-		// Get biome for plant's location
+		// Get grid cell for plant's location
 		gridX := int((plant.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
 		gridY := int((plant.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
 
@@ -1064,8 +1140,27 @@ func (w *World) updatePlants() {
 		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
 
-		biome := w.Biomes[w.Grid[gridY][gridX].Biome]
+		gridCell := &w.Grid[gridY][gridX]
+		biome := w.Biomes[gridCell.Biome]
+		
+		// Update plant with enhanced nutrient system
+		nutritionalHealth := plant.updatePlantNutrients(gridCell, season)
+		
+		// Traditional plant update with nutritional influence
 		plant.Update(biome)
+		
+		// Apply nutritional health effects
+		if nutritionalHealth < 0.5 {
+			// Severe malnutrition - chance of death
+			if rand.Float64() < (0.5-nutritionalHealth)*0.1 {
+				plant.IsAlive = false
+				// Add plant matter to decay system
+				if w.ReproductionSystem != nil {
+					nutrientValue := plant.NutritionVal * plant.Size
+					w.ReproductionSystem.AddDecayingItem("plant_matter", plant.Position, nutrientValue, "plant", plant.Size, w.Tick)
+				}
+			}
+		}
 	}
 }
 
@@ -1609,6 +1704,164 @@ func (w *World) generateSeismicChanges() map[Position]BiomeType {
 	}
 
 	return changes
+}
+
+// BiomeTransition represents a transition between biome states
+type BiomeTransition struct {
+	From        BiomeType
+	To          BiomeType
+	Trigger     string  // "heat", "cold", "fire", "flood", etc.
+	Probability float64 // Base probability of transition
+}
+
+// processBiomeTransitions handles realistic biome state changes
+func (w *World) processBiomeTransitions() {
+	transitions := make(map[Position]BiomeType)
+	
+	// Define transition rules
+	transitionRules := []BiomeTransition{
+		// Hot spots melt ice - very rare natural transitions
+		{BiomeIce, BiomeWater, "heat", 0.02},
+		{BiomeIce, BiomePlains, "heat", 0.01}, // Ice melts to plains in some cases
+		// Hot springs create effects - more likely near hot springs
+		{BiomeIce, BiomeWater, "hotspring", 0.15}, // Near hot springs, ice melts more rapidly
+		{BiomeWater, BiomeRainforest, "hotspring", 0.05}, // Hot springs create humid environments
+		// Fire effects - moderate probability
+		{BiomeForest, BiomeDesert, "fire", 0.1},
+		{BiomeRainforest, BiomeDesert, "fire", 0.08},
+		{BiomePlains, BiomeDesert, "fire", 0.06},
+		// Fire extinguishing - slow recovery
+		{BiomeDesert, BiomePlains, "water", 0.03}, // Desert recovering after water
+		// Water accumulation effects - gradual
+		{BiomePlains, BiomeSwamp, "flood", 0.08},
+		{BiomeDesert, BiomePlains, "flood", 0.1},
+		// Cold effects - slow freezing
+		{BiomeWater, BiomeIce, "cold", 0.03},
+		{BiomeSwamp, BiomeIce, "cold", 0.04},
+		// Volcanic effects - significant but rare
+		{BiomePlains, BiomeMountain, "volcanic", 0.12},
+		{BiomeForest, BiomeRadiation, "volcanic", 0.08}, // Lava burns forest to radiation zones
+	}
+	
+	// Check each grid cell for potential transitions
+	for y := 0; y < w.Config.GridHeight; y++ {
+		for x := 0; x < w.Config.GridWidth; x++ {
+			currentBiome := w.Grid[y][x].Biome
+			
+			// Check for transition triggers in nearby cells
+			triggers := w.detectTransitionTriggers(x, y)
+			
+			for trigger, intensity := range triggers {
+				for _, rule := range transitionRules {
+					if rule.From == currentBiome && rule.Trigger == trigger {
+						// Probability modified by trigger intensity
+						actualProbability := rule.Probability * intensity
+						if rand.Float64() < actualProbability {
+							transitions[Position{X: float64(x), Y: float64(y)}] = rule.To
+							
+							// Log the transition for events
+							if w.EventLogger != nil {
+								event := LogEvent{
+									Timestamp:   time.Now(),
+									Tick:        w.Tick,
+									Type:        fmt.Sprintf("biome_transition_%s_to_%s", 
+										w.getBiomeName(rule.From), w.getBiomeName(rule.To)),
+									Description: fmt.Sprintf("Biome transition from %s to %s triggered by %s", 
+										w.getBiomeName(rule.From), w.getBiomeName(rule.To), trigger),
+									Data: map[string]interface{}{
+										"trigger": trigger,
+										"intensity": intensity,
+										"from_biome": w.getBiomeName(rule.From),
+										"to_biome": w.getBiomeName(rule.To),
+										"position_x": float64(x),
+										"position_y": float64(y),
+									},
+								}
+								w.EventLogger.addEvent(event)
+							}
+							break // Only one transition per cell per tick
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Apply transitions
+	for pos, newBiome := range transitions {
+		gridX, gridY := int(pos.X), int(pos.Y)
+		if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+			w.Grid[gridY][gridX].Biome = newBiome
+		}
+	}
+}
+
+// detectTransitionTriggers identifies environmental conditions that can cause biome transitions
+func (w *World) detectTransitionTriggers(x, y int) map[string]float64 {
+	triggers := make(map[string]float64)
+	
+	// Check in a 3x3 neighborhood around the cell
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			nx, ny := x+dx, y+dy
+			if nx >= 0 && nx < w.Config.GridWidth && ny >= 0 && ny < w.Config.GridHeight {
+				neighborBiome := w.Grid[ny][nx].Biome
+				distance := math.Sqrt(float64(dx*dx + dy*dy))
+				intensity := 1.0 / (1.0 + distance) // Closer = stronger effect
+				
+				switch neighborBiome {
+				case BiomeHotSpring:
+					triggers["heat"] = math.Max(triggers["heat"], intensity * 0.8)
+					triggers["hotspring"] = math.Max(triggers["hotspring"], intensity)
+				case BiomeRadiation:
+					triggers["heat"] = math.Max(triggers["heat"], intensity * 0.6)
+					triggers["volcanic"] = math.Max(triggers["volcanic"], intensity * 0.7)
+				case BiomeWater, BiomeDeepWater, BiomeSwamp:
+					triggers["water"] = math.Max(triggers["water"], intensity * 0.5)
+					triggers["flood"] = math.Max(triggers["flood"], intensity * 0.3)
+				case BiomeIce, BiomeTundra:
+					triggers["cold"] = math.Max(triggers["cold"], intensity * 0.4)
+				}
+			}
+		}
+	}
+	
+	// Check for fire events - simplified fire detection
+	// In a real implementation, this would check for active fire events
+	if rand.Float64() < 0.01 { // 1% chance of fire starting in flammable biomes
+		currentBiome := w.Grid[y][x].Biome
+		if currentBiome == BiomeForest || currentBiome == BiomeRainforest || currentBiome == BiomePlains {
+			triggers["fire"] = 0.8
+		}
+	}
+	
+	return triggers
+}
+
+// getBiomeName returns human-readable biome name
+func (w *World) getBiomeName(biome BiomeType) string {
+	biomeNames := map[BiomeType]string{
+		BiomePlains:      "plains",
+		BiomeForest:      "forest", 
+		BiomeDesert:      "desert",
+		BiomeMountain:    "mountain",
+		BiomeWater:       "water",
+		BiomeRadiation:   "radiation",
+		BiomeSoil:        "soil",
+		BiomeAir:         "air",
+		BiomeIce:         "ice",
+		BiomeRainforest:  "rainforest",
+		BiomeDeepWater:   "deep_water",
+		BiomeHighAltitude: "high_altitude",
+		BiomeHotSpring:   "hot_spring",
+		BiomeTundra:      "tundra",
+		BiomeSwamp:       "swamp",
+		BiomeCanyon:      "canyon",
+	}
+	if name, exists := biomeNames[biome]; exists {
+		return name
+	}
+	return "unknown"
 }
 
 // handleInteractions processes interactions between nearby entities and with plants
@@ -2523,8 +2776,21 @@ func (w *World) processMatingAttempts() {
 
 // processEntityDeaths handles entity death and creates decaying corpses
 func (w *World) processEntityDeaths() {
+	deathsThisTick := make(map[string]int) // Track deaths by species
+	totalDeaths := 0
+	
 	for _, entity := range w.AllEntities {
 		if entity.IsAlive && (entity.Energy <= 0 || entity.Age > 1000) {
+			// Determine cause of death
+			cause := "old_age"
+			if entity.Energy <= 0 {
+				cause = "energy_depletion"
+			}
+			
+			// Track death by species
+			deathsThisTick[entity.Species]++
+			totalDeaths++
+			
 			// Entity dies
 			entity.IsAlive = false
 			
@@ -2532,10 +2798,17 @@ func (w *World) processEntityDeaths() {
 			corpseNutrientValue := entity.Energy*0.5 + float64(entity.Age)*0.1
 			w.ReproductionSystem.AddDecayingItem("corpse", entity.Position, corpseNutrientValue, entity.Species, entity.GetTrait("size"), w.Tick)
 			
-			// Log death event
-			w.EventLogger.LogWorldEvent(w.Tick, "death", fmt.Sprintf("Entity %d (%s) died at age %d", entity.ID, entity.Species, entity.Age))
+			// Enhanced death logging with cause tracking
+			contributingFactors := make(map[string]interface{})
+			contributingFactors["energy"] = entity.Energy
+			contributingFactors["age"] = entity.Age
+			contributingFactors["molecular_health"] = w.calculateMolecularHealth(entity)
+			entity.LogEntityDeath(w, cause, contributingFactors)
 		}
 	}
+	
+	// Check for mass die-off events and their environmental impacts
+	w.processMassDieOffImpacts(deathsThisTick, totalDeaths)
 }
 
 // generateTerritories creates territories based on civilization system tribes
@@ -3476,5 +3749,740 @@ func (w *World) getExpectedElevationForBiome(biomeType BiomeType) float64 {
 		return 0.0 // Edge biomes, elevation varies
 	default:
 		return 0.0 // Moderate elevation biomes
+	}
+}
+
+// Enhanced Environmental Event System Methods
+
+// updateEnhancedEnvironmentalEvents processes active enhanced environmental events
+func (w *World) updateEnhancedEnvironmentalEvents() {
+	activeEvents := make([]*EnhancedEnvironmentalEvent, 0)
+	
+	for _, event := range w.EnvironmentalEvents {
+		event.Duration--
+		
+		// Update event position and spread if it's moving/spreading
+		w.updateEventMovement(event)
+		
+		// Apply event effects
+		w.applyEventEffects(event)
+		
+		// Check if event should continue
+		if event.Duration > 0 && event.Intensity > 0.1 {
+			activeEvents = append(activeEvents, event)
+		} else {
+			// Log event completion
+			if w.EventLogger != nil {
+				endEvent := LogEvent{
+					Timestamp:   time.Now(),
+					Tick:        w.Tick,
+					Type:        "environmental_event_end",
+					Description: fmt.Sprintf("%s ended after %d ticks", event.Name, w.Tick-event.StartTick),
+					Data: map[string]interface{}{
+						"event_type": event.Type,
+						"duration": w.Tick - event.StartTick,
+						"affected_cells": len(event.AffectedCells),
+					},
+				}
+				w.EventLogger.addEvent(endEvent)
+			}
+		}
+	}
+	
+	w.EnvironmentalEvents = activeEvents
+}
+
+// updateEventMovement handles movement and spread of environmental events
+func (w *World) updateEventMovement(event *EnhancedEnvironmentalEvent) {
+	switch event.Type {
+	case "wildfire":
+		w.updateFireSpread(event)
+	case "storm", "hurricane", "tornado":
+		w.updateStormMovement(event)
+	case "volcanic_eruption":
+		w.updateVolcanicSpread(event)
+	case "flood":
+		w.updateFloodSpread(event)
+	}
+}
+
+// updateFireSpread handles wildfire spreading with wind influence
+func (w *World) updateFireSpread(fire *EnhancedEnvironmentalEvent) {
+	if !fire.WindSensitive || w.WindSystem == nil {
+		return
+	}
+	
+	// Get wind direction and strength at fire location
+	windVector := w.getWindAtPosition(fire.Position)
+	
+	// Wind affects fire direction and speed
+	windInfluence := windVector.Strength * 0.5 // Wind contributes up to 50% to fire movement
+	fire.Direction = math.Atan2(windVector.Y, windVector.X) // Wind direction in radians
+	fire.Speed = 0.5 + windInfluence // Base speed plus wind boost
+	
+	// Move fire center
+	fire.Position.X += fire.Speed * math.Cos(fire.Direction)
+	fire.Position.Y += fire.Speed * math.Sin(fire.Direction)
+	
+	// Spread fire to new cells
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	// Current fire radius expands slightly each tick
+	currentRadius := math.Min(fire.Radius + 0.5, fire.MaxRadius)
+	fire.Radius = currentRadius
+	
+	// Check cells within fire radius
+	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
+		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
+			cellPos := Position{
+				X: fire.Position.X + float64(dx),
+				Y: fire.Position.Y + float64(dy),
+			}
+			
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= currentRadius {
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					currentBiome := w.Grid[gridY][gridX].Biome
+					
+					// Check if fire can spread to this biome
+					if w.isFlammableBiome(currentBiome) {
+						// Fire spreads more easily with wind in the right direction
+						windBonus := 0.0
+						if fire.WindSensitive {
+							cellDirection := math.Atan2(float64(dy), float64(dx))
+							directionAlignment := math.Cos(cellDirection - fire.Direction)
+							windBonus = windInfluence * directionAlignment * 0.3
+						}
+						
+						spreadProbability := 0.6 + windBonus - (distance / currentRadius) * 0.3
+						if rand.Float64() < spreadProbability {
+							newAffectedCells[cellPos] = BiomeDesert // Fire turns vegetation to desert
+						}
+					} else if w.isFireExtinguishingBiome(currentBiome) {
+						// Fire is extinguished by water/ice
+						fire.Intensity *= 0.7 // Reduce fire intensity
+					}
+				}
+			}
+		}
+	}
+	
+	// Add new affected cells
+	for pos, newBiome := range newAffectedCells {
+		fire.AffectedCells[pos] = newBiome
+	}
+}
+
+// updateStormMovement handles storm movement with wind patterns
+func (w *World) updateStormMovement(storm *EnhancedEnvironmentalEvent) {
+	if w.WindSystem == nil {
+		return
+	}
+	
+	// Storms follow regional wind patterns
+	baseWind := w.WindSystem.BaseWindDirection
+	
+	// Add some randomness to storm movement
+	stormDirection := baseWind + (rand.Float64()-0.5)*0.5 // ±0.25 radians variation
+	
+	storm.Direction = stormDirection
+	storm.Speed = 1.0 + w.WindSystem.BaseWindStrength * 0.5
+	
+	// Move storm
+	storm.Position.X += storm.Speed * math.Cos(storm.Direction)
+	storm.Position.Y += storm.Speed * math.Sin(storm.Direction)
+	
+	// Update affected cells as storm moves
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	for dy := -int(storm.Radius); dy <= int(storm.Radius); dy++ {
+		for dx := -int(storm.Radius); dx <= int(storm.Radius); dx++ {
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= storm.Radius {
+				cellPos := Position{
+					X: storm.Position.X + float64(dx),
+					Y: storm.Position.Y + float64(dy),
+				}
+				
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					currentBiome := w.Grid[gridY][gridX].Biome
+					
+					// Storm effects depend on type and current biome
+					if storm.Type == "hurricane" || storm.Type == "tornado" {
+						// Destructive storms can create wasteland
+						if rand.Float64() < 0.3 {
+							newAffectedCells[cellPos] = BiomeDesert
+						}
+					} else if storm.Type == "storm" {
+						// Regular storms might create temporary flooding
+						if currentBiome == BiomePlains && rand.Float64() < 0.2 {
+							newAffectedCells[cellPos] = BiomeSwamp
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	storm.AffectedCells = newAffectedCells
+}
+
+// updateVolcanicSpread handles volcanic eruption spreading
+func (w *World) updateVolcanicSpread(volcano *EnhancedEnvironmentalEvent) {
+	// Volcanic events spread outward from center
+	currentRadius := math.Min(volcano.Radius + 0.3, volcano.MaxRadius)
+	volcano.Radius = currentRadius
+	
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
+		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= currentRadius && distance > currentRadius-0.5 { // Only affect the growing edge
+				cellPos := Position{
+					X: volcano.Position.X + float64(dx),
+					Y: volcano.Position.Y + float64(dy),
+				}
+				
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					// Close to center becomes mountain, further out becomes radiation (lava)
+					if distance < currentRadius * 0.3 {
+						newAffectedCells[cellPos] = BiomeMountain
+					} else if rand.Float64() < 0.7 {
+						newAffectedCells[cellPos] = BiomeRadiation
+					}
+				}
+			}
+		}
+	}
+	
+	// Add new affected cells
+	for pos, newBiome := range newAffectedCells {
+		volcano.AffectedCells[pos] = newBiome
+	}
+}
+
+// updateFloodSpread handles flood spreading
+func (w *World) updateFloodSpread(flood *EnhancedEnvironmentalEvent) {
+	// Floods spread to lower elevation areas
+	currentRadius := math.Min(flood.Radius + 0.4, flood.MaxRadius)
+	flood.Radius = currentRadius
+	
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
+		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= currentRadius {
+				cellPos := Position{
+					X: flood.Position.X + float64(dx),
+					Y: flood.Position.Y + float64(dy),
+				}
+				
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					currentBiome := w.Grid[gridY][gridX].Biome
+					
+					// Floods turn plains/desert to swamp/water
+					if currentBiome == BiomePlains || currentBiome == BiomeDesert {
+						if rand.Float64() < 0.6 {
+							newAffectedCells[cellPos] = BiomeSwamp
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	flood.AffectedCells = newAffectedCells
+}
+
+// applyEventEffects applies the effects of environmental events to the world
+func (w *World) applyEventEffects(event *EnhancedEnvironmentalEvent) {
+	// Apply biome changes
+	for pos, newBiome := range event.AffectedCells {
+		gridX, gridY := int(pos.X), int(pos.Y)
+		if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+			w.Grid[gridY][gridX].Biome = newBiome
+		}
+	}
+	
+	// Apply effects to entities and plants in the affected area
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		
+		distance := math.Sqrt(math.Pow(entity.Position.X-event.Position.X, 2) + 
+							 math.Pow(entity.Position.Y-event.Position.Y, 2))
+		
+		if distance <= event.Radius {
+			// Apply event-specific effects
+			intensity := (event.Radius - distance) / event.Radius // Stronger closer to center
+			
+			if mutationEffect, exists := event.Effects["mutation"]; exists {
+				// Apply mutation by directly calling the Mutate method
+				entity.Mutate(mutationEffect * intensity, 0.1)
+			}
+			
+			if damageEffect, exists := event.Effects["damage"]; exists {
+				entity.Energy -= damageEffect * intensity
+				if entity.Energy < 0 {
+					entity.Energy = 0
+				}
+			}
+		}
+	}
+	
+	// Apply effects to plants
+	for _, plant := range w.AllPlants {
+		if !plant.IsAlive {
+			continue
+		}
+		
+		distance := math.Sqrt(math.Pow(plant.Position.X-event.Position.X, 2) + 
+							 math.Pow(plant.Position.Y-event.Position.Y, 2))
+		
+		if distance <= event.Radius {
+			intensity := (event.Radius - distance) / event.Radius
+			
+			// Fire kills plants
+			if event.Type == "wildfire" {
+				plant.Energy -= 50 * intensity
+				if plant.Energy < 0 {
+					plant.IsAlive = false
+					// TODO: Add nutrients from dead plant to soil
+				}
+			}
+		}
+	}
+}
+
+// triggerEnhancedEnvironmentalEvent creates a new enhanced environmental event
+func (w *World) triggerEnhancedEnvironmentalEvent() {
+	eventTypes := []string{"wildfire", "storm", "volcanic_eruption", "flood", "hurricane", "tornado"}
+	eventType := eventTypes[rand.Intn(len(eventTypes))]
+	
+	// Random position for event
+	pos := Position{
+		X: rand.Float64() * float64(w.Config.GridWidth),
+		Y: rand.Float64() * float64(w.Config.GridHeight),
+	}
+	
+	event := &EnhancedEnvironmentalEvent{
+		ID:          w.NextEnvironmentalEventID,
+		Type:        eventType,
+		StartTick:   w.Tick,
+		Position:    pos,
+		AffectedCells: make(map[Position]BiomeType),
+		Effects:     make(map[string]float64),
+	}
+	w.NextEnvironmentalEventID++
+	
+	// Configure event based on type
+	switch eventType {
+	case "wildfire":
+		event.Name = "Wildfire"
+		event.Description = "Spreading fire burns vegetation"
+		event.Duration = 20 + rand.Intn(20)
+		event.Radius = 2.0
+		event.MaxRadius = 8.0
+		event.Intensity = 0.8
+		event.WindSensitive = true
+		event.SpreadPattern = "wind_driven"
+		event.ExtinguishOn = []BiomeType{BiomeWater, BiomeDeepWater, BiomeIce, BiomeSwamp}
+		event.Effects["damage"] = 2.0
+		event.Effects["mutation"] = 0.05
+		
+	case "storm":
+		event.Name = "Storm"
+		event.Description = "Heavy rainfall and wind"
+		event.Duration = 15 + rand.Intn(15)
+		event.Radius = 5.0
+		event.MaxRadius = 12.0
+		event.Intensity = 0.6
+		event.WindSensitive = true
+		event.SpreadPattern = "directional"
+		event.Effects["damage"] = 0.5
+		event.Effects["mutation"] = 0.02
+		
+	case "volcanic_eruption":
+		event.Name = "Volcanic Eruption"
+		event.Description = "Lava flows reshape the landscape"
+		event.Duration = 30 + rand.Intn(25)
+		event.Radius = 1.0
+		event.MaxRadius = 6.0
+		event.Intensity = 1.0
+		event.WindSensitive = false
+		event.SpreadPattern = "circular"
+		event.Effects["damage"] = 4.0
+		event.Effects["mutation"] = 0.15
+		
+	case "flood":
+		event.Name = "Great Flood"
+		event.Description = "Rising waters flood the land"
+		event.Duration = 25 + rand.Intn(20)
+		event.Radius = 3.0
+		event.MaxRadius = 10.0
+		event.Intensity = 0.7
+		event.WindSensitive = false
+		event.SpreadPattern = "circular"
+		event.Effects["damage"] = 1.5
+		event.Effects["mutation"] = 0.03
+		
+	case "hurricane":
+		event.Name = "Hurricane"
+		event.Description = "Massive rotating storm system"
+		event.Duration = 18 + rand.Intn(12)
+		event.Radius = 6.0
+		event.MaxRadius = 15.0
+		event.Intensity = 0.9
+		event.WindSensitive = true
+		event.SpreadPattern = "directional"
+		event.Effects["damage"] = 3.0
+		event.Effects["mutation"] = 0.08
+		
+	case "tornado":
+		event.Name = "Tornado"
+		event.Description = "Destructive rotating windstorm"
+		event.Duration = 8 + rand.Intn(8)
+		event.Radius = 1.5
+		event.MaxRadius = 3.0
+		event.Intensity = 1.0
+		event.WindSensitive = true
+		event.SpreadPattern = "directional"
+		event.Speed = 2.0
+		event.Effects["damage"] = 5.0
+		event.Effects["mutation"] = 0.1
+	}
+	
+	w.EnvironmentalEvents = append(w.EnvironmentalEvents, event)
+	
+	// Log event start
+	if w.EventLogger != nil {
+		startEvent := LogEvent{
+			Timestamp:   time.Now(),
+			Tick:        w.Tick,
+			Type:        "environmental_event_start",
+			Description: fmt.Sprintf("%s started at position (%.1f, %.1f)", event.Name, event.Position.X, event.Position.Y),
+			Data: map[string]interface{}{
+				"event_type": event.Type,
+				"position_x": event.Position.X,
+				"position_y": event.Position.Y,
+				"intensity": event.Intensity,
+				"duration": event.Duration,
+			},
+		}
+		w.EventLogger.addEvent(startEvent)
+	}
+}
+
+// Helper functions
+
+// getWindAtPosition gets wind vector at a specific position
+func (w *World) getWindAtPosition(pos Position) WindVector {
+	if w.WindSystem == nil {
+		return WindVector{X: 0, Y: 0, Strength: 0}
+	}
+	
+	// Convert world position to wind map coordinates
+	windX := int(pos.X / w.WindSystem.CellSize)
+	windY := int(pos.Y / w.WindSystem.CellSize)
+	
+	if windX >= 0 && windX < w.WindSystem.MapWidth && windY >= 0 && windY < w.WindSystem.MapHeight {
+		return w.WindSystem.WindMap[windY][windX]
+	}
+	
+	// Return base wind as fallback
+	return WindVector{
+		X: math.Cos(w.WindSystem.BaseWindDirection),
+		Y: math.Sin(w.WindSystem.BaseWindDirection),
+		Strength: w.WindSystem.BaseWindStrength,
+	}
+}
+
+// isFlammableBiome checks if a biome can catch fire
+func (w *World) isFlammableBiome(biome BiomeType) bool {
+	flammableBiomes := []BiomeType{
+		BiomeForest, BiomeRainforest, BiomePlains, BiomeTundra,
+	}
+	
+	for _, flammable := range flammableBiomes {
+		if biome == flammable {
+			return true
+		}
+	}
+	return false
+}
+
+// isFireExtinguishingBiome checks if a biome can extinguish fire
+func (w *World) isFireExtinguishingBiome(biome BiomeType) bool {
+	extinguishingBiomes := []BiomeType{
+		BiomeWater, BiomeDeepWater, BiomeIce, BiomeSwamp,
+	}
+	
+	for _, extinguishing := range extinguishingBiomes {
+		if biome == extinguishing {
+			return true
+		}
+	}
+	return false
+}
+
+// Plant Nutrient System Support Functions
+
+// processDecayNutrientsToSoil adds nutrients from decaying items to the soil
+func (w *World) processDecayNutrientsToSoil() {
+	for _, decayItem := range w.ReproductionSystem.DecayingItems {
+		if decayItem.IsDecayed {
+			continue // Already processed
+		}
+		
+		// Get grid cell for decay item location
+		gridX := int((decayItem.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((decayItem.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		
+		// Clamp to grid bounds
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		
+		gridCell := &w.Grid[gridY][gridX]
+		
+		// Add nutrients gradually as item decays
+		decayProgress := float64(w.Tick - decayItem.CreationTick) / float64(decayItem.DecayPeriod)
+		if decayProgress > 0.1 { // Start releasing nutrients after 10% decay
+			addDecayNutrientsToSoil(gridCell, decayItem)
+		}
+	}
+}
+
+// processWeatherEffectsOnSoil handles rainfall and weather impacts on soil
+func (w *World) processWeatherEffectsOnSoil() {
+	// Enhanced environmental events can cause rainfall
+	for _, event := range w.EnvironmentalEvents {
+		if event.Type == "storm" || event.Type == "hurricane" {
+			// Calculate rainfall from storm
+			for y := 0; y < w.Config.GridHeight; y++ {
+				for x := 0; x < w.Config.GridWidth; x++ {
+					distance := math.Sqrt(math.Pow(float64(x)-event.Position.X, 2) + 
+										 math.Pow(float64(y)-event.Position.Y, 2))
+					
+					if distance <= event.Radius {
+						intensity := (event.Radius - distance) / event.Radius * event.Intensity
+						processRainfall(&w.Grid[y][x], intensity)
+					}
+				}
+			}
+		}
+	}
+	
+	// Seasonal rainfall patterns
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+	seasonalRainfall := 0.0
+	
+	switch currentTimeState.Season {
+	case Spring:
+		seasonalRainfall = 0.02 // Moderate spring rains
+	case Summer:
+		seasonalRainfall = 0.01 // Lighter summer rains
+	case Autumn:
+		seasonalRainfall = 0.03 // Heavier autumn rains
+	case Winter:
+		seasonalRainfall = 0.015 // Light winter precipitation
+	}
+	
+	// Apply seasonal rainfall randomly across the world
+	if rand.Float64() < 0.3 { // 30% chance of rain each tick
+		for y := 0; y < w.Config.GridHeight; y++ {
+			for x := 0; x < w.Config.GridWidth; x++ {
+				if rand.Float64() < 0.1 { // 10% of cells get rain
+					processRainfall(&w.Grid[y][x], seasonalRainfall)
+				}
+			}
+		}
+	}
+}
+
+
+// getSeasonName converts Season enum to string
+func getSeasonName(season Season) string {
+switch season {
+case Spring:
+return "spring"
+	case Summer:
+		return "summer"
+	case Autumn:
+		return "autumn"
+	case Winter:
+		return "winter"
+	default:
+		return "spring"
+	}
+}
+
+// calculateMolecularHealth calculates entity's overall molecular health status
+func (w *World) calculateMolecularHealth(entity *Entity) float64 {
+	if entity.MolecularNeeds == nil {
+		return 1.0 // Assume healthy if no molecular system
+	}
+	return entity.MolecularNeeds.GetOverallNutritionalStatus()
+}
+
+// processMassDieOffImpacts handles environmental effects of mass death events
+func (w *World) processMassDieOffImpacts(deathsBySpecies map[string]int, totalDeaths int) {
+	populationSize := len(w.AllEntities)
+	if populationSize == 0 {
+		return
+	}
+	
+	// Calculate death rate as percentage of population
+	deathRate := float64(totalDeaths) / float64(populationSize)
+	
+	// Mass die-off thresholds
+	massDieOffThreshold := 0.15 // 15% population death in one tick
+	catastrophicThreshold := 0.30 // 30% population death in one tick
+	
+	if deathRate >= massDieOffThreshold {
+		// Mass die-off detected - enhance resource cycling
+		w.processMassDieOffEffects(deathsBySpecies, totalDeaths, deathRate)
+		
+		// Log the event
+		severity := "mass_die_off"
+		if deathRate >= catastrophicThreshold {
+			severity = "catastrophic_die_off"
+		}
+		
+		eventDetails := make(map[string]interface{})
+		eventDetails["death_rate"] = deathRate
+		eventDetails["total_deaths"] = totalDeaths
+		eventDetails["species_affected"] = deathsBySpecies
+		eventDetails["population_before"] = populationSize + totalDeaths
+		
+		if w.EventLogger != nil {
+			w.EventLogger.LogWorldEvent(w.Tick, severity, 
+				fmt.Sprintf("%s event: %.1f%% population loss (%d deaths)", severity, deathRate*100, totalDeaths))
+		}
+		
+		if w.StatisticalReporter != nil {
+			w.StatisticalReporter.LogSystemEvent(w.Tick, severity, 
+				fmt.Sprintf("%.1f%% population died", deathRate*100), eventDetails)
+		}
+	}
+}
+
+// processMassDieOffEffects applies environmental impacts from mass death events
+func (w *World) processMassDieOffEffects(deathsBySpecies map[string]int, totalDeaths int, deathRate float64) {
+	// Calculate intensity of environmental impact
+	impactIntensity := math.Min(deathRate * 3.0, 1.0) // Cap at 1.0
+	
+	// 1. Nutrient enrichment from mass decomposition
+	w.enhanceNutrientCycling(impactIntensity, totalDeaths)
+	
+	// 2. Disease/contamination effects
+	w.applyContaminationEffects(impactIntensity)
+	
+	// 3. Ecological disruption - remove key species interactions
+	w.processEcologicalDisruption(deathsBySpecies, impactIntensity)
+	
+	// 4. Scavenger opportunities - boost surviving carnivores
+	w.boostScavengerOpportunities(impactIntensity)
+}
+
+// enhanceNutrientCycling increases soil nutrients from mass decomposition
+func (w *World) enhanceNutrientCycling(intensity float64, totalDeaths int) {
+	// Add extra nutrients to random locations based on death count
+	nutrientBoostCount := int(float64(totalDeaths) * intensity * 0.5)
+	
+	for i := 0; i < nutrientBoostCount; i++ {
+		x := rand.Intn(w.Config.GridWidth)
+		y := rand.Intn(w.Config.GridHeight)
+		
+		// Enhance soil nutrients
+		cell := &w.Grid[y][x]
+		if cell.SoilNutrients == nil {
+			cell.SoilNutrients = make(map[string]float64)
+		}
+		
+		// Add decomposition nutrients
+		cell.SoilNutrients["nitrogen"] += 0.3 * intensity
+		cell.SoilNutrients["phosphorus"] += 0.2 * intensity
+		cell.SoilNutrients["organic_matter"] += 0.4 * intensity
+		
+		// Cap nutrients to prevent unrealistic levels
+		for nutrient := range cell.SoilNutrients {
+			cell.SoilNutrients[nutrient] = math.Min(cell.SoilNutrients[nutrient], 2.0)
+		}
+	}
+}
+
+// applyContaminationEffects applies negative effects from decomposition
+func (w *World) applyContaminationEffects(intensity float64) {
+	// Create temporary contamination zones
+	contaminationCount := int(intensity * 10) // More contamination with higher death rates
+	
+	for i := 0; i < contaminationCount; i++ {
+		x := rand.Intn(w.Config.GridWidth)
+		y := rand.Intn(w.Config.GridHeight)
+		
+		cell := &w.Grid[y][x]
+		
+		// Temporary contamination that affects entity health
+		if cell.Event == nil {
+			cell.Event = &WorldEvent{
+				Name:           "contamination",
+				Description:    "Decomposition contamination",
+				Duration:       20 + rand.Intn(20), // 20-40 ticks
+				GlobalDamage:   0.5 * intensity,
+				GlobalMutation: 0.02 * intensity,
+			}
+		}
+	}
+}
+
+// processEcologicalDisruption handles food web disruption from species loss
+func (w *World) processEcologicalDisruption(deathsBySpecies map[string]int, intensity float64) {
+	// For each species that suffered major losses
+	for species, deaths := range deathsBySpecies {
+		if deaths > 5 { // Significant species loss
+			// Reduce prey preferences for this species in surviving entities
+			for _, entity := range w.AllEntities {
+				if entity.IsAlive && entity.DietaryMemory != nil {
+					if pref, exists := entity.DietaryMemory.PreySpeciesPreferences[species]; exists {
+						// Reduce preference as species becomes rarer
+						reductionFactor := math.Min(float64(deaths) * 0.1 * intensity, 0.5)
+						newPref := pref * (1.0 - reductionFactor)
+						if newPref < 0.1 {
+							delete(entity.DietaryMemory.PreySpeciesPreferences, species)
+						} else {
+							entity.DietaryMemory.PreySpeciesPreferences[species] = newPref
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// boostScavengerOpportunities provides benefits to surviving carnivores/omnivores
+func (w *World) boostScavengerOpportunities(intensity float64) {
+	energyBoost := 20.0 * intensity // Energy boost from scavenging opportunities
+	
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		
+		// Carnivores and omnivores benefit from scavenging
+		if strings.Contains(entity.Species, "carnivore") || strings.Contains(entity.Species, "omnivore") {
+			entity.Energy += energyBoost
+			
+			// Improve dietary fitness due to abundance of food
+			if entity.DietaryMemory != nil {
+				entity.DietaryMemory.DietaryFitness = math.Min(1.0, entity.DietaryMemory.DietaryFitness + intensity*0.2)
+			}
+		}
 	}
 }

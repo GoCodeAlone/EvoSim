@@ -6,82 +6,394 @@ import (
 	"testing"
 )
 
-// TestPrimitiveLifeFormEvolution tests that primitive organisms can evolve into complex species
-func TestPrimitiveLifeFormEvolution(t *testing.T) {
-	// Create a world with primitive life forms
-	worldConfig := WorldConfig{
-		Width:          50.0,
-		Height:         50.0,
-		NumPopulations: 1,
-		PopulationSize: 5,
-		GridWidth:      10,
-		GridHeight:     10,
+// TestCellularEvolutionStage1To2 tests single-cell to simple multicellular transition
+func TestCellularEvolutionStage1To2(t *testing.T) {
+	world := createTestWorld(t)
+	entityID := createTestEntity(world, t)
+	
+	// Get the cellular organism and verify it starts at complexity level 1
+	organism := world.CellularSystem.OrganismMap[entityID]
+	if organism.ComplexityLevel != 1 {
+		t.Fatalf("Expected initial complexity level 1, got %d", organism.ComplexityLevel)
+	}
+	if len(organism.Cells) != 1 {
+		t.Fatalf("Expected 1 initial cell, got %d", len(organism.Cells))
 	}
 	
-	world := NewWorld(worldConfig)
+	// Prepare the cell for division by setting optimal conditions
+	cell := organism.Cells[0]
+	cell.Energy = 200.0  // Above threshold of 150
+	cell.Health = 1.0    // Above threshold of 0.8
+	cell.Age = 100       // Above threshold of 50
 	
-	// Add a primitive microbe population
-	primitiveConfig := PopulationConfig{
-		Name:    "Test Microbes",
-		Species: "microbe",
-		BaseTraits: map[string]float64{
-			"size":               -1.5,
-			"speed":              -0.5,
-			"aggression":         -0.9,
-			"intelligence":       -1.0,
-			"endurance":          0.8,
-			"aquatic_adaptation": 0.5,
-			"digging_ability":    -0.8,
-			"flying_ability":     -1.0,
-		},
-		StartPos:         Position{X: 25, Y: 25},
-		Spread:           10.0,
-		Color:            "gray",
-		BaseMutationRate: 0.25,
-	}
+	t.Logf("Initial state: complexity=%d, cells=%d, energy=%.1f", 
+		organism.ComplexityLevel, len(organism.Cells), cell.Energy)
 	
-	world.AddPopulation(primitiveConfig)
+	// Run simulation until cell division occurs (complexity level 2 requires 5+ cells)
+	maxTicks := 1000
+	evolutionOccurred := false
 	
-	t.Logf("Created world with %d entities", len(world.AllEntities))
-	for i, entity := range world.AllEntities {
-		t.Logf("Entity %d: Species=%s, ID=%d", i, entity.Species, entity.ID)
-	}
-	
-	if len(world.AllEntities) == 0 {
-		t.Fatal("No entities were created")
-	}
-	
-	// Verify primitive organisms were created (the naming system generates names from the microbe pool)
-	primitiveCount := len(world.AllEntities) // All entities should be from our primitive config
-	if primitiveCount == 0 {
-		t.Fatal("No primitive entities were created")
-	}
-	t.Logf("Created %d primitive entities", primitiveCount)
-	
-	// Simulate some evolution by boosting conditions
-	for _, entity := range world.AllEntities {
-		entity.Energy = 50 // Give them energy
-		entity.Age = 30    // Make them mature
-	}
-	
-	// Run simulation for a bit
-	for i := 0; i < 100; i++ {
-		world.Update()
-		
-		// Check if any evolution occurred
-		evolutionOccurred := false
-		for _, entity := range world.AllEntities {
-			if entity.Species != "Prime" && entity.Species != "Origin" && entity.Species != "Pure" {
-				t.Logf("Evolution occurred: %s at tick %d", entity.Species, i)
-				evolutionOccurred = true
+	for tick := 0; tick < maxTicks; tick++ {
+		// Keep the organism in optimal conditions
+		for _, c := range organism.Cells {
+			if c.Energy < 150 {
+				c.Energy = 200.0
+			}
+			if c.Health < 0.8 {
+				c.Health = 1.0
+			}
+			if c.Age < 50 {
+				c.Age = 100
 			}
 		}
-		if evolutionOccurred {
-			return // Test passed - evolution happened
+		
+		world.CellularSystem.UpdateCellularOrganisms()
+		
+		// Check if we've reached stage 2 (5+ cells)
+		if len(organism.Cells) >= 5 {
+			if organism.ComplexityLevel >= 2 {
+				t.Logf("Evolution to stage 2 successful at tick %d: complexity=%d, cells=%d", 
+					tick, organism.ComplexityLevel, len(organism.Cells))
+				evolutionOccurred = true
+				break
+			}
+		}
+		
+		if tick%100 == 0 {
+			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
 		}
 	}
 	
-	t.Log("No evolution occurred in 100 ticks, but microbes are still functioning")
+	if !evolutionOccurred {
+		t.Errorf("Failed to evolve from stage 1 to stage 2 in %d ticks. Final: complexity=%d, cells=%d", 
+			maxTicks, organism.ComplexityLevel, len(organism.Cells))
+	}
+}
+
+// TestCellularEvolutionStage2To3 tests simple multicellular to complex multicellular transition
+func TestCellularEvolutionStage2To3(t *testing.T) {
+	world := createTestWorld(t)
+	entityID := createTestEntity(world, t)
+	
+	organism := world.CellularSystem.OrganismMap[entityID]
+	
+	// Artificially advance to stage 2 by adding cells
+	for i := 0; i < 10; i++ {
+		cell := world.CellularSystem.createCell(CellTypeStem, organism.Cells[0].DNA, Position{X: float64(i), Y: 0})
+		cell.Energy = 200.0
+		cell.Health = 1.0
+		cell.Age = 100
+		organism.Cells = append(organism.Cells, cell)
+	}
+	
+	// Update complexity level
+	organism.ComplexityLevel = world.CellularSystem.calculateComplexityLevel(len(organism.Cells))
+	
+	t.Logf("Starting stage 2 to 3 test: complexity=%d, cells=%d", 
+		organism.ComplexityLevel, len(organism.Cells))
+	
+	if organism.ComplexityLevel < 2 {
+		t.Fatalf("Failed to establish stage 2. Complexity: %d, Cells: %d", 
+			organism.ComplexityLevel, len(organism.Cells))
+	}
+	
+	// Run simulation until we reach stage 3 (20+ cells)
+	maxTicks := 1000
+	evolutionOccurred := false
+	
+	for tick := 0; tick < maxTicks; tick++ {
+		// Maintain optimal conditions for cell division
+		for _, cell := range organism.Cells {
+			if cell.Energy < 150 {
+				cell.Energy = 200.0
+			}
+			if cell.Health < 0.8 {
+				cell.Health = 1.0
+			}
+			if cell.Age < 50 {
+				cell.Age = 100
+			}
+		}
+		
+		world.CellularSystem.UpdateCellularOrganisms()
+		
+		// Check if we've reached stage 3 (20+ cells)
+		if len(organism.Cells) >= 20 {
+			if organism.ComplexityLevel >= 3 {
+				t.Logf("Evolution to stage 3 successful at tick %d: complexity=%d, cells=%d", 
+					tick, organism.ComplexityLevel, len(organism.Cells))
+				evolutionOccurred = true
+				break
+			}
+		}
+		
+		if tick%100 == 0 {
+			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
+		}
+	}
+	
+	if !evolutionOccurred {
+		t.Errorf("Failed to evolve from stage 2 to stage 3 in %d ticks. Final: complexity=%d, cells=%d", 
+			maxTicks, organism.ComplexityLevel, len(organism.Cells))
+	}
+}
+
+// TestCellularEvolutionStage3To4 tests complex multicellular to advanced multicellular transition
+func TestCellularEvolutionStage3To4(t *testing.T) {
+	world := createTestWorld(t)
+	entityID := createTestEntity(world, t)
+	
+	organism := world.CellularSystem.OrganismMap[entityID]
+	
+	// Artificially advance to stage 3 by adding cells
+	for i := 0; i < 30; i++ {
+		cellType := CellTypeStem
+		if i%5 == 0 {
+			cellType = CellTypeNerve // Add some specialized cells
+		} else if i%7 == 0 {
+			cellType = CellTypeMuscle
+		}
+		
+		cell := world.CellularSystem.createCell(cellType, organism.Cells[0].DNA, Position{X: float64(i%10), Y: float64(i/10)})
+		cell.Energy = 200.0
+		cell.Health = 1.0
+		cell.Age = 100
+		organism.Cells = append(organism.Cells, cell)
+	}
+	
+	// Update complexity level
+	organism.ComplexityLevel = world.CellularSystem.calculateComplexityLevel(len(organism.Cells))
+	
+	t.Logf("Starting stage 3 to 4 test: complexity=%d, cells=%d", 
+		organism.ComplexityLevel, len(organism.Cells))
+	
+	if organism.ComplexityLevel < 3 {
+		t.Fatalf("Failed to establish stage 3. Complexity: %d, Cells: %d", 
+			organism.ComplexityLevel, len(organism.Cells))
+	}
+	
+	// Run simulation until we reach stage 4 (100+ cells)
+	maxTicks := 1000
+	evolutionOccurred := false
+	
+	for tick := 0; tick < maxTicks; tick++ {
+		// Maintain optimal conditions for cell division
+		for _, cell := range organism.Cells {
+			if cell.Energy < 150 {
+				cell.Energy = 200.0
+			}
+			if cell.Health < 0.8 {
+				cell.Health = 1.0
+			}
+			if cell.Age < 50 {
+				cell.Age = 100
+			}
+		}
+		
+		world.CellularSystem.UpdateCellularOrganisms()
+		
+		// Check if we've reached stage 4 (100+ cells)
+		if len(organism.Cells) >= 100 {
+			if organism.ComplexityLevel >= 4 {
+				t.Logf("Evolution to stage 4 successful at tick %d: complexity=%d, cells=%d", 
+					tick, organism.ComplexityLevel, len(organism.Cells))
+				evolutionOccurred = true
+				break
+			}
+		}
+		
+		if tick%100 == 0 {
+			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
+		}
+	}
+	
+	if !evolutionOccurred {
+		t.Errorf("Failed to evolve from stage 3 to stage 4 in %d ticks. Final: complexity=%d, cells=%d", 
+			maxTicks, organism.ComplexityLevel, len(organism.Cells))
+	}
+}
+
+// TestCellularEvolutionStage4To5 tests advanced multicellular to highly complex transition
+func TestCellularEvolutionStage4To5(t *testing.T) {
+	world := createTestWorld(t)
+	entityID := createTestEntity(world, t)
+	
+	organism := world.CellularSystem.OrganismMap[entityID]
+	
+	// Artificially advance to stage 4 by adding cells with specialization
+	cellTypes := []CellType{CellTypeStem, CellTypeNerve, CellTypeMuscle, CellTypeDigestive, CellTypeStorage, CellTypeDefensive}
+	for i := 0; i < 150; i++ {
+		cellType := cellTypes[i%len(cellTypes)]
+		cell := world.CellularSystem.createCell(cellType, organism.Cells[0].DNA, Position{X: float64(i%15), Y: float64(i/15)})
+		cell.Energy = 200.0
+		cell.Health = 1.0
+		cell.Age = 100
+		organism.Cells = append(organism.Cells, cell)
+	}
+	
+	// Update complexity level
+	organism.ComplexityLevel = world.CellularSystem.calculateComplexityLevel(len(organism.Cells))
+	
+	t.Logf("Starting stage 4 to 5 test: complexity=%d, cells=%d", 
+		organism.ComplexityLevel, len(organism.Cells))
+	
+	if organism.ComplexityLevel < 4 {
+		t.Fatalf("Failed to establish stage 4. Complexity: %d, Cells: %d", 
+			organism.ComplexityLevel, len(organism.Cells))
+	}
+	
+	// Run simulation until we reach stage 5 (500+ cells)
+	maxTicks := 2000  // More ticks needed for this large transition
+	evolutionOccurred := false
+	
+	for tick := 0; tick < maxTicks; tick++ {
+		// Maintain optimal conditions for cell division
+		for _, cell := range organism.Cells {
+			if cell.Energy < 150 {
+				cell.Energy = 200.0
+			}
+			if cell.Health < 0.8 {
+				cell.Health = 1.0
+			}
+			if cell.Age < 50 {
+				cell.Age = 100
+			}
+		}
+		
+		world.CellularSystem.UpdateCellularOrganisms()
+		
+		// Check if we've reached stage 5 (500+ cells)
+		if len(organism.Cells) >= 500 {
+			if organism.ComplexityLevel >= 5 {
+				t.Logf("Evolution to stage 5 successful at tick %d: complexity=%d, cells=%d", 
+					tick, organism.ComplexityLevel, len(organism.Cells))
+				evolutionOccurred = true
+				break
+			}
+		}
+		
+		if tick%200 == 0 {
+			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
+		}
+	}
+	
+	if !evolutionOccurred {
+		t.Errorf("Failed to evolve from stage 4 to stage 5 in %d ticks. Final: complexity=%d, cells=%d", 
+			maxTicks, organism.ComplexityLevel, len(organism.Cells))
+	}
+}
+
+// TestCompleteCellularEvolution tests the full evolutionary pathway
+func TestCompleteCellularEvolution(t *testing.T) {
+	world := createTestWorld(t)
+	entityID := createTestEntity(world, t)
+	
+	organism := world.CellularSystem.OrganismMap[entityID]
+	
+	t.Logf("Testing complete cellular evolution pathway for entity %d", entityID)
+	
+	// Stage 1: Single cell (start)
+	if organism.ComplexityLevel != 1 {
+		t.Fatalf("Expected initial complexity level 1, got %d", organism.ComplexityLevel)
+	}
+	t.Logf("Stage 1 confirmed: %d cells, complexity level %d", len(organism.Cells), organism.ComplexityLevel)
+	
+	// Evolve through each stage with proper verification
+	stages := []struct{
+		name string
+		targetCells int
+		targetComplexity int
+		maxTicks int
+	}{
+		{"Stage 1→2", 5, 2, 800},
+		{"Stage 2→3", 20, 3, 800}, 
+		{"Stage 3→4", 100, 4, 1000},
+		{"Stage 4→5", 500, 5, 1500},
+	}
+	
+	for _, stage := range stages {
+		t.Logf("Starting %s evolution...", stage.name)
+		
+		evolutionOccurred := false
+		startingCells := len(organism.Cells)
+		
+		for tick := 0; tick < stage.maxTicks; tick++ {
+			// Maintain optimal conditions for all cells
+			for _, cell := range organism.Cells {
+				if cell.Energy < 150 {
+					cell.Energy = 200.0
+				}
+				if cell.Health < 0.8 {
+					cell.Health = 1.0
+				}
+				if cell.Age < 50 {
+					cell.Age = 100
+				}
+			}
+			
+			world.CellularSystem.UpdateCellularOrganisms()
+			
+			// Check if we've reached the target
+			if len(organism.Cells) >= stage.targetCells && organism.ComplexityLevel >= stage.targetComplexity {
+				t.Logf("%s successful at tick %d: %d cells, complexity level %d", 
+					stage.name, tick, len(organism.Cells), organism.ComplexityLevel)
+				evolutionOccurred = true
+				break
+			}
+			
+			if tick%100 == 0 {
+				t.Logf("%s tick %d: %d cells (started with %d), complexity level %d", 
+					stage.name, tick, len(organism.Cells), startingCells, organism.ComplexityLevel)
+			}
+		}
+		
+		if !evolutionOccurred {
+			t.Fatalf("%s failed in %d ticks. Final: %d cells, complexity level %d", 
+				stage.name, stage.maxTicks, len(organism.Cells), organism.ComplexityLevel)
+		}
+	}
+	
+	t.Logf("Complete cellular evolution successful! Final organism: %d cells, complexity level %d", 
+		len(organism.Cells), organism.ComplexityLevel)
+}
+
+// Helper functions for test setup
+func createTestWorld(t *testing.T) *World {
+	config := WorldConfig{
+		Width:          100.0,
+		Height:         100.0,
+		NumPopulations: 0,
+		PopulationSize: 0,
+		GridWidth:      20,
+		GridHeight:     20,
+	}
+	
+	world := NewWorld(config)
+	if world.CellularSystem == nil {
+		t.Fatal("CellularSystem not initialized")
+	}
+	if world.DNASystem == nil {
+		t.Fatal("DNASystem not initialized")
+	}
+	
+	return world
+}
+
+func createTestEntity(world *World, t *testing.T) int {
+	// Create a test entity manually
+	entity := NewEntity(world.NextID, []string{"size", "strength", "intelligence", "energy", "metabolism"}, "test_species", Position{X: 50, Y: 50})
+	world.NextID++
+	
+	// Create DNA and cellular organism
+	dna := world.DNASystem.GenerateRandomDNA(entity.ID, 0)
+	organism := world.CellularSystem.CreateSingleCellOrganism(entity.ID, dna)
+	
+	if organism == nil {
+		t.Fatal("Failed to create cellular organism")
+	}
+	
+	world.AllEntities = append(world.AllEntities, entity)
+	return entity.ID
 }
 
 // TestEnvironmentSpecificMovement tests that entities move differently in different biomes

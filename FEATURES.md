@@ -153,6 +153,13 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Nutritional Status Tracking**: Real-time tracking of nutritional deficiencies and overall health status
 - [x] **Toxin Resistance**: Entities develop tolerance to plant toxins based on traits and evolutionary pressure
 - [x] **Species-Specific Nutrition**: Different species (herbivore, carnivore, omnivore) have distinct molecular profiles and nutritional requirements
+- [x] **Realistic Plant Nutrient System**: Complete soil-based nutrition with 9 nutrient types (nitrogen, phosphorus, potassium, calcium, etc.)
+- [x] **Soil Properties**: GridCell soil tracking with nutrients, water levels, pH, compaction, and organic matter
+- [x] **Decay System Integration**: Dead organisms add nutrients to soil creating realistic nutrient cycling
+- [x] **Rainfall System**: Storms and seasonal rain affect soil water and nutrient availability
+- [x] **Plant-Specific Requirements**: Different plant types have varying nutrient and water dependencies
+- [x] **Species Nutritional Dependencies**: Entity species have specific nutritional needs and water requirements for survival
+- [x] **Resource Tracking for Mass Die-offs**: Enhanced resource tracking system monitoring ecosystem-wide impacts of population changes
 - [x] **Environmental Molecular Adaptation**: Aquatic, aerial, and soil-dwelling entities have specialized molecular compositions and needs
 - [x] **Molecular Fitness Integration**: 30% of entity fitness determined by molecular nutritional status and metabolic efficiency
 - [x] **Comprehensive Testing**: Full test suite covering all molecular system functionality including consumption, evolution, and species-specific profiles
@@ -231,7 +238,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Flight Capabilities**: Flying insect support with altitude tolerance and aerial movement
 - [x] **Pheromone Decay**: Realistic chemical signal fade-out with distance and time
 
-### Biome Expansion System (IN PROGRESS)
+### Biome Expansion System (COMPLETED)
 - [x] **Extended Biome Types**: 8 new biome types (Ice, Rainforest, DeepWater, HighAltitude, HotSpring, Tundra, Swamp, Canyon)
 - [x] **Enhanced Environmental Properties**: Temperature, pressure, oxygen levels, and specialized environmental effects
 - [x] **Contiguous Biome Generation**: Improved noise-based generation creating realistic patterns with polar caps, elevation-based distribution
@@ -241,6 +248,9 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Biome-Specific Effects**: Specialized survival challenges (freezing in ice, pressure in deep water, altitude sickness in mountains)
 - [x] **Comprehensive Testing**: Full test suite covering biome properties, environmental effects, geological integration
 - [x] **CLI and Web Interface Compatibility**: All interface components working with new biome system
+- [x] **Biome Transition System**: Hot spots melting ice → water/gas → rivers/lakes/rain with realistic transition rules
+- [x] **Environmental Event Enhancement**: 6 enhanced event types (wildfire, storm, volcanic_eruption, flood, hurricane, tornado) with visual representation
+- [x] **Wind-Driven Event Propagation**: Fire spread, storm movement following wind patterns with realistic fire extinguishing by water biomes
 
 #### Reproduction, Gestation, and Decay Systems (IN PROGRESS)
 - [x] **Reproduction Modes**: Multiple reproduction types (DirectCoupling, EggLaying, LiveBirth, Budding, Fission)
