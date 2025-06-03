@@ -28,7 +28,7 @@ type WebInterface struct {
 
 // NewWebInterface creates a new web interface
 func NewWebInterface(world *World) *WebInterface {
-	return &WebInterface{
+	webInterface := &WebInterface{
 		world:          world,
 		viewManager:    NewViewManager(world),
 		clients:        make(map[*websocket.Conn]bool),
@@ -38,6 +38,11 @@ func NewWebInterface(world *World) *WebInterface {
 		playerManager:  NewPlayerManager(),
 		clientPlayers:  make(map[*websocket.Conn]string),
 	}
+	
+	// Set up player events callback
+	world.PlayerEventsCallback = webInterface.handlePlayerEvent
+	
+	return webInterface
 }
 
 // RunWebInterface starts the web interface server
@@ -630,7 +635,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 const data = JSON.parse(event.data);
                 
                 // Check if this is a player-specific message
-                if (data.type && ['player_joined', 'species_created', 'command_executed', 'error'].includes(data.type)) {
+                if (data.type && ['player_joined', 'species_created', 'command_executed', 'species_extinct', 'subspecies_formed', 'new_species_detected', 'error'].includes(data.type)) {
                     handlePlayerMessage(data);
                     return;
                 }
@@ -1692,6 +1697,34 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     console.log('Command executed:', data.message);
                     break;
                     
+                case 'species_extinct':
+                    // Remove from player species list
+                    const extinctIndex = playerSpecies.indexOf(data.species_name);
+                    if (extinctIndex > -1) {
+                        playerSpecies.splice(extinctIndex, 1);
+                        updatePlayerSpeciesCount();
+                    }
+                    
+                    // Show extinction notification
+                    alert('⚰️ Species Extinction\n\n' + data.message);
+                    console.log('Species extinct:', data.message);
+                    break;
+                    
+                case 'subspecies_formed':
+                    // Add new subspecies to player species list
+                    playerSpecies.push(data.species_name);
+                    updatePlayerSpeciesCount();
+                    
+                    // Show subspecies notification
+                    alert('🧬 Species Split!\n\n' + data.message);
+                    console.log('Subspecies formed:', data.message);
+                    break;
+                    
+                case 'new_species_detected':
+                    // Just log this for now - informational only
+                    console.log('New species detected:', data.message);
+                    break;
+                    
                 case 'error':
                     console.error('Server error:', data.message);
                     alert('Error: ' + data.message);
@@ -2585,4 +2618,87 @@ func (wi *WebInterface) sendErrorToClient(ws *websocket.Conn, message string) {
 		"message": message,
 	}
 	wi.sendJSONToClient(ws, errorResponse)
+}
+
+// handlePlayerEvent handles world events related to players (extinctions, species splits)
+func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]interface{}) {
+	speciesName, ok := data["species_name"].(string)
+	if !ok {
+		return
+	}
+	
+	// Find the player who owns this species
+	playerID, exists := wi.playerManager.GetSpeciesOwner(speciesName)
+	if !exists {
+		return // Species not owned by a player
+	}
+	
+	// Find the WebSocket connection for this player
+	var playerWS *websocket.Conn
+	wi.clientsMutex.RLock()
+	for ws, pID := range wi.clientPlayers {
+		if pID == playerID {
+			playerWS = ws
+			break
+		}
+	}
+	wi.clientsMutex.RUnlock()
+	
+	if playerWS == nil {
+		return // Player not currently connected
+	}
+	
+	// Handle different event types
+	switch eventType {
+	case "species_extinct":
+		wi.playerManager.MarkSpeciesExtinct(speciesName)
+		
+		notification := map[string]interface{}{
+			"type":         "species_extinct",
+			"species_name": speciesName,
+			"message":      fmt.Sprintf("Your species '%s' has gone extinct! You can create a new species.", speciesName),
+			"last_count":   data["last_count"],
+			"tick":         data["tick"],
+		}
+		wi.sendJSONToClient(playerWS, notification)
+		
+		log.Printf("Player %s notified of species extinction: %s", playerID, speciesName)
+		
+	case "subspecies_formed":
+		parentSpecies := data["parent_species"].(string)
+		
+		// Check if the player owns the parent species
+		if wi.playerManager.CanPlayerControlSpecies(playerID, parentSpecies) {
+			// Add the subspecies to the player
+			err := wi.playerManager.AddSubSpecies(parentSpecies, speciesName)
+			if err != nil {
+				log.Printf("Error adding subspecies %s to player %s: %v", speciesName, playerID, err)
+				return
+			}
+			
+			notification := map[string]interface{}{
+				"type":           "subspecies_formed",
+				"species_name":   speciesName,
+				"parent_species": parentSpecies,
+				"message":        fmt.Sprintf("Your species '%s' has split! You can now control the new subspecies '%s'.", parentSpecies, speciesName),
+				"entity_count":   data["entity_count"],
+				"tick":           data["tick"],
+			}
+			wi.sendJSONToClient(playerWS, notification)
+			
+			log.Printf("Player %s notified of subspecies formation: %s from %s", playerID, speciesName, parentSpecies)
+		}
+		
+	case "new_species_detected":
+		// This is a new species that appeared but doesn't seem related to player species
+		// We can notify for informational purposes but don't give control
+		notification := map[string]interface{}{
+			"type":         "new_species_detected",
+			"species_name": speciesName,
+			"message":      fmt.Sprintf("A new species '%s' has appeared in the simulation.", speciesName),
+			"entity_count": data["entity_count"],
+			"tick":         data["tick"],
+		}
+		wi.sendJSONToClient(playerWS, notification)
+	}
 }

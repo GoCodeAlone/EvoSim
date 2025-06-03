@@ -141,6 +141,10 @@ type World struct {
 	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
 	CasteSystem             *CasteSystem                         // Caste-based social organization
 	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
+	
+	// Player event callback for gamification features
+	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
+	PreviousPopulationCounts map[string]int                                     // Track population counts for extinction detection
 }
 
 // NewWorld creates a new world with multiple populations
@@ -159,6 +163,7 @@ func NewWorld(config WorldConfig) *World {
 		Tick:        0,
 		Clock:       time.Now(),
 		LastUpdate:  time.Now(),
+		PreviousPopulationCounts: make(map[string]int),
 	}
 
 	// Initialize grid
@@ -833,6 +838,11 @@ func (w *World) Update() {
 
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
+	
+	// Check for player species extinction and splitting (if web interface is active)
+	if w.PlayerEventsCallback != nil {
+		w.checkPlayerSpeciesEvents()
+	}
 	
 	// Update statistical analysis system
 	if w.StatisticalReporter != nil {
@@ -3323,4 +3333,118 @@ func (w *World) CreateOffspring(parent1, parent2 *Entity) *Entity {
 	}
 	
 	return offspring
+}
+
+// checkPlayerSpeciesEvents checks for species extinction and splitting events for player notifications
+func (w *World) checkPlayerSpeciesEvents() {
+	if w.PlayerEventsCallback == nil {
+		return
+	}
+	
+	// Check for extinctions
+	for speciesName, previousCount := range w.PreviousPopulationCounts {
+		if population, exists := w.Populations[speciesName]; exists {
+			// Count alive entities
+			aliveCount := 0
+			for _, entity := range population.Entities {
+				if entity.IsAlive {
+					aliveCount++
+				}
+			}
+			
+			// Check for extinction (no alive entities)
+			if previousCount > 0 && aliveCount == 0 {
+				w.PlayerEventsCallback("species_extinct", map[string]interface{}{
+					"species_name": speciesName,
+					"last_count":   previousCount,
+					"tick":         w.Tick,
+				})
+			}
+		} else {
+			// Population completely removed from world
+			if previousCount > 0 {
+				w.PlayerEventsCallback("species_extinct", map[string]interface{}{
+					"species_name": speciesName,
+					"last_count":   previousCount,
+					"tick":         w.Tick,
+				})
+			}
+		}
+	}
+	
+	// Check for new species (potential splits)
+	for speciesName, population := range w.Populations {
+		if _, existed := w.PreviousPopulationCounts[speciesName]; !existed {
+			// This is a new species - could be from splitting
+			aliveCount := 0
+			for _, entity := range population.Entities {
+				if entity.IsAlive {
+					aliveCount++
+				}
+			}
+			
+			if aliveCount > 0 {
+				// Check if this could be a sub-species (similar name pattern)
+				parentSpecies := w.findPotentialParentSpecies(speciesName)
+				if parentSpecies != "" {
+					w.PlayerEventsCallback("subspecies_formed", map[string]interface{}{
+						"species_name":     speciesName,
+						"parent_species":   parentSpecies,
+						"entity_count":     aliveCount,
+						"tick":             w.Tick,
+					})
+				} else {
+					w.PlayerEventsCallback("new_species_detected", map[string]interface{}{
+						"species_name": speciesName,
+						"entity_count": aliveCount,
+						"tick":         w.Tick,
+					})
+				}
+			}
+		}
+	}
+	
+	// Update previous counts for next check
+	for speciesName, population := range w.Populations {
+		aliveCount := 0
+		for _, entity := range population.Entities {
+			if entity.IsAlive {
+				aliveCount++
+			}
+		}
+		w.PreviousPopulationCounts[speciesName] = aliveCount
+	}
+}
+
+// findPotentialParentSpecies attempts to find a parent species for a potential sub-species
+func (w *World) findPotentialParentSpecies(newSpeciesName string) string {
+	// Simple heuristic: look for species with similar names or that share name components
+	for existingSpecies := range w.Populations {
+		if existingSpecies != newSpeciesName {
+			// Check if the new species name contains the existing species name
+			// This would suggest it's a variant or sub-species
+			if len(existingSpecies) < len(newSpeciesName) {
+				// Look for common prefixes or if one name contains the other
+				commonPrefix := 0
+				minLen := len(existingSpecies)
+				if len(newSpeciesName) < minLen {
+					minLen = len(newSpeciesName)
+				}
+				
+				for i := 0; i < minLen; i++ {
+					if existingSpecies[i] == newSpeciesName[i] {
+						commonPrefix++
+					} else {
+						break
+					}
+				}
+				
+				// If more than 50% of the shorter name matches, consider it related
+				if float64(commonPrefix)/float64(minLen) > 0.5 {
+					return existingSpecies
+				}
+			}
+		}
+	}
+	return ""
 }
