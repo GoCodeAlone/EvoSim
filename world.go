@@ -68,6 +68,35 @@ type WorldEvent struct {
 	GlobalMutation float64
 	GlobalDamage   float64
 	BiomeChanges   map[Position]BiomeType
+	// Enhanced properties for realistic behavior
+	Position       Position                   // Event center/origin
+	Radius         float64                   // Affected area radius
+	Intensity      float64                   // Event strength (0-1)
+	MovementVector Vector2D                  // For moving events like storms/fires
+	WindInfluenced bool                      // Whether wind affects this event
+	EventType      string                    // "fire", "storm", "volcanic", etc.
+	VisualEffect   map[string]interface{}    // Visual representation data
+}
+
+// EnhancedEnvironmentalEvent represents more sophisticated environmental events
+type EnhancedEnvironmentalEvent struct {
+	ID             int
+	Type           string                    // "wildfire", "storm", "volcanic_eruption", etc.
+	Name           string
+	Description    string
+	StartTick      int
+	Duration       int
+	Position       Position                  // Event center
+	Radius         float64                   // Current affected radius
+	MaxRadius      float64                   // Maximum spread radius
+	Intensity      float64                   // Current strength (0-1)
+	Direction      float64                   // Movement direction (radians)
+	Speed          float64                   // Movement speed
+	WindSensitive  bool                      // Whether wind affects movement/spread
+	AffectedCells  map[Position]BiomeType    // Cells affected and their new types
+	SpreadPattern  string                    // "circular", "directional", "wind_driven"
+	ExtinguishOn   []BiomeType               // Biomes that stop the event (water stops fire)
+	Effects        map[string]float64        // Various effects (mutation, damage, etc.)
 }
 
 // GridCell represents a cell in the world grid
@@ -145,6 +174,10 @@ type World struct {
 	// Player event callback for gamification features
 	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
 	PreviousPopulationCounts map[string]int                                     // Track population counts for extinction detection
+	
+	// Enhanced Environmental Event System
+	EnvironmentalEvents     []*EnhancedEnvironmentalEvent                      // Active enhanced environmental events
+	NextEnvironmentalEventID int                                                // ID counter for environmental events
 }
 
 // NewWorld creates a new world with multiple populations
@@ -212,6 +245,10 @@ func NewWorld(config WorldConfig) *World {
 	world.HiveMindSystem = NewHiveMindSystem()
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
+	
+	// Initialize enhanced environmental event system
+	world.EnvironmentalEvents = make([]*EnhancedEnvironmentalEvent, 0)
+	world.NextEnvironmentalEventID = 1
 
   // Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
@@ -731,6 +768,9 @@ func (w *World) Update() {
 
 	// Update world events
 	w.updateEvents()
+	// Update enhanced environmental events
+	w.updateEnhancedEnvironmentalEvents()
+	
 	// Maybe trigger new events (less frequent during night)
 	eventChance := 0.01
 	if currentTimeState.IsNight() {
@@ -738,6 +778,12 @@ func (w *World) Update() {
 	}
 	if rand.Float64() < eventChance {
 		w.triggerRandomEvent()
+	}
+	
+	// Maybe trigger enhanced environmental events (lower chance)
+	enhancedEventChance := 0.005 // 0.5% chance per tick
+	if rand.Float64() < enhancedEventChance {
+		w.triggerEnhancedEnvironmentalEvent()
 	}
 	// Update all plants (affected by day/night cycle)
 	w.updatePlants()
@@ -3640,4 +3686,484 @@ func (w *World) getExpectedElevationForBiome(biomeType BiomeType) float64 {
 	default:
 		return 0.0 // Moderate elevation biomes
 	}
+}
+
+// Enhanced Environmental Event System Methods
+
+// updateEnhancedEnvironmentalEvents processes active enhanced environmental events
+func (w *World) updateEnhancedEnvironmentalEvents() {
+	activeEvents := make([]*EnhancedEnvironmentalEvent, 0)
+	
+	for _, event := range w.EnvironmentalEvents {
+		event.Duration--
+		
+		// Update event position and spread if it's moving/spreading
+		w.updateEventMovement(event)
+		
+		// Apply event effects
+		w.applyEventEffects(event)
+		
+		// Check if event should continue
+		if event.Duration > 0 && event.Intensity > 0.1 {
+			activeEvents = append(activeEvents, event)
+		} else {
+			// Log event completion
+			if w.EventLogger != nil {
+				endEvent := LogEvent{
+					Timestamp:   time.Now(),
+					Tick:        w.Tick,
+					Type:        "environmental_event_end",
+					Description: fmt.Sprintf("%s ended after %d ticks", event.Name, w.Tick-event.StartTick),
+					Data: map[string]interface{}{
+						"event_type": event.Type,
+						"duration": w.Tick - event.StartTick,
+						"affected_cells": len(event.AffectedCells),
+					},
+				}
+				w.EventLogger.addEvent(endEvent)
+			}
+		}
+	}
+	
+	w.EnvironmentalEvents = activeEvents
+}
+
+// updateEventMovement handles movement and spread of environmental events
+func (w *World) updateEventMovement(event *EnhancedEnvironmentalEvent) {
+	switch event.Type {
+	case "wildfire":
+		w.updateFireSpread(event)
+	case "storm", "hurricane", "tornado":
+		w.updateStormMovement(event)
+	case "volcanic_eruption":
+		w.updateVolcanicSpread(event)
+	case "flood":
+		w.updateFloodSpread(event)
+	}
+}
+
+// updateFireSpread handles wildfire spreading with wind influence
+func (w *World) updateFireSpread(fire *EnhancedEnvironmentalEvent) {
+	if !fire.WindSensitive || w.WindSystem == nil {
+		return
+	}
+	
+	// Get wind direction and strength at fire location
+	windVector := w.getWindAtPosition(fire.Position)
+	
+	// Wind affects fire direction and speed
+	windInfluence := windVector.Strength * 0.5 // Wind contributes up to 50% to fire movement
+	fire.Direction = math.Atan2(windVector.Y, windVector.X) // Wind direction in radians
+	fire.Speed = 0.5 + windInfluence // Base speed plus wind boost
+	
+	// Move fire center
+	fire.Position.X += fire.Speed * math.Cos(fire.Direction)
+	fire.Position.Y += fire.Speed * math.Sin(fire.Direction)
+	
+	// Spread fire to new cells
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	// Current fire radius expands slightly each tick
+	currentRadius := math.Min(fire.Radius + 0.5, fire.MaxRadius)
+	fire.Radius = currentRadius
+	
+	// Check cells within fire radius
+	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
+		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
+			cellPos := Position{
+				X: fire.Position.X + float64(dx),
+				Y: fire.Position.Y + float64(dy),
+			}
+			
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= currentRadius {
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					currentBiome := w.Grid[gridY][gridX].Biome
+					
+					// Check if fire can spread to this biome
+					if w.isFlammableBiome(currentBiome) {
+						// Fire spreads more easily with wind in the right direction
+						windBonus := 0.0
+						if fire.WindSensitive {
+							cellDirection := math.Atan2(float64(dy), float64(dx))
+							directionAlignment := math.Cos(cellDirection - fire.Direction)
+							windBonus = windInfluence * directionAlignment * 0.3
+						}
+						
+						spreadProbability := 0.6 + windBonus - (distance / currentRadius) * 0.3
+						if rand.Float64() < spreadProbability {
+							newAffectedCells[cellPos] = BiomeDesert // Fire turns vegetation to desert
+						}
+					} else if w.isFireExtinguishingBiome(currentBiome) {
+						// Fire is extinguished by water/ice
+						fire.Intensity *= 0.7 // Reduce fire intensity
+					}
+				}
+			}
+		}
+	}
+	
+	// Add new affected cells
+	for pos, newBiome := range newAffectedCells {
+		fire.AffectedCells[pos] = newBiome
+	}
+}
+
+// updateStormMovement handles storm movement with wind patterns
+func (w *World) updateStormMovement(storm *EnhancedEnvironmentalEvent) {
+	if w.WindSystem == nil {
+		return
+	}
+	
+	// Storms follow regional wind patterns
+	baseWind := w.WindSystem.BaseWindDirection
+	
+	// Add some randomness to storm movement
+	stormDirection := baseWind + (rand.Float64()-0.5)*0.5 // ±0.25 radians variation
+	
+	storm.Direction = stormDirection
+	storm.Speed = 1.0 + w.WindSystem.BaseWindStrength * 0.5
+	
+	// Move storm
+	storm.Position.X += storm.Speed * math.Cos(storm.Direction)
+	storm.Position.Y += storm.Speed * math.Sin(storm.Direction)
+	
+	// Update affected cells as storm moves
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	for dy := -int(storm.Radius); dy <= int(storm.Radius); dy++ {
+		for dx := -int(storm.Radius); dx <= int(storm.Radius); dx++ {
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= storm.Radius {
+				cellPos := Position{
+					X: storm.Position.X + float64(dx),
+					Y: storm.Position.Y + float64(dy),
+				}
+				
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					currentBiome := w.Grid[gridY][gridX].Biome
+					
+					// Storm effects depend on type and current biome
+					if storm.Type == "hurricane" || storm.Type == "tornado" {
+						// Destructive storms can create wasteland
+						if rand.Float64() < 0.3 {
+							newAffectedCells[cellPos] = BiomeDesert
+						}
+					} else if storm.Type == "storm" {
+						// Regular storms might create temporary flooding
+						if currentBiome == BiomePlains && rand.Float64() < 0.2 {
+							newAffectedCells[cellPos] = BiomeSwamp
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	storm.AffectedCells = newAffectedCells
+}
+
+// updateVolcanicSpread handles volcanic eruption spreading
+func (w *World) updateVolcanicSpread(volcano *EnhancedEnvironmentalEvent) {
+	// Volcanic events spread outward from center
+	currentRadius := math.Min(volcano.Radius + 0.3, volcano.MaxRadius)
+	volcano.Radius = currentRadius
+	
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
+		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= currentRadius && distance > currentRadius-0.5 { // Only affect the growing edge
+				cellPos := Position{
+					X: volcano.Position.X + float64(dx),
+					Y: volcano.Position.Y + float64(dy),
+				}
+				
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					// Close to center becomes mountain, further out becomes radiation (lava)
+					if distance < currentRadius * 0.3 {
+						newAffectedCells[cellPos] = BiomeMountain
+					} else if rand.Float64() < 0.7 {
+						newAffectedCells[cellPos] = BiomeRadiation
+					}
+				}
+			}
+		}
+	}
+	
+	// Add new affected cells
+	for pos, newBiome := range newAffectedCells {
+		volcano.AffectedCells[pos] = newBiome
+	}
+}
+
+// updateFloodSpread handles flood spreading
+func (w *World) updateFloodSpread(flood *EnhancedEnvironmentalEvent) {
+	// Floods spread to lower elevation areas
+	currentRadius := math.Min(flood.Radius + 0.4, flood.MaxRadius)
+	flood.Radius = currentRadius
+	
+	newAffectedCells := make(map[Position]BiomeType)
+	
+	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
+		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
+			distance := math.Sqrt(float64(dx*dx + dy*dy))
+			if distance <= currentRadius {
+				cellPos := Position{
+					X: flood.Position.X + float64(dx),
+					Y: flood.Position.Y + float64(dy),
+				}
+				
+				gridX, gridY := int(cellPos.X), int(cellPos.Y)
+				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+					currentBiome := w.Grid[gridY][gridX].Biome
+					
+					// Floods turn plains/desert to swamp/water
+					if currentBiome == BiomePlains || currentBiome == BiomeDesert {
+						if rand.Float64() < 0.6 {
+							newAffectedCells[cellPos] = BiomeSwamp
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	flood.AffectedCells = newAffectedCells
+}
+
+// applyEventEffects applies the effects of environmental events to the world
+func (w *World) applyEventEffects(event *EnhancedEnvironmentalEvent) {
+	// Apply biome changes
+	for pos, newBiome := range event.AffectedCells {
+		gridX, gridY := int(pos.X), int(pos.Y)
+		if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
+			w.Grid[gridY][gridX].Biome = newBiome
+		}
+	}
+	
+	// Apply effects to entities and plants in the affected area
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		
+		distance := math.Sqrt(math.Pow(entity.Position.X-event.Position.X, 2) + 
+							 math.Pow(entity.Position.Y-event.Position.Y, 2))
+		
+		if distance <= event.Radius {
+			// Apply event-specific effects
+			intensity := (event.Radius - distance) / event.Radius // Stronger closer to center
+			
+			if mutationEffect, exists := event.Effects["mutation"]; exists {
+				// Apply mutation by directly calling the Mutate method
+				entity.Mutate(mutationEffect * intensity, 0.1)
+			}
+			
+			if damageEffect, exists := event.Effects["damage"]; exists {
+				entity.Energy -= damageEffect * intensity
+				if entity.Energy < 0 {
+					entity.Energy = 0
+				}
+			}
+		}
+	}
+	
+	// Apply effects to plants
+	for _, plant := range w.AllPlants {
+		if !plant.IsAlive {
+			continue
+		}
+		
+		distance := math.Sqrt(math.Pow(plant.Position.X-event.Position.X, 2) + 
+							 math.Pow(plant.Position.Y-event.Position.Y, 2))
+		
+		if distance <= event.Radius {
+			intensity := (event.Radius - distance) / event.Radius
+			
+			// Fire kills plants
+			if event.Type == "wildfire" {
+				plant.Energy -= 50 * intensity
+				if plant.Energy < 0 {
+					plant.IsAlive = false
+					// TODO: Add nutrients from dead plant to soil
+				}
+			}
+		}
+	}
+}
+
+// triggerEnhancedEnvironmentalEvent creates a new enhanced environmental event
+func (w *World) triggerEnhancedEnvironmentalEvent() {
+	eventTypes := []string{"wildfire", "storm", "volcanic_eruption", "flood", "hurricane", "tornado"}
+	eventType := eventTypes[rand.Intn(len(eventTypes))]
+	
+	// Random position for event
+	pos := Position{
+		X: rand.Float64() * float64(w.Config.GridWidth),
+		Y: rand.Float64() * float64(w.Config.GridHeight),
+	}
+	
+	event := &EnhancedEnvironmentalEvent{
+		ID:          w.NextEnvironmentalEventID,
+		Type:        eventType,
+		StartTick:   w.Tick,
+		Position:    pos,
+		AffectedCells: make(map[Position]BiomeType),
+		Effects:     make(map[string]float64),
+	}
+	w.NextEnvironmentalEventID++
+	
+	// Configure event based on type
+	switch eventType {
+	case "wildfire":
+		event.Name = "Wildfire"
+		event.Description = "Spreading fire burns vegetation"
+		event.Duration = 20 + rand.Intn(20)
+		event.Radius = 2.0
+		event.MaxRadius = 8.0
+		event.Intensity = 0.8
+		event.WindSensitive = true
+		event.SpreadPattern = "wind_driven"
+		event.ExtinguishOn = []BiomeType{BiomeWater, BiomeDeepWater, BiomeIce, BiomeSwamp}
+		event.Effects["damage"] = 2.0
+		event.Effects["mutation"] = 0.05
+		
+	case "storm":
+		event.Name = "Storm"
+		event.Description = "Heavy rainfall and wind"
+		event.Duration = 15 + rand.Intn(15)
+		event.Radius = 5.0
+		event.MaxRadius = 12.0
+		event.Intensity = 0.6
+		event.WindSensitive = true
+		event.SpreadPattern = "directional"
+		event.Effects["damage"] = 0.5
+		event.Effects["mutation"] = 0.02
+		
+	case "volcanic_eruption":
+		event.Name = "Volcanic Eruption"
+		event.Description = "Lava flows reshape the landscape"
+		event.Duration = 30 + rand.Intn(25)
+		event.Radius = 1.0
+		event.MaxRadius = 6.0
+		event.Intensity = 1.0
+		event.WindSensitive = false
+		event.SpreadPattern = "circular"
+		event.Effects["damage"] = 4.0
+		event.Effects["mutation"] = 0.15
+		
+	case "flood":
+		event.Name = "Great Flood"
+		event.Description = "Rising waters flood the land"
+		event.Duration = 25 + rand.Intn(20)
+		event.Radius = 3.0
+		event.MaxRadius = 10.0
+		event.Intensity = 0.7
+		event.WindSensitive = false
+		event.SpreadPattern = "circular"
+		event.Effects["damage"] = 1.5
+		event.Effects["mutation"] = 0.03
+		
+	case "hurricane":
+		event.Name = "Hurricane"
+		event.Description = "Massive rotating storm system"
+		event.Duration = 18 + rand.Intn(12)
+		event.Radius = 6.0
+		event.MaxRadius = 15.0
+		event.Intensity = 0.9
+		event.WindSensitive = true
+		event.SpreadPattern = "directional"
+		event.Effects["damage"] = 3.0
+		event.Effects["mutation"] = 0.08
+		
+	case "tornado":
+		event.Name = "Tornado"
+		event.Description = "Destructive rotating windstorm"
+		event.Duration = 8 + rand.Intn(8)
+		event.Radius = 1.5
+		event.MaxRadius = 3.0
+		event.Intensity = 1.0
+		event.WindSensitive = true
+		event.SpreadPattern = "directional"
+		event.Speed = 2.0
+		event.Effects["damage"] = 5.0
+		event.Effects["mutation"] = 0.1
+	}
+	
+	w.EnvironmentalEvents = append(w.EnvironmentalEvents, event)
+	
+	// Log event start
+	if w.EventLogger != nil {
+		startEvent := LogEvent{
+			Timestamp:   time.Now(),
+			Tick:        w.Tick,
+			Type:        "environmental_event_start",
+			Description: fmt.Sprintf("%s started at position (%.1f, %.1f)", event.Name, event.Position.X, event.Position.Y),
+			Data: map[string]interface{}{
+				"event_type": event.Type,
+				"position_x": event.Position.X,
+				"position_y": event.Position.Y,
+				"intensity": event.Intensity,
+				"duration": event.Duration,
+			},
+		}
+		w.EventLogger.addEvent(startEvent)
+	}
+}
+
+// Helper functions
+
+// getWindAtPosition gets wind vector at a specific position
+func (w *World) getWindAtPosition(pos Position) WindVector {
+	if w.WindSystem == nil {
+		return WindVector{X: 0, Y: 0, Strength: 0}
+	}
+	
+	// Convert world position to wind map coordinates
+	windX := int(pos.X / w.WindSystem.CellSize)
+	windY := int(pos.Y / w.WindSystem.CellSize)
+	
+	if windX >= 0 && windX < w.WindSystem.MapWidth && windY >= 0 && windY < w.WindSystem.MapHeight {
+		return w.WindSystem.WindMap[windY][windX]
+	}
+	
+	// Return base wind as fallback
+	return WindVector{
+		X: math.Cos(w.WindSystem.BaseWindDirection),
+		Y: math.Sin(w.WindSystem.BaseWindDirection),
+		Strength: w.WindSystem.BaseWindStrength,
+	}
+}
+
+// isFlammableBiome checks if a biome can catch fire
+func (w *World) isFlammableBiome(biome BiomeType) bool {
+	flammableBiomes := []BiomeType{
+		BiomeForest, BiomeRainforest, BiomePlains, BiomeTundra,
+	}
+	
+	for _, flammable := range flammableBiomes {
+		if biome == flammable {
+			return true
+		}
+	}
+	return false
+}
+
+// isFireExtinguishingBiome checks if a biome can extinguish fire
+func (w *World) isFireExtinguishingBiome(biome BiomeType) bool {
+	extinguishingBiomes := []BiomeType{
+		BiomeWater, BiomeDeepWater, BiomeIce, BiomeSwamp,
+	}
+	
+	for _, extinguishing := range extinguishingBiomes {
+		if biome == extinguishing {
+			return true
+		}
+	}
+	return false
 }
