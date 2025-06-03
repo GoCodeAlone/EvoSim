@@ -574,6 +574,7 @@ func (ebs *EmergentBehaviorSystem) GetBehaviorStats() map[string]interface{} {
 	totalEntities := len(ebs.BehaviorPatterns)
 	avgProficiency := make(map[string]float64)
 	behaviorCounts := make(map[string]int)
+	actuallyDiscoveredCount := 0
 	
 	for _, pattern := range ebs.BehaviorPatterns {
 		for behaviorName, proficiency := range pattern.KnownBehaviors {
@@ -581,6 +582,13 @@ func (ebs *EmergentBehaviorSystem) GetBehaviorStats() map[string]interface{} {
 				behaviorCounts[behaviorName]++
 				avgProficiency[behaviorName] += proficiency
 			}
+		}
+	}
+	
+	// Count only behaviors that have actually been discovered (not pre-initialized)
+	for _, behavior := range ebs.LearnedBehaviors {
+		if behavior.DiscoveredTick > 0 {
+			actuallyDiscoveredCount++
 		}
 	}
 	
@@ -594,7 +602,7 @@ func (ebs *EmergentBehaviorSystem) GetBehaviorStats() map[string]interface{} {
 	stats["total_entities"] = totalEntities
 	stats["behavior_spread"] = behaviorCounts
 	stats["avg_proficiency"] = avgProficiency
-	stats["discovered_behaviors"] = len(ebs.LearnedBehaviors)
+	stats["discovered_behaviors"] = actuallyDiscoveredCount
 	
 	return stats
 }

@@ -908,6 +908,9 @@ func (w *World) Update() {
 	// Update emergent behavior system
 	w.EmergentBehaviorSystem.UpdateEntityBehaviors(w)
 
+	// Basic tool and modification creation (to supplement emergent behavior)
+	w.attemptBasicToolsAndModifications()
+
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
 	
@@ -1190,7 +1193,7 @@ func (w *World) reproducePlants() {
 		}
 
 		// Release pollen for sexual reproduction during flowering
-		if plant.CanReproduce() && currentTimeState.Season == Spring && rand.Float64() < 0.6 {
+		if plant.CanReproduce() && (currentTimeState.Season == Spring || currentTimeState.Season == Summer) && rand.Float64() < 0.4 {
 			// Determine pollen amount based on plant traits and type
 			pollenAmount := int(5 + plant.Size*10 + plant.GetTrait("reproduction_rate")*15)
 
@@ -3422,12 +3425,13 @@ func (w *World) attemptCasteColonyFormation() {
 			continue // Skip if already in tribe/caste or dead
 		}
 
-		// Check if entity could be a queen
+		// Check if entity could be a suitable leader for caste formation
 		intelligence := entity.GetTrait("intelligence")
-		leadership := entity.GetTrait("leadership")
-		reproductiveCapability := entity.GetTrait("reproductive_capability")
+		cooperation := entity.GetTrait("cooperation")
+		endurance := entity.GetTrait("endurance")
 		
-		if intelligence > 0.6 && leadership > 0.4 && reproductiveCapability > 0.5 {
+		// Use available traits with more achievable requirements
+		if intelligence > 0.2 && cooperation > 0.3 && endurance > 0.2 {
 			// Find nearby compatible entities for colony
 			nearbyEntities := make([]*Entity, 0)
 			nearbyEntities = append(nearbyEntities, entity)
@@ -3442,15 +3446,15 @@ func (w *World) attemptCasteColonyFormation() {
 					otherCooperation := other.GetTrait("cooperation")
 					otherIntelligence := other.GetTrait("intelligence")
 					
-					// Check species compatibility and cooperation
+					// Check species compatibility and cooperation (relaxed requirements)
 					if other.Species == entity.Species && 
-						otherCooperation > 0.4 && otherIntelligence > 0.2 {
+						otherCooperation > 0.2 && otherIntelligence > 0.0 {
 						nearbyEntities = append(nearbyEntities, other)
 					}
 				}
 			}
 
-			if len(nearbyEntities) >= 6 { // Minimum for caste colony
+			if len(nearbyEntities) >= 4 { // Minimum for caste colony (reduced from 6)
 				// Choose nest location
 				nestLocation := entity.Position
 				
@@ -4514,6 +4518,76 @@ func (w *World) boostScavengerOpportunities(intensity float64) {
 			// Improve dietary fitness due to abundance of food
 			if entity.DietaryMemory != nil {
 				entity.DietaryMemory.DietaryFitness = math.Min(1.0, entity.DietaryMemory.DietaryFitness + intensity*0.2)
+			}
+		}
+	}
+}
+
+// attemptBasicToolsAndModifications provides basic tool and environmental modification creation
+// to supplement the emergent behavior system
+func (w *World) attemptBasicToolsAndModifications() {
+	if len(w.AllEntities) == 0 {
+		return
+	}
+	
+	// Very low chance to create tools/modifications to make the systems visible
+	if rand.Float64() > 0.01 { // 1% chance per tick
+		return
+	}
+	
+	// Pick a random entity with decent intelligence
+	eligibleEntities := make([]*Entity, 0)
+	for _, entity := range w.AllEntities {
+		if entity.IsAlive && entity.GetTrait("intelligence") > 0.1 {
+			eligibleEntities = append(eligibleEntities, entity)
+		}
+	}
+	
+	if len(eligibleEntities) == 0 {
+		return
+	}
+	
+	entity := eligibleEntities[rand.Intn(len(eligibleEntities))]
+	
+	// 50% chance for tool, 50% for environmental modification
+	if rand.Float64() < 0.5 {
+		// Create a basic tool
+		toolTypes := []ToolType{ToolStone, ToolStick, ToolSpear, ToolHammer}
+		toolType := toolTypes[rand.Intn(len(toolTypes))]
+		tool := w.ToolSystem.CreateTool(entity, toolType, entity.Position)
+		if tool != nil && w.EventLogger != nil {
+			w.EventLogger.LogWorldEvent(w.Tick, "tool_creation",
+				fmt.Sprintf("%s created a %s tool", entity.Species, GetToolTypeName(toolType)))
+		}
+	} else {
+		// Create an environmental modification (use specific methods)
+		switch rand.Intn(4) {
+		case 0:
+			mod := w.EnvironmentalModSystem.CreateBurrow(entity, entity.Position)
+			if mod != nil && w.EventLogger != nil {
+				w.EventLogger.LogWorldEvent(w.Tick, "environment_modification",
+					fmt.Sprintf("%s created a burrow", entity.Species))
+			}
+		case 1:
+			mod := w.EnvironmentalModSystem.CreateCache(entity, entity.Position)
+			if mod != nil && w.EventLogger != nil {
+				w.EventLogger.LogWorldEvent(w.Tick, "environment_modification",
+					fmt.Sprintf("%s created a cache", entity.Species))
+			}
+		case 2:
+			// Create tunnel
+			direction := rand.Float64() * 2 * math.Pi
+			length := 3.0 + rand.Float64()*5.0
+			mod := w.EnvironmentalModSystem.CreateTunnel(entity, entity.Position, direction, length)
+			if mod != nil && w.EventLogger != nil {
+				w.EventLogger.LogWorldEvent(w.Tick, "environment_modification",
+					fmt.Sprintf("%s created a tunnel", entity.Species))
+			}
+		case 3:
+			mod := w.EnvironmentalModSystem.CreateTrap(entity, entity.Position, "simple")
+			if mod != nil && w.EventLogger != nil {
+				w.EventLogger.LogWorldEvent(w.Tick, "environment_modification",
+					fmt.Sprintf("%s created a trap", entity.Species))
 			}
 		}
 	}

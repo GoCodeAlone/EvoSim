@@ -589,7 +589,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'STATISTICAL', 'ANOMALIES'
+            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES'
         ];
         
         // Initialize view tabs
@@ -675,8 +675,12 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             if (data.stats.avg_energy !== undefined) {
                 document.getElementById('avg-energy').textContent = data.stats.avg_energy.toFixed(2);
             }
-            if (data.stats.avg_age !== undefined) {
-                document.getElementById('avg-age').textContent = data.stats.avg_age.toFixed(1);
+            if (data.stats.avg_age_percent !== undefined) {
+                // Use percentage of lifespan for better representation
+                document.getElementById('avg-age').textContent = data.stats.avg_age_percent.toFixed(1) + '% of lifespan';
+            } else if (data.stats.avg_age !== undefined) {
+                // Fallback to raw age if percentage not available
+                document.getElementById('avg-age').textContent = data.stats.avg_age.toFixed(1) + ' ticks';
             }
             
             // Update populations
@@ -784,6 +788,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'BEHAVIOR':
                     viewContent.innerHTML = '<div class="stats-section">' + renderBehavior(data.emergent_behavior) + '</div>';
+                    break;
+                    
+                case 'REPRODUCTION':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderReproduction(data.reproduction) + '</div>';
                     break;
                     
                 case 'STATISTICAL':
@@ -2485,28 +2493,81 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             if (behavior.behavior_spread && Object.keys(behavior.behavior_spread).length > 0) {
                 html += '<h4>Behavior Spread:</h4>';
                 Object.entries(behavior.behavior_spread).forEach(([behavior_name, count]) => {
-                    html += '<div>' + behavior_name + ': ' + count + ' entities</div>';
+                    html += '<div>' + behavior_name.replace(/_/g, ' ') + ': ' + count + ' entities</div>';
                 });
             }
             
             if (behavior.avg_proficiency && Object.keys(behavior.avg_proficiency).length > 0) {
                 html += '<h4>Average Proficiency:</h4>';
                 Object.entries(behavior.avg_proficiency).forEach(([behavior_name, proficiency]) => {
-                    html += '<div>' + behavior_name + ': ' + proficiency.toFixed(2) + '</div>';
+                    html += '<div>' + behavior_name.replace(/_/g, ' ') + ': ' + proficiency.toFixed(2) + '</div>';
                 });
             }
             
             if (behavior.discovered_behaviors === 0) {
                 html += '<br><div>No emergent behaviors discovered yet</div>';
+                html += '<div style="color: #888; font-style: italic;">Behaviors emerge naturally as entities explore and learn from their environment and each other.</div>';
             } else {
                 html += '<br><h4>Behavior Development:</h4>';
                 if (behavior.discovered_behaviors < 3) {
                     html += '<div>Development Level: Early behavior emergence</div>';
-                } else if (behavior.discovered_behaviors < 8) {
+                } else if (behavior.discovered_behaviors < 6) {
                     html += '<div>Development Level: Moderate behavior complexity</div>';
                 } else {
                     html += '<div>Development Level: Advanced behavioral evolution</div>';
                 }
+                
+                // Show list of behaviors that have been discovered by entities
+                if (behavior.behavior_spread && Object.keys(behavior.behavior_spread).length > 0) {
+                    html += '<h4>Active Behaviors:</h4>';
+                    const sortedBehaviors = Object.entries(behavior.behavior_spread)
+                        .sort((a, b) => b[1] - a[1]); // Sort by count descending
+                    sortedBehaviors.forEach(([behavior_name, count]) => {
+                        if (count > 0) {
+                            const proficiency = behavior.avg_proficiency[behavior_name] || 0;
+                            html += '<div>• <strong>' + behavior_name.replace(/_/g, ' ') + '</strong>: ' + count + ' entities (avg proficiency: ' + proficiency.toFixed(2) + ')</div>';
+                        }
+                    });
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render reproduction view
+        function renderReproduction(reproduction) {
+            let html = '<h3>🥚 Reproduction & Life Cycle</h3>';
+            html += '<div>Active Eggs: ' + reproduction.active_eggs + '</div>';
+            html += '<div>Decaying Items: ' + reproduction.decaying_items + '</div>';
+            html += '<div>Pregnant Entities: ' + reproduction.pregnant_entities + '</div>';
+            html += '<div>Ready to Mate: ' + reproduction.ready_to_mate + '</div>';
+            html += '<div>Mating Season Entities: ' + reproduction.mating_season_entities + '</div>';
+            html += '<div>Migrating Entities: ' + reproduction.migrating_entities + '</div>';
+            html += '<div>Cross-Species Mating: ' + reproduction.cross_species_mating + '</div>';
+            html += '<div>Territories with Mating: ' + reproduction.territories_with_mating + '</div>';
+            html += '<div>Seasonal Mating Rate: ' + reproduction.seasonal_mating_rate.toFixed(2) + 'x</div>';
+            
+            if (reproduction.reproduction_modes && Object.keys(reproduction.reproduction_modes).length > 0) {
+                html += '<h4>Reproduction Modes:</h4>';
+                Object.entries(reproduction.reproduction_modes).forEach(([mode, count]) => {
+                    html += '<div>' + mode + ': ' + count + ' entities</div>';
+                });
+            }
+            
+            if (reproduction.mating_strategies && Object.keys(reproduction.mating_strategies).length > 0) {
+                html += '<h4>Mating Strategies:</h4>';
+                Object.entries(reproduction.mating_strategies).forEach(([strategy, count]) => {
+                    html += '<div>' + strategy + ': ' + count + ' entities</div>';
+                });
+            }
+            
+            html += '<br><h4>Reproduction Activity:</h4>';
+            if (reproduction.ready_to_mate === 0) {
+                html += '<div>Activity Level: No active mating</div>';
+            } else if (reproduction.ready_to_mate < 5) {
+                html += '<div>Activity Level: Low reproductive activity</div>';
+            } else {
+                html += '<div>Activity Level: High reproductive activity</div>';
             }
             
             return html;
@@ -2581,44 +2642,101 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 return '<h3>⚠️ Anomaly Detection</h3><div>Anomaly detection not available</div>';
             }
             
-            let html = '<h3>⚠️ Anomaly Detection</h3>';
+            let html = '<h3>⚠️ Anomaly Detection & Historical Analysis</h3>';
             
             if (anomalies.total_anomalies === 0) {
                 html += '<div style="color: #4CAF50;">✅ No anomalies detected!</div>';
                 html += '<div>The simulation appears to be running within expected parameters.</div>';
+                html += '<div style="margin-top: 10px; color: #888; font-style: italic;">Anomaly detection monitors for unusual patterns in energy conservation, population dynamics, trait distributions, and system behaviors.</div>';
             } else {
-                html += '<div>Found ' + anomalies.total_anomalies + ' anomalies:</div><br>';
+                html += '<div>Found ' + anomalies.total_anomalies + ' anomalies in simulation history:</div><br>';
                 
-                // Anomaly types summary
+                // Anomaly types summary with enhanced information
                 if (anomalies.anomaly_types && Object.keys(anomalies.anomaly_types).length > 0) {
-                    html += '<h4>Anomaly Types:</h4>';
+                    html += '<h4>📊 Anomaly Categories:</h4>';
                     Object.entries(anomalies.anomaly_types).forEach(([type, count]) => {
-                        html += '<div>' + type.replace(/_/g, ' ') + ': ' + count + '</div>';
+                        let severity = '';
+                        let color = '#ffcc00';
+                        if (count > 10) {
+                            severity = ' - High frequency';
+                            color = '#ff6666';
+                        } else if (count > 5) {
+                            severity = ' - Moderate frequency';
+                            color = '#ffaa00';
+                        } else {
+                            severity = ' - Low frequency';
+                            color = '#88cc88';
+                        }
+                        html += '<div style="color: ' + color + ';">• ' + type.replace(/_/g, ' ').toUpperCase() + ': ' + count + ' occurrences' + severity + '</div>';
                     });
                     html += '<br>';
                 }
                 
-                // Recent anomalies
+                // Recent anomalies with enhanced display
                 if (anomalies.recent_anomalies && anomalies.recent_anomalies.length > 0) {
-                    html += '<h4>Recent Anomalies:</h4>';
-                    html += '<div style="max-height: 300px; overflow-y: auto;">';
-                    anomalies.recent_anomalies.slice(0, 10).forEach(anomaly => {
-                        html += '<div style="margin: 10px 0; padding: 10px; background-color: #4a2a2a; border-radius: 5px; border-left: 3px solid #ff6b6b;">';
-                        html += '<strong>🔍 ' + anomaly.type.replace(/_/g, ' ') + '</strong>';
-                        html += ' (T' + anomaly.tick + ')';
-                        html += '<br>' + anomaly.description;
-                        html += '<br><small>Severity: ' + anomaly.severity.toFixed(2) + ', Confidence: ' + anomaly.confidence.toFixed(2) + '</small>';
+                    html += '<h4>📋 Recent Anomaly History (Last ' + anomalies.recent_anomalies.length + ' events):</h4>';
+                    html += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #444; padding: 10px; border-radius: 5px;">';
+                    
+                    // Sort anomalies by tick (newest first)
+                    const sortedAnomalies = [...anomalies.recent_anomalies].sort((a, b) => b.tick - a.tick);
+                    
+                    sortedAnomalies.forEach(anomaly => {
+                        let severityColor = '#ffcc00';
+                        let severityIcon = '⚠️';
+                        let confidenceIcon = '🔍';
+                        
+                        if (anomaly.severity >= 0.8) {
+                            severityColor = '#ff4444';
+                            severityIcon = '🚨';
+                        } else if (anomaly.severity >= 0.6) {
+                            severityColor = '#ff8800';
+                            severityIcon = '⚠️';
+                        } else if (anomaly.severity >= 0.4) {
+                            severityColor = '#ffcc00';
+                            severityIcon = '⚡';
+                        } else {
+                            severityColor = '#88cc88';
+                            severityIcon = 'ℹ️';
+                        }
+                        
+                        if (anomaly.confidence >= 0.8) {
+                            confidenceIcon = '🎯';
+                        } else if (anomaly.confidence >= 0.6) {
+                            confidenceIcon = '🔍';
+                        } else {
+                            confidenceIcon = '❓';
+                        }
+                        
+                        html += '<div style="margin: 8px 0; padding: 8px; background-color: rgba(68, 68, 68, 0.3); border-radius: 3px; border-left: 3px solid ' + severityColor + ';">';
+                        html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+                        html += '<strong>' + severityIcon + ' ' + anomaly.type.replace(/_/g, ' ').toUpperCase() + '</strong>';
+                        html += '<span style="color: #aaa; font-size: 0.9em;">Tick ' + anomaly.tick + '</span>';
+                        html += '</div>';
+                        html += '<div style="margin: 5px 0;">' + anomaly.description + '</div>';
+                        html += '<div style="display: flex; gap: 15px; font-size: 0.9em; color: #ccc;">';
+                        html += '<span>Severity: ' + severityIcon + ' ' + (anomaly.severity * 100).toFixed(0) + '%</span>';
+                        html += '<span>Confidence: ' + confidenceIcon + ' ' + (anomaly.confidence * 100).toFixed(0) + '%</span>';
+                        html += '</div>';
                         html += '</div>';
                     });
                     html += '</div>';
                 }
                 
-                // Recommendations
+                // Recommendations with enhanced formatting
                 if (anomalies.recommendations && anomalies.recommendations.length > 0) {
-                    html += '<h4>Recommendations:</h4>';
+                    html += '<h4>💡 Diagnostic Recommendations:</h4>';
+                    html += '<div style="background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; padding: 10px; border-radius: 3px;">';
                     anomalies.recommendations.forEach(rec => {
-                        html += '<div style="margin: 5px 0; padding: 5px; background-color: #2a3a4a; border-radius: 3px; border-left: 3px solid #4CAF50;">• ' + rec + '</div>';
+                        html += '<div style="margin: 5px 0;">💡 ' + rec + '</div>';
                     });
+                    html += '</div>';
+                } else if (anomalies.total_anomalies > 0) {
+                    html += '<h4>💡 General Recommendations:</h4>';
+                    html += '<div style="background-color: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px; border-radius: 3px;">';
+                    html += '<div>• Monitor system parameters for patterns</div>';
+                    html += '<div>• Check if anomalies correlate with specific events</div>';
+                    html += '<div>• Consider adjusting simulation parameters if anomalies persist</div>';
+                    html += '</div>';
                 }
             }
             
