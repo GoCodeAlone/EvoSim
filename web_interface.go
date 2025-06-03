@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -20,6 +22,8 @@ type WebInterface struct {
 	broadcastChan   chan *ViewData
 	stopChan        chan bool
 	updateInterval  time.Duration
+	playerManager   *PlayerManager
+	clientPlayers   map[*websocket.Conn]string // maps websocket connections to player IDs
 }
 
 // NewWebInterface creates a new web interface
@@ -31,6 +35,8 @@ func NewWebInterface(world *World) *WebInterface {
 		broadcastChan:  make(chan *ViewData, 100),
 		stopChan:       make(chan bool),
 		updateInterval: 100 * time.Millisecond, // 10 FPS
+		playerManager:  NewPlayerManager(),
+		clientPlayers:  make(map[*websocket.Conn]string),
 	}
 }
 
@@ -326,6 +332,88 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             font-size: 8px;
             color: yellow;
         }
+        
+        /* Player Controls Styles */
+        .player-controls {
+            background-color: #2a4a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border: 2px solid #4CAF50;
+        }
+        
+        .join-form, .species-form, .control-form {
+            background-color: #3a3a3a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #555;
+        }
+        
+        .join-form input, .species-form input, .control-form input, .control-form select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #555;
+            border-radius: 3px;
+            background-color: #2a2a2a;
+            color: white;
+        }
+        
+        .trait-adjustments {
+            margin: 10px 0;
+        }
+        
+        .trait-adjustments label {
+            display: block;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .trait-adjustments input[type="range"] {
+            width: 60%;
+            margin: 0 10px;
+        }
+        
+        .control-commands {
+            margin: 15px 0;
+        }
+        
+        .move-controls, .action-controls {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+        }
+        
+        .form-buttons {
+            margin-top: 15px;
+        }
+        
+        .form-buttons button, .control-commands button {
+            margin: 5px;
+            padding: 8px 15px;
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #5a2d2d;
+            border-radius: 3px;
+        }
+        
+        #player-status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -348,6 +436,68 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
     
     <div class="main-content">
         <div class="simulation-view">
+            <!-- Player Controls Section -->
+            <div class="player-controls" id="player-controls" style="display: none;">
+                <h3>🎮 Player Controls</h3>
+                <div id="player-status">
+                    <span id="player-name">Not logged in</span>
+                    <span id="player-species-count">0 species</span>
+                </div>
+                <div class="control-buttons">
+                    <button id="create-species-btn" onclick="showCreateSpeciesForm()">🧬 Create Species</button>
+                    <button id="control-species-btn" onclick="showControlSpeciesForm()">🎯 Control Species</button>
+                </div>
+            </div>
+
+            <!-- Join Game Form -->
+            <div class="join-form" id="join-form">
+                <h3>🎮 Join as Player</h3>
+                <input type="text" id="player-name-input" placeholder="Enter your name (letters and numbers only)" maxlength="50">
+                <button onclick="joinAsPlayer()">Join Game</button>
+                <div id="join-error" class="error-message" style="display: none;"></div>
+            </div>
+
+            <!-- Create Species Form -->
+            <div class="species-form" id="create-species-form" style="display: none;">
+                <h3>🧬 Create New Species</h3>
+                <input type="text" id="species-name-input" placeholder="Species name" maxlength="50">
+                <div class="trait-adjustments">
+                    <h4>Trait Adjustments (±0.3 range):</h4>
+                    <label>Speed: <input type="range" id="speed-trait" min="-0.3" max="0.3" step="0.1" value="0"> <span id="speed-value">0.0</span></label>
+                    <label>Aggression: <input type="range" id="aggression-trait" min="-0.3" max="0.3" step="0.1" value="0"> <span id="aggression-value">0.0</span></label>
+                    <label>Cooperation: <input type="range" id="cooperation-trait" min="-0.3" max="0.3" step="0.1" value="0"> <span id="cooperation-value">0.0</span></label>
+                    <label>Intelligence: <input type="range" id="intelligence-trait" min="-0.3" max="0.3" step="0.1" value="0"> <span id="intelligence-value">0.0</span></label>
+                </div>
+                <div class="form-buttons">
+                    <button onclick="createSpecies()">Create Species</button>
+                    <button onclick="hideCreateSpeciesForm()">Cancel</button>
+                </div>
+                <div id="create-species-error" class="error-message" style="display: none;"></div>
+            </div>
+
+            <!-- Control Species Form -->
+            <div class="control-form" id="control-species-form" style="display: none;">
+                <h3>🎯 Control Your Species</h3>
+                <select id="species-select">
+                    <option value="">Select a species to control</option>
+                </select>
+                <div class="control-commands">
+                    <div class="move-controls">
+                        <h4>Movement Control</h4>
+                        <div>Click on the grid below to move your species to that location</div>
+                        <div>Current target: <span id="move-target">None</span></div>
+                        <button onclick="executeMove()">Move to Target</button>
+                    </div>
+                    <div class="action-controls">
+                        <h4>Action Commands</h4>
+                        <button onclick="executeGather()">🌱 Gather Resources</button>
+                        <button onclick="executeReproduce()">👶 Encourage Reproduction</button>
+                    </div>
+                </div>
+                <button onclick="hideControlSpeciesForm()">Close Controls</button>
+                <div id="control-species-error" class="error-message" style="display: none;"></div>
+            </div>
+            
             <div class="controls">
                 <button id="pause-btn" onclick="togglePause()">⏸ Pause</button>
                 <button onclick="resetSimulation()">🔄 Reset</button>
@@ -425,6 +575,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         let ws = null;
         let isPaused = false;
         let currentView = 'GRID';
+        let playerID = null;
+        let playerSpecies = [];
+        let selectedSpecies = null;
+        let moveTarget = null;
         
         const viewModes = [
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
@@ -474,6 +628,14 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             ws.onmessage = function(event) {
                 const data = JSON.parse(event.data);
+                
+                // Check if this is a player-specific message
+                if (data.type && ['player_joined', 'species_created', 'command_executed', 'error'].includes(data.type)) {
+                    handlePlayerMessage(data);
+                    return;
+                }
+                
+                // Otherwise treat it as simulation data
                 console.log('WebSocket data received, tick:', data.tick, 'entities:', data.entity_count, 'grid length:', data.grid ? data.grid.length : 'null');
                 updateDisplay(data);
             };
@@ -546,8 +708,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     const gridContainer = document.getElementById('grid-view');
                     if (gridContainer) {
                         gridContainer.innerHTML = gridHtml;
+                        // Add click listener for movement control
+                        gridContainer.onclick = handleGridClick;
                     } else {
-                        viewContent.innerHTML = '<div class="grid-container" id="grid-view">' + gridHtml + '</div>';
+                        viewContent.innerHTML = '<div class="grid-container" id="grid-view" onclick="handleGridClick(event)">' + gridHtml + '</div>';
                     }
                     break;
                     
@@ -1295,8 +1459,266 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         // Initialize the interface
         window.onload = function() {
             initViewTabs();
+            initTraitSliders();
             connect();
         };
+        
+        // Initialize trait sliders
+        function initTraitSliders() {
+            const traits = ['speed', 'aggression', 'cooperation', 'intelligence'];
+            traits.forEach(trait => {
+                const slider = document.getElementById(trait + '-trait');
+                const valueSpan = document.getElementById(trait + '-value');
+                if (slider && valueSpan) {
+                    slider.oninput = function() {
+                        valueSpan.textContent = parseFloat(this.value).toFixed(1);
+                    };
+                }
+            });
+        }
+        
+        // Player Management Functions
+        function joinAsPlayer() {
+            const nameInput = document.getElementById('player-name-input');
+            const playerName = nameInput.value.trim();
+            const errorDiv = document.getElementById('join-error');
+            
+            if (!playerName) {
+                showError(errorDiv, 'Please enter your name');
+                return;
+            }
+            
+            if (!/^[a-zA-Z0-9\s]+$/.test(playerName)) {
+                showError(errorDiv, 'Name can only contain letters, numbers, and spaces');
+                return;
+            }
+            
+            hideError(errorDiv);
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'join_as_player',
+                    data: { name: playerName }
+                }));
+            }
+        }
+        
+        function showCreateSpeciesForm() {
+            document.getElementById('create-species-form').style.display = 'block';
+            document.getElementById('control-species-form').style.display = 'none';
+        }
+        
+        function hideCreateSpeciesForm() {
+            document.getElementById('create-species-form').style.display = 'none';
+            document.getElementById('species-name-input').value = '';
+            resetTraitSliders();
+        }
+        
+        function showControlSpeciesForm() {
+            updateSpeciesSelect();
+            document.getElementById('control-species-form').style.display = 'block';
+            document.getElementById('create-species-form').style.display = 'none';
+        }
+        
+        function hideControlSpeciesForm() {
+            document.getElementById('control-species-form').style.display = 'none';
+        }
+        
+        function resetTraitSliders() {
+            const traits = ['speed', 'aggression', 'cooperation', 'intelligence'];
+            traits.forEach(trait => {
+                const slider = document.getElementById(trait + '-trait');
+                const valueSpan = document.getElementById(trait + '-value');
+                if (slider && valueSpan) {
+                    slider.value = 0;
+                    valueSpan.textContent = '0.0';
+                }
+            });
+        }
+        
+        function createSpecies() {
+            const nameInput = document.getElementById('species-name-input');
+            const speciesName = nameInput.value.trim();
+            const errorDiv = document.getElementById('create-species-error');
+            
+            if (!speciesName) {
+                showError(errorDiv, 'Please enter a species name');
+                return;
+            }
+            
+            if (!/^[a-zA-Z0-9\s]+$/.test(speciesName)) {
+                showError(errorDiv, 'Species name can only contain letters, numbers, and spaces');
+                return;
+            }
+            
+            hideError(errorDiv);
+            
+            // Collect trait adjustments
+            const traits = {};
+            ['speed', 'aggression', 'cooperation', 'intelligence'].forEach(trait => {
+                const slider = document.getElementById(trait + '-trait');
+                if (slider) {
+                    traits[trait] = parseFloat(slider.value);
+                }
+            });
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'create_species',
+                    data: { 
+                        name: speciesName,
+                        traits: traits
+                    }
+                }));
+            }
+        }
+        
+        function updateSpeciesSelect() {
+            const select = document.getElementById('species-select');
+            select.innerHTML = '<option value="">Select a species to control</option>';
+            
+            playerSpecies.forEach(species => {
+                const option = document.createElement('option');
+                option.value = species;
+                option.textContent = species;
+                select.appendChild(option);
+            });
+        }
+        
+        function executeMove() {
+            const select = document.getElementById('species-select');
+            const selectedSpecies = select.value;
+            const errorDiv = document.getElementById('control-species-error');
+            
+            if (!selectedSpecies) {
+                showError(errorDiv, 'Please select a species first');
+                return;
+            }
+            
+            if (!moveTarget) {
+                showError(errorDiv, 'Please click on the grid to set a target location first');
+                return;
+            }
+            
+            hideError(errorDiv);
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'control_species',
+                    data: {
+                        species: selectedSpecies,
+                        command: 'move',
+                        x: moveTarget.x,
+                        y: moveTarget.y
+                    }
+                }));
+            }
+        }
+        
+        function executeGather() {
+            const select = document.getElementById('species-select');
+            const selectedSpecies = select.value;
+            const errorDiv = document.getElementById('control-species-error');
+            
+            if (!selectedSpecies) {
+                showError(errorDiv, 'Please select a species first');
+                return;
+            }
+            
+            hideError(errorDiv);
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'control_species',
+                    data: {
+                        species: selectedSpecies,
+                        command: 'gather'
+                    }
+                }));
+            }
+        }
+        
+        function executeReproduce() {
+            const select = document.getElementById('species-select');
+            const selectedSpecies = select.value;
+            const errorDiv = document.getElementById('control-species-error');
+            
+            if (!selectedSpecies) {
+                showError(errorDiv, 'Please select a species first');
+                return;
+            }
+            
+            hideError(errorDiv);
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'control_species',
+                    data: {
+                        species: selectedSpecies,
+                        command: 'reproduce'
+                    }
+                }));
+            }
+        }
+        
+        function showError(errorDiv, message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError(errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+        
+        // Handle player-specific WebSocket messages
+        function handlePlayerMessage(data) {
+            switch (data.type) {
+                case 'player_joined':
+                    playerID = data.player_id;
+                    document.getElementById('player-name').textContent = data.name;
+                    document.getElementById('join-form').style.display = 'none';
+                    document.getElementById('player-controls').style.display = 'block';
+                    console.log('Player joined:', data.message);
+                    break;
+                    
+                case 'species_created':
+                    playerSpecies.push(data.species_name);
+                    updatePlayerSpeciesCount();
+                    hideCreateSpeciesForm();
+                    console.log('Species created:', data.message);
+                    break;
+                    
+                case 'command_executed':
+                    console.log('Command executed:', data.message);
+                    break;
+                    
+                case 'error':
+                    console.error('Server error:', data.message);
+                    alert('Error: ' + data.message);
+                    break;
+            }
+        }
+        
+        function updatePlayerSpeciesCount() {
+            document.getElementById('player-species-count').textContent = playerSpecies.length + ' species';
+        }
+        
+        // Add grid click handling for movement
+        function handleGridClick(event) {
+            if (document.getElementById('control-species-form').style.display === 'block') {
+                const gridContainer = document.getElementById('grid-view');
+                const rect = gridContainer.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                // Convert pixel coordinates to world coordinates (simplified)
+                const worldX = (x / rect.width) * 100; // Assuming world width is 100
+                const worldY = (y / rect.height) * 100; // Assuming world height is 100
+                
+                moveTarget = { x: worldX, y: worldY };
+                document.getElementById('move-target').textContent = '(' + worldX.toFixed(1) + ', ' + worldY.toFixed(1) + ')';
+            }
+        }
         
         // Render tools view
         function renderTools(tools) {
@@ -1558,21 +1980,34 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 			if d, exists := msg["data"]; exists {
 				data = d
 			}
-			wi.handleClientAction(action, data)
+			wi.handleClientAction(ws, action, data)
 		}
 	}
 	
-	// Remove client from list
+	// Clean up client connection
 	wi.clientsMutex.Lock()
 	delete(wi.clients, ws)
+	if playerID, exists := wi.clientPlayers[ws]; exists {
+		wi.playerManager.RemovePlayer(playerID)
+		delete(wi.clientPlayers, ws)
+	}
 	wi.clientsMutex.Unlock()
 	
 	log.Printf("Client disconnected. Total clients: %d", len(wi.clients))
 }
 
 // handleClientAction processes actions from web clients
-func (wi *WebInterface) handleClientAction(action string, data interface{}) {
+func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, data interface{}) {
 	switch action {
+	case "join_as_player":
+		wi.handlePlayerJoin(ws, data)
+		
+	case "create_species":
+		wi.handleCreateSpecies(ws, data)
+		
+	case "control_species":
+		wi.handleControlSpecies(ws, data)
+		
 	case "toggle_pause":
 		wi.world.TogglePause()
 		log.Printf("Client requested pause toggle - now paused: %v", wi.world.IsPaused())
@@ -1684,6 +2119,17 @@ func (wi *WebInterface) sendToClient(ws *websocket.Conn, data *ViewData) {
 	}
 }
 
+// sendJSONToClient sends any JSON-serializable data to a specific client
+func (wi *WebInterface) sendJSONToClient(ws *websocket.Conn, data interface{}) {
+	err := websocket.JSON.Send(ws, data)
+	if err != nil {
+		// Client disconnected, remove from list
+		wi.clientsMutex.Lock()
+		delete(wi.clients, ws)
+		wi.clientsMutex.Unlock()
+	}
+}
+
 // Stop stops the web interface
 func (wi *WebInterface) Stop() {
 	close(wi.stopChan)
@@ -1768,4 +2214,375 @@ func (wi *WebInterface) reinitializeWorld() {
 	for _, popConfig := range populations {
 		wi.world.AddPopulation(popConfig)
 	}
+}
+
+// handlePlayerJoin handles a player joining the game
+func (wi *WebInterface) handlePlayerJoin(ws *websocket.Conn, data interface{}) {
+	wi.clientsMutex.Lock()
+	defer wi.clientsMutex.Unlock()
+	
+	// Parse player data
+	playerData, ok := data.(map[string]interface{})
+	if !ok {
+		wi.sendErrorToClient(ws, "Invalid player data format")
+		return
+	}
+	
+	playerName, ok := playerData["name"].(string)
+	if !ok {
+		wi.sendErrorToClient(ws, "Player name is required")
+		return
+	}
+	
+	// Generate player ID (simple approach using connection address + timestamp)
+	playerID := fmt.Sprintf("player_%d_%p", time.Now().UnixNano(), ws)
+	
+	// Add player
+	player, err := wi.playerManager.AddPlayer(playerID, playerName)
+	if err != nil {
+		wi.sendErrorToClient(ws, fmt.Sprintf("Failed to add player: %v", err))
+		return
+	}
+	
+	// Map connection to player
+	wi.clientPlayers[ws] = playerID
+	
+	log.Printf("Player '%s' joined with ID %s", player.Name, playerID)
+	
+	// Send success response
+	response := map[string]interface{}{
+		"type":      "player_joined",
+		"player_id": playerID,
+		"name":      player.Name,
+		"message":   fmt.Sprintf("Welcome, %s! You can now create your own species.", player.Name),
+	}
+	wi.sendJSONToClient(ws, response)
+}
+
+// handleCreateSpecies handles a player creating a new species
+func (wi *WebInterface) handleCreateSpecies(ws *websocket.Conn, data interface{}) {
+	wi.clientsMutex.Lock()
+	defer wi.clientsMutex.Unlock()
+	
+	// Get player ID for this connection
+	playerID, exists := wi.clientPlayers[ws]
+	if !exists {
+		wi.sendErrorToClient(ws, "You must join as a player first")
+		return
+	}
+	
+	// Parse species data
+	speciesData, ok := data.(map[string]interface{})
+	if !ok {
+		wi.sendErrorToClient(ws, "Invalid species data format")
+		return
+	}
+	
+	speciesName, ok := speciesData["name"].(string)
+	if !ok {
+		wi.sendErrorToClient(ws, "Species name is required")
+		return
+	}
+	
+	// Validate and clean species name
+	cleanSpeciesName, err := ValidatePlayerName(speciesName)
+	if err != nil {
+		wi.sendErrorToClient(ws, fmt.Sprintf("Invalid species name: %v", err))
+		return
+	}
+	
+	// Check if species name already exists in the world
+	if _, exists := wi.world.Populations[cleanSpeciesName]; exists {
+		wi.sendErrorToClient(ws, "A species with this name already exists")
+		return
+	}
+	
+	// Create basic traits for the new species (limited control)
+	baseTraits := map[string]float64{
+		"size":               0.0,  // Neutral
+		"speed":              0.1,  // Slightly above average
+		"aggression":         -0.2, // Slightly peaceful
+		"defense":            0.0,  // Neutral
+		"cooperation":        0.1,  // Slightly cooperative
+		"intelligence":       0.2,  // Slightly intelligent
+		"endurance":          0.1,  // Slightly higher endurance
+		"strength":           0.0,  // Neutral
+		"aquatic_adaptation": -0.5, // Poor in water initially
+		"digging_ability":    0.0,  // Neutral
+		"underground_nav":    -0.3, // Poor underground navigation initially
+		"flying_ability":     -0.8, // Cannot fly initially
+		"altitude_tolerance": -0.6, // Poor altitude tolerance initially
+	}
+	
+	// Allow players to make minor adjustments to some traits
+	if adjustments, ok := speciesData["traits"].(map[string]interface{}); ok {
+		// Only allow adjustment of certain traits within limits
+		allowedTraits := []string{"speed", "aggression", "cooperation", "intelligence"}
+		for _, traitName := range allowedTraits {
+			if value, exists := adjustments[traitName]; exists {
+				if floatValue, ok := value.(float64); ok {
+					// Limit adjustments to ±0.3 range
+					adjustment := math.Max(-0.3, math.Min(0.3, floatValue))
+					baseTraits[traitName] += adjustment
+					// Ensure final values stay within reasonable bounds
+					baseTraits[traitName] = math.Max(-1.0, math.Min(1.0, baseTraits[traitName]))
+				}
+			}
+		}
+	}
+	
+	// Generate random starting position
+	startX := rand.Float64() * wi.world.Config.Width
+	startY := rand.Float64() * wi.world.Config.Height
+	
+	// Create population config
+	popConfig := PopulationConfig{
+		Name:             cleanSpeciesName,
+		Species:          cleanSpeciesName,
+		BaseTraits:       baseTraits,
+		StartPos:         Position{X: startX, Y: startY},
+		Spread:           15.0,
+		Color:            "purple", // Player species get purple color
+		BaseMutationRate: 0.08,     // Moderate mutation rate
+	}
+	
+	// Add population to world
+	wi.world.AddPopulation(popConfig)
+	
+	// Add species to player
+	err = wi.playerManager.AddPlayerSpecies(playerID, cleanSpeciesName)
+	if err != nil {
+		wi.sendErrorToClient(ws, fmt.Sprintf("Failed to assign species to player: %v", err))
+		return
+	}
+	
+	// Update player activity
+	wi.playerManager.UpdatePlayerActivity(playerID)
+	
+	log.Printf("Player %s created species '%s'", playerID, cleanSpeciesName)
+	
+	// Send success response
+	response := map[string]interface{}{
+		"type":         "species_created",
+		"species_name": cleanSpeciesName,
+		"message":      fmt.Sprintf("Successfully created species '%s'! You can now control its entities.", cleanSpeciesName),
+		"traits":       baseTraits,
+	}
+	wi.sendJSONToClient(ws, response)
+}
+
+// handleControlSpecies handles player commands to control their species
+func (wi *WebInterface) handleControlSpecies(ws *websocket.Conn, data interface{}) {
+	wi.clientsMutex.Lock()
+	defer wi.clientsMutex.Unlock()
+	
+	// Get player ID for this connection
+	playerID, exists := wi.clientPlayers[ws]
+	if !exists {
+		wi.sendErrorToClient(ws, "You must join as a player first")
+		return
+	}
+	
+	// Parse control data
+	controlData, ok := data.(map[string]interface{})
+	if !ok {
+		wi.sendErrorToClient(ws, "Invalid control data format")
+		return
+	}
+	
+	speciesName, ok := controlData["species"].(string)
+	if !ok {
+		wi.sendErrorToClient(ws, "Species name is required")
+		return
+	}
+	
+	// Check if player can control this species
+	if !wi.playerManager.CanPlayerControlSpecies(playerID, speciesName) {
+		wi.sendErrorToClient(ws, "You can only control your own species")
+		return
+	}
+	
+	// Get the population
+	population, exists := wi.world.Populations[speciesName]
+	if !exists {
+		wi.sendErrorToClient(ws, "Species not found")
+		return
+	}
+	
+	// Parse control command
+	command, ok := controlData["command"].(string)
+	if !ok {
+		wi.sendErrorToClient(ws, "Command is required")
+		return
+	}
+	
+	// Update player activity
+	wi.playerManager.UpdatePlayerActivity(playerID)
+	
+	// Handle different control commands
+	switch command {
+	case "move":
+		wi.handleMoveCommand(ws, playerID, population, controlData)
+	case "gather":
+		wi.handleGatherCommand(ws, playerID, population, controlData)
+	case "reproduce":
+		wi.handleReproduceCommand(ws, playerID, population, controlData)
+	default:
+		wi.sendErrorToClient(ws, fmt.Sprintf("Unknown command: %s", command))
+	}
+}
+
+// handleMoveCommand handles movement commands for player species
+func (wi *WebInterface) handleMoveCommand(ws *websocket.Conn, playerID string, population *Population, controlData map[string]interface{}) {
+	// Parse movement parameters
+	targetX, xOk := controlData["x"].(float64)
+	targetY, yOk := controlData["y"].(float64)
+	
+	if !xOk || !yOk {
+		wi.sendErrorToClient(ws, "Target coordinates (x, y) are required for movement")
+		return
+	}
+	
+	// Ensure coordinates are within world bounds
+	targetX = math.Max(0, math.Min(wi.world.Config.Width, targetX))
+	targetY = math.Max(0, math.Min(wi.world.Config.Height, targetY))
+	
+	// Apply movement tendency to all entities in the population
+	moveCount := 0
+	for _, entity := range population.Entities {
+		if entity.IsAlive {
+			// Calculate direction to target
+			dx := targetX - entity.Position.X
+			dy := targetY - entity.Position.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
+			
+			if distance > 1.0 { // Only move if not already close
+				// Normalize direction and apply movement based on speed trait
+				speed := entity.Traits["speed"].Value
+				moveDistance := (0.5 + speed*0.5) * 2.0 // Base movement + speed modifier
+				
+				entity.Position.X += (dx / distance) * moveDistance
+				entity.Position.Y += (dy / distance) * moveDistance
+				
+				// Ensure entity stays within bounds
+				entity.Position.X = math.Max(0, math.Min(wi.world.Config.Width, entity.Position.X))
+				entity.Position.Y = math.Max(0, math.Min(wi.world.Config.Height, entity.Position.Y))
+				
+				moveCount++
+			}
+		}
+	}
+	
+	log.Printf("Player %s moved %d entities towards (%f, %f)", playerID, moveCount, targetX, targetY)
+	
+	// Send response
+	response := map[string]interface{}{
+		"type":        "command_executed",
+		"command":     "move",
+		"entities_affected": moveCount,
+		"message":     fmt.Sprintf("Moved %d entities towards target location", moveCount),
+	}
+	wi.sendJSONToClient(ws, response)
+}
+
+// handleGatherCommand handles gathering commands for player species
+func (wi *WebInterface) handleGatherCommand(ws *websocket.Conn, playerID string, population *Population, controlData map[string]interface{}) {
+	gatherCount := 0
+	
+	// Apply gathering behavior to all entities in the population
+	for _, entity := range population.Entities {
+		if entity.IsAlive && entity.Energy < 80 { // Only gather if not at high energy
+			// Find nearby plants to gather from
+			for _, plant := range wi.world.AllPlants {
+				if plant.IsAlive {
+					// Calculate distance to plant
+					dx := plant.Position.X - entity.Position.X
+					dy := plant.Position.Y - entity.Position.Y
+					distance := math.Sqrt(dx*dx + dy*dy)
+					
+					if distance <= 5.0 { // Within gathering range
+						// Entity gains energy, plant loses energy
+						energyGained := math.Min(10.0, plant.Energy)
+						entity.Energy += energyGained
+						plant.Energy -= energyGained
+						
+						if plant.Energy <= 0 {
+							plant.IsAlive = false
+						}
+						
+						gatherCount++
+						break // Only gather from one plant per entity
+					}
+				}
+			}
+		}
+	}
+	
+	log.Printf("Player %s performed gathering with %d entities", playerID, gatherCount)
+	
+	// Send response
+	response := map[string]interface{}{
+		"type":             "command_executed",
+		"command":          "gather",
+		"entities_affected": gatherCount,
+		"message":          fmt.Sprintf("%d entities performed gathering actions", gatherCount),
+	}
+	wi.sendJSONToClient(ws, response)
+}
+
+// handleReproduceCommand handles reproduction commands for player species
+func (wi *WebInterface) handleReproduceCommand(ws *websocket.Conn, playerID string, population *Population, controlData map[string]interface{}) {
+	reproductionCount := 0
+	
+	// Find entities with sufficient energy for reproduction
+	for _, entity := range population.Entities {
+		if entity.IsAlive && entity.Energy > 70 { // High energy threshold for reproduction
+			// Find nearby entities of the same species for mating
+			for _, mate := range population.Entities {
+				if mate.IsAlive && mate.ID != entity.ID && mate.Energy > 70 {
+					// Calculate distance to potential mate
+					dx := mate.Position.X - entity.Position.X
+					dy := mate.Position.Y - entity.Position.Y
+					distance := math.Sqrt(dx*dx + dy*dy)
+					
+					if distance <= 3.0 { // Within mating range
+						// Create offspring through the existing reproduction system
+						offspring := wi.world.CreateOffspring(entity, mate)
+						if offspring != nil {
+							// Add offspring to population
+							population.Entities = append(population.Entities, offspring)
+							wi.world.AllEntities = append(wi.world.AllEntities, offspring)
+							
+							// Reduce parent energy
+							entity.Energy -= 30
+							mate.Energy -= 30
+							
+							reproductionCount++
+						}
+						break // Only one reproduction per entity per command
+					}
+				}
+			}
+		}
+	}
+	
+	log.Printf("Player %s triggered reproduction resulting in %d new entities", playerID, reproductionCount)
+	
+	// Send response
+	response := map[string]interface{}{
+		"type":      "command_executed",
+		"command":   "reproduce",
+		"offspring": reproductionCount,
+		"message":   fmt.Sprintf("Reproduction successful! %d new entities born", reproductionCount),
+	}
+	wi.sendJSONToClient(ws, response)
+}
+
+// sendErrorToClient sends an error message to a specific client
+func (wi *WebInterface) sendErrorToClient(ws *websocket.Conn, message string) {
+	errorResponse := map[string]interface{}{
+		"type":    "error",
+		"message": message,
+	}
+	wi.sendJSONToClient(ws, errorResponse)
 }

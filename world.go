@@ -3258,3 +3258,69 @@ func (w *World) enhanceEntitiesWithSpecializedSystems() {
 		}
 	}
 }
+
+// CreateOffspring creates a new offspring entity from two parent entities
+func (w *World) CreateOffspring(parent1, parent2 *Entity) *Entity {
+	if parent1 == nil || parent2 == nil || !parent1.IsAlive || !parent2.IsAlive {
+		return nil
+	}
+	
+	// Generate new ID
+	w.NextID++
+	
+	// Create offspring with traits from both parents
+	offspring := &Entity{
+		ID:         w.NextID,
+		Traits:     make(map[string]Trait),
+		Fitness:    0.0,
+		Energy:     50.0, // Starting energy for offspring
+		Age:        0,
+		IsAlive:    true,
+		Species:    parent1.Species, // Inherit species from first parent
+		Generation: max(parent1.Generation, parent2.Generation) + 1,
+	}
+	
+	// Position offspring near parents
+	offspring.Position = Position{
+		X: (parent1.Position.X + parent2.Position.X) / 2.0,
+		Y: (parent1.Position.Y + parent2.Position.Y) / 2.0,
+	}
+	
+	// Inherit traits from both parents with some variation
+	for traitName := range parent1.Traits {
+		parent1Value := parent1.Traits[traitName].Value
+		parent2Value := parent2.Traits[traitName].Value
+		
+		// Average parent values with some random variation
+		avgValue := (parent1Value + parent2Value) / 2.0
+		variation := (rand.Float64() - 0.5) * 0.2 // Small random variation
+		finalValue := avgValue + variation
+		
+		// Clamp to reasonable bounds
+		finalValue = math.Max(-1.0, math.Min(1.0, finalValue))
+		
+		offspring.Traits[traitName] = Trait{
+			Name:  traitName,
+			Value: finalValue,
+		}
+	}
+	
+	// Initialize molecular systems for offspring
+	offspring.MolecularNeeds = NewMolecularNeeds(offspring)
+	offspring.MolecularMetabolism = NewMolecularMetabolism(offspring)
+	offspring.MolecularProfile = CreateEntityMolecularProfile(offspring)
+	
+	// Initialize other systems
+	offspring.DietaryMemory = NewDietaryMemory()
+	offspring.EnvironmentalMemory = NewEnvironmentalMemory()
+	
+	offspring.ReproductionStatus = NewReproductionStatus()
+	
+	// Add enhanced systems
+	AddCasteStatusToEntity(offspring)
+	if IsEntityInsectLike(offspring) {
+		AddInsectTraitsToEntity(offspring)
+	}
+	
+	return offspring
+}
