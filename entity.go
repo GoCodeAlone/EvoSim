@@ -73,6 +73,11 @@ type Entity struct {
 	
 	// Caste system
 	CasteStatus *CasteStatus `json:"caste_status"` // Tracks caste role and specialization
+	
+	// Organism classification and lifespan system
+	Classification    OrganismClassification `json:"classification"`     // Organism complexity classification
+	MaxLifespan      int                    `json:"max_lifespan"`       // Maximum age for this individual
+	AgingAccumulator float64               `json:"aging_accumulator"`  // Fractional aging accumulator
 }
 
 // NewEntity creates a new entity with random traits
@@ -108,6 +113,11 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 	
 	// Initialize reproduction system
 	entity.ReproductionStatus = NewReproductionStatus()
+	
+	// Initialize organism classification (will be updated by world systems)
+	entity.Classification = ClassificationEukaryotic // Default classification
+	entity.MaxLifespan = 3360 // Default ~7 days (7 * 480 ticks)
+	entity.AgingAccumulator = 0.0
 
 	return entity
 }
@@ -665,7 +675,7 @@ func (e *Entity) Update() {
 		return
 	}
 
-	e.Age++
+
 
 	// Update molecular needs (deficiencies increase over time)
 	if e.MolecularNeeds != nil {
@@ -691,9 +701,62 @@ func (e *Entity) Update() {
 		e.Energy = 0
 	}
 
-	// Die of old age (based on endurance trait)
-	maxAge := int(100 + e.GetTrait("endurance")*50)
-	if e.Age > maxAge {
+
+}
+
+// UpdateWithClassification handles entity aging using the organism classification system
+func (e *Entity) UpdateWithClassification(classifier *OrganismClassifier, cellularSystem *CellularSystem) {
+	if !e.IsAlive {
+		return
+	}
+
+	// Classify the entity if not already classified
+	if e.Classification == ClassificationEukaryotic && e.MaxLifespan == 3360 {
+		// This is a newly created entity with default values - classify it
+		e.Classification = classifier.ClassifyEntity(e, cellularSystem)
+		e.MaxLifespan = classifier.CalculateLifespan(e, e.Classification)
+	}
+
+	// Handle aging based on classification
+	agingRate := classifier.CalculateAgingRate(e, e.Classification)
+	e.AgingAccumulator += agingRate
+	
+	// Age when accumulator reaches 1.0
+	if e.AgingAccumulator >= 1.0 {
+		e.Age++
+		e.AgingAccumulator -= 1.0
+	}
+
+	// Calculate energy maintenance cost based on classification
+	maintenanceCost := classifier.CalculateEnergyMaintenance(e, e.Classification)
+	
+	// Update molecular needs (deficiencies increase over time)
+	if e.MolecularNeeds != nil {
+		e.MolecularNeeds.UpdateDeficiencies(1.0) // 1 time step
+	}
+
+	// Natural energy decay (affected by nutritional status and classification)
+	baseDecay := maintenanceCost + float64(e.Age)*0.005 // Reduced age penalty
+	
+	// Molecular nutritional status affects energy decay
+	if e.MolecularNeeds != nil {
+		nutritionalStatus := e.MolecularNeeds.GetOverallNutritionalStatus()
+		// Poor nutrition increases energy decay
+		nutritionalMultiplier := 1.0 + (1.0-nutritionalStatus)*0.5
+		baseDecay *= nutritionalMultiplier
+	}
+	
+	e.Energy -= baseDecay
+
+	// Die if energy is too low
+	if e.Energy <= 0 {
+		e.IsAlive = false
+		e.Energy = 0
+		return
+	}
+
+	// Check for death by old age using classification system
+	if classifier.IsDeathByOldAge(e, e.Classification, e.MaxLifespan) {
 		e.IsAlive = false
 	}
 }

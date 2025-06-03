@@ -168,6 +168,8 @@ func TestEntitySurvivalInDifferentBiomes(t *testing.T) {
 					IsAlive:  true,
 					Age:      0,
 					Traits:   make(map[string]Trait),
+					Classification: ClassificationEukaryotic, // Default classification
+					MaxLifespan:    3360,                     // Default max lifespan
 				}
 				
 				// Set traits
@@ -190,10 +192,10 @@ func TestEntitySurvivalInDifferentBiomes(t *testing.T) {
 				// Apply biome effects manually
 				world.applyBiomeEffects()
 				
-				// Update entities
+				// Update entities using classification system
 				for _, entity := range testEntities {
 					if entity.IsAlive {
-						entity.Update()
+						entity.UpdateWithClassification(world.OrganismClassifier, world.CellularSystem)
 					}
 				}
 				
@@ -226,6 +228,12 @@ func TestEntitySurvivalInDifferentBiomes(t *testing.T) {
 
 // TestEnergyDecayRates tests that energy decay is reasonable under normal conditions
 func TestEnergyDecayRates(t *testing.T) {
+	// Create necessary systems for the new classification system
+	timeSystem := NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
+	dnaSystem := NewDNASystem()
+	cellularSystem := NewCellularSystem(dnaSystem)
+	classifier := NewOrganismClassifier(timeSystem)
+	
 	// Create a test entity with average traits
 	entity := &Entity{
 		ID:       1,
@@ -237,6 +245,8 @@ func TestEnergyDecayRates(t *testing.T) {
 			"endurance": {Value: 0.5},
 			"size":      {Value: 0.3},
 		},
+		Classification: ClassificationEukaryotic, // Default classification
+		MaxLifespan:    3360,                     // Default max lifespan
 	}
 	
 	// Initialize molecular systems
@@ -246,9 +256,9 @@ func TestEnergyDecayRates(t *testing.T) {
 	
 	initialEnergy := entity.Energy
 	
-	// Test base energy decay over 10 ticks
+	// Test base energy decay over 10 ticks using classification system
 	for i := 0; i < 10; i++ {
-		entity.Update()
+		entity.UpdateWithClassification(classifier, cellularSystem)
 		if !entity.IsAlive {
 			break
 		}
@@ -301,6 +311,8 @@ func TestPoorlyAdaptedEntitySurvival(t *testing.T) {
 			"endurance":         {Value: 0.2}, // Low endurance
 			"aquatic_adaptation": {Value: 0.0},
 		},
+		Classification: ClassificationEukaryotic, // Default classification
+		MaxLifespan:    3360,                     // Default max lifespan
 	}
 	
 	// Initialize molecular systems
@@ -314,7 +326,7 @@ func TestPoorlyAdaptedEntitySurvival(t *testing.T) {
 	survivalTime := 0
 	for tick := 1; tick <= 20; tick++ {
 		world.updateEntityWithBiome(poorEntity)
-		poorEntity.Update()
+		poorEntity.UpdateWithClassification(world.OrganismClassifier, world.CellularSystem)
 		
 		if poorEntity.IsAlive {
 			survivalTime = tick
@@ -364,6 +376,8 @@ func TestWellAdaptedEntitySurvival(t *testing.T) {
 			"endurance":         {Value: 0.8}, // High endurance
 			"aquatic_adaptation": {Value: 0.1},
 		},
+		Classification: ClassificationEukaryotic, // Default classification
+		MaxLifespan:    3360,                     // Default max lifespan
 	}
 	
 	// Initialize molecular systems
@@ -379,7 +393,7 @@ func TestWellAdaptedEntitySurvival(t *testing.T) {
 	
 	for tick := 1; tick <= 20; tick++ {
 		world.applyBiomeEffects()
-		adaptedEntity.Update()
+		adaptedEntity.UpdateWithClassification(world.OrganismClassifier, world.CellularSystem)
 		
 		if adaptedEntity.IsAlive {
 			survivalTime = tick
