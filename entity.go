@@ -675,8 +675,7 @@ func (e *Entity) Update() {
 		return
 	}
 
-	// DEPRECATED: Old aging logic - now handled by UpdateWithClassification
-	e.Age++
+
 
 	// Update molecular needs (deficiencies increase over time)
 	if e.MolecularNeeds != nil {
@@ -702,12 +701,7 @@ func (e *Entity) Update() {
 		e.Energy = 0
 	}
 
-	// DEPRECATED: Old age-based death logic - now handled by UpdateWithClassification
-	// Die of old age (based on endurance trait)
-	maxAge := int(100 + e.GetTrait("endurance")*50)
-	if e.Age > maxAge {
-		e.IsAlive = false
-	}
+
 }
 
 // UpdateWithClassification handles entity aging using the organism classification system
