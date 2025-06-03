@@ -105,6 +105,12 @@ type GridCell struct {
 	Entities []*Entity
 	Plants   []*Plant    // Plants in this cell
 	Event    *WorldEvent // Current event affecting this cell
+	// Enhanced soil system
+	SoilNutrients   map[string]float64 `json:"soil_nutrients"`   // Available nutrients in soil
+	WaterLevel      float64            `json:"water_level"`      // Available water in cell
+	SoilPH          float64            `json:"soil_ph"`          // Soil acidity (6-8 optimal)
+	SoilCompaction  float64            `json:"soil_compaction"`  // How compacted soil is (0-1)
+	OrganicMatter   float64            `json:"organic_matter"`   // Decomposed organic material
 }
 
 // PopulationConfig defines traits and behavior for a population
@@ -208,6 +214,12 @@ func NewWorld(config WorldConfig) *World {
 				Entities: make([]*Entity, 0),
 				Plants:   make([]*Plant, 0),
 				Event:    nil,
+				// Initialize soil system
+				SoilNutrients:  initializeSoilNutrients(),
+				WaterLevel:     initializeWaterLevel(world.generateBiome(x, y)),
+				SoilPH:         7.0 + (rand.Float64()-0.5)*2.0, // pH 6-8
+				SoilCompaction: rand.Float64() * 0.3, // 0-30% compaction
+				OrganicMatter:  rand.Float64() * 0.2, // 0-20% organic matter
 			}
 		}
 	} // Initialize advanced systems
@@ -1100,14 +1112,26 @@ func (w *World) updateEntityPhysicsForces() {
 	}
 }
 
-// updatePlants handles plant growth, aging, and death
+// updatePlants handles plant growth, aging, and death with enhanced nutrient system
 func (w *World) updatePlants() {
+	// Get current season for plant nutrient calculations
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+	season := getSeasonName(currentTimeState.Season)
+	
+	// Process decay items and add nutrients to soil
+	if len(w.ReproductionSystem.DecayingItems) > 0 {
+		w.processDecayNutrientsToSoil()
+	}
+	
+	// Process rainfall effects on soil
+	w.processWeatherEffectsOnSoil()
+	
 	for _, plant := range w.AllPlants {
 		if !plant.IsAlive {
 			continue
 		}
 
-		// Get biome for plant's location
+		// Get grid cell for plant's location
 		gridX := int((plant.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
 		gridY := int((plant.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
 
@@ -1115,8 +1139,27 @@ func (w *World) updatePlants() {
 		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
 
-		biome := w.Biomes[w.Grid[gridY][gridX].Biome]
+		gridCell := &w.Grid[gridY][gridX]
+		biome := w.Biomes[gridCell.Biome]
+		
+		// Update plant with enhanced nutrient system
+		nutritionalHealth := plant.updatePlantNutrients(gridCell, season)
+		
+		// Traditional plant update with nutritional influence
 		plant.Update(biome)
+		
+		// Apply nutritional health effects
+		if nutritionalHealth < 0.5 {
+			// Severe malnutrition - chance of death
+			if rand.Float64() < (0.5-nutritionalHealth)*0.1 {
+				plant.IsAlive = false
+				// Add plant matter to decay system
+				if w.ReproductionSystem != nil {
+					nutrientValue := plant.NutritionVal * plant.Size
+					w.ReproductionSystem.AddDecayingItem("plant_matter", plant.Position, nutrientValue, "plant", plant.Size, w.Tick)
+				}
+			}
+		}
 	}
 }
 
@@ -4166,4 +4209,95 @@ func (w *World) isFireExtinguishingBiome(biome BiomeType) bool {
 		}
 	}
 	return false
+}
+
+// Plant Nutrient System Support Functions
+
+// processDecayNutrientsToSoil adds nutrients from decaying items to the soil
+func (w *World) processDecayNutrientsToSoil() {
+	for _, decayItem := range w.ReproductionSystem.DecayingItems {
+		if decayItem.IsDecayed {
+			continue // Already processed
+		}
+		
+		// Get grid cell for decay item location
+		gridX := int((decayItem.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((decayItem.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		
+		// Clamp to grid bounds
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		
+		gridCell := &w.Grid[gridY][gridX]
+		
+		// Add nutrients gradually as item decays
+		decayProgress := float64(w.Tick - decayItem.CreationTick) / float64(decayItem.DecayPeriod)
+		if decayProgress > 0.1 { // Start releasing nutrients after 10% decay
+			addDecayNutrientsToSoil(gridCell, decayItem)
+		}
+	}
+}
+
+// processWeatherEffectsOnSoil handles rainfall and weather impacts on soil
+func (w *World) processWeatherEffectsOnSoil() {
+	// Enhanced environmental events can cause rainfall
+	for _, event := range w.EnvironmentalEvents {
+		if event.Type == "storm" || event.Type == "hurricane" {
+			// Calculate rainfall from storm
+			for y := 0; y < w.Config.GridHeight; y++ {
+				for x := 0; x < w.Config.GridWidth; x++ {
+					distance := math.Sqrt(math.Pow(float64(x)-event.Position.X, 2) + 
+										 math.Pow(float64(y)-event.Position.Y, 2))
+					
+					if distance <= event.Radius {
+						intensity := (event.Radius - distance) / event.Radius * event.Intensity
+						processRainfall(&w.Grid[y][x], intensity)
+					}
+				}
+			}
+		}
+	}
+	
+	// Seasonal rainfall patterns
+	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
+	seasonalRainfall := 0.0
+	
+	switch currentTimeState.Season {
+	case Spring:
+		seasonalRainfall = 0.02 // Moderate spring rains
+	case Summer:
+		seasonalRainfall = 0.01 // Lighter summer rains
+	case Autumn:
+		seasonalRainfall = 0.03 // Heavier autumn rains
+	case Winter:
+		seasonalRainfall = 0.015 // Light winter precipitation
+	}
+	
+	// Apply seasonal rainfall randomly across the world
+	if rand.Float64() < 0.3 { // 30% chance of rain each tick
+		for y := 0; y < w.Config.GridHeight; y++ {
+			for x := 0; x < w.Config.GridWidth; x++ {
+				if rand.Float64() < 0.1 { // 10% of cells get rain
+					processRainfall(&w.Grid[y][x], seasonalRainfall)
+				}
+			}
+		}
+	}
+}
+
+
+// getSeasonName converts Season enum to string
+func getSeasonName(season Season) string {
+switch season {
+case Spring:
+return "spring"
+case Summer:
+return "summer"
+case Autumn:
+return "autumn"
+case Winter:
+return "winter"
+default:
+return "spring"
+}
 }
