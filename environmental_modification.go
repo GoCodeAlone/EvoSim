@@ -45,14 +45,16 @@ type EnvironmentalModificationSystem struct {
 	Modifications map[int]*EnvironmentalModification `json:"modifications"`
 	NextModID     int                                 `json:"next_mod_id"`
 	TunnelNetwork map[int][]int                       `json:"tunnel_network"` // Tunnel ID -> Connected tunnel IDs
+	eventBus      *CentralEventBus                    `json:"-"` // Event tracking
 }
 
 // NewEnvironmentalModificationSystem creates a new environmental modification system
-func NewEnvironmentalModificationSystem() *EnvironmentalModificationSystem {
+func NewEnvironmentalModificationSystem(eventBus *CentralEventBus) *EnvironmentalModificationSystem {
 	return &EnvironmentalModificationSystem{
 		Modifications: make(map[int]*EnvironmentalModification),
 		NextModID:     1,
 		TunnelNetwork: make(map[int][]int),
+		eventBus:      eventBus,
 	}
 }
 

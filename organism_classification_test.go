@@ -180,8 +180,8 @@ func TestDeathByOldAge(t *testing.T) {
 func TestEntityUpdateWithClassification(t *testing.T) {
 	timeSystem := NewAdvancedTimeSystem(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
-	dnaSystem := NewDNASystem()
-	cellularSystem := NewCellularSystem(dnaSystem)
+	dnaSystem := NewDNASystem(NewCentralEventBus(1000))
+	cellularSystem := NewCellularSystem(dnaSystem, NewCentralEventBus(1000))
 	
 	entity := NewEntity(1, []string{"intelligence", "size", "cooperation", "endurance"}, "test", Position{})
 	entity.SetTrait("intelligence", 0.0)

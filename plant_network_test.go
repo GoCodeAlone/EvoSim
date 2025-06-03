@@ -7,7 +7,8 @@ import (
 
 func TestPlantNetworkSystem(t *testing.T) {
 	// Initialize network system
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	if network == nil {
 		t.Fatal("Failed to create PlantNetworkSystem")
@@ -24,7 +25,8 @@ func TestPlantNetworkSystem(t *testing.T) {
 }
 
 func TestNetworkFormation(t *testing.T) {
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	// Create test plants with correct struct format
 	plant1 := &Plant{
@@ -75,7 +77,7 @@ func TestNetworkFormation(t *testing.T) {
 }
 
 func TestChemicalSignalPropagation(t *testing.T) {
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
 
 	// Create test plants
 	source := &Plant{
@@ -144,7 +146,7 @@ func TestChemicalSignalPropagation(t *testing.T) {
 }
 
 func TestResourceSharing(t *testing.T) {
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
 
 	// Create plants with different energy levels
 	richPlant := &Plant{
@@ -188,7 +190,7 @@ func TestResourceSharing(t *testing.T) {
 }
 
 func TestNetworkStats(t *testing.T) {
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
 
 	// Get stats from empty network
 	stats := network.GetNetworkStats()
@@ -263,7 +265,7 @@ func TestNetworkStats(t *testing.T) {
 }
 
 func TestConnectionTypes(t *testing.T) {
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
 
 	// Test different connection types
 	plant1 := &Plant{
@@ -355,7 +357,7 @@ func TestSignalTypes(t *testing.T) {
 		IsAlive:  true,
 	}
 
-	network := NewPlantNetworkSystem()
+	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
 
 	// Create signals of each type
 	for i, signalType := range signalTypes {

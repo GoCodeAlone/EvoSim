@@ -44,10 +44,11 @@ type DNASystem struct {
 	GeneLength     map[string]int     // Standard length for each gene type
 	MutationRates  map[string]float64 // Mutation rates for different gene types
 	DominanceRules map[string]bool    // Default dominance for genes
+	eventBus       *CentralEventBus   `json:"-"` // Event tracking
 }
 
 // NewDNASystem creates a new DNA management system
-func NewDNASystem() *DNASystem {
+func NewDNASystem(eventBus *CentralEventBus) *DNASystem {
 	return &DNASystem{
 		TraitToGene: map[string]string{
 			// Basic traits
@@ -85,6 +86,7 @@ func NewDNASystem() *DNASystem {
 			"REP": false, "COO": false, "CAM": false, "TOX": true,
 			"LON": false, "ADA": false, "MET": false,
 		},
+		eventBus: eventBus,
 	}
 }
 
@@ -213,6 +215,8 @@ func (ds *DNASystem) sequenceToValue(sequence []Nucleotide) float64 {
 
 // MutateDNA applies mutations to DNA based on environmental factors
 func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
+	initialMutations := dna.Mutations
+	
 	for chromIdx := range dna.Chromosomes {
 		for geneIdx := range dna.Chromosomes[chromIdx].Genes {
 			gene := &dna.Chromosomes[chromIdx].Genes[geneIdx]
@@ -226,28 +230,136 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 			// Apply environmental pressure
 			effectiveMutationRate := baseMutationRate * (1.0 + mutationPressure)
 
+			// Track mutations for this gene
+			geneMutations := 0
+			
 			// Mutate individual nucleotides
+			oldSequence := make([]Nucleotide, len(gene.Sequence))
+			copy(oldSequence, gene.Sequence)
+			
 			for seqIdx := range gene.Sequence {
 				if rand.Float64() < effectiveMutationRate {
 					// Point mutation - change nucleotide
 					nucleotides := []Nucleotide{Adenine, Thymine, Guanine, Cytosine}
+					oldNucleotide := gene.Sequence[seqIdx]
 					gene.Sequence[seqIdx] = nucleotides[rand.Intn(4)]
 					dna.Mutations++
+					geneMutations++
+					
+					// Emit point mutation event
+					if ds.eventBus != nil {
+						metadata := map[string]interface{}{
+							"entity_id":         dna.EntityID,
+							"chromosome_id":     chromIdx,
+							"gene_name":         gene.Name,
+							"gene_index":        geneIdx,
+							"sequence_position": seqIdx,
+							"old_nucleotide":    string(oldNucleotide),
+							"new_nucleotide":    string(gene.Sequence[seqIdx]),
+							"mutation_rate":     effectiveMutationRate,
+							"mutation_pressure": mutationPressure,
+							"generation":        dna.Generation,
+						}
+						
+						ds.eventBus.EmitSystemEvent(
+							-1, // No specific tick for DNA operations
+							"point_mutation",
+							"dna",
+							"dna_system",
+							fmt.Sprintf("Point mutation in entity %d: %s gene position %d (%c -> %c)", 
+								dna.EntityID, gene.Name, seqIdx, oldNucleotide, gene.Sequence[seqIdx]),
+							nil,
+							metadata,
+						)
+					}
 				}
 			}
 
 			// Occasional dominance shifts
 			if rand.Float64() < effectiveMutationRate*0.1 {
+				oldDominant := gene.Dominant
 				gene.Dominant = !gene.Dominant
 				dna.Mutations++
+				geneMutations++
+				
+				// Emit dominance shift event
+				if ds.eventBus != nil {
+					metadata := map[string]interface{}{
+						"entity_id":     dna.EntityID,
+						"chromosome_id": chromIdx,
+						"gene_name":     gene.Name,
+						"old_dominant":  oldDominant,
+						"new_dominant":  gene.Dominant,
+						"generation":    dna.Generation,
+					}
+					
+					ds.eventBus.EmitSystemEvent(
+						-1,
+						"dominance_shift",
+						"dna",
+						"dna_system",
+						fmt.Sprintf("Dominance shift in entity %d: %s gene (%t -> %t)", 
+							dna.EntityID, gene.Name, oldDominant, gene.Dominant),
+						nil,
+						metadata,
+					)
+				}
 			}
 
 			// Expression level mutations
 			if rand.Float64() < effectiveMutationRate*0.5 {
+				oldExpression := gene.Expression
 				change := (rand.Float64() - 0.5) * 0.2
 				gene.Expression = math.Max(0.1, math.Min(1.0, gene.Expression+change))
+				
+				// Emit expression change event
+				if ds.eventBus != nil && math.Abs(change) > 0.05 { // Only for significant changes
+					metadata := map[string]interface{}{
+						"entity_id":       dna.EntityID,
+						"chromosome_id":   chromIdx,
+						"gene_name":       gene.Name,
+						"old_expression":  oldExpression,
+						"new_expression":  gene.Expression,
+						"expression_change": change,
+						"generation":      dna.Generation,
+					}
+					
+					ds.eventBus.EmitSystemEvent(
+						-1,
+						"expression_change",
+						"dna",
+						"dna_system",
+						fmt.Sprintf("Expression change in entity %d: %s gene (%.3f -> %.3f)", 
+							dna.EntityID, gene.Name, oldExpression, gene.Expression),
+						nil,
+						metadata,
+					)
+				}
 			}
 		}
+	}
+	
+	// Emit overall mutation summary if any mutations occurred
+	totalNewMutations := dna.Mutations - initialMutations
+	if ds.eventBus != nil && totalNewMutations > 0 {
+		metadata := map[string]interface{}{
+			"entity_id":         dna.EntityID,
+			"total_mutations":   dna.Mutations,
+			"new_mutations":     totalNewMutations,
+			"mutation_pressure": mutationPressure,
+			"generation":        dna.Generation,
+		}
+		
+		ds.eventBus.EmitSystemEvent(
+			-1,
+			"dna_mutation_summary",
+			"dna",
+			"dna_system",
+			fmt.Sprintf("Entity %d accumulated %d new mutations (total: %d)", 
+				dna.EntityID, totalNewMutations, dna.Mutations),
+			nil,
+			metadata,
+		)
 	}
 }
 
@@ -299,6 +411,32 @@ func (ds *DNASystem) CrossoverDNA(parent1, parent2 *DNAStrand, childID int) *DNA
 
 			child.Chromosomes[chromIdx].Genes = append(child.Chromosomes[chromIdx].Genes, selectedGene)
 		}
+	}
+
+	// Emit crossover event
+	if ds.eventBus != nil {
+		metadata := map[string]interface{}{
+			"child_id":            childID,
+			"parent1_id":          parent1.EntityID,
+			"parent2_id":          parent2.EntityID,
+			"child_generation":    child.Generation,
+			"parent1_generation":  parent1.Generation,
+			"parent2_generation":  parent2.Generation,
+			"parent1_mutations":   parent1.Mutations,
+			"parent2_mutations":   parent2.Mutations,
+			"chromosome_count":    len(child.Chromosomes),
+		}
+		
+		ds.eventBus.EmitSystemEvent(
+			-1,
+			"dna_crossover",
+			"dna",
+			"dna_system",
+			fmt.Sprintf("DNA crossover: entity %d created from parents %d and %d (generation %d)", 
+				childID, parent1.EntityID, parent2.EntityID, child.Generation),
+			nil,
+			metadata,
+		)
 	}
 
 	return child

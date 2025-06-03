@@ -239,22 +239,22 @@ func NewWorld(config WorldConfig) *World {
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
 	world.SpeciationSystem = NewSpeciationSystem()
-	world.PlantNetworkSystem = NewPlantNetworkSystem()
+	world.PlantNetworkSystem = NewPlantNetworkSystem(world.CentralEventBus)
 	world.SpeciesNaming = NewSpeciesNaming()
 
 	// Initialize new evolution and topology systems
-	world.DNASystem = NewDNASystem()
-	world.CellularSystem = NewCellularSystem(world.DNASystem)
+	world.DNASystem = NewDNASystem(world.CentralEventBus)
+	world.CellularSystem = NewCellularSystem(world.DNASystem, world.CentralEventBus)
 	world.MacroEvolutionSystem = NewMacroEvolutionSystem()
 	world.TopologySystem = NewTopologySystem(config.GridWidth, config.GridHeight)
 
 	// Initialize tool and environmental modification systems
-	world.ToolSystem = NewToolSystem()
-	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem()
+	world.ToolSystem = NewToolSystem(world.CentralEventBus)
+	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem(world.CentralEventBus)
 	world.EmergentBehaviorSystem = NewEmergentBehaviorSystem()
 	
 	// Initialize reproduction and decay system
-	world.ReproductionSystem = NewReproductionSystem()
+	world.ReproductionSystem = NewReproductionSystem(world.CentralEventBus)
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks

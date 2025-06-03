@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -111,15 +112,17 @@ type ReproductionSystem struct {
 	DecayingItems []*DecayableItem `json:"decaying_items"`
 	NextEggID     int             `json:"next_egg_id"`
 	NextItemID    int             `json:"next_item_id"`
+	eventBus      *CentralEventBus `json:"-"` // Event tracking
 }
 
 // NewReproductionSystem creates a new reproduction system
-func NewReproductionSystem() *ReproductionSystem {
+func NewReproductionSystem(eventBus *CentralEventBus) *ReproductionSystem {
 	return &ReproductionSystem{
 		Eggs:          make([]*Egg, 0),
 		DecayingItems: make([]*DecayableItem, 0),
 		NextEggID:     1,
 		NextItemID:    1,
+		eventBus:      eventBus,
 	}
 }
 
@@ -218,6 +221,38 @@ func (rs *ReproductionSystem) StartMating(entity1, entity2 *Entity, currentTick 
 	entity2.ReproductionStatus.LastMatingTick = currentTick
 	entity1.ReproductionStatus.MateID = entity2.ID
 	entity2.ReproductionStatus.MateID = entity1.ID
+	
+	// Emit mating event
+	if rs.eventBus != nil {
+		pos := Position{
+			X: (entity1.Position.X + entity2.Position.X) / 2,
+			Y: (entity1.Position.Y + entity2.Position.Y) / 2,
+		}
+		
+		metadata := map[string]interface{}{
+			"entity1_id":           entity1.ID,
+			"entity2_id":           entity2.ID,
+			"entity1_species":      entity1.Species,
+			"entity2_species":      entity2.Species,
+			"reproduction_mode":    entity1.ReproductionStatus.Mode.String(),
+			"mating_strategy":      entity1.ReproductionStatus.Strategy.String(),
+			"entity1_age":          entity1.Age,
+			"entity2_age":          entity2.Age,
+			"entity1_energy":       entity1.Energy,
+			"entity2_energy":       entity2.Energy,
+		}
+		
+		rs.eventBus.EmitSystemEvent(
+			currentTick,
+			"mating_initiated",
+			"reproduction",
+			"reproduction_system",
+			fmt.Sprintf("Mating initiated between entity %d (%s) and entity %d (%s) using %s mode", 
+				entity1.ID, entity1.Species, entity2.ID, entity2.Species, entity1.ReproductionStatus.Mode.String()),
+			&pos,
+			metadata,
+		)
+	}
 	
 	// Determine reproduction outcome based on mode
 	switch entity1.ReproductionStatus.Mode {
