@@ -589,7 +589,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'STATISTICAL', 'ANOMALIES'
+            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES'
         ];
         
         // Initialize view tabs
@@ -675,8 +675,12 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             if (data.stats.avg_energy !== undefined) {
                 document.getElementById('avg-energy').textContent = data.stats.avg_energy.toFixed(2);
             }
-            if (data.stats.avg_age !== undefined) {
-                document.getElementById('avg-age').textContent = data.stats.avg_age.toFixed(1);
+            if (data.stats.avg_age_percent !== undefined) {
+                // Use percentage of lifespan for better representation
+                document.getElementById('avg-age').textContent = data.stats.avg_age_percent.toFixed(1) + '% of lifespan';
+            } else if (data.stats.avg_age !== undefined) {
+                // Fallback to raw age if percentage not available
+                document.getElementById('avg-age').textContent = data.stats.avg_age.toFixed(1) + ' ticks';
             }
             
             // Update populations
@@ -784,6 +788,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'BEHAVIOR':
                     viewContent.innerHTML = '<div class="stats-section">' + renderBehavior(data.emergent_behavior) + '</div>';
+                    break;
+                    
+                case 'REPRODUCTION':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderReproduction(data.reproduction) + '</div>';
                     break;
                     
                 case 'STATISTICAL':
@@ -2485,28 +2493,81 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             if (behavior.behavior_spread && Object.keys(behavior.behavior_spread).length > 0) {
                 html += '<h4>Behavior Spread:</h4>';
                 Object.entries(behavior.behavior_spread).forEach(([behavior_name, count]) => {
-                    html += '<div>' + behavior_name + ': ' + count + ' entities</div>';
+                    html += '<div>' + behavior_name.replace(/_/g, ' ') + ': ' + count + ' entities</div>';
                 });
             }
             
             if (behavior.avg_proficiency && Object.keys(behavior.avg_proficiency).length > 0) {
                 html += '<h4>Average Proficiency:</h4>';
                 Object.entries(behavior.avg_proficiency).forEach(([behavior_name, proficiency]) => {
-                    html += '<div>' + behavior_name + ': ' + proficiency.toFixed(2) + '</div>';
+                    html += '<div>' + behavior_name.replace(/_/g, ' ') + ': ' + proficiency.toFixed(2) + '</div>';
                 });
             }
             
             if (behavior.discovered_behaviors === 0) {
                 html += '<br><div>No emergent behaviors discovered yet</div>';
+                html += '<div style="color: #888; font-style: italic;">Behaviors emerge naturally as entities explore and learn from their environment and each other.</div>';
             } else {
                 html += '<br><h4>Behavior Development:</h4>';
                 if (behavior.discovered_behaviors < 3) {
                     html += '<div>Development Level: Early behavior emergence</div>';
-                } else if (behavior.discovered_behaviors < 8) {
+                } else if (behavior.discovered_behaviors < 6) {
                     html += '<div>Development Level: Moderate behavior complexity</div>';
                 } else {
                     html += '<div>Development Level: Advanced behavioral evolution</div>';
                 }
+                
+                // Show list of behaviors that have been discovered by entities
+                if (behavior.behavior_spread && Object.keys(behavior.behavior_spread).length > 0) {
+                    html += '<h4>Active Behaviors:</h4>';
+                    const sortedBehaviors = Object.entries(behavior.behavior_spread)
+                        .sort((a, b) => b[1] - a[1]); // Sort by count descending
+                    sortedBehaviors.forEach(([behavior_name, count]) => {
+                        if (count > 0) {
+                            const proficiency = behavior.avg_proficiency[behavior_name] || 0;
+                            html += '<div>• <strong>' + behavior_name.replace(/_/g, ' ') + '</strong>: ' + count + ' entities (avg proficiency: ' + proficiency.toFixed(2) + ')</div>';
+                        }
+                    });
+                }
+            }
+            
+            return html;
+        }
+        
+        // Render reproduction view
+        function renderReproduction(reproduction) {
+            let html = '<h3>🥚 Reproduction & Life Cycle</h3>';
+            html += '<div>Active Eggs: ' + reproduction.active_eggs + '</div>';
+            html += '<div>Decaying Items: ' + reproduction.decaying_items + '</div>';
+            html += '<div>Pregnant Entities: ' + reproduction.pregnant_entities + '</div>';
+            html += '<div>Ready to Mate: ' + reproduction.ready_to_mate + '</div>';
+            html += '<div>Mating Season Entities: ' + reproduction.mating_season_entities + '</div>';
+            html += '<div>Migrating Entities: ' + reproduction.migrating_entities + '</div>';
+            html += '<div>Cross-Species Mating: ' + reproduction.cross_species_mating + '</div>';
+            html += '<div>Territories with Mating: ' + reproduction.territories_with_mating + '</div>';
+            html += '<div>Seasonal Mating Rate: ' + reproduction.seasonal_mating_rate.toFixed(2) + 'x</div>';
+            
+            if (reproduction.reproduction_modes && Object.keys(reproduction.reproduction_modes).length > 0) {
+                html += '<h4>Reproduction Modes:</h4>';
+                Object.entries(reproduction.reproduction_modes).forEach(([mode, count]) => {
+                    html += '<div>' + mode + ': ' + count + ' entities</div>';
+                });
+            }
+            
+            if (reproduction.mating_strategies && Object.keys(reproduction.mating_strategies).length > 0) {
+                html += '<h4>Mating Strategies:</h4>';
+                Object.entries(reproduction.mating_strategies).forEach(([strategy, count]) => {
+                    html += '<div>' + strategy + ': ' + count + ' entities</div>';
+                });
+            }
+            
+            html += '<br><h4>Reproduction Activity:</h4>';
+            if (reproduction.ready_to_mate === 0) {
+                html += '<div>Activity Level: No active mating</div>';
+            } else if (reproduction.ready_to_mate < 5) {
+                html += '<div>Activity Level: Low reproductive activity</div>';
+            } else {
+                html += '<div>Activity Level: High reproductive activity</div>';
             }
             
             return html;

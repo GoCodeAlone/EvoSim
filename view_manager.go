@@ -634,17 +634,25 @@ func (vm *ViewManager) getStatsData() map[string]interface{} {
 		totalFitness := 0.0
 		totalEnergy := 0.0
 		totalAge := 0.0
+		totalLifespanPercent := 0.0
 		
 		for _, entity := range vm.world.AllEntities {
 			totalFitness += entity.Fitness
 			totalEnergy += entity.Energy
 			totalAge += float64(entity.Age)
+			
+			// Calculate age as percentage of max lifespan for better representation
+			if entity.MaxLifespan > 0 {
+				lifespanPercent := float64(entity.Age) / float64(entity.MaxLifespan) * 100.0
+				totalLifespanPercent += lifespanPercent
+			}
 		}
 		
 		count := float64(len(vm.world.AllEntities))
 		stats["avg_fitness"] = totalFitness / count
 		stats["avg_energy"] = totalEnergy / count
-		stats["avg_age"] = totalAge / count
+		stats["avg_age"] = totalAge / count // Keep raw age for backward compatibility
+		stats["avg_age_percent"] = totalLifespanPercent / count // Age as percentage of lifespan
 	}
 	
 	return stats
@@ -887,6 +895,7 @@ func (vm *ViewManager) getSpeciesData() SpeciesData {
 		SpeciesAwaitingExtinction: 0,
 	}
 	
+	// If we have a speciation system, use its data
 	if vm.world.SpeciationSystem != nil {
 		data.ActiveSpecies = len(vm.world.SpeciationSystem.ActiveSpecies)
 		data.ExtinctSpecies = len(vm.world.SpeciationSystem.AllSpecies) - len(vm.world.SpeciationSystem.ActiveSpecies)
@@ -912,6 +921,36 @@ func (vm *ViewManager) getSpeciesData() SpeciesData {
 				ExtinctionTick:     species.ExtinctionTick,
 				PeakPopulation:     species.PeakPopulation,
 				AwaitingExtinction: awaitingExtinction,
+			}
+			data.SpeciesDetails = append(data.SpeciesDetails, detail)
+		}
+	} else {
+		// Fall back to basic population data if no speciation system
+		data.ActiveSpecies = len(vm.world.Populations)
+		data.TotalSpeciesEver = len(vm.world.Populations)
+		
+		// Create species details from populations
+		for name, population := range vm.world.Populations {
+			livingCount := 0
+			for _, entity := range population.Entities {
+				if entity.IsAlive {
+					livingCount++
+				}
+			}
+			
+			if livingCount > 0 {
+				data.SpeciesWithMembers++
+			}
+			
+			detail := SpeciesDetailData{
+				ID:                 0, // No ID in basic populations
+				Name:               name,
+				Population:         livingCount,
+				IsExtinct:          livingCount == 0,
+				FormationTick:      0, // Unknown formation tick
+				ExtinctionTick:     0,
+				PeakPopulation:     livingCount, // Use current as peak for simplicity
+				AwaitingExtinction: livingCount == 0,
 			}
 			data.SpeciesDetails = append(data.SpeciesDetails, detail)
 		}
