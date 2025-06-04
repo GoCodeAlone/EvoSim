@@ -763,7 +763,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL', 'SYMBIOTIC', 'NEURAL'
+            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL', 'SYMBIOTIC', 'BIORHYTHM', 'NEURAL'
         ];
         
         // Initialize view tabs
@@ -898,6 +898,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     title: 'Symbiotic View - Organism Relationships',
                     description: 'Displays parasitic and mutualistic relationships between organisms including disease transmission, host-parasite co-evolution, symbiotic partnerships, and relationship formation/dissolution dynamics.'
                 },
+                'BIORHYTHM': {
+                    title: 'BioRhythm View - Activity Patterns',
+                    description: 'Monitors entity activity patterns including 8 activity types (Sleep, Eat, Drink, Play, Explore, Scavenge, Rest, Socialize) with need-based behavior selection. Shows circadian rhythms, seasonal effects, and species-specific biorhythm profiles.'
+                },
                 'NEURAL': {
                     title: 'Neural Networks View - AI Learning System',
                     description: 'Monitors neural network learning in intelligent entities (intelligence > 0.3). Shows network creation, learning events, behavior patterns, and decision-making processes. Entities appear when they gain neural networks and disappear when they die or lose intelligence. Learned information is stored in synaptic weights and passed to offspring through the intelligence trait.'
@@ -906,15 +910,13 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             const info = descriptions[viewMode] || { title: viewMode + ' View', description: 'View description not available.' };
             
-            return `
-                <div class="view-description">
-                    <button class="description-toggle" id="${viewMode.toLowerCase()}-description-toggle" onclick="toggleDescription('${viewMode}')">Show Description ▼</button>
-                    <div id="${viewMode.toLowerCase()}-description-content" class="description-content">
-                        <h4>${info.title}</h4>
-                        <p>${info.description}</p>
-                    </div>
-                </div>
-            `;
+            return '<div class="view-description">' +
+                '<button class="description-toggle" id="' + viewMode.toLowerCase() + '-description-toggle" onclick="toggleDescription(\'' + viewMode + '\')">Show Description ▼</button>' +
+                '<div id="' + viewMode.toLowerCase() + '-description-content" class="description-content">' +
+                '<h4>' + info.title + '</h4>' +
+                '<p>' + info.description + '</p>' +
+                '</div>' +
+                '</div>';
         }
         
         // Switch view mode
@@ -1142,6 +1144,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderSymbiotic(data.symbiotic_relationships) + '</div>';
                     break;
                     
+                case 'BIORHYTHM':
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderBiorhythm(data.biorhythm) + '</div>';
+                    break;
+                    
                 case 'NEURAL':
                     viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderNeural(data.neural) + '</div>';
                     break;
@@ -1281,20 +1287,41 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             let html = '<h3>📊 World Statistics</h3>';
             
             html += '<h4>General Stats:</h4>';
+            
+            // Enhanced stat display with tooltips for key metrics
+            const statTooltips = {
+                'avg_fitness': 'Average fitness across all entities. Higher values (0.7+) indicate a thriving population, lower values (0.3-) suggest environmental stress or poor adaptation.',
+                'avg_energy': 'Average energy level of all entities. Low energy suggests food scarcity or high metabolic demands.',
+                'avg_age': 'Average age of entities. Higher ages indicate good survival conditions and low mortality.',
+                'avg_age_percent': 'Average age as percentage of maximum lifespan. Values over 50% suggest good longevity.',
+                'total_entities': 'Total number of living entities in the simulation.',
+                'total_plants': 'Total number of plants providing food and oxygen to the ecosystem.',
+                'genetic_diversity': 'Measure of genetic variation. Higher diversity (0.7+) improves population resilience.',
+                'mutation_rate': 'Current rate of genetic mutations. Increases under environmental stress.',
+                'birth_rate': 'Number of new entities born recently. High rates indicate reproductive success.',
+                'death_rate': 'Number of entity deaths recently. High rates may indicate environmental challenges.'
+            };
+            
             for (const [key, value] of Object.entries(stats)) {
                 const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                 const displayValue = typeof value === 'number' ? value.toFixed(2) : value;
-                html += '<div>' + displayKey + ': ' + displayValue + '</div>';
+                const tooltip = statTooltips[key];
+                
+                if (tooltip) {
+                    html += '<div class="stat-item tooltip">' + displayKey + ': <strong>' + displayValue + '</strong><span class="tooltiptext">' + tooltip + '</span></div>';
+                } else {
+                    html += '<div class="stat-item">' + displayKey + ': <strong>' + displayValue + '</strong></div>';
+                }
             }
             
             html += '<h4>System Health:</h4>';
             if (stats.avg_fitness !== undefined) {
                 if (stats.avg_fitness < 0.3) {
-                    html += '<div style="color: orange;">⚠️ Low average fitness - population struggling</div>';
+                    html += '<div style="color: orange;" class="tooltip">⚠️ Low average fitness - population struggling<span class="tooltiptext">Population fitness is below 0.3, indicating severe environmental stress, poor food availability, or inadequate genetic adaptation. Consider environmental modifications or population interventions.</span></div>';
                 } else if (stats.avg_fitness < 0.6) {
-                    html += '<div style="color: yellow;">⚡ Moderate fitness - population stable</div>';
+                    html += '<div style="color: yellow;" class="tooltip">⚡ Moderate fitness - population stable<span class="tooltiptext">Population fitness is between 0.3-0.6, indicating stable but not optimal conditions. Population can survive but may benefit from environmental improvements.</span></div>';
                 } else {
-                    html += '<div style="color: lightgreen;">✅ High fitness - population thriving</div>';
+                    html += '<div style="color: lightgreen;" class="tooltip">✅ High fitness - population thriving<span class="tooltiptext">Population fitness is above 0.6, indicating excellent adaptation to environment. Population is healthy and reproducing successfully.</span></div>';
                 }
             }
             
@@ -1354,10 +1381,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 
                 html += '<div class="population-item' + (isUpdating ? ' updating' : '') + '">';
                 html += '<h4>' + pop.name + (isUpdating ? ' <span class="update-indicator">●</span>' : '') + '</h4>';
-                html += '<div>Count: ' + pop.count + '</div>';
-                html += '<div>Average Fitness: ' + pop.avg_fitness.toFixed(2) + '</div>';
-                html += '<div>Average Energy: ' + pop.avg_energy.toFixed(2) + '</div>';
-                html += '<div>Average Age: ' + pop.avg_age.toFixed(1) + '</div>';
+                html += '<div class="tooltip">Count: <strong>' + pop.count + '</strong><span class="tooltiptext">Current number of living entities in this population. Sudden drops may indicate environmental stress or predation.</span></div>';
+                html += '<div class="tooltip">Average Fitness: <strong>' + pop.avg_fitness.toFixed(2) + '</strong><span class="tooltiptext">Population fitness level (0-1). Values above 0.6 indicate good adaptation, below 0.3 suggests population stress.</span></div>';
+                html += '<div class="tooltip">Average Energy: <strong>' + pop.avg_energy.toFixed(2) + '</strong><span class="tooltiptext">Average energy level (0-1). Low values may indicate food scarcity or high metabolic demands from environmental stress.</span></div>';
+                html += '<div class="tooltip">Average Age: <strong>' + pop.avg_age.toFixed(1) + '</strong><span class="tooltiptext">Average age in simulation ticks. Higher ages indicate good survival conditions and successful adaptation to environment.</span></div>';
                 
                 if (pop.trait_averages && Object.keys(pop.trait_averages).length > 0) {
                     html += '<h5>Average Traits:</h5>';
@@ -3578,6 +3605,79 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                         html += '<div class="relationship-bar" style="width: ' + barWidth + 'px; background: ' + color + '; height: 20px; margin: 2px 0;"></div>';
                         html += '</div>';
                     }
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        // BioRhythm rendering function
+        function renderBiorhythm(biorhythm) {
+            if (!biorhythm) {
+                return '<h3>🕒 BioRhythm System</h3><div>BioRhythm system data not available</div>';
+            }
+            
+            let html = '<h3>🕒 BioRhythm & Activity Patterns</h3>';
+            
+            // Activity distribution
+            html += '<h4>📊 Activity Distribution:</h4>';
+            if (biorhythm.activity_distribution) {
+                html += '<div class="stats-row">';
+                const activities = ['Sleep', 'Eat', 'Drink', 'Play', 'Explore', 'Scavenge', 'Rest', 'Socialize'];
+                activities.forEach(activity => {
+                    const count = biorhythm.activity_distribution[activity.toLowerCase()] || 0;
+                    html += '<div class="stat-item tooltip">' + activity + ': <strong>' + count + '</strong><span class="tooltiptext">Number of entities currently engaged in ' + activity.toLowerCase() + ' activity. Activity selection is based on current needs and circadian preferences.</span></div>';
+                });
+                html += '</div>';
+            }
+            
+            // Circadian patterns
+            html += '<h4>🌙 Circadian Patterns:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item tooltip">Diurnal Entities: <strong>' + (biorhythm.diurnal_count || 0) + '</strong><span class="tooltiptext">Entities active during the day (based on circadian_preference trait). Includes most herbivores and some omnivores.</span></div>';
+            html += '<div class="stat-item tooltip">Nocturnal Entities: <strong>' + (biorhythm.nocturnal_count || 0) + '</strong><span class="tooltiptext">Entities active at night (based on circadian_preference trait). Includes most predators and some specialized species.</span></div>';
+            html += '</div>';
+            
+            // Need levels
+            html += '<h4>🎯 Average Need Levels:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item tooltip">Sleep Need: <strong>' + (biorhythm.avg_sleep_need || 0).toFixed(2) + '</strong><span class="tooltiptext">Average sleep requirement across all entities. Higher values during winter and for aging entities.</span></div>';
+            html += '<div class="stat-item tooltip">Hunger Need: <strong>' + (biorhythm.avg_hunger_need || 0).toFixed(2) + '</strong><span class="tooltiptext">Average hunger level. Entities only eat when hunger exceeds threshold, preventing random feeding behavior.</span></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item tooltip">Thirst Need: <strong>' + (biorhythm.avg_thirst_need || 0).toFixed(2) + '</strong><span class="tooltiptext">Average thirst level. Entities seek water sources when thirst exceeds threshold, especially in hot seasons.</span></div>';
+            html += '<div class="stat-item tooltip">Play Drive: <strong>' + (biorhythm.avg_play_drive || 0).toFixed(2) + '</strong><span class="tooltiptext">Average play motivation. Higher intelligence entities show more play behavior, especially during favorable seasons.</span></div>';
+            html += '</div>';
+            
+            // Seasonal effects
+            if (biorhythm.seasonal_effects) {
+                html += '<h4>🍂 Seasonal BioRhythm Effects:</h4>';
+                html += '<div style="background-color: #3a3a3a; padding: 10px; border-radius: 5px; margin: 5px 0;">';
+                html += '<strong>Current Season Effects:</strong><br>';
+                html += '• Winter: Increased sleep needs, reduced exploration<br>';
+                html += '• Spring: Boosted play and exploration drives<br>';
+                html += '• Summer: Increased thirst, peak activity levels<br>';
+                html += '• Autumn: Resource gathering focus, preparation behaviors';
+                html += '</div>';
+            }
+            
+            // Sample entity biorhythm data
+            if (biorhythm.sample_entities && biorhythm.sample_entities.length > 0) {
+                html += '<h4>🔍 Sample Entity BioRhythms:</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                biorhythm.sample_entities.slice(0, 5).forEach(entity => {
+                    html += '<div style="background-color: #4a4a4a; padding: 8px; margin: 5px 0; border-radius: 3px;">';
+                    html += '<strong>Entity #' + entity.id + '</strong> (' + entity.species + ')<br>';
+                    html += '<small>';
+                    html += 'Current Activity: ' + (entity.current_activity || 'None') + '<br>';
+                    html += 'Circadian Type: ' + (entity.circadian_type || 'Unknown') + '<br>';
+                    html += 'Sleep Need: ' + (entity.sleep_need || 0).toFixed(2) + ' | ';
+                    html += 'Hunger: ' + (entity.hunger_need || 0).toFixed(2) + ' | ';
+                    html += 'Thirst: ' + (entity.thirst_need || 0).toFixed(2);
+                    html += '</small>';
+                    html += '</div>';
                 });
                 html += '</div>';
             }
