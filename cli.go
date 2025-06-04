@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies", "warfare"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies", "warfare", "fungal"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -357,6 +357,8 @@ func (m CLIModel) View() string {
 		content = m.anomaliesView()
 	case "warfare":
 		content = m.warfareView()
+	case "fungal":
+		content = m.fungalView()
 	default:
 		content = m.gridView()
 	}
@@ -3999,6 +4001,107 @@ func (m CLIModel) getModificationTypeName(modType int) string {
 		return name
 	}
 	return fmt.Sprintf("Type%d", modType)
+}
+
+// fungalView displays fungal network and decomposition information
+func (m CLIModel) fungalView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🍄 Fungal Networks & Decomposition") + "\n\n")
+
+	if m.world.FungalNetwork == nil {
+		content.WriteString("Fungal network system not initialized\n")
+		return content.String()
+	}
+
+	// Get fungal network statistics
+	stats := m.world.FungalNetwork.GetStats()
+
+	// General Statistics
+	content.WriteString("=== FUNGAL ECOSYSTEM STATUS ===\n")
+	content.WriteString(fmt.Sprintf("Total organisms: %d\n", stats["total_organisms"].(int)))
+	content.WriteString(fmt.Sprintf("Decomposer fungi: %d\n", stats["decomposer_count"].(int)))
+	content.WriteString(fmt.Sprintf("Mycorrhizal fungi: %d\n", stats["mycorrhizal_count"].(int)))
+	content.WriteString(fmt.Sprintf("Active spores: %d\n", stats["active_spores"].(int)))
+	content.WriteString(fmt.Sprintf("Total biomass: %.1f\n", stats["total_biomass"].(float64)))
+
+	// Network connectivity
+	content.WriteString("\n=== NETWORK CONNECTIVITY ===\n")
+	content.WriteString(fmt.Sprintf("Total connections: %d\n", stats["network_connections"].(int)))
+	content.WriteString(fmt.Sprintf("Average connections per organism: %.1f\n", stats["avg_connections"].(float64)))
+
+	// Decomposition activity
+	content.WriteString("\n=== DECOMPOSITION ACTIVITY ===\n")
+	content.WriteString(fmt.Sprintf("Nutrient cycling rate: %.2f/tick\n", stats["nutrient_cycling"].(float64)))
+	content.WriteString(fmt.Sprintf("Total decomposition events: %d\n", stats["decomposition_events"].(int)))
+
+	// Active organisms
+	if len(m.world.FungalNetwork.Organisms) > 0 {
+		content.WriteString("\n=== ACTIVE ORGANISMS (Top 5) ===\n")
+		
+		// Sort organisms by biomass
+		organisms := make([]*FungalOrganism, 0)
+		for _, org := range m.world.FungalNetwork.Organisms {
+			if org.IsAlive {
+				organisms = append(organisms, org)
+			}
+		}
+		
+		// Simple sort by biomass (top 5)
+		for i := 0; i < len(organisms) && i < 5; i++ {
+			largest := i
+			for j := i + 1; j < len(organisms); j++ {
+				if organisms[j].Biomass > organisms[largest].Biomass {
+					largest = j
+				}
+			}
+			if largest != i {
+				organisms[i], organisms[largest] = organisms[largest], organisms[i]
+			}
+		}
+
+		displayCount := 0
+		for _, org := range organisms {
+			if displayCount >= 5 {
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("Organism #%d (%s):\n", org.ID, org.Species))
+			content.WriteString(fmt.Sprintf("  Position: (%.1f, %.1f)\n", org.Position.X, org.Position.Y))
+			content.WriteString(fmt.Sprintf("  Biomass: %.2f | Age: %d ticks\n", org.Biomass, org.Age))
+			content.WriteString(fmt.Sprintf("  Nutrients: %.2f | Decomposition rate: %.3f\n", 
+				org.NutrientStorage, org.DecompositionRate))
+			content.WriteString(fmt.Sprintf("  Network connections: %d\n", len(org.NetworkConnections)))
+			content.WriteString("\n")
+			displayCount++
+		}
+
+		if len(organisms) > 5 {
+			content.WriteString(fmt.Sprintf("... and %d more organisms\n", len(organisms)-5))
+		}
+	} else {
+		content.WriteString("\n=== ACTIVE ORGANISMS ===\n")
+		content.WriteString("No active fungal organisms\n")
+	}
+
+	// Decomposition targets
+	if m.world.ReproductionSystem != nil && len(m.world.ReproductionSystem.DecayingItems) > 0 {
+		content.WriteString("\n=== AVAILABLE DECOMPOSITION TARGETS ===\n")
+		
+		undecayedCount := 0
+		totalNutrients := 0.0
+		
+		for _, item := range m.world.ReproductionSystem.DecayingItems {
+			if !item.IsDecayed {
+				undecayedCount++
+				totalNutrients += item.NutrientValue
+			}
+		}
+		
+		content.WriteString(fmt.Sprintf("Undecayed organic matter: %d items\n", undecayedCount))
+		content.WriteString(fmt.Sprintf("Total available nutrients: %.1f\n", totalNutrients))
+	}
+
+	return content.String()
 }
 
 // RunCLI starts the CLI interface

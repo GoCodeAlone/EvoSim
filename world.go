@@ -172,6 +172,7 @@ type World struct {
 	
 	// Reproduction and Decay System
 	ReproductionSystem      *ReproductionSystem                  // Reproduction, gestation, and decay management
+	FungalNetwork           *FungalNetwork                       // Fungal decomposer and nutrient cycling system
 	
 	// Statistical Analysis System
 	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
@@ -264,6 +265,7 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize reproduction and decay system
 	world.ReproductionSystem = NewReproductionSystem(world.CentralEventBus)
+	world.FungalNetwork = NewFungalNetwork()
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
@@ -327,6 +329,12 @@ func NewWorld(config WorldConfig) *World {
 
 	// Initialize plant life
 	world.initializePlants()
+
+	// Initialize fungal networks
+	if world.FungalNetwork != nil {
+		initialFungi := 20 + rand.Intn(30) // 20-50 initial fungi
+		world.FungalNetwork.SeedInitialFungi(world, initialFungi)
+	}
 
 	// Process initial species formation from newly created plants
 	if len(world.AllPlants) > 0 {
@@ -919,6 +927,11 @@ func (w *World) Update() {
 
 	// Update reproduction system (gestation, egg hatching, decay)
 	w.updateReproductionSystem()
+	
+	// Update fungal network (decomposition and nutrient cycling)
+	if w.FungalNetwork != nil {
+		w.FungalNetwork.Update(w, w.Tick)
+	}
 
 	// Remove dead entities and plants
 	w.removeDeadEntities()
