@@ -41,7 +41,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] Environmental conditions and weather
 
 #### User Interface
-- [x] 20 view modes: Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind, Species, Network, DNA, Cellular, Evolution, Topology, Tools, Environment, Behavior, Reproduction, Statistical, Anomalies
+- [x] 26 view modes: Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind, Species, Network, DNA, Cellular, Evolution, Topology, Tools, Environment, Behavior, Reproduction, Statistical, Ecosystem, Anomalies, Warfare, Fungal, Cultural, Symbiotic, BioRhythm
 - [x] Multi-zoom viewport navigation (1x, 2x, 4x, 8x)
 - [x] Real-time CLI with controls and statistics
 
@@ -379,6 +379,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Activity Duration and Memory Tracking**: Tracks how long entities perform activities and when they last performed each activity type
 - [x] **Cooperative and Intelligent Behavior Integration**: High intelligence increases play behavior, high cooperation increases socializing, traits influence activity preferences
 - [x] **World Integration**: Full integration into entity update loop with biorhythm affecting energy costs, seasonal effects, and time-based activity modifiers
+- [x] **CLI and Web Interface Integration**: Complete biorhythm view mode showing activity distribution, circadian preferences, need levels, and sample entity biorhythm data
 
 ---
 

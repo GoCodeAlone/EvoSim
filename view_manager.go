@@ -83,6 +83,7 @@ type ViewData struct {
 	Anomalies        AnomaliesData        `json:"anomalies"`
 	Neural           NeuralData           `json:"neural"`
 	BiomeBoundary    BiomeBoundaryData    `json:"biome_boundary"`
+	BioRhythm        BioRhythmData        `json:"biorhythm"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
 	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
@@ -493,6 +494,30 @@ type NeuralData struct {
 	EntityNetworks           map[string]interface{}   `json:"entity_networks"`     // Entity ID -> neural data
 }
 
+// BioRhythmData represents biorhythm system state for web interface
+type BioRhythmData struct {
+	TotalEntities          int                    `json:"total_entities"`
+	ActivityDistribution   map[string]int         `json:"activity_distribution"`    // Activity name -> entity count
+	CircadianDistribution  map[string]int         `json:"circadian_distribution"`   // Preference type -> entity count
+	AverageNeedLevels      map[string]float64     `json:"average_need_levels"`      // Activity -> average need level
+	BiorhythmEfficiency    float64                `json:"biorhythm_efficiency"`     // Percentage of entities in sync
+	CurrentTimeOfDay       string                 `json:"current_time_of_day"`
+	IsNight                bool                   `json:"is_night"`
+	Season                 string                 `json:"season"`
+	SampleEntities         []BioRhythmEntityData  `json:"sample_entities"`          // Sample entity biorhythm data
+}
+
+// BioRhythmEntityData represents biorhythm data for a single entity
+type BioRhythmEntityData struct {
+	EntityID          int                `json:"entity_id"`
+	Species           string             `json:"species"`
+	CurrentActivity   string             `json:"current_activity"`
+	CircadianType     string             `json:"circadian_type"`
+	Energy            float64            `json:"energy"`
+	NeedLevels        map[string]float64 `json:"need_levels"`   // Activity -> need level
+	TopNeeds          []string           `json:"top_needs"`     // Top 3 needs by priority
+}
+
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
 	// Capture historical data every 5 ticks
@@ -536,6 +561,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Anomalies:        vm.getAnomaliesData(),
 		Neural:           vm.getNeuralData(),
 		BiomeBoundary:    vm.getBiomeBoundaryData(),
+		BioRhythm:        vm.getBioRhythmData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
 		CommunicationHistory: vm.communicationHistory,
@@ -2338,4 +2364,186 @@ func (vm *ViewManager) getBiomeBoundaryData() BiomeBoundaryData {
 	}
 	
 	return data
+}
+
+// getBioRhythmData returns biorhythm system state for web interface
+func (vm *ViewManager) getBioRhythmData() BioRhythmData {
+	data := BioRhythmData{
+		TotalEntities:         0,
+		ActivityDistribution:  make(map[string]int),
+		CircadianDistribution: make(map[string]int),
+		AverageNeedLevels:     make(map[string]float64),
+		BiorhythmEfficiency:   0.0,
+		CurrentTimeOfDay:      "Unknown",
+		IsNight:               false,
+		Season:                "Unknown", 
+		SampleEntities:        []BioRhythmEntityData{},
+	}
+	
+	if len(vm.world.AllEntities) == 0 {
+		return data
+	}
+	
+	// Get time context
+	timeState := vm.world.AdvancedTimeSystem.GetTimeState()
+	data.CurrentTimeOfDay = getTimeOfDayNameWeb(timeState.TimeOfDay)
+	data.IsNight = timeState.IsNight()
+	data.Season = seasonToString(timeState.Season)
+	
+	// Activity and need tracking
+	activityNames := map[ActivityType]string{
+		ActivitySleep:     "Sleep",
+		ActivityEat:       "Eat",
+		ActivityDrink:     "Drink",
+		ActivityPlay:      "Play",
+		ActivityExplore:   "Explore",
+		ActivityScavenge:  "Scavenge",
+		ActivityRest:      "Rest",
+		ActivitySocialize: "Socialize",
+	}
+	
+	needSums := make(map[ActivityType]float64)
+	needCounts := make(map[ActivityType]int)
+	nocturnalCount := 0
+	diurnalCount := 0
+	crepuscularCount := 0
+	efficientCount := 0
+	
+	// Process entities
+	for _, entity := range vm.world.AllEntities {
+		if !entity.IsAlive || entity.BioRhythm == nil {
+			continue
+		}
+		
+		data.TotalEntities++
+		
+		// Current activity distribution
+		currentActivity := entity.BioRhythm.GetCurrentActivity()
+		if name, exists := activityNames[currentActivity]; exists {
+			data.ActivityDistribution[name]++
+		}
+		
+		// Circadian preference distribution
+		circadianPref := entity.GetTrait("circadian_preference")
+		if circadianPref < -0.3 {
+			nocturnalCount++
+		} else if circadianPref > 0.3 {
+			diurnalCount++
+		} else {
+			crepuscularCount++
+		}
+		
+		// Need levels
+		for activity := range activityNames {
+			need := entity.BioRhythm.GetActivityNeed(activity)
+			needSums[activity] += need
+			needCounts[activity]++
+		}
+		
+		// Biorhythm efficiency calculation
+		isEfficient := false
+		if circadianPref < -0.3 && timeState.IsNight() && currentActivity != ActivitySleep {
+			// Nocturnal and active at night
+			isEfficient = true
+		} else if circadianPref > 0.3 && !timeState.IsNight() && currentActivity != ActivitySleep {
+			// Diurnal and active during day
+			isEfficient = true
+		} else if currentActivity == ActivitySleep {
+			// Sleeping is always considered efficient when tired
+			sleepNeed := entity.BioRhythm.GetActivityNeed(ActivitySleep)
+			if sleepNeed > 0.6 {
+				isEfficient = true
+			}
+		}
+		if isEfficient {
+			efficientCount++
+		}
+		
+		// Collect sample entity data (first 10 entities)
+		if len(data.SampleEntities) < 10 {
+			circadianType := "Crepuscular"
+			if circadianPref < -0.3 {
+				circadianType = "Nocturnal"
+			} else if circadianPref > 0.3 {
+				circadianType = "Diurnal"
+			}
+			
+			// Get need levels
+			needLevels := make(map[string]float64)
+			for activity, name := range activityNames {
+				needLevels[name] = entity.BioRhythm.GetActivityNeed(activity)
+			}
+			
+			// Get top 3 needs
+			type needPair struct {
+				activity string
+				need     float64
+			}
+			var needs []needPair
+			for name, need := range needLevels {
+				needs = append(needs, needPair{name, need})
+			}
+			
+			// Sort by need level (descending)
+			for i := 0; i < len(needs)-1; i++ {
+				for j := i+1; j < len(needs); j++ {
+					if needs[i].need < needs[j].need {
+						needs[i], needs[j] = needs[j], needs[i]
+					}
+				}
+			}
+			
+			topNeeds := []string{}
+			for i := 0; i < 3 && i < len(needs); i++ {
+				topNeeds = append(topNeeds, needs[i].activity)
+			}
+			
+			sampleEntity := BioRhythmEntityData{
+				EntityID:        entity.ID,
+				Species:         entity.Species,
+				CurrentActivity: activityNames[currentActivity],
+				CircadianType:   circadianType,
+				Energy:          entity.Energy,
+				NeedLevels:      needLevels,
+				TopNeeds:        topNeeds,
+			}
+			data.SampleEntities = append(data.SampleEntities, sampleEntity)
+		}
+	}
+	
+	// Calculate circadian distribution
+	data.CircadianDistribution["Nocturnal"] = nocturnalCount
+	data.CircadianDistribution["Diurnal"] = diurnalCount
+	data.CircadianDistribution["Crepuscular"] = crepuscularCount
+	
+	// Calculate average need levels
+	for activity, name := range activityNames {
+		if needCounts[activity] > 0 {
+			data.AverageNeedLevels[name] = needSums[activity] / float64(needCounts[activity])
+		}
+	}
+	
+	// Calculate biorhythm efficiency
+	if data.TotalEntities > 0 {
+		data.BiorhythmEfficiency = float64(efficientCount) / float64(data.TotalEntities) * 100
+	}
+	
+	return data
+}
+
+func getTimeOfDayNameWeb(timeOfDay TimeOfDay) string {
+	names := map[TimeOfDay]string{
+		Dawn:      "Dawn",
+		Morning:   "Morning",
+		Midday:    "Midday",
+		Afternoon: "Afternoon",
+		Evening:   "Evening",
+		Night:     "Night",
+		Midnight:  "Midnight",
+		LateNight: "Late Night",
+	}
+	if name, exists := names[timeOfDay]; exists {
+		return name
+	}
+	return "Unknown"
 }
