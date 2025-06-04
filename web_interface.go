@@ -220,6 +220,36 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             background-color: #6a9bd2;
         }
         
+        /* Warfare view styles */
+        .colony-item {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #4a4a4a;
+            border-radius: 3px;
+            border-left: 3px solid #6a9bd2;
+        }
+        
+        .conflict-item {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #4a4a4a;
+            border-radius: 3px;
+            border-left: 3px solid #F44336;
+        }
+        
+        .event-item {
+            margin: 4px 0;
+            padding: 4px 8px;
+            background-color: #4a4a4a;
+            border-radius: 2px;
+            font-size: 13px;
+        }
+        
+        .colony-list, .events-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
         .population-item {
             background-color: #3a3a3a;
             padding: 10px;
@@ -592,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES'
+            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES', 'WARFARE'
         ];
         
         // Initialize view tabs
@@ -803,6 +833,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'ANOMALIES':
                     viewContent.innerHTML = '<div class="stats-section">' + renderAnomalies(data.anomalies) + '</div>';
+                    break;
+                    
+                case 'WARFARE':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderWarfare(data.warfare) + '</div>';
                     break;
                     
                 default:
@@ -2830,6 +2864,113 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             }
             
             return html;
+        }
+        
+        // Render warfare view
+        function renderWarfare(warfare) {
+            if (!warfare) {
+                return '<h3>⚔️ Warfare & Diplomacy</h3><div>Warfare data not available</div>';
+            }
+            
+            let html = '<h3>⚔️ Multi-Colony Warfare & Diplomacy</h3>';
+            
+            // Colony overview
+            if (warfare.colonies && warfare.colonies.length > 0) {
+                html += '<h4>🏰 Active Colonies (' + warfare.colonies.length + '):</h4>';
+                html += '<div class="colony-list">';
+                warfare.colonies.forEach(colony => {
+                    const relationColor = getRelationColor(colony.dominant_relation);
+                    html += '<div class="colony-item">';
+                    html += '<strong>' + colony.name + '</strong> ';
+                    html += '<span style="color: ' + relationColor + '">(' + colony.dominant_relation + ')</span><br>';
+                    html += 'Size: ' + colony.size + ' | Territory: ' + colony.territory_size + ' cells<br>';
+                    html += 'Military: ' + colony.military_strength.toFixed(1) + ' | Resources: ' + colony.total_resources + '<br>';
+                    if (colony.recent_activity) {
+                        html += '<small style="color: #888;">Recent: ' + colony.recent_activity + '</small>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Active conflicts
+            if (warfare.active_conflicts && warfare.active_conflicts.length > 0) {
+                html += '<h4>⚔️ Active Conflicts (' + warfare.active_conflicts.length + '):</h4>';
+                warfare.active_conflicts.forEach(conflict => {
+                    const intensityColor = getConflictIntensityColor(conflict.intensity);
+                    html += '<div class="conflict-item">';
+                    html += '<strong style="color: ' + intensityColor + '">' + conflict.type + '</strong><br>';
+                    html += conflict.attacker + ' vs ' + conflict.defender + '<br>';
+                    html += 'Duration: ' + conflict.duration + ' ticks | Intensity: ' + conflict.intensity.toFixed(2) + '<br>';
+                    html += 'Casualties: ' + conflict.casualties + ' | Status: ' + conflict.status + '<br>';
+                    if (conflict.cause) {
+                        html += '<small>Cause: ' + conflict.cause + '</small>';
+                    }
+                    html += '</div>';
+                });
+            } else {
+                html += '<h4>⚔️ Active Conflicts: None</h4>';
+                html += '<div style="color: #4CAF50;">🕊️ All colonies are currently at peace</div>';
+            }
+            
+            // Diplomatic relations summary
+            if (warfare.diplomatic_summary) {
+                html += '<h4>🤝 Diplomatic Relations Summary:</h4>';
+                Object.entries(warfare.diplomatic_summary).forEach(([relation, count]) => {
+                    const relationColor = getRelationColor(relation);
+                    html += '<div style="color: ' + relationColor + ';">' + relation + ': ' + count + '</div>';
+                });
+            }
+            
+            // Trade activity
+            if (warfare.trade_activity) {
+                html += '<h4>💰 Trade Activity:</h4>';
+                html += '<div>Active Agreements: ' + warfare.trade_activity.active_agreements + '</div>';
+                html += '<div>Trade Volume: ' + warfare.trade_activity.total_volume + '</div>';
+                html += '<div>Trade Efficiency: ' + (warfare.trade_activity.efficiency * 100).toFixed(1) + '%</div>';
+            }
+            
+            // Recent warfare events
+            if (warfare.recent_events && warfare.recent_events.length > 0) {
+                html += '<h4>📰 Recent Warfare Events:</h4>';
+                html += '<div class="events-list">';
+                warfare.recent_events.slice(0, 10).forEach(event => {
+                    html += '<div class="event-item">';
+                    html += '<small>[Tick ' + event.tick + ']</small> ';
+                    html += event.description;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Statistics
+            if (warfare.statistics) {
+                html += '<h4>📊 Warfare Statistics:</h4>';
+                html += '<div>Total Conflicts: ' + warfare.statistics.total_conflicts + '</div>';
+                html += '<div>Total Casualties: ' + warfare.statistics.total_casualties + '</div>';
+                html += '<div>Peace Treaties: ' + warfare.statistics.peace_treaties + '</div>';
+                html += '<div>Alliance Formations: ' + warfare.statistics.alliance_formations + '</div>';
+            }
+            
+            return html;
+        }
+        
+        function getRelationColor(relation) {
+            const colors = {
+                'Allied': '#4CAF50',
+                'Enemy': '#F44336', 
+                'Neutral': '#FFC107',
+                'Trading': '#2196F3',
+                'Truce': '#FF9800',
+                'Vassal': '#9C27B0'
+            };
+            return colors[relation] || '#888';
+        }
+        
+        function getConflictIntensityColor(intensity) {
+            if (intensity < 0.3) return '#FFC107'; // Low intensity - yellow
+            if (intensity < 0.7) return '#FF9800'; // Medium intensity - orange  
+            return '#F44336'; // High intensity - red
         }
     </script>
 </body>
