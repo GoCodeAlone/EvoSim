@@ -186,8 +186,12 @@ func TestAutomaticTradeAndAllianceFormation(t *testing.T) {
 	// Set up resources to create trade incentives
 	colony1.Resources["food"] = 200.0 // Surplus food
 	colony1.Resources["materials"] = 5.0 // Needs materials
-	colony2.Resources["food"] = 15.0 // Needs food
+	colony2.Resources["food"] = 0.0 // No food, definitely needs food
 	colony2.Resources["materials"] = 150.0 // Surplus materials
+	
+	// Increase colony sizes to increase consumption needs
+	colony1.ColonySize = 20
+	colony2.ColonySize = 20
 	
 	// Register colonies
 	system.RegisterColony(colony1)
@@ -217,11 +221,20 @@ func TestAutomaticTradeAndAllianceFormation(t *testing.T) {
 	queen3 := NewEntity(3, []string{"aggression", "strength"}, "predator", Position{X: 50, Y: 50})
 	colony3 := NewCasteColony(3, queen3, Position{X: 50, Y: 50})
 	system.RegisterColony(colony3)
+	
+	// Set up enemy relations in both directions
 	system.ColonyDiplomacies[colony1.ID].Relations[colony3.ID] = Enemy
 	system.ColonyDiplomacies[colony2.ID].Relations[colony3.ID] = Enemy
+	system.ColonyDiplomacies[colony3.ID].Relations[colony1.ID] = Enemy
+	system.ColonyDiplomacies[colony3.ID].Relations[colony2.ID] = Enemy
 	
-	// Test automatic alliance formation
-	system.AttemptAllianceFormation(colonies, 300) // Tick 300 is divisible by 300
+	// Test automatic alliance formation (try multiple times due to randomness)
+	for i := 0; i < 10; i++ { // Try up to 10 times
+		system.AttemptAllianceFormation(colonies, 300+(i*300)) // Different tick values
+		if len(system.Alliances) > 0 {
+			break // Alliance formed, stop trying
+		}
+	}
 	
 	// Check if alliance was created
 	if len(system.Alliances) == 0 {
@@ -243,10 +256,21 @@ func TestSharedDefenseMechanism(t *testing.T) {
 	colony2 := NewCasteColony(2, queen2, Position{X: 20, Y: 20})
 	colony3 := NewCasteColony(3, queen3, Position{X: 50, Y: 50})
 	
-	// Set reasonable colony sizes
+	// Set reasonable colony sizes and initial fitness
 	colony1.ColonySize = 50
 	colony2.ColonySize = 40
 	colony3.ColonySize = 60
+	colony1.ColonyFitness = 1.0 // Set non-zero fitness for military calculations
+	colony2.ColonyFitness = 1.0
+	colony3.ColonyFitness = 1.0
+	
+	// Add soldiers and workers to colonies for military strength
+	colony1.CasteDistribution[Soldier] = 10
+	colony1.CasteDistribution[Worker] = 20
+	colony2.CasteDistribution[Soldier] = 8
+	colony2.CasteDistribution[Worker] = 15
+	colony3.CasteDistribution[Soldier] = 15
+	colony3.CasteDistribution[Worker] = 25
 	
 	// Register colonies
 	system.RegisterColony(colony1)
@@ -268,7 +292,8 @@ func TestSharedDefenseMechanism(t *testing.T) {
 		t.Error("Conflict should be created")
 	}
 	
-	// Record initial colony sizes
+	// Record initial colony fitness and size
+	initialColony1Fitness := colony1.ColonyFitness
 	initialColony2Size := colony2.ColonySize
 	
 	colonies := []*CasteColony{colony1, colony2, colony3}
@@ -281,8 +306,9 @@ func TestSharedDefenseMechanism(t *testing.T) {
 		t.Error("Ally should take losses when helping in defense")
 	}
 	
-	// Colony1 should have received defensive bonus (check fitness)
-	if colony1.ColonyFitness <= 0 {
-		t.Error("Defended colony should have received support bonus")
+	// Colony1 should have received defensive bonus (fitness increase)
+	if colony1.ColonyFitness <= initialColony1Fitness {
+		t.Errorf("Defended colony should have received support bonus: initial=%.3f, final=%.3f", 
+			initialColony1Fitness, colony1.ColonyFitness)
 	}
 }

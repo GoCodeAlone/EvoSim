@@ -158,10 +158,24 @@ func (sds *SeedDispersalSystem) determineSeedType(parent *Plant) SeedType {
 func (sds *SeedDispersalSystem) determineDispersalMethod(seedType SeedType, parent *Plant, world *World) DispersalMechanism {
 	// Check environmental factors
 	windStrength := 0.0
-	if world.WindSystem != nil {
-		// Get wind strength at plant location
-		gridX := int(parent.Position.X) % len(world.WindSystem.WindMap)
-		gridY := int(parent.Position.Y) % len(world.WindSystem.WindMap[0])
+	if world.WindSystem != nil && len(world.WindSystem.WindMap) > 0 && len(world.WindSystem.WindMap[0]) > 0 {
+		// Get wind strength at plant location with bounds checking
+		gridX := int(parent.Position.X)
+		gridY := int(parent.Position.Y)
+		
+		// Handle negative coordinates and ensure positive modulo
+		if gridX < 0 {
+			gridX = ((gridX % len(world.WindSystem.WindMap)) + len(world.WindSystem.WindMap)) % len(world.WindSystem.WindMap)
+		} else {
+			gridX = gridX % len(world.WindSystem.WindMap)
+		}
+		
+		if gridY < 0 {
+			gridY = ((gridY % len(world.WindSystem.WindMap[0])) + len(world.WindSystem.WindMap[0])) % len(world.WindSystem.WindMap[0])
+		} else {
+			gridY = gridY % len(world.WindSystem.WindMap[0])
+		}
+		
 		windStrength = world.WindSystem.WindMap[gridX][gridY].Strength
 	}
 	
