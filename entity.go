@@ -279,8 +279,8 @@ func (e *Entity) MoveTo(targetX, targetY float64, speed float64) {
 		e.Position.X += dx
 		e.Position.Y += dy
 
-		// Moving costs energy (base cost)
-		energyCost := speed * 0.1
+		// Moving costs energy (adjusted for daily time scale)
+		energyCost := speed * 0.01 // Reduced from 0.1 to 0.01 for daily time scale
 		e.Energy -= energyCost
 	}
 }
@@ -700,7 +700,8 @@ func (e *Entity) Update() {
 	}
 
 	// Natural energy decay (affected by nutritional status)
-	baseDecay := 1.0 + float64(e.Age)*0.01
+	// Adjusted for daily time scale - very low decay rate for base survival
+	baseDecay := 0.02 + float64(e.Age)*0.0002 // Further reduced: 0.02 energy per day base
 	
 	// Molecular nutritional status affects energy decay
 	if e.MolecularNeeds != nil {

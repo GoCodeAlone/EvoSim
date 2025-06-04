@@ -256,7 +256,7 @@ func NewWorld(config WorldConfig) *World {
 	world.PhysicsSystem = NewPhysicsSystem()
 	world.CollisionSystem = NewCollisionSystem()
 	world.PhysicsComponents = make(map[int]*PhysicsComponent)
-	world.AdvancedTimeSystem = NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
+	world.AdvancedTimeSystem = NewAdvancedTimeSystem(1, 91) // 1 tick/day, 91 days/season (realistic evolutionary time scale)
 	world.CivilizationSystem = NewCivilizationSystem(world.CentralEventBus)
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
@@ -844,7 +844,7 @@ func (w *World) Update() {
 
 	w.Tick++
 	now := time.Now()
-	w.Clock = w.Clock.Add(time.Hour) // Each tick = 1 hour world time
+	w.Clock = w.Clock.Add(24 * time.Hour) // Each tick = 1 day world time
 	w.LastUpdate = now
 	// 1. Update advanced time system (affects all other systems)
 	w.AdvancedTimeSystem.Update()
@@ -2418,7 +2418,7 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 		entity.Energy += circadianPref * 0.4 * activityModifier
 	} else {
 		// Entities active at "wrong" time lose extra energy
-		entity.Energy -= 0.15 * (2.0 - activityModifier) // Less penalty if resting
+		entity.Energy -= 0.015 * (2.0 - activityModifier) // Reduced for daily time scale
 	}
 	
 	// Activity-specific energy costs/benefits
@@ -2427,24 +2427,24 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 		// Already handled in biorhythm system
 	case ActivityEat:
 		// Eating has energy cost but leads to energy gain in interactions
-		entity.Energy -= 0.1
+		entity.Energy -= 0.01 // Reduced for daily time scale
 	case ActivityDrink:
 		// Drinking has minimal energy cost, handled in biorhythm
 	case ActivityPlay:
 		// Playing costs energy but improves fitness long-term
-		entity.Energy -= 0.15
+		entity.Energy -= 0.015 // Reduced for daily time scale
 	case ActivityExplore:
 		// Exploration costs significant energy
-		entity.Energy -= 0.2
+		entity.Energy -= 0.02 // Reduced for daily time scale
 	case ActivityScavenge:
 		// Scavenging has moderate energy cost
-		entity.Energy -= 0.12
+		entity.Energy -= 0.012 // Reduced for daily time scale
 	case ActivityRest:
 		// Resting restores energy
-		entity.Energy += 0.1
+		entity.Energy += 0.01 // Reduced for daily time scale
 	case ActivitySocialize:
 		// Socializing has small energy cost
-		entity.Energy -= 0.08
+		entity.Energy -= 0.008 // Reduced for daily time scale
 	}
 	
 	// Seasonal effects on biorhythm and energy
@@ -2476,11 +2476,11 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 			entity.BioRhythm.Activities[ActivityScavenge].NeedLevel += 0.015
 		}
 	case Winter:
-		// Harsh season, higher energy drain
-		entity.Energy -= 0.4
+		// Harsh season, higher energy drain (reduced for daily time scale)
+		entity.Energy -= 0.04 // Reduced from 0.4
 		// Entities with good endurance survive better
 		if entity.GetTrait("endurance") < 0.3 {
-			entity.Energy -= 0.2
+			entity.Energy -= 0.02 // Reduced from 0.2
 		}
 		// Higher sleep needs in winter
 		if entity.BioRhythm.Activities[ActivitySleep] != nil {
@@ -2905,8 +2905,8 @@ func (w *World) processMatingMigration() {
 		entity.Position.X += directionX * moveSpeed
 		entity.Position.Y += directionY * moveSpeed
 		
-		// Migration costs energy
-		entity.Energy -= moveSpeed * 0.2
+		// Migration costs energy (reduced for daily time scale)
+		entity.Energy -= moveSpeed * 0.02 // Reduced from 0.2
 		
 		// Log migration behavior occasionally
 		if w.Tick%50 == 0 && distance > entity.ReproductionStatus.MigrationDistance*0.5 {
@@ -3301,7 +3301,7 @@ func (w *World) applyBiomeSpecificEffects(entity *Entity, biome Biome) {
 	case BiomeDeepWater:
 		// High pressure effects - entities without strong aquatic adaptation suffer
 		if entity.GetTrait("aquatic_adaptation") < 0.7 {
-			entity.Energy -= 0.5
+			entity.Energy -= 0.05 // Reduced from 0.5 for daily time scale
 			// Increase mutation rate due to pressure stress
 			if rand.Float64() < 0.02 {
 				entity.Mutate(0.1, 0.1)
@@ -3311,10 +3311,10 @@ func (w *World) applyBiomeSpecificEffects(entity *Entity, biome Biome) {
 	case BiomeHighAltitude:
 		// Low oxygen effects - entities without altitude tolerance suffer
 		if entity.GetTrait("altitude_tolerance") < 0.6 {
-			entity.Energy -= 0.8
+			entity.Energy -= 0.08 // Reduced from 0.8 for daily time scale
 			// Reduced energy for movement and reproduction
 			if entity.Energy > 0 {
-				entity.Energy -= 0.3
+				entity.Energy -= 0.03 // Reduced from 0.3
 			}
 		}
 
@@ -5101,8 +5101,8 @@ func (w *World) getCurrentSeason() string {
 	}
 	
 	// Fallback: calculate season from tick
-	yearTick := w.Tick % (100 * 4) // 400 ticks per year (100 per season)
-	seasonTick := yearTick / 100
+	yearTick := w.Tick % (91 * 4) // 364 ticks per year (91 per season)
+	seasonTick := yearTick / 91
 	
 	switch seasonTick {
 	case 0:

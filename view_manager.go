@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 )
 
@@ -1207,7 +1208,9 @@ func (vm *ViewManager) getSpeciesData() SpeciesData {
 		// Include all species from AllSpecies (both active and extinct)
 		for _, species := range vm.world.SpeciationSystem.AllSpecies {
 			population := len(species.Members)
-			awaitingExtinction := population == 0 && species.ExtinctionTick > 0
+			
+			// Fix extinction logic: species is awaiting extinction if it has ExtinctionTick > 0 but IsExtinct is false
+			awaitingExtinction := !species.IsExtinct && species.ExtinctionTick > 0
 			
 			if population > 0 {
 				data.SpeciesWithMembers++
@@ -1228,6 +1231,12 @@ func (vm *ViewManager) getSpeciesData() SpeciesData {
 			}
 			data.SpeciesDetails = append(data.SpeciesDetails, detail)
 		}
+		
+		// Sort species consistently by name for stable visualization
+		sort.Slice(data.SpeciesDetails, func(i, j int) bool {
+			return data.SpeciesDetails[i].Name < data.SpeciesDetails[j].Name
+		})
+		
 	} else {
 		// Fall back to basic population data if no speciation system
 		data.ActiveSpecies = len(vm.world.Populations)
@@ -1258,6 +1267,11 @@ func (vm *ViewManager) getSpeciesData() SpeciesData {
 			}
 			data.SpeciesDetails = append(data.SpeciesDetails, detail)
 		}
+		
+		// Sort by name for consistency
+		sort.Slice(data.SpeciesDetails, func(i, j int) bool {
+			return data.SpeciesDetails[i].Name < data.SpeciesDetails[j].Name
+		})
 	}
 	
 	return data
