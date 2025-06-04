@@ -82,6 +82,7 @@ type ViewData struct {
 	Ecosystem        EcosystemMetrics     `json:"ecosystem"`
 	Anomalies        AnomaliesData        `json:"anomalies"`
 	Neural           NeuralData           `json:"neural"`
+	BiomeBoundary    BiomeBoundaryData    `json:"biome_boundary"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
 	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
@@ -462,6 +463,18 @@ type CulturalData struct {
 	KnowledgeTypeDistribution map[string]int     `json:"knowledge_type_distribution"`
 }
 
+// BiomeBoundaryData represents biome boundary system data for web interface
+type BiomeBoundaryData struct {
+	BoundaryCount       int                    `json:"boundary_count"`
+	TotalBoundaryLength float64               `json:"total_boundary_length"`
+	EcotoneArea         float64               `json:"ecotone_area"`
+	MigrationEvents     int                   `json:"migration_events"`
+	EvolutionEvents     int                   `json:"evolution_events"`
+	EvolutionPressure   float64               `json:"evolution_pressure"`
+	MigrationBonus      float64               `json:"migration_bonus"`
+	BoundaryTypes       map[string]int        `json:"boundary_types"`
+}
+
 // NeuralData represents neural networks and AI state for web interface
 type NeuralData struct {
 	TotalNetworks            int                      `json:"total_networks"`
@@ -522,6 +535,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Ecosystem:        vm.getEcosystemData(),
 		Anomalies:        vm.getAnomaliesData(),
 		Neural:           vm.getNeuralData(),
+		BiomeBoundary:    vm.getBiomeBoundaryData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
 		CommunicationHistory: vm.communicationHistory,
@@ -1317,7 +1331,7 @@ func (vm *ViewManager) GetViewModes() []string {
 		"GRID", "STATS", "EVENTS", "POPULATIONS", "COMMUNICATION",
 		"CIVILIZATION", "PHYSICS", "WIND", "SPECIES", "NETWORK",
 		"DNA", "CELLULAR", "EVOLUTION", "TOPOLOGY", "TOOLS", "ENVIRONMENT", "BEHAVIOR",
-		"REPRODUCTION", "WARFARE", "STATISTICAL", "ANOMALIES", "ECOSYSTEM", "FUNGAL", "CULTURAL", "SYMBIOTIC", "NEURAL",
+		"REPRODUCTION", "WARFARE", "STATISTICAL", "ANOMALIES", "ECOSYSTEM", "FUNGAL", "CULTURAL", "SYMBIOTIC", "NEURAL", "BIOMEBOUNDARY",
 	}
 }
 
@@ -2271,6 +2285,56 @@ func (vm *ViewManager) getNeuralData() NeuralData {
 	data.SuccessfulStrategies = vm.world.NeuralAISystem.SuccessfulStrategies
 	if len(data.SuccessfulStrategies) > 10 {
 		data.SuccessfulStrategies = data.SuccessfulStrategies[:10] // Limit to top 10
+	}
+	
+	return data
+}
+
+// getBiomeBoundaryData returns biome boundary system state for web interface  
+func (vm *ViewManager) getBiomeBoundaryData() BiomeBoundaryData {
+	data := BiomeBoundaryData{
+		BoundaryCount:       0,
+		TotalBoundaryLength: 0.0,
+		EcotoneArea:         0.0,
+		MigrationEvents:     0,
+		EvolutionEvents:     0,
+		EvolutionPressure:   0.0,
+		MigrationBonus:      0.0,
+		BoundaryTypes:       make(map[string]int),
+	}
+	
+	// Check if biome boundary system exists
+	if vm.world.BiomeBoundarySystem == nil {
+		return data
+	}
+	
+	// Get boundary system data
+	boundaryData := vm.world.BiomeBoundarySystem.GetBoundaryData()
+	
+	// Convert to BiomeBoundaryData
+	if val, ok := boundaryData["boundary_count"].(int); ok {
+		data.BoundaryCount = val
+	}
+	if val, ok := boundaryData["total_boundary_length"].(float64); ok {
+		data.TotalBoundaryLength = val
+	}
+	if val, ok := boundaryData["ecotone_area"].(float64); ok {
+		data.EcotoneArea = val
+	}
+	if val, ok := boundaryData["migration_events"].(int); ok {
+		data.MigrationEvents = val
+	}
+	if val, ok := boundaryData["evolution_events"].(int); ok {
+		data.EvolutionEvents = val
+	}
+	if val, ok := boundaryData["evolution_pressure"].(float64); ok {
+		data.EvolutionPressure = val
+	}
+	if val, ok := boundaryData["migration_bonus"].(float64); ok {
+		data.MigrationBonus = val
+	}
+	if val, ok := boundaryData["boundary_types"].(map[string]int); ok {
+		data.BoundaryTypes = val
 	}
 	
 	return data

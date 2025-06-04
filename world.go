@@ -193,6 +193,9 @@ type World struct {
 	NeuralAISystem          *NeuralAISystem                      // Neural networks and AI-driven behaviors
 	ColonyWarfareSystem     *ColonyWarfareSystem                 // Inter-colony warfare and diplomacy
 	
+	// Advanced Biome Interaction System
+	BiomeBoundarySystem     *BiomeBoundarySystem                 // Biome boundary effects and ecotone interactions
+	
 	// Organism classification and lifespan system
 	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
 	
@@ -329,6 +332,9 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize advanced AI and neural networks system
 	world.NeuralAISystem = NewNeuralAISystem()
+	
+	// Initialize biome boundary interaction system
+	world.BiomeBoundarySystem = NewBiomeBoundarySystem()
 	
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
@@ -1058,6 +1064,9 @@ func (w *World) Update() {
 	
 	// Process neural decision making for intelligent entities
 	w.processNeuralDecisions()
+	
+	// Update biome boundary system (ecotones, barriers, migration effects)
+	w.BiomeBoundarySystem.Update(w, w.Tick)
 	
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks
