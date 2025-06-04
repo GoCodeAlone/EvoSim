@@ -452,6 +452,44 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             display: flex;
             gap: 10px;
         }
+        
+        /* Neural Networks view styles */
+        .strategy-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .strategy-item {
+            background-color: #3a3a3a;
+            padding: 5px 10px;
+            margin: 3px 0;
+            border-radius: 3px;
+            border-left: 3px solid #4CAF50;
+        }
+        
+        .entity-networks {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .entity-network-item {
+            background-color: #3a3a3a;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 3px solid #2196F3;
+        }
+        
+        .entity-id {
+            font-weight: bold;
+            color: #87ceeb;
+            margin-bottom: 5px;
+        }
+        
+        .network-type, .network-complexity, .network-experience, .network-success {
+            font-size: 13px;
+            margin: 2px 0;
+        }
     </style>
 </head>
 <body>
@@ -853,6 +891,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'SYMBIOTIC':
                     viewContent.innerHTML = '<div class="stats-section">' + renderSymbiotic(data.symbiotic_relationships) + '</div>';
+                    break;
+                    
+                case 'NEURAL':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderNeural(data.neural) + '</div>';
                     break;
                     
                 default:
@@ -3286,6 +3328,95 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                         html += '<div class="relationship-type-label">' + type + ': ' + count + ' (' + percentage + '%)</div>';
                         html += '<div class="relationship-bar" style="width: ' + barWidth + 'px; background: ' + color + '; height: 20px; margin: 2px 0;"></div>';
                         html += '</div>';
+                    }
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+
+        // Neural Networks rendering function
+        function renderNeural(neural) {
+            if (!neural) {
+                return '<h3>🧠 Neural Networks</h3><div>Neural networks system data not available</div>';
+            }
+            
+            let html = '<h3>🧠 Neural Networks</h3>';
+            
+            // Basic neural statistics
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Networks: <strong>' + (neural.total_networks || 0) + '</strong></div>';
+            html += '<div class="stat-item">Active Networks: <strong>' + (neural.active_network_count || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Behaviors: <strong>' + (neural.total_behaviors || 0) + '</strong></div>';
+            html += '<div class="stat-item">Emergent Behaviors: <strong>' + (neural.emergent_behaviors || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Learning Events: <strong>' + (neural.total_learning_events || 0) + '</strong></div>';
+            html += '<div class="stat-item">Collective Behaviors: <strong>' + (neural.collective_behavior_count || 0) + '</strong></div>';
+            html += '</div>';
+            
+            // Learning and adaptation metrics
+            html += '<h4>🎯 Learning Metrics:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Avg Network Complexity: <strong>' + (neural.avg_network_complexity || 0).toFixed(3) + '</strong></div>';
+            html += '<div class="stat-item">Success Rate: <strong>' + (neural.success_rate * 100 || 0).toFixed(1) + '%</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Base Learning Rate: <strong>' + (neural.base_learning_rate || 0).toFixed(3) + '</strong></div>';
+            html += '<div class="stat-item">Adaptation Rate: <strong>' + (neural.adaptation_rate || 0).toFixed(3) + '</strong></div>';
+            html += '</div>';
+            
+            // Experience metrics
+            html += '<h4>📚 Experience:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Experience: <strong>' + (neural.total_experience || 0).toFixed(1) + '</strong></div>';
+            html += '<div class="stat-item">Avg Experience per Network: <strong>' + (neural.avg_experience_per_network || 0).toFixed(1) + '</strong></div>';
+            html += '</div>';
+            
+            // Successful strategies
+            if (neural.successful_strategies && neural.successful_strategies.length > 0) {
+                html += '<h4>🏆 Successful Strategies:</h4>';
+                html += '<div class="strategy-list">';
+                neural.successful_strategies.forEach((strategy, index) => {
+                    if (index < 10) { // Limit to top 10
+                        html += '<div class="strategy-item">• ' + strategy + '</div>';
+                    }
+                });
+                html += '</div>';
+            }
+            
+            // Sample entity networks (if available)
+            if (neural.entity_networks && Object.keys(neural.entity_networks).length > 0) {
+                html += '<h4>🔗 Entity Networks (Sample):</h4>';
+                html += '<div class="entity-networks">';
+                
+                let count = 0;
+                Object.entries(neural.entity_networks).forEach(([entityId, networkData]) => {
+                    if (count < 5) { // Show max 5 entities
+                        html += '<div class="entity-network-item">';
+                        html += '<div class="entity-id">Entity #' + entityId + '</div>';
+                        
+                        if (networkData.type) {
+                            html += '<div class="network-type">Type: ' + networkData.type + '</div>';
+                        }
+                        if (networkData.complexity !== undefined) {
+                            html += '<div class="network-complexity">Complexity: ' + networkData.complexity.toFixed(2) + '</div>';
+                        }
+                        if (networkData.experience !== undefined) {
+                            html += '<div class="network-experience">Experience: ' + networkData.experience.toFixed(1) + '</div>';
+                        }
+                        if (networkData.success_rate !== undefined) {
+                            html += '<div class="network-success">Success Rate: ' + (networkData.success_rate * 100).toFixed(1) + '%</div>';
+                        }
+                        
+                        html += '</div>';
+                        count++;
                     }
                 });
                 html += '</div>';

@@ -49,6 +49,12 @@ func TestAllViewsDataValidation(t *testing.T) {
 		{"REPRODUCTION", validateReproductionView},
 		{"STATISTICAL", validateStatisticalView},
 		{"ANOMALIES", validateAnomaliesView},
+		{"ECOSYSTEM", validateEcosystemView},
+		{"WARFARE", validateWarfareView},
+		{"FUNGAL", validateFungalView},
+		{"CULTURAL", validateCulturalView},
+		{"SYMBIOTIC", validateSymbioticView},
+		{"NEURAL", validateNeuralView},
 	}
 	
 	for _, tc := range testCases {
@@ -485,6 +491,150 @@ func validateAnomaliesView(data *ViewData) []string {
 	}
 	if data.Anomalies.Recommendations == nil {
 		errors = append(errors, "Recommendations is nil")
+	}
+	
+	return errors
+}
+
+func validateEcosystemView(data *ViewData) []string {
+	var errors []string
+	
+	if data.Ecosystem.BiodiversityIndex < 0 {
+		errors = append(errors, "Negative biodiversity index")
+	}
+	if data.Ecosystem.TotalPopulation < 0 {
+		errors = append(errors, "Negative total population")
+	}
+	if data.Ecosystem.SpeciesRichness < 0 {
+		errors = append(errors, "Negative species richness")
+	}
+	if data.Ecosystem.ShannonDiversity < 0 {
+		errors = append(errors, "Negative Shannon diversity")
+	}
+	
+	return errors
+}
+
+func validateWarfareView(data *ViewData) []string {
+	var errors []string
+	
+	if data.Warfare.TotalColonies < 0 {
+		errors = append(errors, "Negative total colonies")
+	}
+	if data.Warfare.ActiveConflicts < 0 {
+		errors = append(errors, "Negative active conflicts")
+	}
+	if data.Warfare.TotalAlliances < 0 {
+		errors = append(errors, "Negative total alliances")
+	}
+	if data.Warfare.ActiveTradeAgreements < 0 {
+		errors = append(errors, "Negative active trade agreements")
+	}
+	
+	return errors
+}
+
+func validateFungalView(data *ViewData) []string {
+	var errors []string
+	
+	if data.Fungal.TotalOrganisms < 0 {
+		errors = append(errors, "Negative total organisms")
+	}
+	if data.Fungal.ActiveSpores < 0 {
+		errors = append(errors, "Negative active spores")
+	}
+	if data.Fungal.NetworkConnections < 0 {
+		errors = append(errors, "Negative network connections")
+	}
+	if data.Fungal.TotalBiomass < 0 {
+		errors = append(errors, "Negative total biomass")
+	}
+	
+	return errors
+}
+
+func validateCulturalView(data *ViewData) []string {
+	var errors []string
+	
+	if data.Cultural.TotalKnowledgeTypes < 0 {
+		errors = append(errors, "Negative total knowledge types")
+	}
+	if data.Cultural.TotalEntities < 0 {
+		errors = append(errors, "Negative total entities")
+	}
+	if data.Cultural.ActiveInnovations < 0 {
+		errors = append(errors, "Negative active innovations")
+	}
+	if data.Cultural.TotalTeachingEvents < 0 {
+		errors = append(errors, "Negative total teaching events")
+	}
+	
+	return errors
+}
+
+func validateSymbioticView(data *ViewData) []string {
+	var errors []string
+	
+	if data.SymbioticRelationships.TotalRelationships < 0 {
+		errors = append(errors, "Negative total relationships")
+	}
+	if data.SymbioticRelationships.ActiveRelationships < 0 {
+		errors = append(errors, "Negative active relationships")
+	}
+	if data.SymbioticRelationships.AverageRelationshipAge < 0 {
+		errors = append(errors, "Negative average relationship age")
+	}
+	if data.SymbioticRelationships.DiseaseTransmissionRate < 0 {
+		errors = append(errors, "Negative disease transmission rate")
+	}
+	
+	return errors
+}
+
+func validateNeuralView(data *ViewData) []string {
+	var errors []string
+	
+	if data.Neural.TotalNetworks < 0 {
+		errors = append(errors, "Negative total networks")
+	}
+	if data.Neural.TotalBehaviors < 0 {
+		errors = append(errors, "Negative total behaviors")
+	}
+	if data.Neural.TotalLearningEvents < 0 {
+		errors = append(errors, "Negative total learning events")
+	}
+	if data.Neural.EmergentBehaviors < 0 {
+		errors = append(errors, "Negative emergent behaviors")
+	}
+	if data.Neural.AvgNetworkComplexity < 0 {
+		errors = append(errors, "Negative average network complexity")
+	}
+	if data.Neural.SuccessRate < 0 || data.Neural.SuccessRate > 1 {
+		errors = append(errors, "Invalid success rate (should be 0-1)")
+	}
+	if data.Neural.TotalExperience < 0 {
+		errors = append(errors, "Negative total experience")
+	}
+	if data.Neural.AvgExperiencePerNetwork < 0 {
+		errors = append(errors, "Negative average experience per network")
+	}
+	if data.Neural.BaseLearningRate < 0 {
+		errors = append(errors, "Negative base learning rate")
+	}
+	if data.Neural.AdaptationRate < 0 {
+		errors = append(errors, "Negative adaptation rate")
+	}
+	if data.Neural.ActiveNetworkCount < 0 {
+		errors = append(errors, "Negative active network count")
+	}
+	if data.Neural.CollectiveBehaviorCount < 0 {
+		errors = append(errors, "Negative collective behavior count")
+	}
+	if data.Neural.SuccessfulStrategies == nil {
+		errors = append(errors, "Successful strategies is nil")
+	}
+	if data.Neural.EntityNetworks == nil {
+		errors = append(errors, "Entity networks is nil")
 	}
 	
 	return errors
