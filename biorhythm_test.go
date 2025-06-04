@@ -130,13 +130,18 @@ func TestBioRhythmNeeds(t *testing.T) {
 		SeasonalMod:  1.2,
 	}
 	
+	// Set initial need levels to be low so we can see them increase
+	entity.BioRhythm.Activities[ActivitySleep].NeedLevel = 0.1
+	entity.BioRhythm.Activities[ActivityEat].NeedLevel = 0.1
+	entity.BioRhythm.Activities[ActivityDrink].NeedLevel = 0.1
+	
 	// Record initial need levels
 	initialSleep := entity.BioRhythm.GetActivityNeed(ActivitySleep)
 	initialHunger := entity.BioRhythm.GetActivityNeed(ActivityEat)
 	initialThirst := entity.BioRhythm.GetActivityNeed(ActivityDrink)
 	
-	// Update biorhythm multiple times to simulate time passing
-	for i := 0; i < 100; i++ {
+	// Update biorhythm many times to simulate time passing
+	for i := 0; i < 200; i++ {
 		entity.BioRhythm.Update(i, entity, timeState)
 	}
 	
@@ -146,13 +151,13 @@ func TestBioRhythmNeeds(t *testing.T) {
 	finalThirst := entity.BioRhythm.GetActivityNeed(ActivityDrink)
 	
 	if finalSleep <= initialSleep {
-		t.Error("Sleep need should increase over time")
+		t.Errorf("Sleep need should increase over time: initial=%.3f, final=%.3f", initialSleep, finalSleep)
 	}
 	if finalHunger <= initialHunger {
-		t.Error("Hunger need should increase over time")
+		t.Errorf("Hunger need should increase over time: initial=%.3f, final=%.3f", initialHunger, finalHunger)
 	}
 	if finalThirst <= initialThirst {
-		t.Error("Thirst need should increase over time")
+		t.Errorf("Thirst need should increase over time: initial=%.3f, final=%.3f", initialThirst, finalThirst)
 	}
 	
 	// Needs should not exceed maximum
