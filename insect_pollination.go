@@ -185,6 +185,7 @@ func (ips *InsectPollinationSystem) CreateFlowerPatch(plant *Plant, season Seaso
 	// Blooming level based on plant health and age
 	bloomingLevel := math.Min(1.0, (plant.Energy/config.BaseEnergy) * (math.Min(plant.Size, 3.0)/3.0))
 	bloomingLevel *= (1.0 + plant.GetTrait("growth_efficiency")*0.2)
+	bloomingLevel = math.Min(1.0, bloomingLevel) // Ensure it never exceeds 1.0
 	
 	// Pollen load based on plant size and type
 	pollenLoad := plant.Size * config.BaseSize * (1.0 + plant.GetTrait("reproduction_rate")*0.4)
