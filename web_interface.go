@@ -24,6 +24,7 @@ type WebInterface struct {
 	updateInterval  time.Duration
 	playerManager   *PlayerManager
 	clientPlayers   map[*websocket.Conn]string // maps websocket connections to player IDs
+	accumulatedUpdates float64 // For fractional speed calculations
 }
 
 // NewWebInterface creates a new web interface
@@ -160,6 +161,34 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         
         .controls button.active {
             background-color: #6a6a6a;
+        }
+        
+        .speed-controls {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 20px;
+            padding: 5px 10px;
+            background-color: #3a3a3a;
+            border-radius: 5px;
+        }
+        
+        .speed-controls label {
+            margin-right: 10px;
+            color: #cccccc;
+        }
+        
+        .speed-controls button {
+            padding: 4px 8px;
+            margin: 0 5px;
+            font-size: 12px;
+        }
+        
+        #speed-display {
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 0 10px;
+            min-width: 50px;
+            text-align: center;
         }
         
         .stats-section {
@@ -683,6 +712,12 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 <button onclick="saveState()">💾 Save</button>
                 <button onclick="loadState()">📁 Load</button>
                 <input type="file" id="load-file" accept=".json" style="display: none;" onchange="handleFileLoad(event)">
+                <div class="speed-controls" style="margin-left: 20px; display: inline-block;">
+                    <label>Speed: </label>
+                    <button onclick="decreaseSpeed()">⏪</button>
+                    <span id="speed-display">1.0x</span>
+                    <button onclick="increaseSpeed()">⏩</button>
+                </div>
             </div>
             
             <div class="view-tabs" id="view-tabs">
@@ -979,6 +1014,18 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             document.getElementById('entities').textContent = 'Entities: ' + data.entity_count;
             document.getElementById('plants').textContent = 'Plants: ' + data.plant_count;
             document.getElementById('populations').textContent = 'Populations: ' + data.population_count;
+            
+            // Update speed display
+            if (data.speed_multiplier !== undefined) {
+                document.getElementById('speed-display').textContent = data.speed_multiplier.toFixed(2) + 'x';
+            }
+            
+            // Update pause button based on paused state
+            if (data.paused !== undefined) {
+                const btn = document.getElementById('pause-btn');
+                btn.textContent = data.paused ? '▶ Resume' : '⏸ Pause';
+                isPaused = data.paused;
+            }
             
             // Update stats
             if (data.stats.avg_fitness !== undefined) {
@@ -2549,6 +2596,18 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             }
         }
         
+        function increaseSpeed() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'increase_speed'}));
+            }
+        }
+        
+        function decreaseSpeed() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'decrease_speed'}));
+            }
+        }
+        
         function resetSimulation() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({action: 'reset'}));
@@ -4109,6 +4168,24 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 		} else {
 			log.Printf("Invalid state data format")
 		}
+		
+	case "increase_speed":
+		wi.world.IncreaseSpeed()
+		log.Printf("Client requested speed increase to %fx", wi.world.GetSpeedMultiplier())
+		
+	case "decrease_speed":
+		wi.world.DecreaseSpeed()
+		log.Printf("Client requested speed decrease to %fx", wi.world.GetSpeedMultiplier())
+		
+	case "set_speed":
+		if speedData, ok := data.(map[string]interface{}); ok {
+			if speedValue, exists := speedData["speed"]; exists {
+				if speed, ok := speedValue.(float64); ok {
+					wi.world.SetSpeedMultiplier(speed)
+					log.Printf("Client set speed to %fx", speed)
+				}
+			}
+		}
 	}
 }
 
@@ -4126,8 +4203,20 @@ func (wi *WebInterface) simulationLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			// Update the simulation
-			wi.world.Update()
+			// Run multiple simulation updates based on speed multiplier
+			speedMultiplier := wi.world.GetSpeedMultiplier()
+			
+			// Calculate how many updates to run this tick
+			// For fractional speeds, we accumulate and run when threshold is met
+			wi.accumulatedUpdates += speedMultiplier
+			
+			updatesToRun := int(wi.accumulatedUpdates)
+			wi.accumulatedUpdates -= float64(updatesToRun)
+			
+			// Run the calculated number of updates
+			for i := 0; i < updatesToRun; i++ {
+				wi.world.Update()
+			}
 			
 			// Get current view data
 			viewData := wi.viewManager.GetCurrentViewData()

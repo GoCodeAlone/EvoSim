@@ -54,6 +54,8 @@ type ViewData struct {
 	PlantCount     int                    `json:"plant_count"`
 	PopulationCount int                   `json:"population_count"`
 	EventCount     int                    `json:"event_count"`
+	SpeedMultiplier float64               `json:"speed_multiplier"`
+	Paused         bool                   `json:"paused"`
 	Grid           [][]CellData           `json:"grid"`
 	Stats          map[string]interface{} `json:"stats"`
 	Events         []EventData            `json:"events"`
@@ -532,6 +534,8 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		PlantCount:      len(vm.world.AllPlants),
 		PopulationCount: len(vm.world.Populations),
 		EventCount:      len(vm.world.Events),
+		SpeedMultiplier: vm.world.GetSpeedMultiplier(),
+		Paused:          vm.world.IsPaused(),
 		Grid:            vm.buildGridData(),
 		Stats:           vm.getStatsData(),
 		Events:          vm.getEventsData(),

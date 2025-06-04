@@ -142,6 +142,7 @@ type World struct {
 	Clock       time.Time
 	LastUpdate  time.Time
 	Paused      bool // Whether the simulation is paused
+	SpeedMultiplier float64 // Speed multiplier for simulation (1.0 = normal, 2.0 = 2x speed, etc.)
 	// Advanced feature systems
 	CommunicationSystem *CommunicationSystem
 	GroupBehaviorSystem *GroupBehaviorSystem
@@ -228,6 +229,7 @@ func NewWorld(config WorldConfig) *World {
 		Tick:        0,
 		Clock:       time.Now(),
 		LastUpdate:  time.Now(),
+		SpeedMultiplier: 1.0, // Default normal speed
 		PreviousPopulationCounts: make(map[string]int),
 	}
 
@@ -5356,4 +5358,42 @@ func (w *World) provideNeuralFeedback(entity *Entity, inputs []float64, outputs 
 	
 	// Provide feedback to neural network
 	w.NeuralAISystem.LearnFromOutcome(entity.ID, success, reward, w.Tick)
+}
+
+// SetSpeedMultiplier sets the simulation speed multiplier
+func (w *World) SetSpeedMultiplier(multiplier float64) {
+	if multiplier < 0.1 {
+		multiplier = 0.1 // Minimum speed
+	}
+	if multiplier > 16.0 {
+		multiplier = 16.0 // Maximum speed
+	}
+	w.SpeedMultiplier = multiplier
+}
+
+// GetSpeedMultiplier returns the current simulation speed multiplier
+func (w *World) GetSpeedMultiplier() float64 {
+	return w.SpeedMultiplier
+}
+
+// IncreaseSpeed increases simulation speed to next level
+func (w *World) IncreaseSpeed() {
+	speeds := []float64{0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0}
+	for _, speed := range speeds {
+		if speed > w.SpeedMultiplier {
+			w.SetSpeedMultiplier(speed)
+			return
+		}
+	}
+}
+
+// DecreaseSpeed decreases simulation speed to previous level
+func (w *World) DecreaseSpeed() {
+	speeds := []float64{16.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25}
+	for _, speed := range speeds {
+		if speed < w.SpeedMultiplier {
+			w.SetSpeedMultiplier(speed)
+			return
+		}
+	}
 }
