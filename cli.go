@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "ecosystem", "anomalies", "warfare", "fungal", "cultural", "symbiotic"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -353,8 +353,20 @@ func (m CLIModel) View() string {
 		content = m.reproductionView()
 	case "statistical":
 		content = m.statisticalView()
+	case "ecosystem":
+		content = m.ecosystemView()
 	case "anomalies":
 		content = m.anomaliesView()
+	case "warfare":
+		content = m.warfareView()
+	case "fungal":
+		content = m.fungalView()
+	case "cultural":
+		content = m.culturalView()
+	case "symbiotic":
+		content = m.symbioticView()
+	case "neural":
+		content = m.neuralView()
 	default:
 		content = m.gridView()
 	}
@@ -1495,6 +1507,20 @@ func (m CLIModel) windView() string {
 		successRate = float64(totalCrossPollinations) / float64(totalPollenReleased) * 100
 	}
 	content.WriteString(fmt.Sprintf("Pollination success rate: %.2f%%\n", successRate))
+
+	// Insect Pollination Activity  
+	content.WriteString("\n=== INSECT POLLINATION ===\n")
+	pollinationStats := m.world.InsectPollinationSystem.GetPollinationStats()
+	
+	content.WriteString(fmt.Sprintf("Active flower patches: %d\n", pollinationStats["active_flower_patches"].(int)))
+	content.WriteString(fmt.Sprintf("Active pollinators: %d\n", pollinationStats["active_pollinators"].(int)))
+	content.WriteString(fmt.Sprintf("Total insect pollinations: %d\n", pollinationStats["total_pollinations"].(int)))
+	content.WriteString(fmt.Sprintf("Cross-species pollinations: %d\n", pollinationStats["cross_species_pollinations"].(int)))
+	content.WriteString(fmt.Sprintf("Cross-species rate: %.2f%%\n", pollinationStats["cross_species_rate"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Nectar produced: %.1f\n", pollinationStats["nectar_produced"].(float64)))
+	content.WriteString(fmt.Sprintf("Nectar consumed: %.1f\n", pollinationStats["nectar_consumed"].(float64)))
+	content.WriteString(fmt.Sprintf("Recent pollination events: %d\n", pollinationStats["recent_pollination_events"].(int)))
+	content.WriteString(fmt.Sprintf("Seasonal modifier: %.2f\n", pollinationStats["seasonal_modifier"].(float64)))
 
 	// Plant Reproduction Analysis
 	content.WriteString("\n=== PLANT REPRODUCTION ===\n")
@@ -3220,6 +3246,33 @@ func (m *CLIModel) statisticalView() string {
 		content.WriteString(fmt.Sprintf("  Signal Efficiency: %.4f\n", latest.CommunicationMetrics.SignalEfficiency))
 	}
 	content.WriteString("\n")
+	
+	// Ecosystem metrics
+	if m.world.EcosystemMonitor != nil {
+		metrics := m.world.EcosystemMonitor.CurrentMetrics
+		content.WriteString("ECOSYSTEM METRICS:\n")
+		content.WriteString(fmt.Sprintf("  Shannon Diversity: %.4f\n", metrics.ShannonDiversity))
+		content.WriteString(fmt.Sprintf("  Simpson Diversity: %.4f\n", metrics.SimpsonDiversity))
+		content.WriteString(fmt.Sprintf("  Species Richness: %d\n", metrics.SpeciesRichness))
+		content.WriteString(fmt.Sprintf("  Species Evenness: %.4f\n", metrics.SpeciesEvenness))
+		content.WriteString(fmt.Sprintf("  Total Population: %d\n", metrics.TotalPopulation))
+		content.WriteString(fmt.Sprintf("  Network Connectivity: %.4f\n", metrics.NetworkConnectivity))
+		content.WriteString(fmt.Sprintf("  Pollination Success: %.4f\n", metrics.PollinationSuccess))
+		content.WriteString(fmt.Sprintf("  Ecosystem Stability: %.4f\n", metrics.EcosystemStability))
+		content.WriteString(fmt.Sprintf("  Biodiversity Index: %.4f\n", metrics.BiodiversityIndex))
+		
+		// Health score
+		healthScore := m.world.EcosystemMonitor.GetHealthScore()
+		content.WriteString(fmt.Sprintf("  Ecosystem Health: %.1f/100\n", healthScore))
+		
+		// Trends
+		trends := m.world.EcosystemMonitor.GetTrends()
+		content.WriteString(fmt.Sprintf("  Diversity Trend: %s\n", trends["diversity"]))
+		content.WriteString(fmt.Sprintf("  Population Trend: %s\n", trends["population"]))
+		content.WriteString(fmt.Sprintf("  Stability Trend: %s\n", trends["stability"]))
+		
+		content.WriteString("\n")
+	}
 
 	// Recent events
 	recentEvents := m.world.StatisticalReporter.Events
@@ -3236,6 +3289,123 @@ func (m *CLIModel) statisticalView() string {
 	}
 
 	content.WriteString("\nControls: [v] Next View [E] Export Data [R] Reset Analysis")
+
+	return content.String()
+}
+
+// ecosystemView shows comprehensive ecosystem metrics and health indicators
+func (m *CLIModel) ecosystemView() string {
+	if m.world.EcosystemMonitor == nil {
+		return "Ecosystem monitoring not available"
+	}
+
+	var content strings.Builder
+	content.WriteString("🌍 ECOSYSTEM METRICS\n\n")
+
+	metrics := m.world.EcosystemMonitor.CurrentMetrics
+	
+	// Diversity metrics
+	content.WriteString("DIVERSITY METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Shannon Diversity Index: %.4f\n", metrics.ShannonDiversity))
+	content.WriteString(fmt.Sprintf("  Simpson Diversity Index: %.4f\n", metrics.SimpsonDiversity))
+	content.WriteString(fmt.Sprintf("  Species Richness: %d\n", metrics.SpeciesRichness))
+	content.WriteString(fmt.Sprintf("  Species Evenness: %.4f\n", metrics.SpeciesEvenness))
+	content.WriteString("\n")
+	
+	// Population metrics
+	content.WriteString("POPULATION METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Total Population: %d\n", metrics.TotalPopulation))
+	content.WriteString(fmt.Sprintf("  Extinction Rate: %.4f%%\n", metrics.ExtinctionRate*100))
+	content.WriteString(fmt.Sprintf("  Speciation Rate: %.4f%%\n", metrics.SpeciationRate*100))
+	content.WriteString("\n")
+	
+	// Network connectivity
+	content.WriteString("NETWORK & INTERACTION METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Network Connectivity: %.4f\n", metrics.NetworkConnectivity))
+	content.WriteString(fmt.Sprintf("  Average Path Length: %.2f\n", metrics.AveragePathLength))
+	content.WriteString(fmt.Sprintf("  Clustering Coefficient: %.4f\n", metrics.ClusteringCoefficient))
+	content.WriteString("\n")
+	
+	// Pollination metrics
+	content.WriteString("POLLINATION METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Pollination Success Rate: %.2f%%\n", metrics.PollinationSuccess*100))
+	content.WriteString(fmt.Sprintf("  Cross-Species Pollination: %.2f%%\n", metrics.CrossSpeciesPollination*100))
+	if len(metrics.PollinatorEfficiency) > 0 {
+		content.WriteString("  Pollinator Efficiency:\n")
+		for polType, efficiency := range metrics.PollinatorEfficiency {
+			content.WriteString(fmt.Sprintf("    %s: %.1f%%\n", polType, efficiency*100))
+		}
+	}
+	content.WriteString("\n")
+	
+	// Dispersal metrics
+	content.WriteString("DISPERSAL METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Average Dispersal Distance: %.2f\n", metrics.AverageDispersalDistance))
+	content.WriteString(fmt.Sprintf("  Seed Bank Size: %d\n", metrics.SeedBankSize))
+	content.WriteString(fmt.Sprintf("  Germination Rate: %.2f%%\n", metrics.GerminationRate*100))
+	if len(metrics.DispersalMethods) > 0 {
+		content.WriteString("  Dispersal Methods:\n")
+		for method, count := range metrics.DispersalMethods {
+			content.WriteString(fmt.Sprintf("    %s: %d\n", method, count))
+		}
+	}
+	content.WriteString("\n")
+	
+	// Ecosystem health
+	content.WriteString("ECOSYSTEM HEALTH:\n")
+	healthScore := m.world.EcosystemMonitor.GetHealthScore()
+	content.WriteString(fmt.Sprintf("  Overall Health Score: %.1f/100\n", healthScore))
+	content.WriteString(fmt.Sprintf("  Biodiversity Index: %.4f\n", metrics.BiodiversityIndex))
+	content.WriteString(fmt.Sprintf("  Ecosystem Stability: %.4f\n", metrics.EcosystemStability))
+	content.WriteString(fmt.Sprintf("  Ecosystem Resilience: %.4f\n", metrics.EcosystemResilience))
+	content.WriteString(fmt.Sprintf("  Carrying Capacity: %.0f\n", metrics.CarryingCapacity))
+	content.WriteString("\n")
+	
+	// Trends
+	trends := m.world.EcosystemMonitor.GetTrends()
+	content.WriteString("TRENDS:\n")
+	content.WriteString(fmt.Sprintf("  Diversity Trend: %s\n", trends["diversity"]))
+	content.WriteString(fmt.Sprintf("  Population Trend: %s\n", trends["population"]))
+	content.WriteString(fmt.Sprintf("  Stability Trend: %s\n", trends["stability"]))
+	content.WriteString("\n")
+	
+	// Top species by population
+	if len(metrics.PopulationBySpecies) > 0 {
+		content.WriteString("TOP SPECIES BY POPULATION:\n")
+		
+		// Convert to slice and sort by population
+		type speciesCount struct {
+			name string
+			count int
+		}
+		var species []speciesCount
+		for name, count := range metrics.PopulationBySpecies {
+			species = append(species, speciesCount{name, count})
+		}
+		
+		// Sort by count descending
+		for i := 0; i < len(species)-1; i++ {
+			for j := i + 1; j < len(species); j++ {
+				if species[j].count > species[i].count {
+					species[i], species[j] = species[j], species[i]
+				}
+			}
+		}
+		
+		// Display top 10
+		maxDisplay := len(species)
+		if maxDisplay > 10 {
+			maxDisplay = 10
+		}
+		for i := 0; i < maxDisplay; i++ {
+			content.WriteString(fmt.Sprintf("  %s: %d\n", species[i].name, species[i].count))
+		}
+		if len(species) > 10 {
+			content.WriteString(fmt.Sprintf("  ... and %d more species\n", len(species)-10))
+		}
+	}
+
+	content.WriteString("\nControls: [v] Next View")
 
 	return content.String()
 }
@@ -3324,6 +3494,325 @@ func (m *CLIModel) anomaliesView() string {
 
 	content.WriteString("\nControls: [v] Next View [C] Clear Anomalies [A] Auto-Fix")
 
+	return content.String()
+}
+
+// warfareView renders the colony warfare and diplomacy information
+func (m CLIModel) warfareView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("⚔️ Colony Warfare & Diplomacy") + "\n\n")
+
+	if m.world.ColonyWarfareSystem == nil {
+		content.WriteString("Colony warfare system not initialized\n")
+		return content.String()
+	}
+
+	// Get warfare statistics
+	stats := m.world.ColonyWarfareSystem.GetWarfareStats()
+	
+	// General Statistics
+	content.WriteString("=== SYSTEM STATUS ===\n")
+	content.WriteString(fmt.Sprintf("Total colonies: %d\n", stats["total_colonies"].(int)))
+	content.WriteString(fmt.Sprintf("Active conflicts: %d\n", stats["active_conflicts"].(int)))
+	content.WriteString(fmt.Sprintf("Active alliances: %d\n", stats["total_alliances"].(int)))
+	content.WriteString(fmt.Sprintf("Trade agreements: %d\n", stats["active_trade_agreements"].(int)))
+	
+	// Diplomatic Relations
+	content.WriteString("\n=== DIPLOMATIC RELATIONS ===\n")
+	totalRelations := stats["total_relations"].(int)
+	if totalRelations > 0 {
+		neutralPct := float64(stats["neutral_relations"].(int)) / float64(totalRelations) * 100
+		alliedPct := float64(stats["allied_relations"].(int)) / float64(totalRelations) * 100
+		enemyPct := float64(stats["enemy_relations"].(int)) / float64(totalRelations) * 100
+		trucePct := float64(stats["truce_relations"].(int)) / float64(totalRelations) * 100
+		
+		content.WriteString(fmt.Sprintf("Neutral: %d (%.1f%%)\n", stats["neutral_relations"].(int), neutralPct))
+		content.WriteString(fmt.Sprintf("Allied: %d (%.1f%%)\n", stats["allied_relations"].(int), alliedPct))
+		content.WriteString(fmt.Sprintf("Enemy: %d (%.1f%%)\n", stats["enemy_relations"].(int), enemyPct))
+		content.WriteString(fmt.Sprintf("Truce: %d (%.1f%%)\n", stats["truce_relations"].(int), trucePct))
+	} else {
+		content.WriteString("No diplomatic relations established\n")
+	}
+	
+	// Active Conflicts
+	content.WriteString("\n=== ACTIVE CONFLICTS ===\n")
+	conflicts := m.world.ColonyWarfareSystem.ActiveConflicts
+	if len(conflicts) == 0 {
+		content.WriteString("No active conflicts - Peace prevails!\n")
+	} else {
+		for i, conflict := range conflicts {
+			if i >= 5 { // Show only first 5 conflicts
+				content.WriteString(fmt.Sprintf("... and %d more conflicts\n", len(conflicts)-5))
+				break
+			}
+			
+			conflictTypeStr := "Unknown"
+			switch conflict.ConflictType {
+			case BorderSkirmish:
+				conflictTypeStr = "Border Skirmish"
+			case ResourceWar:
+				conflictTypeStr = "Resource War"
+			case TotalWar:
+				conflictTypeStr = "Total War"
+			case Raid:
+				conflictTypeStr = "Raid"
+			}
+			
+			content.WriteString(fmt.Sprintf("Conflict #%d: %s\n", conflict.ID, conflictTypeStr))
+			content.WriteString(fmt.Sprintf("  Attacker: Colony %d vs Defender: Colony %d\n", 
+				conflict.Attacker, conflict.Defender))
+			content.WriteString(fmt.Sprintf("  Duration: %d ticks, Intensity: %.2f\n", 
+				conflict.TurnsActive, conflict.Intensity))
+			content.WriteString(fmt.Sprintf("  Casualties: %d, War Goal: %s\n", 
+				conflict.CasualtyCount, conflict.WarGoal))
+			
+			if len(conflict.TerritoryClaimed) > 0 {
+				content.WriteString(fmt.Sprintf("  Territory claimed: %d areas\n", len(conflict.TerritoryClaimed)))
+			}
+			content.WriteString("\n")
+		}
+	}
+	
+	// Active Trade Agreements
+	content.WriteString("=== ACTIVE TRADE AGREEMENTS ===\n")
+	tradeAgreements := m.world.ColonyWarfareSystem.TradeAgreements
+	activeTradeCount := 0
+	for _, agreement := range tradeAgreements {
+		if agreement.IsActive {
+			activeTradeCount++
+		}
+	}
+	
+	if activeTradeCount == 0 {
+		content.WriteString("No active trade agreements\n")
+	} else {
+		displayCount := 0
+		for _, agreement := range tradeAgreements {
+			if !agreement.IsActive {
+				continue
+			}
+			if displayCount >= 5 { // Show only first 5 agreements
+				content.WriteString(fmt.Sprintf("... and %d more trade agreements\n", activeTradeCount-5))
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("Trade Agreement #%d:\n", agreement.ID))
+			content.WriteString(fmt.Sprintf("  Colonies: %d ↔ %d\n", 
+				agreement.Colony1ID, agreement.Colony2ID))
+			content.WriteString(fmt.Sprintf("  Volume: %.1f units/trade\n", agreement.TradeVolume))
+			
+			// Show what's being traded
+			if len(agreement.ResourcesOffered) > 0 {
+				content.WriteString("  Offering: ")
+				first := true
+				for resource, amount := range agreement.ResourcesOffered {
+					if !first {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%.1f %s", amount, resource))
+					first = false
+				}
+				content.WriteString("\n")
+			}
+			
+			if len(agreement.ResourcesWanted) > 0 {
+				content.WriteString("  Wanting: ")
+				first := true
+				for resource, amount := range agreement.ResourcesWanted {
+					if !first {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%.1f %s", amount, resource))
+					first = false
+				}
+				content.WriteString("\n")
+			}
+			
+			// Enhanced: Show trade security information
+			content.WriteString(fmt.Sprintf("  Security Level: %.1f%%\n", agreement.SecurityLevel*100))
+			if agreement.EscortStrength > 0 {
+				content.WriteString(fmt.Sprintf("  Escort Protection: %.1f%%\n", agreement.EscortStrength*100))
+			}
+			if len(agreement.RouteThreats) > 0 {
+				content.WriteString(fmt.Sprintf("  Active Threats: %d (", len(agreement.RouteThreats)))
+				for i, threat := range agreement.RouteThreats {
+					if i > 0 {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%s %.0f%%", threat.ThreatType, threat.Severity*100))
+				}
+				content.WriteString(")\n")
+			}
+			
+			content.WriteString("\n")
+			displayCount++
+		}
+	}
+	
+	// Active Alliances
+	content.WriteString("=== ACTIVE ALLIANCES ===\n")
+	alliances := m.world.ColonyWarfareSystem.Alliances
+	activeAllianceCount := 0
+	for _, alliance := range alliances {
+		if alliance.IsActive {
+			activeAllianceCount++
+		}
+	}
+	
+	if activeAllianceCount == 0 {
+		content.WriteString("No active alliances\n")
+	} else {
+		displayCount := 0
+		for _, alliance := range alliances {
+			if !alliance.IsActive {
+				continue
+			}
+			if displayCount >= 3 { // Show only first 3 alliances
+				content.WriteString(fmt.Sprintf("... and %d more alliances\n", activeAllianceCount-3))
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("Alliance #%d (%s):\n", alliance.ID, alliance.AllianceType))
+			content.WriteString(fmt.Sprintf("  Members: "))
+			for i, memberID := range alliance.Members {
+				if i > 0 {
+					content.WriteString(", ")
+				}
+				content.WriteString(fmt.Sprintf("Colony %d", memberID))
+			}
+			content.WriteString("\n")
+			
+			if alliance.ResourceShare > 0 {
+				content.WriteString(fmt.Sprintf("  Resource sharing: %.1f%%\n", alliance.ResourceShare*100))
+			}
+			
+			if alliance.SharedDefense {
+				content.WriteString("  Shared defense: Active\n")
+			}
+			
+			// Enhanced: Show coordination features
+			content.WriteString(fmt.Sprintf("  Coordination Level: %.1f%%\n", alliance.CoordinationLevel*100))
+			if alliance.TradeProtection {
+				content.WriteString("  Trade Route Protection: Active\n")
+			}
+			if alliance.IntelligenceSharing {
+				content.WriteString("  Intelligence Sharing: Active\n")
+			}
+			if alliance.SharedTechnology > 0 {
+				content.WriteString(fmt.Sprintf("  Technology Sharing: %.1f%%\n", alliance.SharedTechnology*100))
+			}
+			if len(alliance.JointOperations) > 0 {
+				activeOps := 0
+				for _, op := range alliance.JointOperations {
+					if op.IsActive {
+						activeOps++
+					}
+				}
+				if activeOps > 0 {
+					content.WriteString(fmt.Sprintf("  Active Joint Operations: %d\n", activeOps))
+				}
+			}
+			
+			// Show alliance age
+			age := m.world.Tick - alliance.StartTick
+			content.WriteString(fmt.Sprintf("  Age: %d ticks\n", age))
+			
+			content.WriteString("\n")
+			displayCount++
+		}
+	}
+	
+	// Colony Information
+	content.WriteString("=== COLONY OVERVIEW ===\n")
+	colonies := m.world.CasteSystem.Colonies
+	if len(colonies) == 0 {
+		content.WriteString("No colonies established\n")
+	} else {
+		for i, colony := range colonies {
+			if i >= 8 { // Show only first 8 colonies
+				content.WriteString(fmt.Sprintf("... and %d more colonies\n", len(colonies)-8))
+				break
+			}
+			
+			diplomacy := m.world.ColonyWarfareSystem.ColonyDiplomacies[colony.ID]
+			
+			content.WriteString(fmt.Sprintf("Colony %d:\n", colony.ID))
+			content.WriteString(fmt.Sprintf("  Size: %d members, Age: %d ticks\n", 
+				colony.ColonySize, colony.ColonyAge))
+			content.WriteString(fmt.Sprintf("  Territory: %d areas, Fitness: %.2f\n", 
+				len(colony.Territory), colony.ColonyFitness))
+			
+			// Show resource stockpiles
+			if len(colony.Resources) > 0 {
+				content.WriteString("  Resources: ")
+				first := true
+				for resource, amount := range colony.Resources {
+					if !first {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%.1f %s", amount, resource))
+					first = false
+				}
+				content.WriteString("\n")
+			}
+			
+			if diplomacy != nil {
+				content.WriteString(fmt.Sprintf("  Reputation: %.2f\n", diplomacy.Reputation))
+				
+				// Count relations
+				allies := 0
+				enemies := 0
+				trading := 0
+				for _, relation := range diplomacy.Relations {
+					switch relation {
+					case Allied:
+						allies++
+					case Enemy:
+						enemies++
+					case Trading:
+						trading++
+					}
+				}
+				
+				if allies > 0 || enemies > 0 || trading > 0 {
+					content.WriteString(fmt.Sprintf("  Allies: %d, Enemies: %d, Trading: %d\n", allies, enemies, trading))
+				}
+				
+				// Show active conflicts for this colony
+				activeConflictsForColony := 0
+				for _, conflict := range conflicts {
+					if conflict.Attacker == colony.ID || conflict.Defender == colony.ID {
+						activeConflictsForColony++
+					}
+				}
+				if activeConflictsForColony > 0 {
+					content.WriteString(fmt.Sprintf("  Active conflicts: %d\n", activeConflictsForColony))
+				}
+				
+				// Show trade agreements for this colony
+				tradeCount := 0
+				for _, agreement := range tradeAgreements {
+					if agreement.IsActive && (agreement.Colony1ID == colony.ID || agreement.Colony2ID == colony.ID) {
+						tradeCount++
+					}
+				}
+				if tradeCount > 0 {
+					content.WriteString(fmt.Sprintf("  Trade agreements: %d\n", tradeCount))
+				}
+			}
+			
+			content.WriteString("\n")
+		}
+	}
+	
+	// System Configuration
+	content.WriteString("=== SYSTEM SETTINGS ===\n")
+	content.WriteString(fmt.Sprintf("Border conflict chance: %.1f%%\n", stats["border_conflicts"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Resource competition: %.1f%%\n", stats["resource_competition"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Max simultaneous conflicts: %d\n", m.world.ColonyWarfareSystem.MaxActiveConflicts))
+	
+	content.WriteString("\nControls: [v] Next View")
+	
 	return content.String()
 }
 
@@ -3437,11 +3926,77 @@ func (m CLIModel) toolsView() string {
 	return content.String()
 }
 
-// environmentView renders environmental modification information
+// environmentView renders environmental modification and pressure information
 func (m CLIModel) environmentView() string {
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("🏗️ Environmental Modification") + "\n\n")
+	content.WriteString(titleStyle.Render("🌍 Environmental Systems") + "\n\n")
 
+	// === ENVIRONMENTAL PRESSURES SECTION ===
+	content.WriteString("=== 🌡️ ENVIRONMENTAL PRESSURES ===\n")
+	if m.world.EnvironmentalPressures != nil {
+		pressureStats := m.world.EnvironmentalPressures.GetPressureStats()
+		
+		activePressures := 0
+		if ap, ok := pressureStats["active_pressures"].(int); ok {
+			activePressures = ap
+		}
+		
+		totalHistory := 0
+		if th, ok := pressureStats["total_pressure_history"].(int); ok {
+			totalHistory = th
+		}
+		
+		avgSeverity := 0.0
+		if as, ok := pressureStats["average_severity"].(float64); ok {
+			avgSeverity = as
+		}
+		
+		content.WriteString(fmt.Sprintf("Active Pressures: %d\n", activePressures))
+		content.WriteString(fmt.Sprintf("Historical Events: %d\n", totalHistory))
+		content.WriteString(fmt.Sprintf("Average Severity: %.3f\n", avgSeverity))
+		
+		// Show pressure types
+		if pressureTypes, ok := pressureStats["pressure_types"].(map[string]int); ok && len(pressureTypes) > 0 {
+			content.WriteString("\nActive Pressure Types:\n")
+			for pressureType, count := range pressureTypes {
+				content.WriteString(fmt.Sprintf("• %s: %d\n", pressureType, count))
+			}
+		} else {
+			content.WriteString("\nNo active environmental pressures\n")
+		}
+		
+		// Show detailed active pressures
+		if len(m.world.EnvironmentalPressures.ActivePressures) > 0 {
+			content.WriteString("\n=== ACTIVE PRESSURE DETAILS ===\n")
+			for i, pressure := range m.world.EnvironmentalPressures.ActivePressures {
+				if i >= 3 { // Limit to first 3 pressures
+					remaining := len(m.world.EnvironmentalPressures.ActivePressures) - i
+					content.WriteString(fmt.Sprintf("... and %d more pressures\n", remaining))
+					break
+				}
+				
+				durationText := "Permanent"
+				if pressure.Duration > 0 {
+					durationText = fmt.Sprintf("%d ticks", pressure.Duration)
+				}
+				
+				content.WriteString(fmt.Sprintf("%s (ID: %d):\n", pressure.Name, pressure.ID))
+				content.WriteString(fmt.Sprintf("  Type: %s\n", pressure.Type))
+				content.WriteString(fmt.Sprintf("  Severity: %.2f\n", pressure.Severity))
+				content.WriteString(fmt.Sprintf("  Duration: %s\n", durationText))
+				content.WriteString(fmt.Sprintf("  Affected Area: (%.1f, %.1f) radius %.1f\n", 
+					pressure.AffectedArea.X, pressure.AffectedArea.Y, pressure.Radius))
+				content.WriteString("\n")
+			}
+		}
+	} else {
+		content.WriteString("Environmental pressure system not initialized\n")
+	}
+
+	content.WriteString("\n")
+
+	// === ENVIRONMENTAL MODIFICATIONS SECTION ===
+	content.WriteString("=== 🏗️ ENVIRONMENTAL MODIFICATIONS ===\n")
 	if m.world.EnvironmentalModSystem == nil {
 		content.WriteString("Environmental modification system not initialized\n")
 		return content.String()
@@ -3664,6 +4219,441 @@ func (m CLIModel) getModificationTypeName(modType int) string {
 		return name
 	}
 	return fmt.Sprintf("Type%d", modType)
+}
+
+// fungalView displays fungal network and decomposition information
+func (m CLIModel) fungalView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🍄 Fungal Networks & Decomposition") + "\n\n")
+
+	if m.world.FungalNetwork == nil {
+		content.WriteString("Fungal network system not initialized\n")
+		return content.String()
+	}
+
+	// Get fungal network statistics
+	stats := m.world.FungalNetwork.GetStats()
+
+	// General Statistics
+	content.WriteString("=== FUNGAL ECOSYSTEM STATUS ===\n")
+	content.WriteString(fmt.Sprintf("Total organisms: %d\n", stats["total_organisms"].(int)))
+	content.WriteString(fmt.Sprintf("Decomposer fungi: %d\n", stats["decomposer_count"].(int)))
+	content.WriteString(fmt.Sprintf("Mycorrhizal fungi: %d\n", stats["mycorrhizal_count"].(int)))
+	content.WriteString(fmt.Sprintf("Active spores: %d\n", stats["active_spores"].(int)))
+	content.WriteString(fmt.Sprintf("Total biomass: %.1f\n", stats["total_biomass"].(float64)))
+
+	// Network connectivity
+	content.WriteString("\n=== NETWORK CONNECTIVITY ===\n")
+	content.WriteString(fmt.Sprintf("Total connections: %d\n", stats["network_connections"].(int)))
+	content.WriteString(fmt.Sprintf("Average connections per organism: %.1f\n", stats["avg_connections"].(float64)))
+
+	// Decomposition activity
+	content.WriteString("\n=== DECOMPOSITION ACTIVITY ===\n")
+	content.WriteString(fmt.Sprintf("Nutrient cycling rate: %.2f/tick\n", stats["nutrient_cycling"].(float64)))
+	content.WriteString(fmt.Sprintf("Total decomposition events: %d\n", stats["decomposition_events"].(int)))
+
+	// Active organisms
+	if len(m.world.FungalNetwork.Organisms) > 0 {
+		content.WriteString("\n=== ACTIVE ORGANISMS (Top 5) ===\n")
+		
+		// Sort organisms by biomass
+		organisms := make([]*FungalOrganism, 0)
+		for _, org := range m.world.FungalNetwork.Organisms {
+			if org.IsAlive {
+				organisms = append(organisms, org)
+			}
+		}
+		
+		// Simple sort by biomass (top 5)
+		for i := 0; i < len(organisms) && i < 5; i++ {
+			largest := i
+			for j := i + 1; j < len(organisms); j++ {
+				if organisms[j].Biomass > organisms[largest].Biomass {
+					largest = j
+				}
+			}
+			if largest != i {
+				organisms[i], organisms[largest] = organisms[largest], organisms[i]
+			}
+		}
+
+		displayCount := 0
+		for _, org := range organisms {
+			if displayCount >= 5 {
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("Organism #%d (%s):\n", org.ID, org.Species))
+			content.WriteString(fmt.Sprintf("  Position: (%.1f, %.1f)\n", org.Position.X, org.Position.Y))
+			content.WriteString(fmt.Sprintf("  Biomass: %.2f | Age: %d ticks\n", org.Biomass, org.Age))
+			content.WriteString(fmt.Sprintf("  Nutrients: %.2f | Decomposition rate: %.3f\n", 
+				org.NutrientStorage, org.DecompositionRate))
+			content.WriteString(fmt.Sprintf("  Network connections: %d\n", len(org.NetworkConnections)))
+			content.WriteString("\n")
+			displayCount++
+		}
+
+		if len(organisms) > 5 {
+			content.WriteString(fmt.Sprintf("... and %d more organisms\n", len(organisms)-5))
+		}
+	} else {
+		content.WriteString("\n=== ACTIVE ORGANISMS ===\n")
+		content.WriteString("No active fungal organisms\n")
+	}
+
+	// Decomposition targets
+	if m.world.ReproductionSystem != nil && len(m.world.ReproductionSystem.DecayingItems) > 0 {
+		content.WriteString("\n=== AVAILABLE DECOMPOSITION TARGETS ===\n")
+		
+		undecayedCount := 0
+		totalNutrients := 0.0
+		
+		for _, item := range m.world.ReproductionSystem.DecayingItems {
+			if !item.IsDecayed {
+				undecayedCount++
+				totalNutrients += item.NutrientValue
+			}
+		}
+		
+		content.WriteString(fmt.Sprintf("Undecayed organic matter: %d items\n", undecayedCount))
+		content.WriteString(fmt.Sprintf("Total available nutrients: %.1f\n", totalNutrients))
+	}
+
+	return content.String()
+}
+
+// culturalView displays the cultural knowledge system status
+func (m CLIModel) culturalView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🧠 Cultural Knowledge & Learning") + "\n\n")
+
+	if m.world.CulturalKnowledgeSystem == nil {
+		content.WriteString("Cultural knowledge system not initialized\n")
+		return content.String()
+	}
+
+	// Get cultural knowledge statistics
+	stats := m.world.CulturalKnowledgeSystem.GetCulturalStats()
+
+	// General Statistics
+	content.WriteString("=== CULTURAL KNOWLEDGE STATUS ===\n")
+	content.WriteString(fmt.Sprintf("Total knowledge types: %v\n", stats["total_knowledge_types"]))
+	content.WriteString(fmt.Sprintf("Entities with knowledge: %v\n", stats["total_entities"]))
+	content.WriteString(fmt.Sprintf("Active innovations: %v\n", stats["active_innovations"]))
+	content.WriteString(fmt.Sprintf("Average knowledge per entity: %.1f\n", stats["avg_knowledge_per_entity"]))
+
+	// Learning and Teaching Statistics
+	content.WriteString("\n=== LEARNING & TEACHING ACTIVITY ===\n")
+	content.WriteString(fmt.Sprintf("Total teaching events: %v\n", stats["total_teaching_events"]))
+	content.WriteString(fmt.Sprintf("Total learning events: %v\n", stats["total_learning_events"]))
+	content.WriteString(fmt.Sprintf("Total innovations created: %v\n", stats["total_innovations_created"]))
+	content.WriteString(fmt.Sprintf("Knowledge loss events: %v\n", stats["knowledge_loss_events"]))
+
+	// Knowledge Type Distribution
+	if typeDistribution, ok := stats["knowledge_type_distribution"].(map[string]int); ok {
+		content.WriteString("\n=== KNOWLEDGE TYPE DISTRIBUTION ===\n")
+		for knowledgeType, count := range typeDistribution {
+			content.WriteString(fmt.Sprintf("%s: %d\n", knowledgeType, count))
+		}
+	}
+
+	// Active Knowledge List
+	content.WriteString("\n=== ACTIVE KNOWLEDGE TYPES ===\n")
+	for _, knowledge := range m.world.CulturalKnowledgeSystem.AllKnowledge {
+		icon := "📚"
+		if knowledge.Innovation {
+			icon = "💡"
+		}
+		
+		content.WriteString(fmt.Sprintf("%s %s (ID: %d)\n", icon, knowledge.Type.String(), knowledge.ID))
+		content.WriteString(fmt.Sprintf("  Effectiveness: %.2f | Complexity: %.2f\n", 
+			knowledge.Effectiveness, knowledge.Complexity))
+		content.WriteString(fmt.Sprintf("  Teachers: %d | Learners: %d\n", 
+			knowledge.TeacherCount, knowledge.LearnerCount))
+		content.WriteString(fmt.Sprintf("  Age: %d generations | Last used: tick %d\n", 
+			knowledge.AgeInGeneration, knowledge.LastUsed))
+		
+		if knowledge.Innovation {
+			content.WriteString("  ⚡ Recent Innovation\n")
+		}
+		content.WriteString("\n")
+	}
+
+	// Entity Knowledge Examples
+	content.WriteString("\n=== ENTITY KNOWLEDGE EXAMPLES ===\n")
+	displayCount := 0
+	for entityID, memory := range m.world.CulturalKnowledgeSystem.EntityMemories {
+		if displayCount >= 5 {
+			break
+		}
+		
+		content.WriteString(fmt.Sprintf("Entity #%d:\n", entityID))
+		content.WriteString(fmt.Sprintf("  Known knowledge: %d/%d\n", 
+			len(memory.KnownKnowledge), memory.KnowledgeCapacity))
+		content.WriteString(fmt.Sprintf("  Teaching ability: %.2f | Learning ability: %.2f\n", 
+			memory.TeachingAbility, memory.LearningAbility))
+		content.WriteString(fmt.Sprintf("  Innovation chance: %.3f\n", memory.InnovationChance))
+		
+		// Show some of the knowledge this entity has
+		knowledgeTypes := make([]string, 0)
+		for _, knowledge := range memory.KnownKnowledge {
+			knowledgeTypes = append(knowledgeTypes, knowledge.Type.String())
+			if len(knowledgeTypes) >= 3 {
+				break
+			}
+		}
+		
+		if len(knowledgeTypes) > 0 {
+			content.WriteString(fmt.Sprintf("  Sample knowledge: %s\n", strings.Join(knowledgeTypes, ", ")))
+			if len(memory.KnownKnowledge) > 3 {
+				content.WriteString(fmt.Sprintf("  ... and %d more\n", len(memory.KnownKnowledge)-3))
+			}
+		}
+		
+		content.WriteString("\n")
+		displayCount++
+	}
+
+	if len(m.world.CulturalKnowledgeSystem.EntityMemories) > 5 {
+		content.WriteString(fmt.Sprintf("... and %d more entities with knowledge\n", 
+			len(m.world.CulturalKnowledgeSystem.EntityMemories)-5))
+	}
+
+	return content.String()
+}
+
+// symbioticView renders symbiotic relationships information
+func (m CLIModel) symbioticView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🦠 Symbiotic Relationships") + "\n\n")
+
+	if m.world.SymbioticRelationships == nil {
+		content.WriteString("Symbiotic relationships system not initialized\n")
+		return content.String()
+	}
+
+	// Get symbiotic relationship statistics
+	stats := m.world.SymbioticRelationships.GetSymbioticStats()
+
+	// Basic relationship statistics
+	content.WriteString("=== RELATIONSHIP STATISTICS ===\n")
+	if totalRelationships, ok := stats["total_relationships"].(int); ok {
+		content.WriteString(fmt.Sprintf("Total Relationships: %d\n", totalRelationships))
+	}
+	if activeRelationships, ok := stats["active_relationships"].(int); ok {
+		content.WriteString(fmt.Sprintf("Active Relationships: %d\n", activeRelationships))
+	}
+	if avgAge, ok := stats["average_relationship_age"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Relationship Age: %.1f ticks\n", avgAge))
+	}
+	if diseaseRate, ok := stats["disease_transmission_rate"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Disease Transmission Rate: %.3f\n", diseaseRate))
+	}
+
+	// Relationship types breakdown
+	content.WriteString("\n=== RELATIONSHIP TYPES ===\n")
+	if relationshipTypes, ok := stats["relationship_types"].(map[string]int); ok {
+		if parasitic, exists := relationshipTypes["parasitic"]; exists {
+			content.WriteString(fmt.Sprintf("🦠 Parasitic: %d\n", parasitic))
+		}
+		if mutualistic, exists := relationshipTypes["mutualistic"]; exists {
+			content.WriteString(fmt.Sprintf("🤝 Mutualistic: %d\n", mutualistic))
+		}
+		if commensal, exists := relationshipTypes["commensal"]; exists {
+			content.WriteString(fmt.Sprintf("🐠 Commensal: %d\n", commensal))
+		}
+	}
+
+	// Disease characteristics
+	content.WriteString("\n=== DISEASE CHARACTERISTICS ===\n")
+	if avgVirulence, ok := stats["average_virulence"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Virulence: %.3f\n", avgVirulence))
+	}
+	if avgTransmission, ok := stats["average_transmission"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Transmission: %.3f\n", avgTransmission))
+	}
+
+	// Active relationships details
+	content.WriteString("\n=== ACTIVE RELATIONSHIPS ===\n")
+	relationshipCount := 0
+	for _, relationship := range m.world.SymbioticRelationships.Relationships {
+		if relationshipCount >= 8 { // Limit display to prevent overcrowding
+			remaining := len(m.world.SymbioticRelationships.Relationships) - relationshipCount
+			content.WriteString(fmt.Sprintf("... and %d more relationships\n", remaining))
+			break
+		}
+
+		typeSymbol := "❓"
+		typeName := "Unknown"
+		switch relationship.Type {
+		case RelationshipParasitic:
+			typeSymbol = "🦠"
+			typeName = "Parasitic"
+		case RelationshipMutualistic:
+			typeSymbol = "🤝"
+			typeName = "Mutualistic"
+		case RelationshipCommensal:
+			typeSymbol = "🐠"
+			typeName = "Commensal"
+		}
+
+		content.WriteString(fmt.Sprintf("%s %s (ID: %d):\n", typeSymbol, typeName, relationship.ID))
+		content.WriteString(fmt.Sprintf("  Host: Entity %d | Symbiont: Entity %d\n", relationship.HostID, relationship.SymbiontID))
+		content.WriteString(fmt.Sprintf("  Strength: %.2f | Duration: %d ticks\n", relationship.Strength, relationship.Duration))
+		
+		if relationship.Type == RelationshipParasitic {
+			content.WriteString(fmt.Sprintf("  Virulence: %.2f | Transmission: %.2f\n", relationship.Virulence, relationship.Transmission))
+		}
+		
+		content.WriteString(fmt.Sprintf("  Host Benefit: %.2f | Symbiont Benefit: %.2f\n", 
+			relationship.HostBenefit, relationship.SymbiontBenefit))
+		content.WriteString("\n")
+		relationshipCount++
+	}
+
+	if len(m.world.SymbioticRelationships.Relationships) == 0 {
+		content.WriteString("No active symbiotic relationships\n")
+	}
+
+	// Evolutionary pressure analysis
+	content.WriteString("\n=== EVOLUTIONARY PRESSURE ===\n")
+	parasitizedEntities := 0
+	totalResistance := 0.0
+	resistanceCount := 0
+
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		
+		// Check if entity is parasitized
+		isParasitized := false
+		for _, relationship := range m.world.SymbioticRelationships.Relationships {
+			if relationship.HostID == entity.ID && relationship.Type == RelationshipParasitic {
+				isParasitized = true
+				break
+			}
+		}
+		
+		if isParasitized {
+			parasitizedEntities++
+		}
+		
+		// Track resistance levels
+		if defenseTrait, exists := entity.Traits["defense"]; exists {
+			totalResistance += defenseTrait.Value
+			resistanceCount++
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("Parasitized Entities: %d\n", parasitizedEntities))
+	if resistanceCount > 0 {
+		avgResistance := totalResistance / float64(resistanceCount)
+		content.WriteString(fmt.Sprintf("Average Population Resistance: %.3f\n", avgResistance))
+	}
+
+	// System configuration
+	content.WriteString("\n=== SYSTEM CONFIGURATION ===\n")
+	content.WriteString(fmt.Sprintf("Formation Rate: %.3f\n", m.world.SymbioticRelationships.FormationRate))
+	content.WriteString(fmt.Sprintf("Dissolution Rate: %.3f\n", m.world.SymbioticRelationships.DissolutionRate))
+	content.WriteString(fmt.Sprintf("Transmission Radius: %.1f\n", m.world.SymbioticRelationships.TransmissionRadius))
+	content.WriteString(fmt.Sprintf("Coevolution Rate: %.3f\n", m.world.SymbioticRelationships.CoevolutionRate))
+
+	return content.String()
+}
+
+// neuralView displays neural networks and AI system information
+func (m *CLIModel) neuralView() string {
+	if m.world.NeuralAISystem == nil {
+		return "🧠 NEURAL AI SYSTEM\n\nNeural AI system not available"
+	}
+
+	var content strings.Builder
+	content.WriteString("🧠 NEURAL AI SYSTEM\n\n")
+
+	// Get system statistics
+	stats := m.world.NeuralAISystem.GetNeuralStats()
+
+	// General Statistics
+	content.WriteString("=== SYSTEM OVERVIEW ===\n")
+	content.WriteString(fmt.Sprintf("Total Neural Networks: %d\n", stats["total_networks"].(int)))
+	content.WriteString(fmt.Sprintf("Total Learned Behaviors: %d\n", stats["total_behaviors"].(int)))
+	content.WriteString(fmt.Sprintf("Total Learning Events: %d\n", stats["total_learning_events"].(int)))
+	content.WriteString(fmt.Sprintf("Emergent Behaviors: %d\n", stats["emergent_behaviors"].(int)))
+	content.WriteString(fmt.Sprintf("Average Network Complexity: %.2f\n", stats["avg_network_complexity"].(float64)))
+	content.WriteString("\n")
+
+	// Learning Statistics
+	content.WriteString("=== LEARNING METRICS ===\n")
+	content.WriteString(fmt.Sprintf("Success Rate: %.1f%%\n", stats["success_rate"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Total Experience: %.1f\n", stats["total_experience"].(float64)))
+	content.WriteString(fmt.Sprintf("Avg Experience per Network: %.2f\n", stats["avg_experience_per_network"].(float64)))
+	content.WriteString(fmt.Sprintf("Base Learning Rate: %.4f\n", stats["base_learning_rate"].(float64)))
+	content.WriteString(fmt.Sprintf("Adaptation Rate: %.4f\n", stats["adaptation_rate"].(float64)))
+	content.WriteString("\n")
+
+	// Entity Neural Networks
+	content.WriteString("=== ENTITY NEURAL NETWORKS ===\n")
+	count := 0
+	for _, entity := range m.world.AllEntities {
+		if entity.IsAlive {
+			neuralData := m.world.NeuralAISystem.GetEntityNeuralData(entity.ID)
+			if neuralData != nil {
+				content.WriteString(fmt.Sprintf("Entity %d (%s):\n", entity.ID, entity.Species))
+				content.WriteString(fmt.Sprintf("  Network Type: %s\n", neuralData["architecture"].(string)))
+				content.WriteString(fmt.Sprintf("  Neurons: %d (%d inputs, %d outputs, %d hidden layers)\n", 
+					neuralData["neuron_count"].(int), neuralData["input_count"].(int), 
+					neuralData["output_count"].(int), neuralData["hidden_layers"].(int)))
+				content.WriteString(fmt.Sprintf("  Experience: %.2f\n", neuralData["experience"].(float64)))
+				content.WriteString(fmt.Sprintf("  Learning Rate: %.4f\n", neuralData["learning_rate"].(float64)))
+				content.WriteString(fmt.Sprintf("  Decisions: %d (%.1f%% correct)\n", 
+					neuralData["total_decisions"].(int), neuralData["success_rate"].(float64)*100))
+				content.WriteString(fmt.Sprintf("  Complexity Score: %.2f\n", neuralData["complexity_score"].(float64)))
+				content.WriteString("\n")
+				count++
+				
+				// Limit display to prevent screen overflow
+				if count >= 10 {
+					remaining := len(m.world.NeuralAISystem.EntityNetworks) - count
+					if remaining > 0 {
+						content.WriteString(fmt.Sprintf("... and %d more networks\n", remaining))
+					}
+					break
+				}
+			}
+		}
+	}
+
+	if count == 0 {
+		content.WriteString("No neural networks currently active\n")
+	}
+
+	// Collective Intelligence Patterns
+	content.WriteString("\n=== COLLECTIVE INTELLIGENCE ===\n")
+	if len(m.world.NeuralAISystem.CollectiveBehaviors) > 0 {
+		content.WriteString("Shared Learned Behaviors:\n")
+		for name, behavior := range m.world.NeuralAISystem.CollectiveBehaviors {
+			content.WriteString(fmt.Sprintf("  %s: %.1f%% success (used %d times)\n", 
+				name, behavior.SuccessRate*100, behavior.UsageCount))
+		}
+	} else {
+		content.WriteString("No collective behaviors learned yet\n")
+	}
+
+	content.WriteString("\n")
+	if len(m.world.NeuralAISystem.SuccessfulStrategies) > 0 {
+		content.WriteString("Most Successful Strategies:\n")
+		for i, strategy := range m.world.NeuralAISystem.SuccessfulStrategies {
+			content.WriteString(fmt.Sprintf("  %d. %s\n", i+1, strategy))
+			if i >= 4 { // Show top 5
+				break
+			}
+		}
+	} else {
+		content.WriteString("No successful strategies identified yet\n")
+	}
+
+	return content.String()
 }
 
 // RunCLI starts the CLI interface

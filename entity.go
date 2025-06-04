@@ -78,6 +78,10 @@ type Entity struct {
 	Classification    OrganismClassification `json:"classification"`     // Organism complexity classification
 	MaxLifespan      int                    `json:"max_lifespan"`       // Maximum age for this individual
 	AgingAccumulator float64               `json:"aging_accumulator"`  // Fractional aging accumulator
+	
+	// Metamorphosis system
+	MetamorphosisStatus *MetamorphosisStatus `json:"metamorphosis_status"` // Tracks life stage and development
+	OriginalTraits      map[string]float64   `json:"original_traits"`      // Original trait values before stage modifications
 }
 
 // NewEntity creates a new entity with random traits
@@ -118,6 +122,10 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 	entity.Classification = ClassificationEukaryotic // Default classification
 	entity.MaxLifespan = 3360 // Default ~7 days (7 * 480 ticks)
 	entity.AgingAccumulator = 0.0
+	
+	// Metamorphosis status will be initialized by world systems
+	entity.MetamorphosisStatus = nil
+	entity.OriginalTraits = nil
 
 	return entity
 }

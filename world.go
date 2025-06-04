@@ -152,6 +152,8 @@ type World struct {
 	CivilizationSystem  *CivilizationSystem
 	ViewportSystem      *ViewportSystem
 	WindSystem          *WindSystem         // Wind and pollen dispersal system
+	SeedDispersalSystem *SeedDispersalSystem // Advanced seed dispersal and germination
+	ChemicalEcologySystem *ChemicalEcologySystem // Chemical communication and ecology
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
@@ -170,17 +172,35 @@ type World struct {
 	
 	// Reproduction and Decay System
 	ReproductionSystem      *ReproductionSystem                  // Reproduction, gestation, and decay management
+	FungalNetwork           *FungalNetwork                       // Fungal decomposer and nutrient cycling system
+	
+	// Cultural Knowledge System
+	CulturalKnowledgeSystem *CulturalKnowledgeSystem             // Multi-generational knowledge transfer and cultural evolution
 	
 	// Statistical Analysis System
 	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
+	EcosystemMonitor        *EcosystemMonitor                    // Advanced ecosystem metrics and health monitoring
+	EnvironmentalPressures  *EnvironmentalPressureSystem         // Long-term environmental pressures and stresses
+	SymbioticRelationships  *SymbioticRelationshipSystem         // Parasitic and symbiotic relationships between entities
 	
 	// Hive Mind, Caste, and Insect Systems
 	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
 	CasteSystem             *CasteSystem                         // Caste-based social organization
 	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
+	InsectPollinationSystem *InsectPollinationSystem             // Insect pollination and plant-insect mutualism
+	
+	// Advanced AI and Neural Networks
+	NeuralAISystem          *NeuralAISystem                      // Neural networks and AI-driven behaviors
+	ColonyWarfareSystem     *ColonyWarfareSystem                 // Inter-colony warfare and diplomacy
+	
+	// Advanced Biome Interaction System
+	BiomeBoundarySystem     *BiomeBoundarySystem                 // Biome boundary effects and ecotone interactions
 	
 	// Organism classification and lifespan system
 	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
+	
+	// Metamorphosis and life stage system
+	MetamorphosisSystem     *MetamorphosisSystem                 // Life stage transitions and development
 	
 	// Player event callback for gamification features
 	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
@@ -238,6 +258,8 @@ func NewWorld(config WorldConfig) *World {
 	world.CivilizationSystem = NewCivilizationSystem(world.CentralEventBus)
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
+	world.SeedDispersalSystem = NewSeedDispersalSystem()
+	world.ChemicalEcologySystem = NewChemicalEcologySystem()
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem(world.CentralEventBus)
 	world.SpeciesNaming = NewSpeciesNaming()
@@ -255,9 +277,16 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize reproduction and decay system
 	world.ReproductionSystem = NewReproductionSystem(world.CentralEventBus)
+	world.FungalNetwork = NewFungalNetwork()
+	
+	// Initialize cultural knowledge system
+	world.CulturalKnowledgeSystem = NewCulturalKnowledgeSystem()
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
+	world.EcosystemMonitor = NewEcosystemMonitor(100) // Keep 100 historical snapshots
+	world.EnvironmentalPressures = NewEnvironmentalPressureSystem() // Environmental pressure monitoring
+	world.SymbioticRelationships = NewSymbioticRelationshipSystem() // Parasitic and symbiotic relationships
 	
 	// Connect StatisticalReporter to CentralEventBus
 	world.CentralEventBus.AddListener(func(event CentralEvent) {
@@ -298,9 +327,20 @@ func NewWorld(config WorldConfig) *World {
 	world.HiveMindSystem = NewHiveMindSystem()
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
+	world.InsectPollinationSystem = NewInsectPollinationSystem()
+	world.ColonyWarfareSystem = NewColonyWarfareSystem()
+	
+	// Initialize advanced AI and neural networks system
+	world.NeuralAISystem = NewNeuralAISystem()
+	
+	// Initialize biome boundary interaction system
+	world.BiomeBoundarySystem = NewBiomeBoundarySystem()
 	
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
+	
+	// Initialize metamorphosis system
+	world.MetamorphosisSystem = NewMetamorphosisSystem()
 	
 	// Initialize enhanced environmental event system
 	world.EnvironmentalEvents = make([]*EnhancedEnvironmentalEvent, 0)
@@ -313,6 +353,12 @@ func NewWorld(config WorldConfig) *World {
 
 	// Initialize plant life
 	world.initializePlants()
+
+	// Initialize fungal networks
+	if world.FungalNetwork != nil {
+		initialFungi := 20 + rand.Intn(30) // 20-50 initial fungi
+		world.FungalNetwork.SeedInitialFungi(world, initialFungi)
+	}
 
 	// Process initial species formation from newly created plants
 	if len(world.AllPlants) > 0 {
@@ -778,6 +824,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 
 		// Enhance entity with specialized systems
 		AddInsectTraitsToEntity(entity)
+		AddPollinatorTraitsToEntity(entity)
 		AddCasteStatusToEntity(entity)
 
 		w.AllEntities = append(w.AllEntities, entity)
@@ -803,6 +850,12 @@ func (w *World) Update() {
 
 	// 2. Update wind system (affects pollen dispersal and plant reproduction)
 	w.WindSystem.Update(currentTimeState.Season, w.Tick)
+
+	// 2a. Update seed dispersal system (handles seed movement and germination)
+	w.SeedDispersalSystem.Update(w)
+	
+	// 2b. Update chemical ecology system (plant and entity chemical communication)
+	w.ChemicalEcologySystem.Update(w)
 
 	// 3. Update micro and macro evolution systems
 	w.CellularSystem.UpdateCellularOrganisms()
@@ -898,6 +951,16 @@ func (w *World) Update() {
 
 	// Update reproduction system (gestation, egg hatching, decay)
 	w.updateReproductionSystem()
+	
+	// Update fungal network (decomposition and nutrient cycling)
+	if w.FungalNetwork != nil {
+		w.FungalNetwork.Update(w, w.Tick)
+	}
+	
+	// Update cultural knowledge system (multi-generational knowledge transfer)
+	if w.CulturalKnowledgeSystem != nil {
+		w.CulturalKnowledgeSystem.Update(w.AllEntities, w.Tick)
+	}
 
 	// Remove dead entities and plants
 	w.removeDeadEntities()
@@ -969,10 +1032,41 @@ func (w *World) Update() {
 		}
 	}
 	
+	// Update ecosystem monitoring and metrics (every 20 ticks to avoid overhead)
+	if w.EcosystemMonitor != nil && w.Tick%20 == 0 {
+		w.EcosystemMonitor.UpdateMetrics(w)
+	}
+	
+	// Update environmental pressures (every 10 ticks)
+	if w.EnvironmentalPressures != nil && w.Tick%10 == 0 {
+		w.EnvironmentalPressures.Update(w, w.Tick)
+	}
+	
+	// Update symbiotic relationships (every 5 ticks)
+	if w.SymbioticRelationships != nil && w.Tick%5 == 0 {
+		w.SymbioticRelationships.Update(w, w.Tick)
+	}
+	
 	// Update hive mind, caste, and insect systems
 	w.HiveMindSystem.Update()
 	w.CasteSystem.Update(w, w.Tick)
 	w.InsectSystem.Update(w.Tick)
+	
+	// Update insect pollination system
+	currentSeason := w.AdvancedTimeSystem.GetTimeState().Season
+	w.InsectPollinationSystem.Update(w.AllEntities, w.AllPlants, currentSeason, w.Tick)
+	
+	// Update colony warfare and diplomacy system
+	w.ColonyWarfareSystem.Update(w.CasteSystem.Colonies, w.Tick)
+	
+	// Update neural AI system
+	w.NeuralAISystem.Update(w.AllEntities, w.Tick)
+	
+	// Process neural decision making for intelligent entities
+	w.processNeuralDecisions()
+	
+	// Update biome boundary system (ecotones, barriers, migration effects)
+	w.BiomeBoundarySystem.Update(w, w.Tick)
 	
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks
@@ -1032,6 +1126,32 @@ func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime f
 
 		// Update basic entity properties using classification system
 		entity.UpdateWithClassification(w.OrganismClassifier, w.CellularSystem)
+		
+		// Update metamorphosis and life stage development
+		if entity.MetamorphosisStatus == nil {
+			// Initialize metamorphosis status for new entities
+			entity.MetamorphosisStatus = NewMetamorphosisStatus(entity, w.MetamorphosisSystem)
+		}
+		
+		// Get environmental factors for metamorphosis
+		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		
+		environment := w.calculateEnvironmentalFactors(entity, gridX, gridY)
+		stageChanged := w.MetamorphosisSystem.Update(entity, w.Tick, environment)
+		
+		if stageChanged {
+			// Log metamorphosis events
+			w.CentralEventBus.EmitSystemEvent(w.Tick, "metamorphosis", "life_stage", "metamorphosis_system",
+				fmt.Sprintf("Entity %d advanced to %s stage", entity.ID, entity.MetamorphosisStatus.CurrentStage.String()),
+				&entity.Position, map[string]interface{}{
+					"entity_id": entity.ID,
+					"new_stage": entity.MetamorphosisStatus.CurrentStage.String(),
+					"metamorphosis_type": entity.MetamorphosisStatus.Type.String(),
+				})
+		}
 
 		// 4. Apply physics forces and movement
 		physics := w.PhysicsComponents[entity.ID]
@@ -1223,10 +1343,23 @@ func (w *World) reproducePlants() {
 			continue
 		}
 
-		// Asexual reproduction (existing behavior)
-		if offspring := plant.Reproduce(w.NextPlantID); offspring != nil {
-			w.NextPlantID++
-			newPlants = append(newPlants, offspring)
+		// Seed production and dispersal (replaces simple asexual reproduction)
+		if plant.CanReproduce() {
+			// Create seeds instead of direct offspring
+			seedCount := 1 + int(plant.GetTrait("reproduction_rate")*3) // 1-4 seeds typically
+			for i := 0; i < seedCount; i++ {
+				seed := w.SeedDispersalSystem.CreateSeed(plant, w)
+				// Log seed creation
+				if w.CentralEventBus != nil {
+					plantTypeName := GetPlantConfigs()[plant.Type].Name
+					w.CentralEventBus.EmitPlantEvent(w.Tick, "seed_creation", "seed_production", "plant_lifecycle", 
+						fmt.Sprintf("Plant %d (%s) produced seed %d", plant.ID, plantTypeName, seed.ID), plant, false, true)
+				}
+			}
+			
+			// Reproduction costs energy
+			config := GetPlantConfigs()[plant.Type]
+			plant.Energy -= config.BaseEnergy * 0.3 // Reduced cost since seeds may not all germinate
 		}
 
 		// Release pollen for sexual reproduction during flowering
@@ -2122,6 +2255,7 @@ func (w *World) spawnNewEntities() {
 
 				// Enhance entity with specialized systems
 				AddInsectTraitsToEntity(newEntity)
+				AddPollinatorTraitsToEntity(newEntity)
 				AddCasteStatusToEntity(newEntity)
 
 				pop.Entities = append(pop.Entities, newEntity)
@@ -3618,6 +3752,7 @@ func (w *World) enhanceEntitiesWithSpecializedSystems() {
 		// Add insect traits to suitable entities
 		if IsEntityInsectLike(entity) {
 			AddInsectTraitsToEntity(entity)
+			AddPollinatorTraitsToEntity(entity) // Add pollinator traits for insect-like entities
 		}
 
 		// Add caste status to entities that don't have it
@@ -3688,6 +3823,7 @@ func (w *World) CreateOffspring(parent1, parent2 *Entity) *Entity {
 	AddCasteStatusToEntity(offspring)
 	if IsEntityInsectLike(offspring) {
 		AddInsectTraitsToEntity(offspring)
+		AddPollinatorTraitsToEntity(offspring)
 	}
 	
 	return offspring
@@ -4628,4 +4764,511 @@ func (w *World) attemptBasicToolsAndModifications() {
 			}
 		}
 	}
+}
+
+// calculateEnvironmentalFactors determines environmental conditions affecting metamorphosis
+func (w *World) calculateEnvironmentalFactors(entity *Entity, gridX, gridY int) map[string]float64 {
+	environment := make(map[string]float64)
+	
+	// Get grid cell information
+	cell := w.Grid[gridY][gridX]
+	
+	// Temperature based on biome and season
+	timeState := w.AdvancedTimeSystem.GetTimeState()
+	baseTemp := w.getBiomeTemperature(cell.Biome)
+	seasonalMod := w.getSeasonalTemperatureModifier(w.seasonToString(timeState.Season))
+	environment["temperature"] = baseTemp * seasonalMod
+	
+	// Humidity based on biome
+	environment["humidity"] = w.getBiomeHumidity(cell.Biome)
+	
+	// Food availability based on nearby plants and resources
+	foodCount := 0
+	totalNutrition := 0.0
+	searchRadius := 5
+	
+	for dx := -searchRadius; dx <= searchRadius; dx++ {
+		for dy := -searchRadius; dy <= searchRadius; dy++ {
+			checkX := gridX + dx
+			checkY := gridY + dy
+			
+			if checkX >= 0 && checkX < w.Config.GridWidth && checkY >= 0 && checkY < w.Config.GridHeight {
+				checkCell := w.Grid[checkY][checkX]
+				if len(checkCell.Plants) > 0 {
+					for _, plant := range checkCell.Plants {
+						if plant != nil && plant.IsAlive {
+							foodCount++
+							totalNutrition += plant.Energy
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	if foodCount > 0 {
+		environment["food_availability"] = math.Min(1.0, totalNutrition/float64(foodCount)/100.0)
+	} else {
+		environment["food_availability"] = 0.0
+	}
+	
+	// Safety based on nearby predators and threats
+	threatLevel := 0.0
+	entityCount := 0
+	
+	for _, other := range w.AllEntities {
+		if other == nil || !other.IsAlive || other.ID == entity.ID {
+			continue
+		}
+		
+		distance := entity.DistanceTo(other)
+		if distance < 10.0 { // Within threat detection range
+			entityCount++
+			aggression := other.GetTrait("aggression")
+			size := other.GetTrait("size")
+			threat := aggression * (1.0 + size) / (distance + 1.0)
+			threatLevel += threat
+		}
+	}
+	
+	if entityCount > 0 {
+		avgThreat := threatLevel / float64(entityCount)
+		environment["safety"] = math.Max(0.0, 1.0 - avgThreat)
+	} else {
+		environment["safety"] = 1.0
+	}
+	
+	// Population density
+	nearbyCount := float64(entityCount)
+	environment["population_density"] = math.Min(1.0, nearbyCount/20.0)
+	
+	return environment
+}
+
+// getBiomeTemperature returns the temperature characteristic of a biome (0.0 to 1.0)
+func (w *World) getBiomeTemperature(biome BiomeType) float64 {
+	switch biome {
+	case BiomeIce:
+		return 0.1
+	case BiomeTundra:
+		return 0.2
+	case BiomeWater:
+		return 0.4
+	case BiomePlains:
+		return 0.5
+	case BiomeForest:
+		return 0.6
+	case BiomeMountain:
+		return 0.3
+	case BiomeDesert:
+		return 0.9
+	case BiomeRainforest:
+		return 0.8
+	case BiomeHotSpring:
+		return 0.95
+	default:
+		return 0.5
+	}
+}
+
+// getBiomeHumidity returns the humidity characteristic of a biome (0.0 to 1.0)
+func (w *World) getBiomeHumidity(biome BiomeType) float64 {
+	switch biome {
+	case BiomeIce:
+		return 0.3
+	case BiomeTundra:
+		return 0.4
+	case BiomeWater:
+		return 1.0
+	case BiomeDeepWater:
+		return 1.0
+	case BiomePlains:
+		return 0.5
+	case BiomeForest:
+		return 0.7
+	case BiomeMountain:
+		return 0.4
+	case BiomeDesert:
+		return 0.1
+	case BiomeRainforest:
+		return 0.9
+	case BiomeSwamp:
+		return 0.95
+	case BiomeHotSpring:
+		return 0.8
+	default:
+		return 0.5
+	}
+}
+
+// getSeasonalTemperatureModifier returns seasonal temperature adjustment
+func (w *World) getSeasonalTemperatureModifier(season string) float64 {
+	switch season {
+	case "spring":
+		return 0.8
+	case "summer":
+		return 1.2
+	case "autumn":
+		return 0.9
+	case "winter":
+		return 0.6
+	default:
+		return 1.0
+	}
+}
+
+// getTemperatureAt returns temperature at a specific position
+func (w *World) getTemperatureAt(pos Position) float64 {
+	biome := w.getBiomeAtPosition(pos.X, pos.Y)
+	baseTemp := w.getBiomeTemperature(biome)
+	
+	// Apply seasonal modifier
+	season := w.getCurrentSeason()
+	seasonMod := w.getSeasonalTemperatureModifier(season)
+	
+	// Add some randomness for micro-climates
+	randomVariation := (rand.Float64()*2 - 1) * 3.0 // ±3 degrees
+	
+	return baseTemp * seasonMod + randomVariation
+}
+
+// getMoistureAt returns moisture level at a specific position
+func (w *World) getMoistureAt(pos Position) float64 {
+	biome := w.getBiomeAtPosition(pos.X, pos.Y)
+	baseMoisture := w.getBiomeHumidity(biome)
+	
+	// Apply seasonal effects
+	season := w.getCurrentSeason()
+	switch season {
+	case "spring":
+		baseMoisture *= 1.2 // Spring rains
+	case "summer":
+		baseMoisture *= 0.8 // Dry summer
+	case "autumn":
+		baseMoisture *= 1.1 // Autumn rains
+	case "winter":
+		baseMoisture *= 0.9 // Winter conditions
+	}
+	
+	// Add randomness for local weather
+	randomVariation := (rand.Float64()*2 - 1) * 0.2 // ±20%
+	
+	return math.Max(0.0, math.Min(1.0, baseMoisture + randomVariation))
+}
+
+// getSunlightAt returns sunlight level at a specific position
+func (w *World) getSunlightAt(pos Position) float64 {
+	// Base sunlight depends on day/night cycle
+	dayTime := float64(w.Tick % 100) / 100.0 // 100 ticks per day
+	
+	var baseSunlight float64
+	if dayTime >= 0.25 && dayTime <= 0.75 { // Day time
+		// Peak at noon (0.5), fade at dawn/dusk
+		if dayTime <= 0.5 {
+			baseSunlight = (dayTime - 0.25) * 4.0 // 0.25 to 0.5 -> 0 to 1
+		} else {
+			baseSunlight = (0.75 - dayTime) * 4.0 // 0.5 to 0.75 -> 1 to 0
+		}
+	} else {
+		baseSunlight = 0.0 // Night time
+	}
+	
+	// Biome effects on sunlight
+	biome := w.getBiomeAtPosition(pos.X, pos.Y)
+	switch biome {
+	case BiomeForest:
+		baseSunlight *= 0.6 // Forest canopy blocks light
+	case BiomeDeepWater:
+		baseSunlight *= 0.1 // Deep water blocks light
+	case BiomeDesert:
+		baseSunlight *= 1.2 // Desert has intense sunlight
+	case BiomeHighAltitude:
+		baseSunlight *= 1.3 // High altitude has intense sunlight
+	}
+	
+	// Weather effects
+	if w.EnvironmentalEvents != nil {
+		for _, event := range w.EnvironmentalEvents {
+			if event.Type == "storm" || event.Type == "ash_cloud" {
+				// Check if position is affected by the event
+				distance := math.Sqrt(math.Pow(pos.X-event.Position.X, 2) + math.Pow(pos.Y-event.Position.Y, 2))
+				if distance <= event.Radius {
+					baseSunlight *= 0.3 // Storms block sunlight
+				}
+			}
+		}
+	}
+	
+	return math.Max(0.0, math.Min(1.0, baseSunlight))
+}
+
+// getBiomeAt returns biome at a specific position
+func (w *World) getBiomeAt(pos Position) BiomeType {
+	return w.getBiomeAtPosition(pos.X, pos.Y)
+}
+
+// getCurrentSeason returns the current season based on tick
+func (w *World) getCurrentSeason() string {
+	if w.AdvancedTimeSystem != nil {
+		return seasonToString(w.AdvancedTimeSystem.GetTimeState().Season)
+	}
+	
+	// Fallback: calculate season from tick
+	yearTick := w.Tick % (100 * 4) // 400 ticks per year (100 per season)
+	seasonTick := yearTick / 100
+	
+	switch seasonTick {
+	case 0:
+		return "spring"
+	case 1:
+		return "summer"
+	case 2:
+		return "autumn"
+	case 3:
+		return "winter"
+	default:
+		return "spring"
+	}
+}
+
+// seasonToString converts Season enum to string
+func (w *World) seasonToString(season Season) string {
+	switch season {
+	case Spring:
+		return "spring"
+	case Summer:
+		return "summer"
+	case Autumn:
+		return "autumn"
+	case Winter:
+		return "winter"
+	default:
+		return "unknown"
+	}
+}
+
+// getElevationAt returns the elevation at a given position
+func (w *World) getElevationAt(position Position) float64 {
+	if w.TopologySystem != nil {
+		return w.TopologySystem.getElevationAt(position.X, position.Y)
+	}
+	return 0.0 // Default elevation if no topology system
+}
+
+// isValidPosition checks if a position is within world bounds
+func (w *World) isValidPosition(position Position) bool {
+	x := int(position.X)
+	y := int(position.Y)
+	return x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight
+}
+
+// processNeuralDecisions handles neural network decision making for intelligent entities
+func (w *World) processNeuralDecisions() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive || entity.GetTrait("intelligence") <= 0.3 {
+			continue // Skip dead or non-intelligent entities
+		}
+		
+		// Check if entity has a neural network
+		if w.NeuralAISystem.EntityNetworks[entity.ID] == nil {
+			continue // Network will be created on next update
+		}
+		
+		// Create environmental inputs for the neural network
+		environmentInputs := w.createEnvironmentalInputs(entity)
+		
+		// Get neural network decision
+		outputs := w.NeuralAISystem.ProcessNeuralDecision(entity, environmentInputs, w.Tick)
+		
+		// Apply neural decision to entity behavior
+		w.applyNeuralDecision(entity, outputs, environmentInputs)
+	}
+}
+
+// createEnvironmentalInputs creates environmental input vector for neural network
+func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
+	inputs := make([]float64, 5) // 5 inputs: vision, energy, threat, food, social
+	
+	// Input 0: Vision/Environmental awareness (0-1)
+	// Based on entity's vision trait and nearby environment
+	vision := entity.GetTrait("vision")
+	gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+	gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+	
+	// Environmental awareness based on biome favorability
+	biome := w.Grid[gridY][gridX].Biome
+	biomeScore := w.evaluateBiomeForEntity(entity, w.Biomes[biome])
+	inputs[0] = math.Max(0, math.Min(1, (biomeScore + 100) / 200)) * vision
+	
+	// Input 1: Energy level (0-1)
+	inputs[1] = math.Max(0, math.Min(1, entity.Energy / 100.0))
+	
+	// Input 2: Threat level (0-1)
+	// Based on nearby dangerous entities and environmental threats
+	threatLevel := 0.0
+	
+	// Check for nearby aggressive entities
+	for _, other := range w.AllEntities {
+		if other.ID != entity.ID && other.IsAlive {
+			distance := entity.DistanceTo(other)
+			if distance < 10.0 { // Within threat detection range
+				aggression := other.GetTrait("aggression")
+				threat := aggression * (10.0 - distance) / 10.0
+				threatLevel = math.Max(threatLevel, threat)
+			}
+		}
+	}
+	
+	// Check for environmental threats (events, toxic biomes)
+	if w.Grid[gridY][gridX].Event != nil {
+		threatLevel = math.Max(threatLevel, w.Grid[gridY][gridX].Event.GlobalDamage / 50.0)
+	}
+	
+	inputs[2] = math.Max(0, math.Min(1, threatLevel))
+	
+	// Input 3: Food availability (0-1)
+	// Based on nearby food sources (plants and prey)
+	foodLevel := 0.0
+	
+	// Check for nearby plants
+	for _, plant := range w.AllPlants {
+		if plant.IsAlive {
+			distance := math.Sqrt(math.Pow(entity.Position.X - plant.Position.X, 2) + 
+								  math.Pow(entity.Position.Y - plant.Position.Y, 2))
+			if distance < 15.0 { // Within foraging range
+				plantValue := plant.Energy / 100.0
+				foodLevel += plantValue * (15.0 - distance) / 15.0
+			}
+		}
+	}
+	
+	// Check for nearby prey entities (if carnivorous)
+	if entity.GetTrait("aggression") > 0.3 {
+		for _, other := range w.AllEntities {
+			if other.ID != entity.ID && other.IsAlive {
+				distance := entity.DistanceTo(other)
+				if distance < 10.0 && other.Energy < entity.Energy { // Potential prey
+					preyValue := other.Energy / 100.0
+					foodLevel += preyValue * (10.0 - distance) / 10.0
+				}
+			}
+		}
+	}
+	
+	inputs[3] = math.Max(0, math.Min(1, foodLevel / 3.0)) // Normalize
+	
+	// Input 4: Social interaction level (0-1)
+	// Based on nearby entities and cooperation opportunities
+	socialLevel := 0.0
+	cooperation := entity.GetTrait("cooperation")
+	
+	if cooperation > 0.3 {
+		nearbyEntities := 0
+		for _, other := range w.AllEntities {
+			if other.ID != entity.ID && other.IsAlive {
+				distance := entity.DistanceTo(other)
+				if distance < 8.0 { // Social interaction range
+					if other.Species == entity.Species || other.GetTrait("cooperation") > 0.3 {
+						socialLevel += cooperation * (8.0 - distance) / 8.0
+						nearbyEntities++
+					}
+				}
+			}
+		}
+		
+		if nearbyEntities > 0 {
+			socialLevel /= float64(nearbyEntities) // Average social interaction
+		}
+	}
+	
+	inputs[4] = math.Max(0, math.Min(1, socialLevel))
+	
+	return inputs
+}
+
+// applyNeuralDecision translates neural network outputs into entity actions
+func (w *World) applyNeuralDecision(entity *Entity, outputs []float64, inputs []float64) {
+	if len(outputs) < 3 {
+		return // Invalid output
+	}
+	
+	// Output 0: Movement X direction (-1 to 1)
+	// Output 1: Movement Y direction (-1 to 1)
+	// Output 2: Action intensity (0 to 1)
+	
+	moveX := outputs[0] // Already between -1 and 1 due to tanh activation
+	moveY := outputs[1]
+	actionIntensity := math.Max(0, math.Min(1, outputs[2])) // Ensure 0-1 range
+	
+	// Apply movement with neural decision
+	if math.Abs(moveX) > 0.1 || math.Abs(moveY) > 0.1 { // Only move if significant output
+		speed := entity.GetTrait("speed") * actionIntensity * 2.0 // Neural decision affects speed
+		
+		// Calculate target position
+		targetX := entity.Position.X + moveX * speed
+		targetY := entity.Position.Y + moveY * speed
+		
+		// Apply environment-aware movement
+		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		biome := w.Grid[gridY][gridX].Biome
+		
+		entity.MoveToWithEnvironment(targetX, targetY, speed, biome)
+		
+		// Provide learning feedback based on movement outcome
+		w.provideNeuralFeedback(entity, inputs, outputs, actionIntensity)
+	}
+}
+
+// provideNeuralFeedback gives learning feedback to neural networks based on outcomes
+func (w *World) provideNeuralFeedback(entity *Entity, inputs []float64, outputs []float64, actionIntensity float64) {
+	// Calculate success/failure based on multiple factors
+	success := false
+	reward := 0.0
+	
+	// Energy efficiency: Moving when energy is high is good
+	if inputs[1] > 0.5 && actionIntensity > 0.3 { // Good energy, decided to move
+		reward += 0.3
+		success = true
+	}
+	
+	// Threat avoidance: Moving away from high threat is good
+	if inputs[2] > 0.5 && actionIntensity > 0.4 { // High threat, decided to move
+		reward += 0.4
+		success = true
+	}
+	
+	// Food seeking: Moving when food is available is good
+	if inputs[3] > 0.4 && actionIntensity > 0.3 { // Food available, decided to move
+		reward += 0.3
+		success = true
+	}
+	
+	// Social behavior: Moving when social opportunities exist
+	if inputs[4] > 0.4 && entity.GetTrait("cooperation") > 0.3 {
+		reward += 0.2
+		success = true
+	}
+	
+	// Energy conservation: Not moving when energy is low is good
+	if inputs[1] < 0.3 && actionIntensity < 0.2 { // Low energy, decided not to move much
+		reward += 0.3
+		success = true
+	}
+	
+	// Penalize poor decisions
+	if inputs[1] < 0.2 && actionIntensity > 0.7 { // Very low energy but high activity
+		reward -= 0.5
+		success = false
+	}
+	
+	// Normalize reward
+	reward = math.Max(-1.0, math.Min(1.0, reward))
+	
+	// Provide feedback to neural network
+	w.NeuralAISystem.LearnFromOutcome(entity.ID, success, reward, w.Tick)
 }

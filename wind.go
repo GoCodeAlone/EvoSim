@@ -280,7 +280,7 @@ func (ws *WindSystem) ReleasePollen(plant *Plant, amount int, tick int) {
 
 	// Emit event for pollen release
 	if ws.EventBus != nil && amount > 0 {
-		plantTypeNames := []string{"grass", "bush", "tree", "mushroom", "algae", "cactus"}
+		plantTypeNames := []string{"grass", "bush", "tree", "mushroom", "algae", "cactus", "lily", "reed", "kelp"}
 		plantTypeName := "unknown"
 		if int(plant.Type) < len(plantTypeNames) {
 			plantTypeName = plantTypeNames[plant.Type]
@@ -486,7 +486,7 @@ func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrai
 
 	// Emit event for successful cross-pollination
 	if ws.EventBus != nil {
-		plantTypeNames := []string{"grass", "bush", "tree", "mushroom", "algae", "cactus"}
+		plantTypeNames := []string{"grass", "bush", "tree", "mushroom", "algae", "cactus", "lily", "reed", "kelp"}
 		motherTypeName := "unknown"
 		fatherTypeName := "unknown"
 		offspringTypeName := "unknown"

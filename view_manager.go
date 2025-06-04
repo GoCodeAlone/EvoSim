@@ -70,11 +70,19 @@ type ViewData struct {
 	Topology       TopologyData           `json:"topology"`
 	Tools          ToolData               `json:"tools"`
 	EnvironmentalMod EnvironmentalModData `json:"environmental_mod"`
+	EnvironmentalPressures EnvironmentalPressureData `json:"environmental_pressures"`
+	SymbioticRelationships SymbioticRelationshipData `json:"symbiotic_relationships"`
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
 	Reproduction     ReproductionData     `json:"reproduction"`
+	Warfare          WarfareData          `json:"warfare"`
+	Fungal           FungalData           `json:"fungal"`
+	Cultural         CulturalData         `json:"cultural"`
 	Statistical      StatisticalData      `json:"statistical"`
+	Ecosystem        EcosystemMetrics     `json:"ecosystem"`
 	Anomalies        AnomaliesData        `json:"anomalies"`
+	Neural           NeuralData           `json:"neural"`
+	BiomeBoundary    BiomeBoundaryData    `json:"biome_boundary"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
 	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
@@ -150,11 +158,16 @@ type PhysicsData struct {
 
 // WindData represents wind system state
 type WindData struct {
-	Direction       float64 `json:"direction"`
-	Strength        float64 `json:"strength"`
-	TurbulenceLevel float64 `json:"turbulence_level"`
-	WeatherPattern  string  `json:"weather_pattern"`
-	PollenCount     int     `json:"pollen_count"`
+	Direction       float64                `json:"direction"`
+	Strength        float64                `json:"strength"`
+	TurbulenceLevel float64                `json:"turbulence_level"`
+	WeatherPattern  string                 `json:"weather_pattern"`
+	PollenCount     int                    `json:"pollen_count"`
+	SeedCount       int                    `json:"seed_count"`
+	SeedBanks       int                    `json:"seed_banks"`
+	GerminationEvents int                  `json:"germination_events"`
+	DormancyActivations int                `json:"dormancy_activations"`
+	DispersalStats  map[string]interface{} `json:"dispersal_stats"`
 }
 
 // SpeciesData represents species tracking state
@@ -230,6 +243,41 @@ type EnvironmentalModData struct {
 	AvgDurability         float64                `json:"avg_durability"`
 	TunnelNetworks        int                    `json:"tunnel_networks"`
 	ModificationTypes     map[string]int         `json:"modification_types"`
+}
+
+// EnvironmentalPressureData represents environmental pressure system state
+type EnvironmentalPressureData struct {
+	ActivePressures   int                    `json:"active_pressures"`
+	TotalHistory      int                    `json:"total_history"`
+	AverageSeverity   float64                `json:"average_severity"`
+	PressureTypes     map[string]int         `json:"pressure_types"`
+	ActiveDetails     []PressureDetail       `json:"active_details"`
+}
+
+// SymbioticRelationshipData represents symbiotic relationship system state
+type SymbioticRelationshipData struct {
+	TotalRelationships     int                    `json:"total_relationships"`
+	ActiveRelationships    int                    `json:"active_relationships"`
+	ActiveParasitic        int                    `json:"active_parasitic"`
+	ActiveMutualistic      int                    `json:"active_mutualistic"`
+	ActiveCommensal        int                    `json:"active_commensal"`
+	AverageRelationshipAge float64                `json:"average_relationship_age"`
+	DiseaseTransmissionRate float64               `json:"disease_transmission_rate"`
+	AverageVirulence       float64                `json:"average_virulence"`
+	AverageTransmission    float64                `json:"average_transmission"`
+	RelationshipTypes      map[string]int         `json:"relationship_types"`
+}
+
+// PressureDetail represents details of an active environmental pressure
+type PressureDetail struct {
+	ID          int     `json:"id"`
+	Type        string  `json:"type"`
+	Name        string  `json:"name"`
+	Severity    float64 `json:"severity"`
+	Duration    int     `json:"duration"`
+	AffectedX   float64 `json:"affected_x"`
+	AffectedY   float64 `json:"affected_y"`
+	Radius      float64 `json:"radius"`
 }
 
 // EmergentBehaviorData represents emergent behavior system state
@@ -322,6 +370,129 @@ type AnomalyData struct {
 	Tick        int     `json:"tick"`
 }
 
+// WarfareData represents warfare and diplomacy state for web interface
+type WarfareData struct {
+	TotalColonies        int                   `json:"total_colonies"`
+	ActiveConflicts      int                   `json:"active_conflicts"`
+	TotalAlliances       int                   `json:"total_alliances"`
+	ActiveTradeAgreements int                  `json:"active_trade_agreements"`
+	TotalRelations       int                   `json:"total_relations"`
+	NeutralRelations     int                   `json:"neutral_relations"`
+	AlliedRelations      int                   `json:"allied_relations"`
+	EnemyRelations       int                   `json:"enemy_relations"`
+	TruceRelations       int                   `json:"truce_relations"`
+	TradingRelations     int                   `json:"trading_relations"`
+	VassalRelations      int                   `json:"vassal_relations"`
+	Conflicts            []ConflictData        `json:"conflicts"`
+	Alliances            []AllianceData        `json:"alliances"`
+	TradeAgreements      []TradeAgreementData  `json:"trade_agreements"`
+	ColonyDetails        []ColonyDetailData    `json:"colony_details"`
+}
+
+// ConflictData represents a conflict for web interface
+type ConflictData struct {
+	ID             int     `json:"id"`
+	AttackerID     int     `json:"attacker_id"`
+	DefenderID     int     `json:"defender_id"`
+	ConflictType   string  `json:"conflict_type"`
+	TurnsActive    int     `json:"turns_active"`
+	CasualtyCount  int     `json:"casualty_count"`
+	ResourcesLost  float64 `json:"resources_lost"`
+	Intensity      float64 `json:"intensity"`
+	WarGoal        string  `json:"war_goal"`
+	IsActive       bool    `json:"is_active"`
+}
+
+// AllianceData represents an alliance for web interface
+type AllianceData struct {
+	ID            int      `json:"id"`
+	Members       []int    `json:"members"`
+	AllianceType  string   `json:"alliance_type"`
+	ResourceShare float64  `json:"resource_share"`
+	SharedDefense bool     `json:"shared_defense"`
+	IsActive      bool     `json:"is_active"`
+	Duration      int      `json:"duration"`
+}
+
+// TradeAgreementData represents a trade agreement for web interface
+type TradeAgreementData struct {
+	ID               int                `json:"id"`
+	Colony1ID        int                `json:"colony1_id"`
+	Colony2ID        int                `json:"colony2_id"`
+	OfferedResources map[string]float64 `json:"offered_resources"`
+	WantedResources  map[string]float64 `json:"wanted_resources"`
+	Duration         int                `json:"duration"`
+	IsActive         bool               `json:"is_active"`
+}
+
+// ColonyDetailData represents colony details for web interface
+type ColonyDetailData struct {
+	ID          int                      `json:"id"`
+	Size        int                      `json:"size"`
+	Fitness     float64                  `json:"fitness"`
+	Location    Position                 `json:"location"`
+	Resources   map[string]float64       `json:"resources"`
+	Relations   map[int]string           `json:"relations"`
+	TrustLevels map[int]float64          `json:"trust_levels"`
+}
+
+// FungalData represents fungal network state for web interface
+type FungalData struct {
+	TotalOrganisms     int     `json:"total_organisms"`
+	DecomposerCount    int     `json:"decomposer_count"`
+	MycorrhizalCount   int     `json:"mycorrhizal_count"`
+	PathogenicCount    int     `json:"pathogenic_count"`
+	ActiveSpores       int     `json:"active_spores"`
+	TotalBiomass       float64 `json:"total_biomass"`
+	NutrientCycling    float64 `json:"nutrient_cycling"`
+	DecompositionEvents int    `json:"decomposition_events"`
+	NetworkConnections int     `json:"network_connections"`
+	AvgConnections     float64 `json:"avg_connections"`
+}
+
+// CulturalData represents cultural knowledge state for web interface
+type CulturalData struct {
+	TotalKnowledgeTypes       int                `json:"total_knowledge_types"`
+	TotalEntities             int                `json:"total_entities"`
+	ActiveInnovations         int                `json:"active_innovations"`
+	TotalTeachingEvents       int                `json:"total_teaching_events"`
+	TotalLearningEvents       int                `json:"total_learning_events"`
+	TotalInnovationsCreated   int                `json:"total_innovations_created"`
+	KnowledgeLossEvents       int                `json:"knowledge_loss_events"`
+	AvgKnowledgePerEntity     float64            `json:"avg_knowledge_per_entity"`
+	KnowledgeTypeDistribution map[string]int     `json:"knowledge_type_distribution"`
+}
+
+// BiomeBoundaryData represents biome boundary system data for web interface
+type BiomeBoundaryData struct {
+	BoundaryCount       int                    `json:"boundary_count"`
+	TotalBoundaryLength float64               `json:"total_boundary_length"`
+	EcotoneArea         float64               `json:"ecotone_area"`
+	MigrationEvents     int                   `json:"migration_events"`
+	EvolutionEvents     int                   `json:"evolution_events"`
+	EvolutionPressure   float64               `json:"evolution_pressure"`
+	MigrationBonus      float64               `json:"migration_bonus"`
+	BoundaryTypes       map[string]int        `json:"boundary_types"`
+}
+
+// NeuralData represents neural networks and AI state for web interface
+type NeuralData struct {
+	TotalNetworks            int                      `json:"total_networks"`
+	TotalBehaviors           int                      `json:"total_behaviors"`
+	TotalLearningEvents      int                      `json:"total_learning_events"`
+	EmergentBehaviors        int                      `json:"emergent_behaviors"`
+	AvgNetworkComplexity     float64                  `json:"avg_network_complexity"`
+	SuccessRate              float64                  `json:"success_rate"`
+	TotalExperience          float64                  `json:"total_experience"`
+	AvgExperiencePerNetwork  float64                  `json:"avg_experience_per_network"`
+	BaseLearningRate         float64                  `json:"base_learning_rate"`
+	AdaptationRate           float64                  `json:"adaptation_rate"`
+	ActiveNetworkCount       int                      `json:"active_network_count"`
+	CollectiveBehaviorCount  int                      `json:"collective_behavior_count"`
+	SuccessfulStrategies     []string                 `json:"successful_strategies"`
+	EntityNetworks           map[string]interface{}   `json:"entity_networks"`     // Entity ID -> neural data
+}
+
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
 	// Capture historical data every 5 ticks
@@ -352,11 +523,19 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Topology:        vm.getTopologyData(),
 		Tools:           vm.getToolData(),
 		EnvironmentalMod: vm.getEnvironmentalModData(),
+		EnvironmentalPressures: vm.getEnvironmentalPressuresData(),
+		SymbioticRelationships: vm.getSymbioticRelationshipData(),
 		EmergentBehavior: vm.getEmergentBehaviorData(),
 		FeedbackLoops:    vm.getFeedbackLoopData(),
 		Reproduction:     vm.getReproductionData(),
+		Warfare:          vm.getWarfareData(),
+		Fungal:           vm.getFungalData(),
+		Cultural:         vm.getCulturalData(),
 		Statistical:      vm.getStatisticalData(),
+		Ecosystem:        vm.getEcosystemData(),
 		Anomalies:        vm.getAnomaliesData(),
+		Neural:           vm.getNeuralData(),
+		BiomeBoundary:    vm.getBiomeBoundaryData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
 		CommunicationHistory: vm.communicationHistory,
@@ -893,6 +1072,15 @@ func (vm *ViewManager) getWindData() WindData {
 		data.PollenCount = len(vm.world.WindSystem.AllPollenGrains)
 	}
 	
+	// Add seed dispersal system data
+	if vm.world.SeedDispersalSystem != nil {
+		data.SeedCount = len(vm.world.SeedDispersalSystem.AllSeeds)
+		data.SeedBanks = len(vm.world.SeedDispersalSystem.SeedBanks)
+		data.GerminationEvents = vm.world.SeedDispersalSystem.GerminationEvents
+		data.DormancyActivations = vm.world.SeedDispersalSystem.DormancyActivations
+		data.DispersalStats = vm.world.SeedDispersalSystem.GetStats()
+	}
+	
 	return data
 }
 
@@ -1143,7 +1331,7 @@ func (vm *ViewManager) GetViewModes() []string {
 		"GRID", "STATS", "EVENTS", "POPULATIONS", "COMMUNICATION",
 		"CIVILIZATION", "PHYSICS", "WIND", "SPECIES", "NETWORK",
 		"DNA", "CELLULAR", "EVOLUTION", "TOPOLOGY", "TOOLS", "ENVIRONMENT", "BEHAVIOR",
-		"STATISTICAL", "ANOMALIES",
+		"REPRODUCTION", "WARFARE", "STATISTICAL", "ANOMALIES", "ECOSYSTEM", "FUNGAL", "CULTURAL", "SYMBIOTIC", "NEURAL", "BIOMEBOUNDARY",
 	}
 }
 
@@ -1207,6 +1395,93 @@ func (vm *ViewManager) getEnvironmentalModData() EnvironmentalModData {
 			for modType, count := range modTypes {
 				data.ModificationTypes[GetEnvironmentalModTypeName(modType)] = count
 			}
+		}
+	}
+	
+	return data
+}
+func (vm *ViewManager) getEnvironmentalPressuresData() EnvironmentalPressureData {
+	data := EnvironmentalPressureData{
+		PressureTypes: make(map[string]int),
+		ActiveDetails: make([]PressureDetail, 0),
+	}
+	
+	if vm.world.EnvironmentalPressures != nil {
+		stats := vm.world.EnvironmentalPressures.GetPressureStats()
+		
+		if activePressures, ok := stats["active_pressures"].(int); ok {
+			data.ActivePressures = activePressures
+		}
+		if totalHistory, ok := stats["total_pressure_history"].(int); ok {
+			data.TotalHistory = totalHistory
+		}
+		if avgSeverity, ok := stats["average_severity"].(float64); ok {
+			data.AverageSeverity = avgSeverity
+		}
+		if pressureTypes, ok := stats["pressure_types"].(map[string]int); ok {
+			data.PressureTypes = pressureTypes
+		}
+		
+		// Collect details of active pressures (limit to first 5 for web interface)
+		activePressures := vm.world.EnvironmentalPressures.ActivePressures
+		for i, pressure := range activePressures {
+			if i >= 5 { // Limit to prevent web interface overload
+				break
+			}
+			
+			detail := PressureDetail{
+				ID:        pressure.ID,
+				Type:      pressure.Type,
+				Name:      pressure.Name,
+				Severity:  pressure.Severity,
+				Duration:  pressure.Duration,
+				AffectedX: pressure.AffectedArea.X,
+				AffectedY: pressure.AffectedArea.Y,
+				Radius:    pressure.Radius,
+			}
+			data.ActiveDetails = append(data.ActiveDetails, detail)
+		}
+	}
+	
+	return data
+}
+func (vm *ViewManager) getSymbioticRelationshipData() SymbioticRelationshipData {
+	data := SymbioticRelationshipData{
+		RelationshipTypes: make(map[string]int),
+	}
+	
+	if vm.world.SymbioticRelationships != nil {
+		stats := vm.world.SymbioticRelationships.GetSymbioticStats()
+		
+		if totalRelationships, ok := stats["total_relationships"].(int); ok {
+			data.TotalRelationships = totalRelationships
+		}
+		if activeRelationships, ok := stats["active_relationships"].(int); ok {
+			data.ActiveRelationships = activeRelationships
+		}
+		if activeParasitic, ok := stats["active_parasitic"].(int); ok {
+			data.ActiveParasitic = activeParasitic
+		}
+		if activeMutualistic, ok := stats["active_mutualistic"].(int); ok {
+			data.ActiveMutualistic = activeMutualistic
+		}
+		if activeCommensal, ok := stats["active_commensal"].(int); ok {
+			data.ActiveCommensal = activeCommensal
+		}
+		if avgAge, ok := stats["average_relationship_age"].(float64); ok {
+			data.AverageRelationshipAge = avgAge
+		}
+		if diseaseRate, ok := stats["disease_transmission_rate"].(float64); ok {
+			data.DiseaseTransmissionRate = diseaseRate
+		}
+		if avgVirulence, ok := stats["average_virulence"].(float64); ok {
+			data.AverageVirulence = avgVirulence
+		}
+		if avgTransmission, ok := stats["average_transmission"].(float64); ok {
+			data.AverageTransmission = avgTransmission
+		}
+		if relationshipTypes, ok := stats["relationship_types"].(map[string]int); ok {
+			data.RelationshipTypes = relationshipTypes
 		}
 	}
 	
@@ -1415,6 +1690,290 @@ func (vm *ViewManager) getReproductionData() ReproductionData {
 	return data
 }
 
+// getWarfareData returns warfare and diplomacy system state data
+func (vm *ViewManager) getWarfareData() WarfareData {
+	data := WarfareData{
+		Conflicts:       make([]ConflictData, 0),
+		Alliances:       make([]AllianceData, 0),
+		TradeAgreements: make([]TradeAgreementData, 0),
+		ColonyDetails:   make([]ColonyDetailData, 0),
+	}
+	
+	// Check if warfare system exists
+	if vm.world.ColonyWarfareSystem == nil {
+		return data
+	}
+	
+	// Get warfare statistics
+	stats := vm.world.ColonyWarfareSystem.GetWarfareStats()
+	
+	// Extract statistics safely
+	if val, ok := stats["total_colonies"]; ok && val != nil {
+		data.TotalColonies = val.(int)
+	}
+	if val, ok := stats["active_conflicts"]; ok && val != nil {
+		data.ActiveConflicts = val.(int)
+	}
+	if val, ok := stats["total_alliances"]; ok && val != nil {
+		data.TotalAlliances = val.(int)
+	}
+	if val, ok := stats["active_trade_agreements"]; ok && val != nil {
+		data.ActiveTradeAgreements = val.(int)
+	}
+	if val, ok := stats["total_relations"]; ok && val != nil {
+		data.TotalRelations = val.(int)
+	}
+	if val, ok := stats["neutral_relations"]; ok && val != nil {
+		data.NeutralRelations = val.(int)
+	}
+	if val, ok := stats["allied_relations"]; ok && val != nil {
+		data.AlliedRelations = val.(int)
+	}
+	if val, ok := stats["enemy_relations"]; ok && val != nil {
+		data.EnemyRelations = val.(int)
+	}
+	if val, ok := stats["truce_relations"]; ok && val != nil {
+		data.TruceRelations = val.(int)
+	}
+	if val, ok := stats["trading_relations"]; ok && val != nil {
+		data.TradingRelations = val.(int)
+	}
+	if val, ok := stats["vassal_relations"]; ok && val != nil {
+		data.VassalRelations = val.(int)
+	}
+	
+	// Convert active conflicts
+	for _, conflict := range vm.world.ColonyWarfareSystem.ActiveConflicts {
+		if !conflict.IsActive {
+			continue
+		}
+		
+		conflictData := ConflictData{
+			ID:            conflict.ID,
+			AttackerID:    conflict.Attacker,
+			DefenderID:    conflict.Defender,
+			TurnsActive:   conflict.TurnsActive,
+			CasualtyCount: conflict.CasualtyCount,
+			ResourcesLost: conflict.ResourcesLost,
+			Intensity:     conflict.Intensity,
+			WarGoal:       conflict.WarGoal,
+			IsActive:      conflict.IsActive,
+		}
+		
+		// Convert conflict type to string
+		switch conflict.ConflictType {
+		case BorderSkirmish:
+			conflictData.ConflictType = "Border Skirmish"
+		case ResourceWar:
+			conflictData.ConflictType = "Resource War"
+		case TotalWar:
+			conflictData.ConflictType = "Total War"
+		case Raid:
+			conflictData.ConflictType = "Raid"
+		default:
+			conflictData.ConflictType = "Unknown"
+		}
+		
+		data.Conflicts = append(data.Conflicts, conflictData)
+	}
+	
+	// Convert alliances
+	for _, alliance := range vm.world.ColonyWarfareSystem.Alliances {
+		if !alliance.IsActive {
+			continue
+		}
+		
+		allianceData := AllianceData{
+			ID:            alliance.ID,
+			Members:       alliance.Members,
+			AllianceType:  alliance.AllianceType,
+			ResourceShare: alliance.ResourceShare,
+			SharedDefense: alliance.SharedDefense,
+			IsActive:      alliance.IsActive,
+			Duration:      alliance.Duration,
+		}
+		
+		data.Alliances = append(data.Alliances, allianceData)
+	}
+	
+	// Convert trade agreements
+	for _, tradeAgreement := range vm.world.ColonyWarfareSystem.TradeAgreements {
+		if !tradeAgreement.IsActive {
+			continue
+		}
+		
+		tradeData := TradeAgreementData{
+			ID:               tradeAgreement.ID,
+			Colony1ID:        tradeAgreement.Colony1ID,
+			Colony2ID:        tradeAgreement.Colony2ID,
+			OfferedResources: tradeAgreement.ResourcesOffered,
+			WantedResources:  tradeAgreement.ResourcesWanted,
+			Duration:         tradeAgreement.Duration,
+			IsActive:         tradeAgreement.IsActive,
+		}
+		
+		data.TradeAgreements = append(data.TradeAgreements, tradeData)
+	}
+	
+	// Add colony details
+	if vm.world.CasteSystem != nil {
+		for _, colony := range vm.world.CasteSystem.Colonies {
+			colonyData := ColonyDetailData{
+				ID:        colony.ID,
+				Size:      colony.ColonySize,
+				Fitness:   colony.ColonyFitness,
+				Location:  colony.NestLocation,
+				Resources: colony.Resources,
+				Relations: make(map[int]string),
+				TrustLevels: make(map[int]float64),
+			}
+			
+			// Add diplomatic relations
+			if diplomacy, exists := vm.world.ColonyWarfareSystem.ColonyDiplomacies[colony.ID]; exists {
+				for otherID, relation := range diplomacy.Relations {
+					switch relation {
+					case Neutral:
+						colonyData.Relations[otherID] = "Neutral"
+					case Allied:
+						colonyData.Relations[otherID] = "Allied"
+					case Enemy:
+						colonyData.Relations[otherID] = "Enemy"
+					case Truce:
+						colonyData.Relations[otherID] = "Truce"
+					case Trading:
+						colonyData.Relations[otherID] = "Trading"
+					case Vassal:
+						colonyData.Relations[otherID] = "Vassal"
+					default:
+						colonyData.Relations[otherID] = "Unknown"
+					}
+				}
+				
+				// Copy trust levels
+				for otherID, trust := range diplomacy.TrustLevels {
+					colonyData.TrustLevels[otherID] = trust
+				}
+			}
+			
+			data.ColonyDetails = append(data.ColonyDetails, colonyData)
+		}
+	}
+	
+	return data
+}
+
+// getFungalData returns fungal network state for web interface
+func (vm *ViewManager) getFungalData() FungalData {
+	data := FungalData{
+		TotalOrganisms:      0,
+		DecomposerCount:     0,
+		MycorrhizalCount:    0,
+		PathogenicCount:     0,
+		ActiveSpores:        0,
+		TotalBiomass:        0.0,
+		NutrientCycling:     0.0,
+		DecompositionEvents: 0,
+		NetworkConnections:  0,
+		AvgConnections:      0.0,
+	}
+	
+	// Check if fungal system exists
+	if vm.world.FungalNetwork == nil {
+		return data
+	}
+	
+	// Get fungal network statistics
+	stats := vm.world.FungalNetwork.GetStats()
+	
+	// Convert to FungalData
+	if val, ok := stats["total_organisms"].(int); ok {
+		data.TotalOrganisms = val
+	}
+	if val, ok := stats["decomposer_count"].(int); ok {
+		data.DecomposerCount = val
+	}
+	if val, ok := stats["mycorrhizal_count"].(int); ok {
+		data.MycorrhizalCount = val
+	}
+	if val, ok := stats["pathogenic_count"].(int); ok {
+		data.PathogenicCount = val
+	}
+	if val, ok := stats["active_spores"].(int); ok {
+		data.ActiveSpores = val
+	}
+	if val, ok := stats["total_biomass"].(float64); ok {
+		data.TotalBiomass = val
+	}
+	if val, ok := stats["nutrient_cycling"].(float64); ok {
+		data.NutrientCycling = val
+	}
+	if val, ok := stats["decomposition_events"].(int); ok {
+		data.DecompositionEvents = val
+	}
+	if val, ok := stats["network_connections"].(int); ok {
+		data.NetworkConnections = val
+	}
+	if val, ok := stats["avg_connections"].(float64); ok {
+		data.AvgConnections = val
+	}
+	
+	return data
+}
+
+// getCulturalData returns cultural knowledge state for web interface
+func (vm *ViewManager) getCulturalData() CulturalData {
+	data := CulturalData{
+		TotalKnowledgeTypes:       0,
+		TotalEntities:             0,
+		ActiveInnovations:         0,
+		TotalTeachingEvents:       0,
+		TotalLearningEvents:       0,
+		TotalInnovationsCreated:   0,
+		KnowledgeLossEvents:       0,
+		AvgKnowledgePerEntity:     0.0,
+		KnowledgeTypeDistribution: make(map[string]int),
+	}
+	
+	// Check if cultural knowledge system exists
+	if vm.world.CulturalKnowledgeSystem == nil {
+		return data
+	}
+	
+	// Get cultural knowledge statistics
+	stats := vm.world.CulturalKnowledgeSystem.GetCulturalStats()
+	
+	// Convert to CulturalData
+	if val, ok := stats["total_knowledge_types"].(int); ok {
+		data.TotalKnowledgeTypes = val
+	}
+	if val, ok := stats["total_entities"].(int); ok {
+		data.TotalEntities = val
+	}
+	if val, ok := stats["active_innovations"].(int); ok {
+		data.ActiveInnovations = val
+	}
+	if val, ok := stats["total_teaching_events"].(int); ok {
+		data.TotalTeachingEvents = val
+	}
+	if val, ok := stats["total_learning_events"].(int); ok {
+		data.TotalLearningEvents = val
+	}
+	if val, ok := stats["total_innovations_created"].(int); ok {
+		data.TotalInnovationsCreated = val
+	}
+	if val, ok := stats["knowledge_loss_events"].(int); ok {
+		data.KnowledgeLossEvents = val
+	}
+	if val, ok := stats["avg_knowledge_per_entity"].(float64); ok {
+		data.AvgKnowledgePerEntity = val
+	}
+	if val, ok := stats["knowledge_type_distribution"].(map[string]int); ok {
+		data.KnowledgeTypeDistribution = val
+	}
+	
+	return data
+}
+
 // formatEventName converts event type to display name
 func (vm *ViewManager) formatEventName(eventType string) string {
 	names := map[string]string{
@@ -1568,6 +2127,15 @@ func (vm *ViewManager) getStatisticalData() StatisticalData {
 	}
 }
 
+// getEcosystemData returns ecosystem metrics for web interface
+func (vm *ViewManager) getEcosystemData() EcosystemMetrics {
+	if vm.world.EcosystemMonitor == nil {
+		return EcosystemMetrics{}
+	}
+	
+	return vm.world.EcosystemMonitor.CurrentMetrics
+}
+
 // getAnomaliesData returns anomaly detection data for web interface
 func (vm *ViewManager) getAnomaliesData() AnomaliesData {
 	if vm.world.StatisticalReporter == nil {
@@ -1616,4 +2184,158 @@ func (vm *ViewManager) getAnomaliesData() AnomaliesData {
 		AnomalyTypes:    anomalyTypes,
 		Recommendations: recommendations,
 	}
+}
+
+// getNeuralData returns neural AI system state for web interface
+func (vm *ViewManager) getNeuralData() NeuralData {
+	data := NeuralData{
+		TotalNetworks:            0,
+		TotalBehaviors:           0,
+		TotalLearningEvents:      0,
+		EmergentBehaviors:        0,
+		AvgNetworkComplexity:     0.0,
+		SuccessRate:              0.0,
+		TotalExperience:          0.0,
+		AvgExperiencePerNetwork:  0.0,
+		BaseLearningRate:         0.0,
+		AdaptationRate:           0.0,
+		ActiveNetworkCount:       0,
+		CollectiveBehaviorCount:  0,
+		SuccessfulStrategies:     make([]string, 0),
+		EntityNetworks:           make(map[string]interface{}),
+	}
+	
+	// Check if neural AI system exists
+	if vm.world.NeuralAISystem == nil {
+		return data
+	}
+	
+	// Get neural AI system statistics
+	stats := vm.world.NeuralAISystem.GetNeuralStats()
+	
+	// Convert to NeuralData
+	if val, ok := stats["total_networks"].(int); ok {
+		data.TotalNetworks = val
+	}
+	if val, ok := stats["total_behaviors"].(int); ok {
+		data.TotalBehaviors = val
+	}
+	if val, ok := stats["total_learning_events"].(int); ok {
+		data.TotalLearningEvents = val
+	}
+	if val, ok := stats["emergent_behaviors"].(int); ok {
+		data.EmergentBehaviors = val
+	}
+	if val, ok := stats["avg_network_complexity"].(float64); ok {
+		data.AvgNetworkComplexity = val
+	}
+	if val, ok := stats["success_rate"].(float64); ok {
+		data.SuccessRate = val
+	}
+	if val, ok := stats["total_experience"].(float64); ok {
+		data.TotalExperience = val
+	}
+	if val, ok := stats["avg_experience_per_network"].(float64); ok {
+		data.AvgExperiencePerNetwork = val
+	}
+	if val, ok := stats["base_learning_rate"].(float64); ok {
+		data.BaseLearningRate = val
+	}
+	if val, ok := stats["adaptation_rate"].(float64); ok {
+		data.AdaptationRate = val
+	}
+	
+	// Count active networks and get entity data
+	data.ActiveNetworkCount = len(vm.world.NeuralAISystem.EntityNetworks)
+	
+	// Get individual entity neural data (limit to prevent overwhelming web interface)
+	count := 0
+	for entityID := range vm.world.NeuralAISystem.EntityNetworks {
+		if count >= 20 { // Limit to 20 networks for web display
+			break
+		}
+		
+		entityData := vm.world.NeuralAISystem.GetEntityNeuralData(entityID)
+		if entityData != nil {
+			// Convert network type enum to string for JSON
+			if networkType, ok := entityData["type"].(NeuralNetworkType); ok {
+				switch networkType {
+				case FeedForward:
+					entityData["type"] = "FeedForward"
+				case Recurrent:
+					entityData["type"] = "Recurrent"
+				case Convolutional:
+					entityData["type"] = "Convolutional"
+				case Reinforcement:
+					entityData["type"] = "Reinforcement"
+				default:
+					entityData["type"] = "Unknown"
+				}
+			}
+			
+			data.EntityNetworks[fmt.Sprintf("%d", entityID)] = entityData
+		}
+		count++
+	}
+	
+	// Collective behaviors
+	data.CollectiveBehaviorCount = len(vm.world.NeuralAISystem.CollectiveBehaviors)
+	
+	// Successful strategies
+	data.SuccessfulStrategies = vm.world.NeuralAISystem.SuccessfulStrategies
+	if len(data.SuccessfulStrategies) > 10 {
+		data.SuccessfulStrategies = data.SuccessfulStrategies[:10] // Limit to top 10
+	}
+	
+	return data
+}
+
+// getBiomeBoundaryData returns biome boundary system state for web interface  
+func (vm *ViewManager) getBiomeBoundaryData() BiomeBoundaryData {
+	data := BiomeBoundaryData{
+		BoundaryCount:       0,
+		TotalBoundaryLength: 0.0,
+		EcotoneArea:         0.0,
+		MigrationEvents:     0,
+		EvolutionEvents:     0,
+		EvolutionPressure:   0.0,
+		MigrationBonus:      0.0,
+		BoundaryTypes:       make(map[string]int),
+	}
+	
+	// Check if biome boundary system exists
+	if vm.world.BiomeBoundarySystem == nil {
+		return data
+	}
+	
+	// Get boundary system data
+	boundaryData := vm.world.BiomeBoundarySystem.GetBoundaryData()
+	
+	// Convert to BiomeBoundaryData
+	if val, ok := boundaryData["boundary_count"].(int); ok {
+		data.BoundaryCount = val
+	}
+	if val, ok := boundaryData["total_boundary_length"].(float64); ok {
+		data.TotalBoundaryLength = val
+	}
+	if val, ok := boundaryData["ecotone_area"].(float64); ok {
+		data.EcotoneArea = val
+	}
+	if val, ok := boundaryData["migration_events"].(int); ok {
+		data.MigrationEvents = val
+	}
+	if val, ok := boundaryData["evolution_events"].(int); ok {
+		data.EvolutionEvents = val
+	}
+	if val, ok := boundaryData["evolution_pressure"].(float64); ok {
+		data.EvolutionPressure = val
+	}
+	if val, ok := boundaryData["migration_bonus"].(float64); ok {
+		data.MigrationBonus = val
+	}
+	if val, ok := boundaryData["boundary_types"].(map[string]int); ok {
+		data.BoundaryTypes = val
+	}
+	
+	return data
 }

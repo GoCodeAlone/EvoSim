@@ -516,7 +516,7 @@ func TestPheromoneTrailReinforcement(t *testing.T) {
 	reinforcer.SetTrait("pheromone_production", 0.6)
 
 	// Reinforce trail
-	is.ReinforcePheromoneTrail(reinforcer, trail)
+	is.ReinforcePheromoneTrail(reinforcer, TrailPheromone, 100)
 
 	// Trail strength should be increased
 	if trail.Strength[2] <= originalStrength {
@@ -528,7 +528,7 @@ func TestPheromoneTrailReinforcement(t *testing.T) {
 	nonProducer.SetTrait("pheromone_production", 0.05) // Too low
 
 	originalStrengthBeforeNonReinforcement := trail.Strength[2]
-	is.ReinforcePheromoneTrail(nonProducer, trail)
+	is.ReinforcePheromoneTrail(nonProducer, TrailPheromone, 100)
 
 	// Trail strength should not change
 	if trail.Strength[2] != originalStrengthBeforeNonReinforcement {

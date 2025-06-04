@@ -220,6 +220,36 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             background-color: #6a9bd2;
         }
         
+        /* Warfare view styles */
+        .colony-item {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #4a4a4a;
+            border-radius: 3px;
+            border-left: 3px solid #6a9bd2;
+        }
+        
+        .conflict-item {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #4a4a4a;
+            border-radius: 3px;
+            border-left: 3px solid #F44336;
+        }
+        
+        .event-item {
+            margin: 4px 0;
+            padding: 4px 8px;
+            background-color: #4a4a4a;
+            border-radius: 2px;
+            font-size: 13px;
+        }
+        
+        .colony-list, .events-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
         .population-item {
             background-color: #3a3a3a;
             padding: 10px;
@@ -592,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES'
+            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL', 'SYMBIOTIC', 'NEURAL'
         ];
         
         // Initialize view tabs
@@ -786,7 +816,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     break;
                     
                 case 'ENVIRONMENT':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderEnvironment(data.environmental_mod) + '</div>';
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEnvironment(data.environmental_mod, data.environmental_pressures) + '</div>';
                     break;
                     
                 case 'BEHAVIOR':
@@ -801,8 +831,28 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     viewContent.innerHTML = '<div class="stats-section">' + renderStatistical(data.statistical) + '</div>';
                     break;
                     
+                case 'ECOSYSTEM':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEcosystem(data.ecosystem) + '</div>';
+                    break;
+                    
                 case 'ANOMALIES':
                     viewContent.innerHTML = '<div class="stats-section">' + renderAnomalies(data.anomalies) + '</div>';
+                    break;
+                    
+                case 'WARFARE':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderWarfare(data.warfare) + '</div>';
+                    break;
+                    
+                case 'FUNGAL':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderFungal(data.fungal) + '</div>';
+                    break;
+                    
+                case 'CULTURAL':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderCultural(data.cultural) + '</div>';
+                    break;
+                    
+                case 'SYMBIOTIC':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderSymbiotic(data.symbiotic_relationships) + '</div>';
                     break;
                     
                 default:
@@ -2107,6 +2157,32 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             html += '<div>Weather: ' + wind.weather_pattern + '</div>';
             html += '<div>Pollen Count: ' + wind.pollen_count + '</div>';
             
+            // Add seed dispersal information
+            html += '<h4>🌱 Seed Dispersal System</h4>';
+            html += '<div>Active Seeds: ' + (wind.seed_count || 0) + '</div>';
+            html += '<div>Seed Banks: ' + (wind.seed_banks || 0) + '</div>';
+            html += '<div>Germination Events: ' + (wind.germination_events || 0) + '</div>';
+            html += '<div>Dormancy Activations: ' + (wind.dormancy_activations || 0) + '</div>';
+            
+            // Display dispersal statistics
+            if (wind.dispersal_stats) {
+                html += '<h4>🎯 Dispersal Methods</h4>';
+                if (wind.dispersal_stats.dispersal_wind) html += '<div>Wind Dispersal: ' + wind.dispersal_stats.dispersal_wind + '</div>';
+                if (wind.dispersal_stats.dispersal_animal) html += '<div>Animal Dispersal: ' + wind.dispersal_stats.dispersal_animal + '</div>';
+                if (wind.dispersal_stats.dispersal_explosive) html += '<div>Explosive Dispersal: ' + wind.dispersal_stats.dispersal_explosive + '</div>';
+                if (wind.dispersal_stats.dispersal_gravity) html += '<div>Gravity Dispersal: ' + wind.dispersal_stats.dispersal_gravity + '</div>';
+                if (wind.dispersal_stats.dispersal_water) html += '<div>Water Dispersal: ' + wind.dispersal_stats.dispersal_water + '</div>';
+                
+                // Display seed type statistics
+                if (wind.dispersal_stats.active_seeds_by_type) {
+                    html += '<h4>🎯 Active Seed Types</h4>';
+                    const seedTypes = wind.dispersal_stats.active_seeds_by_type;
+                    for (const [type, count] of Object.entries(seedTypes)) {
+                        html += '<div>' + type.replace(/_/g, ' ').toUpperCase() + ': ' + count + '</div>';
+                    }
+                }
+            }
+            
             // Add detailed analysis
             html += '<h4>🌪️ Wind Analysis:</h4>';
             const windDirection = (wind.direction * 180 / Math.PI + 360) % 360;
@@ -2518,8 +2594,50 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         }
         
         // Render environment view
-        function renderEnvironment(envMod) {
-            let html = '<h3>🏗️ Environmental Modification</h3>';
+        function renderEnvironment(envMod, envPressures) {
+            let html = '<h3>🌍 Environmental Systems</h3>';
+            
+            // Environmental Pressures Section
+            html += '<h4>🌡️ Environmental Pressures</h4>';
+            if (envPressures) {
+                html += '<div>Active Pressures: ' + envPressures.active_pressures + '</div>';
+                html += '<div>Historical Events: ' + envPressures.total_history + '</div>';
+                html += '<div>Average Severity: ' + envPressures.average_severity.toFixed(3) + '</div>';
+                
+                if (envPressures.pressure_types && Object.keys(envPressures.pressure_types).length > 0) {
+                    html += '<br><strong>Active Pressure Types:</strong><br>';
+                    Object.entries(envPressures.pressure_types).forEach(([type, count]) => {
+                        html += '<div>• ' + type + ': ' + count + '</div>';
+                    });
+                } else {
+                    html += '<br><div>No active environmental pressures</div>';
+                }
+                
+                if (envPressures.active_details && envPressures.active_details.length > 0) {
+                    html += '<br><strong>Active Pressure Details:</strong><br>';
+                    envPressures.active_details.forEach((pressure, index) => {
+                        if (index >= 3) return; // Limit display
+                        const durationText = pressure.duration > 0 ? pressure.duration + ' ticks' : 'Permanent';
+                        html += '<div style="margin: 5px 0; padding: 5px; border-left: 3px solid #ff6b6b;">';
+                        html += '<strong>' + pressure.name + '</strong> (ID: ' + pressure.id + ')<br>';
+                        html += 'Type: ' + pressure.type + '<br>';
+                        html += 'Severity: ' + pressure.severity.toFixed(2) + '<br>';
+                        html += 'Duration: ' + durationText + '<br>';
+                        html += 'Area: (' + pressure.affected_x.toFixed(1) + ', ' + pressure.affected_y.toFixed(1) + ') radius ' + pressure.radius.toFixed(1);
+                        html += '</div>';
+                    });
+                    if (envPressures.active_details.length > 3) {
+                        html += '<div>... and ' + (envPressures.active_details.length - 3) + ' more pressures</div>';
+                    }
+                }
+            } else {
+                html += '<div>Environmental pressure system not initialized</div>';
+            }
+            
+            html += '<br>';
+            
+            // Environmental Modifications Section
+            html += '<h4>🏗️ Environmental Modifications</h4>';
             html += '<div>Total Modifications: ' + envMod.total_modifications + '</div>';
             html += '<div>Active Modifications: ' + envMod.active_modifications + '</div>';
             html += '<div>Inactive Modifications: ' + envMod.inactive_modifications + '</div>';
@@ -2527,7 +2645,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             html += '<div>Tunnel Networks: ' + envMod.tunnel_networks + '</div>';
             
             if (envMod.modification_types && Object.keys(envMod.modification_types).length > 0) {
-                html += '<h4>Modification Types:</h4>';
+                html += '<br><strong>Modification Types:</strong><br>';
                 Object.entries(envMod.modification_types).forEach(([type, count]) => {
                     html += '<div>' + type + ': ' + count + '</div>';
                 });
@@ -2535,7 +2653,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<br><div>No environmental modifications yet</div>';
             }
             
-            html += '<br><h4>Modification Activity:</h4>';
+            html += '<br><strong>Modification Activity:</strong><br>';
             if (envMod.total_modifications === 0) {
                 html += '<div>Activity Level: No modifications</div>';
             } else if (envMod.active_modifications < 3) {
@@ -2699,6 +2817,90 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             return html;
         }
         
+        // Render ecosystem metrics view
+        function renderEcosystem(ecosystem) {
+            if (!ecosystem) {
+                return '<h3>🌍 Ecosystem Metrics</h3><div>Ecosystem monitoring not available</div>';
+            }
+            
+            let html = '<h3>🌍 Ecosystem Metrics</h3>';
+            
+            // Diversity metrics
+            html += '<h4>Diversity Metrics:</h4>';
+            html += '<div>Shannon Diversity Index: ' + (ecosystem.shannon_diversity || 0).toFixed(4) + '</div>';
+            html += '<div>Simpson Diversity Index: ' + (ecosystem.simpson_diversity || 0).toFixed(4) + '</div>';
+            html += '<div>Species Richness: ' + (ecosystem.species_richness || 0) + '</div>';
+            html += '<div>Species Evenness: ' + (ecosystem.species_evenness || 0).toFixed(4) + '</div>';
+            
+            // Population metrics
+            html += '<h4>Population Metrics:</h4>';
+            html += '<div>Total Population: ' + (ecosystem.total_population || 0) + '</div>';
+            if (ecosystem.extinction_rate !== undefined) {
+                html += '<div>Extinction Rate: ' + (ecosystem.extinction_rate * 100).toFixed(2) + '%</div>';
+            }
+            if (ecosystem.speciation_rate !== undefined) {
+                html += '<div>Speciation Rate: ' + (ecosystem.speciation_rate * 100).toFixed(2) + '%</div>';
+            }
+            
+            // Network connectivity
+            html += '<h4>Network & Interaction Metrics:</h4>';
+            html += '<div>Network Connectivity: ' + (ecosystem.network_connectivity || 0).toFixed(4) + '</div>';
+            html += '<div>Average Path Length: ' + (ecosystem.average_path_length || 0).toFixed(2) + '</div>';
+            html += '<div>Clustering Coefficient: ' + (ecosystem.clustering_coefficient || 0).toFixed(4) + '</div>';
+            
+            // Pollination metrics
+            html += '<h4>Pollination Metrics:</h4>';
+            html += '<div>Pollination Success Rate: ' + ((ecosystem.pollination_success || 0) * 100).toFixed(2) + '%</div>';
+            html += '<div>Cross-Species Pollination: ' + ((ecosystem.cross_species_pollination || 0) * 100).toFixed(2) + '%</div>';
+            
+            // Dispersal metrics
+            html += '<h4>Dispersal Metrics:</h4>';
+            html += '<div>Average Dispersal Distance: ' + (ecosystem.average_dispersal_distance || 0).toFixed(2) + '</div>';
+            html += '<div>Seed Bank Size: ' + (ecosystem.seed_bank_size || 0) + '</div>';
+            html += '<div>Germination Rate: ' + ((ecosystem.germination_rate || 0) * 100).toFixed(2) + '%</div>';
+            
+            // Ecosystem health
+            html += '<h4>Ecosystem Health:</h4>';
+            const healthScore = ecosystem.ecosystem_stability !== undefined 
+                ? (ecosystem.biodiversity_index || 0) * 10 + (ecosystem.ecosystem_stability || 0) * 50 + (ecosystem.network_connectivity || 0) * 30
+                : 0;
+            html += '<div>Overall Health Score: ' + Math.min(healthScore, 100).toFixed(1) + '/100</div>';
+            html += '<div>Biodiversity Index: ' + (ecosystem.biodiversity_index || 0).toFixed(4) + '</div>';
+            html += '<div>Ecosystem Stability: ' + (ecosystem.ecosystem_stability || 0).toFixed(4) + '</div>';
+            html += '<div>Ecosystem Resilience: ' + (ecosystem.ecosystem_resilience || 0).toFixed(4) + '</div>';
+            
+            // Population by species
+            if (ecosystem.population_by_species && Object.keys(ecosystem.population_by_species).length > 0) {
+                html += '<h4>Population by Species:</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                const sortedSpecies = Object.entries(ecosystem.population_by_species)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 10); // Top 10 species
+                sortedSpecies.forEach(([species, count]) => {
+                    html += '<div style="margin: 2px 0;">' + species + ': ' + count + '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Pollinator efficiency
+            if (ecosystem.pollinator_efficiency && Object.keys(ecosystem.pollinator_efficiency).length > 0) {
+                html += '<h4>Pollinator Efficiency:</h4>';
+                Object.entries(ecosystem.pollinator_efficiency).forEach(([type, efficiency]) => {
+                    html += '<div>' + type + ': ' + (efficiency * 100).toFixed(1) + '%</div>';
+                });
+            }
+            
+            // Dispersal methods
+            if (ecosystem.dispersal_methods && Object.keys(ecosystem.dispersal_methods).length > 0) {
+                html += '<h4>Dispersal Methods:</h4>';
+                Object.entries(ecosystem.dispersal_methods).forEach(([method, count]) => {
+                    html += '<div>' + method + ': ' + count + '</div>';
+                });
+            }
+            
+            return html;
+        }
+        
         // Render anomalies detection view
         function renderAnomalies(anomalies) {
             if (!anomalies) {
@@ -2801,6 +3003,292 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     html += '<div>• Consider adjusting simulation parameters if anomalies persist</div>';
                     html += '</div>';
                 }
+            }
+            
+            return html;
+        }
+        
+        // Render warfare view
+        function renderWarfare(warfare) {
+            if (!warfare) {
+                return '<h3>⚔️ Warfare & Diplomacy</h3><div>Warfare data not available</div>';
+            }
+            
+            let html = '<h3>⚔️ Multi-Colony Warfare & Diplomacy</h3>';
+            
+            // Colony overview
+            if (warfare.colonies && warfare.colonies.length > 0) {
+                html += '<h4>🏰 Active Colonies (' + warfare.colonies.length + '):</h4>';
+                html += '<div class="colony-list">';
+                warfare.colonies.forEach(colony => {
+                    const relationColor = getRelationColor(colony.dominant_relation);
+                    html += '<div class="colony-item">';
+                    html += '<strong>' + colony.name + '</strong> ';
+                    html += '<span style="color: ' + relationColor + '">(' + colony.dominant_relation + ')</span><br>';
+                    html += 'Size: ' + colony.size + ' | Territory: ' + colony.territory_size + ' cells<br>';
+                    html += 'Military: ' + colony.military_strength.toFixed(1) + ' | Resources: ' + colony.total_resources + '<br>';
+                    if (colony.recent_activity) {
+                        html += '<small style="color: #888;">Recent: ' + colony.recent_activity + '</small>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Active conflicts
+            if (warfare.active_conflicts && warfare.active_conflicts.length > 0) {
+                html += '<h4>⚔️ Active Conflicts (' + warfare.active_conflicts.length + '):</h4>';
+                warfare.active_conflicts.forEach(conflict => {
+                    const intensityColor = getConflictIntensityColor(conflict.intensity);
+                    html += '<div class="conflict-item">';
+                    html += '<strong style="color: ' + intensityColor + '">' + conflict.type + '</strong><br>';
+                    html += conflict.attacker + ' vs ' + conflict.defender + '<br>';
+                    html += 'Duration: ' + conflict.duration + ' ticks | Intensity: ' + conflict.intensity.toFixed(2) + '<br>';
+                    html += 'Casualties: ' + conflict.casualties + ' | Status: ' + conflict.status + '<br>';
+                    if (conflict.cause) {
+                        html += '<small>Cause: ' + conflict.cause + '</small>';
+                    }
+                    html += '</div>';
+                });
+            } else {
+                html += '<h4>⚔️ Active Conflicts: None</h4>';
+                html += '<div style="color: #4CAF50;">🕊️ All colonies are currently at peace</div>';
+            }
+            
+            // Diplomatic relations summary
+            if (warfare.diplomatic_summary) {
+                html += '<h4>🤝 Diplomatic Relations Summary:</h4>';
+                Object.entries(warfare.diplomatic_summary).forEach(([relation, count]) => {
+                    const relationColor = getRelationColor(relation);
+                    html += '<div style="color: ' + relationColor + ';">' + relation + ': ' + count + '</div>';
+                });
+            }
+            
+            // Trade activity
+            if (warfare.trade_activity) {
+                html += '<h4>💰 Trade Activity:</h4>';
+                html += '<div>Active Agreements: ' + warfare.trade_activity.active_agreements + '</div>';
+                html += '<div>Trade Volume: ' + warfare.trade_activity.total_volume + '</div>';
+                html += '<div>Trade Efficiency: ' + (warfare.trade_activity.efficiency * 100).toFixed(1) + '%</div>';
+            }
+            
+            // Recent warfare events
+            if (warfare.recent_events && warfare.recent_events.length > 0) {
+                html += '<h4>📰 Recent Warfare Events:</h4>';
+                html += '<div class="events-list">';
+                warfare.recent_events.slice(0, 10).forEach(event => {
+                    html += '<div class="event-item">';
+                    html += '<small>[Tick ' + event.tick + ']</small> ';
+                    html += event.description;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Statistics
+            if (warfare.statistics) {
+                html += '<h4>📊 Warfare Statistics:</h4>';
+                html += '<div>Total Conflicts: ' + warfare.statistics.total_conflicts + '</div>';
+                html += '<div>Total Casualties: ' + warfare.statistics.total_casualties + '</div>';
+                html += '<div>Peace Treaties: ' + warfare.statistics.peace_treaties + '</div>';
+                html += '<div>Alliance Formations: ' + warfare.statistics.alliance_formations + '</div>';
+            }
+            
+            return html;
+        }
+        
+        function getRelationColor(relation) {
+            const colors = {
+                'Allied': '#4CAF50',
+                'Enemy': '#F44336', 
+                'Neutral': '#FFC107',
+                'Trading': '#2196F3',
+                'Truce': '#FF9800',
+                'Vassal': '#9C27B0'
+            };
+            return colors[relation] || '#888';
+        }
+        
+        function getConflictIntensityColor(intensity) {
+            if (intensity < 0.3) return '#FFC107'; // Low intensity - yellow
+            if (intensity < 0.7) return '#FF9800'; // Medium intensity - orange  
+            return '#F44336'; // High intensity - red
+        }
+        
+        function renderFungal(fungal) {
+            if (!fungal) {
+                return '<h3>🍄 Fungal Networks</h3><div>Fungal system data not available</div>';
+            }
+            
+            let html = '<h3>🍄 Fungal Networks & Decomposer System</h3>';
+            
+            // Decomposer overview
+            if (fungal.total_decomposers !== undefined) {
+                html += '<h4>🧪 Decomposer Status:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Total Decomposers: <strong>' + (fungal.total_decomposers || 0) + '</strong></div>';
+                html += '<div class="stat-item">Active Decomposers: <strong>' + (fungal.active_decomposers || 0) + '</strong></div>';
+                html += '</div>';
+            }
+            
+            // Nutrient cycling statistics
+            if (fungal.nutrient_cycling) {
+                html += '<h4>♻️ Nutrient Cycling:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Decomposition Rate: <strong>' + (fungal.nutrient_cycling.decomposition_rate || 0).toFixed(2) + '/tick</strong></div>';
+                html += '<div class="stat-item">Nutrients Released: <strong>' + (fungal.nutrient_cycling.nutrients_released || 0).toFixed(1) + '</strong></div>';
+                html += '</div>';
+                
+                if (fungal.nutrient_cycling.nutrient_types) {
+                    html += '<div class="nutrient-breakdown">';
+                    Object.entries(fungal.nutrient_cycling.nutrient_types).forEach(([nutrient, amount]) => {
+                        html += '<div class="nutrient-item">' + nutrient + ': ' + amount.toFixed(1) + '</div>';
+                    });
+                    html += '</div>';
+                }
+            }
+            
+            // Spore networks
+            if (fungal.spore_networks) {
+                html += '<h4>🌐 Spore Networks:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Network Connections: <strong>' + (fungal.spore_networks.connections || 0) + '</strong></div>';
+                html += '<div class="stat-item">Network Efficiency: <strong>' + ((fungal.spore_networks.efficiency || 0) * 100).toFixed(1) + '%</strong></div>';
+                html += '</div>';
+            }
+            
+            // Fungal reproduction
+            if (fungal.reproduction) {
+                html += '<h4>🌱 Fungal Reproduction:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Spores Released: <strong>' + (fungal.reproduction.spores_released || 0) + '</strong></div>';
+                html += '<div class="stat-item">Successful Germinations: <strong>' + (fungal.reproduction.germinations || 0) + '</strong></div>';
+                html += '</div>';
+            }
+            
+            // Recent events
+            if (fungal.recent_events && fungal.recent_events.length > 0) {
+                html += '<h4>📋 Recent Fungal Activity:</h4>';
+                html += '<div class="event-list">';
+                fungal.recent_events.slice(0, 10).forEach(event => {
+                    html += '<div class="event-item">• ' + event + '</div>';
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render cultural knowledge view
+        function renderCultural(cultural) {
+            if (!cultural) {
+                return '<h3>🧠 Cultural Knowledge</h3><div>Cultural knowledge system data not available</div>';
+            }
+            
+            let html = '<h3>🧠 Cultural Knowledge & Learning System</h3>';
+            
+            // General overview
+            html += '<h4>📊 Knowledge Overview:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Knowledge Types: <strong>' + (cultural.total_knowledge_types || 0) + '</strong></div>';
+            html += '<div class="stat-item">Entities with Knowledge: <strong>' + (cultural.total_entities || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Active Innovations: <strong>' + (cultural.active_innovations || 0) + '</strong></div>';
+            html += '<div class="stat-item">Avg Knowledge/Entity: <strong>' + (cultural.avg_knowledge_per_entity || 0).toFixed(1) + '</strong></div>';
+            html += '</div>';
+            
+            // Learning activity
+            html += '<h4>🎓 Learning & Teaching Activity:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Teaching Events: <strong>' + (cultural.total_teaching_events || 0) + '</strong></div>';
+            html += '<div class="stat-item">Learning Events: <strong>' + (cultural.total_learning_events || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Innovations Created: <strong>' + (cultural.total_innovations_created || 0) + '</strong></div>';
+            html += '<div class="stat-item">Knowledge Lost: <strong>' + (cultural.knowledge_loss_events || 0) + '</strong></div>';
+            html += '</div>';
+            
+            // Knowledge type distribution
+            if (cultural.knowledge_type_distribution) {
+                html += '<h4>📚 Knowledge Types:</h4>';
+                html += '<div class="knowledge-distribution">';
+                Object.entries(cultural.knowledge_type_distribution).forEach(([type, count]) => {
+                    const barWidth = Math.max(5, (count / Math.max(...Object.values(cultural.knowledge_type_distribution))) * 200);
+                    html += '<div class="knowledge-type-item">';
+                    html += '<div class="knowledge-type-label">' + type + ': ' + count + '</div>';
+                    html += '<div class="knowledge-bar" style="width: ' + barWidth + 'px; background: #4CAF50; height: 20px; margin: 2px 0;"></div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render symbiotic relationships view
+        function renderSymbiotic(symbiotic) {
+            if (!symbiotic) {
+                return '<h3>🦠 Symbiotic Relationships</h3><div>Symbiotic relationships system data not available</div>';
+            }
+            
+            let html = '<h3>🦠 Symbiotic Relationships</h3>';
+            
+            // Basic statistics
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Relationships: <strong>' + (symbiotic.total_relationships || 0) + '</strong></div>';
+            html += '<div class="stat-item">Active Relationships: <strong>' + (symbiotic.active_relationships || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Average Age: <strong>' + (symbiotic.average_relationship_age || 0).toFixed(1) + ' ticks</strong></div>';
+            html += '<div class="stat-item">Disease Rate: <strong>' + (symbiotic.disease_transmission_rate || 0).toFixed(3) + '</strong></div>';
+            html += '</div>';
+            
+            // Relationship types
+            html += '<h4>🔬 Relationship Types:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">🦠 Parasitic: <strong>' + (symbiotic.active_parasitic || 0) + '</strong></div>';
+            html += '<div class="stat-item">🤝 Mutualistic: <strong>' + (symbiotic.active_mutualistic || 0) + '</strong></div>';
+            html += '<div class="stat-item">🐠 Commensal: <strong>' + (symbiotic.active_commensal || 0) + '</strong></div>';
+            html += '</div>';
+            
+            // Disease characteristics (if parasitic relationships exist)
+            if (symbiotic.active_parasitic > 0) {
+                html += '<h4>🦠 Disease Characteristics:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Average Virulence: <strong>' + (symbiotic.average_virulence || 0).toFixed(3) + '</strong></div>';
+                html += '<div class="stat-item">Average Transmission: <strong>' + (symbiotic.average_transmission || 0).toFixed(3) + '</strong></div>';
+                html += '</div>';
+            }
+            
+            // Relationship type distribution visualization
+            if (symbiotic.relationship_types && Object.keys(symbiotic.relationship_types).length > 0) {
+                html += '<h4>📊 Distribution:</h4>';
+                html += '<div class="relationship-distribution">';
+                
+                const total = Object.values(symbiotic.relationship_types).reduce((sum, count) => sum + count, 0);
+                const colors = {
+                    'parasitic': '#ff6b6b',
+                    'mutualistic': '#4ecdc4',
+                    'commensal': '#45b7d1'
+                };
+                
+                Object.entries(symbiotic.relationship_types).forEach(([type, count]) => {
+                    if (count > 0) {
+                        const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                        const barWidth = total > 0 ? Math.max(5, (count / total) * 200) : 5;
+                        const color = colors[type] || '#888';
+                        
+                        html += '<div class="relationship-type-item">';
+                        html += '<div class="relationship-type-label">' + type + ': ' + count + ' (' + percentage + '%)</div>';
+                        html += '<div class="relationship-bar" style="width: ' + barWidth + 'px; background: ' + color + '; height: 20px; margin: 2px 0;"></div>';
+                        html += '</div>';
+                    }
+                });
+                html += '</div>';
             }
             
             return html;

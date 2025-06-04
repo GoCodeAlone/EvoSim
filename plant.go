@@ -16,6 +16,10 @@ const (
 	PlantMushroom
 	PlantAlgae
 	PlantCactus
+	// Aquatic plant types for water dispersal system
+	PlantLily     // Water lilies - floating surface plants
+	PlantReed     // Marsh reeds - wetland plants
+	PlantKelp     // Kelp - deep water plants
 )
 
 // Plant represents a plant entity in the ecosystem
@@ -141,6 +145,45 @@ func GetPlantConfigs() map[PlantType]PlantConfig {
 			MutationRate:     0.06,
 			ReproductionRate: 0.15,
 			MaxAge:           200,
+		},
+		PlantLily: {
+			Name:             "Water Lily",
+			Symbol:           '◐',
+			BaseEnergy:       35,
+			BaseSize:         0.8,
+			BaseNutrition:    20,
+			BaseToxicity:     0.05,
+			BaseGrowthRate:   0.6,
+			PreferredBiomes:  []BiomeType{BiomeWater, BiomeSwamp},
+			MutationRate:     0.08,
+			ReproductionRate: 0.25,
+			MaxAge:           80,
+		},
+		PlantReed: {
+			Name:             "Reed",
+			Symbol:           '|',
+			BaseEnergy:       25,
+			BaseSize:         1.2,
+			BaseNutrition:    18,
+			BaseToxicity:     0.0,
+			BaseGrowthRate:   0.7,
+			PreferredBiomes:  []BiomeType{BiomeSwamp, BiomeWater},
+			MutationRate:     0.09,
+			ReproductionRate: 0.3,
+			MaxAge:           60,
+		},
+		PlantKelp: {
+			Name:             "Kelp",
+			Symbol:           '⌐',
+			BaseEnergy:       45,
+			BaseSize:         2.0,
+			BaseNutrition:    25,
+			BaseToxicity:     0.1,
+			BaseGrowthRate:   0.5,
+			PreferredBiomes:  []BiomeType{BiomeDeepWater, BiomeWater},
+			MutationRate:     0.07,
+			ReproductionRate: 0.2,
+			MaxAge:           120,
 		},
 	}
 }
@@ -567,6 +610,27 @@ func initializePlantNutrientNeeds(plantType PlantType) map[string]float64 {
 		needs["phosphorus"] = 0.2
 		needs["potassium"] = 0.3
 		needs["water"] = 0.2
+		
+	case PlantLily:
+		// Water lilies thrive in water, need aquatic nutrients
+		needs["nitrogen"] = 0.3
+		needs["phosphorus"] = 0.3
+		needs["potassium"] = 0.2
+		needs["water"] = 0.95
+		
+	case PlantReed:
+		// Reeds grow in wetlands, filter water
+		needs["nitrogen"] = 0.4
+		needs["phosphorus"] = 0.2
+		needs["potassium"] = 0.2
+		needs["water"] = 0.8
+		
+	case PlantKelp:
+		// Kelp grows in deep water, needs minerals
+		needs["nitrogen"] = 0.5
+		needs["phosphorus"] = 0.4
+		needs["magnesium"] = 0.3
+		needs["water"] = 1.0
 	}
 	
 	return needs
@@ -587,6 +651,12 @@ func getPlantWaterDependency(plantType PlantType) float64 {
 		return 0.9
 	case PlantCactus:
 		return 0.2
+	case PlantLily:
+		return 0.95  // Very high water dependency
+	case PlantReed:
+		return 0.8   // High water dependency
+	case PlantKelp:
+		return 1.0   // Maximum water dependency
 	default:
 		return 0.5
 	}
@@ -607,6 +677,12 @@ func getPlantRootDepth(plantType PlantType) float64 {
 		return 0.1 // Surface level
 	case PlantCactus:
 		return 0.8 // Deep tap roots for water
+	case PlantLily:
+		return 0.2 // Shallow water roots
+	case PlantReed:
+		return 0.4 // Medium depth in wetland soil
+	case PlantKelp:
+		return 0.0 // No soil roots, water nutrients only
 	default:
 		return 0.5
 	}

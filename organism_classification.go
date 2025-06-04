@@ -205,9 +205,12 @@ func (oc *OrganismClassifier) CalculateLifespan(entity *Entity, classification O
 	// Calculate final lifespan
 	finalLifespan := baseLifespan * enduranceModifier * sizeModifier
 	
-	// Ensure minimum lifespan
+	// Ensure lifespan stays within reasonable bounds (30% to 200% of base)
 	minLifespan := float64(data.BaseLifespanTicks) * 0.3
-	return int(math.Max(minLifespan, finalLifespan))
+	maxLifespan := float64(data.BaseLifespanTicks) * 2.0
+	finalLifespan = math.Max(minLifespan, math.Min(maxLifespan, finalLifespan))
+	
+	return int(finalLifespan)
 }
 
 // CalculateAgingRate determines how fast an entity ages based on its classification
@@ -313,17 +316,26 @@ func (oc *OrganismClassifier) CalculateReproductiveVigor(entity *Entity, classif
 	
 	if entity.Age >= data.SenescenceAge {
 		// Declining reproductive capability in old age
-		senescenceProgress := float64(entity.Age - data.SenescenceAge) / float64(entity.MaxLifespan - data.SenescenceAge)
-		return 1.0 - senescenceProgress*0.8 // Up to 80% reduction in old age
+		senescenceSpan := entity.MaxLifespan - data.SenescenceAge
+		if senescenceSpan <= 0 {
+			// Edge case: senescence age is at or beyond max lifespan
+			return 0.2 // Minimal reproductive vigor
+		}
+		senescenceProgress := float64(entity.Age - data.SenescenceAge) / float64(senescenceSpan)
+		vigor := 1.0 - senescenceProgress*0.8 // Up to 80% reduction in old age
+		return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 	}
 	
 	// Peak vigor at optimal age
 	if entity.Age <= data.PeakAge {
 		// Increasing vigor from maturation to peak
 		progress := float64(entity.Age - data.MaturationAge) / float64(data.PeakAge - data.MaturationAge)
-		return 0.5 + progress*0.5 // 50% to 100% vigor
+		vigor := 0.5 + progress*0.5 // 50% to 100% vigor
+		return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 	}
 	
-	// Stable vigor from peak to senescence
-	return 1.0
+	// Stable vigor from peak to senescence - but slightly declining
+	ageProgress := float64(entity.Age - data.PeakAge) / float64(data.SenescenceAge - data.PeakAge)
+	vigor := 1.0 - ageProgress*0.1 // Slight decline before senescence
+	return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 }

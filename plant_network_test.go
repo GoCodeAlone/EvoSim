@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -77,6 +78,8 @@ func TestNetworkFormation(t *testing.T) {
 }
 
 func TestChemicalSignalPropagation(t *testing.T) {
+	// Set deterministic seed for reliable testing
+	rand.Seed(42)
 	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
 
 	// Create test plants
@@ -105,9 +108,12 @@ func TestChemicalSignalPropagation(t *testing.T) {
 		network.Update(plants, i+1)
 	}
 
+	// Count signals created during connection formation
+	initialSignalCount := len(network.ChemicalSignals)
+	
 	// Add a chemical signal manually for testing
 	signal := &ChemicalSignal{
-		ID:        1,
+		ID:        network.NextSignalID,
 		Source:    source,
 		Type:      SignalNutrientAvailable,
 		Intensity: 1.0,
@@ -119,9 +125,11 @@ func TestChemicalSignalPropagation(t *testing.T) {
 	}
 
 	network.ChemicalSignals = append(network.ChemicalSignals, signal)
+	network.NextSignalID++
 
-	if len(network.ChemicalSignals) != 1 {
-		t.Errorf("Expected 1 chemical signal, got %d", len(network.ChemicalSignals))
+	expectedSignalCount := initialSignalCount + 1
+	if len(network.ChemicalSignals) != expectedSignalCount {
+		t.Errorf("Expected %d chemical signals, got %d", expectedSignalCount, len(network.ChemicalSignals))
 	}
 
 	// Test signal aging

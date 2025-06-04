@@ -281,136 +281,203 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Backward Compatibility**: Seamless integration with existing EventLogger and StatisticalReporter systems
 - [x] **Performance Optimization**: Efficient event storage and retrieval with configurable limits
 
+#### Enhanced Metamorphosis and Life Stages (RECENTLY COMPLETED)
+- [x] **Life Stage Transitions**: Egg, Larva, Pupa, Adult, Elder stages for complex insects with automatic progression
+- [x] **Stage-Specific Traits**: Different capabilities and vulnerabilities per life stage with trait modification system
+- [x] **Metamorphosis Triggers**: Environmental and nutritional factors affecting development (temperature, humidity, food, safety)
+- [x] **Stage-Specific Behaviors**: Larvae focus on growth (enhanced energy efficiency), adults on reproduction (full capabilities)
+- [x] **Energy Requirements**: Different nutritional needs per life stage with energy thresholds for advancement
+- [x] **Predation Vulnerabilities**: Eggs (1.5x vulnerable), Pupae (2.0x vulnerable), stage-specific movement restrictions
+- [x] **Four Metamorphosis Types**: None (direct development), Simple (egg→larva→adult), Complete (egg→larva→pupa→adult), Holometabolous (complex transformation)
+- [x] **Environmental Integration**: Temperature, humidity, food availability, safety, and population density affecting development
+- [x] **World System Integration**: Full lifecycle management integrated into main simulation loop with environmental factor calculation
+- [x] **Comprehensive Statistics**: Stage counts, metamorphosis tracking, and shelter statistics for population analysis
+- [x] **Comprehensive Testing**: 16 test functions covering trait modification, stage advancement, environmental requirements, and statistics
+
+---
+
+#### Advanced Seed Dispersal System (RECENTLY COMPLETED)
+- [x] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based dispersal with automatic method selection
+- [x] **Seed Dormancy**: Seeds enter dormancy when environmental conditions are unsuitable and wait for favorable conditions
+- [x] **Dispersal Timing**: Seeds released during reproduction with realistic timing and viability windows  
+- [x] **Animal-Mediated Dispersal**: Entities pickup and drop seeds based on seed type and proximity
+- [x] **Seed Banks**: Accumulated seeds in soil grid locations with capacity limits and moisture tracking
+- [x] **Germination Triggers**: Environmental cues (temperature, moisture, sunlight) trigger seed germination into new plants
+- [x] **Integration with Wind System**: Seamless integration with existing wind system for realistic seed movement
+- [x] **Comprehensive Statistics**: Tracking of dispersal methods, germination events, dormancy activations, and seed bank status
+- [x] **CLI and Web Visualization**: Enhanced wind view displays seed dispersal statistics alongside pollen information
+
+#### Enhanced Chemical Communication System (RECENTLY COMPLETED)
+- [x] **Airborne Plant Signals**: Plants release airborne chemical warnings, toxins, and attractants complementing underground network signals
+- [x] **Enhanced Chemical Ecology**: Sophisticated airborne chemical interactions separate from underground plant networks
+- [x] **Chemical Signal Types**: Toxin, attractant, warning, and scent signals with wind-based dispersal
+- [x] **Persistent Chemical Memory**: Entities remember and respond to previous chemical encounters
+- [x] **Toxin Resistance Evolution**: Entities develop resistance to plant toxins over time through exposure
+- [x] **Chemical Defense Triggers**: Plants automatically release defensive chemicals when threatened by nearby entities
+- [x] **Wind-Dispersed Chemistry**: Airborne signals move with wind patterns for realistic chemical dispersal
+- [x] **Behavioral Responses**: Entities are attracted or repelled by chemical signals based on their traits
+- [x] **Chemical Environment Tracking**: Real-time chemical signal strength calculations at any position
+
+#### Enhanced Alliance and Trade System (RECENTLY COMPLETED)
+- [x] **Dynamic Trade Economics**: Trade volume scaling based on trust levels (0.5x-2.0x multiplier)
+- [x] **Relationship-Based Bonuses**: Allies receive +50% trade bonuses, enemies suffer -90% penalties
+- [x] **Strategic Resource Reserves**: Colonies maintain reserves preventing over-trading and economic vulnerability
+- [x] **Multi-Factor Trade Efficiency**: Complex calculations including distance, trust, relationship, and diplomatic factors
+- [x] **Trade Route Security**: Threat detection, escort protection, and enhanced route management
+- [x] **Military Cooperation**: Joint operations, coordinated defenses, and alliance-based warfare
+- [x] **Economic Warfare**: Trade blockades, resource competition, and economic pressure tactics
+
+#### Fungal Networks and Decomposer System (RECENTLY COMPLETED)
+- [x] **Decomposer Organisms**: Fungi break down dead organic matter and recycle nutrients
+- [x] **Nutrient Cycling**: Complete ecosystem nutrient loops with soil enrichment
+- [x] **Fungal Reproduction**: Spore-based reproduction system with environmental dispersal
+- [x] **Network Formation**: Mycelium networks connecting decomposer organisms
+- [x] **Soil Health Enhancement**: Fungal activity improves plant growth and ecosystem health
+- [x] **Organic Matter Processing**: Dead entities and plants decompose into soil nutrients
+- [x] **Environmental Integration**: Fungal networks integrated into main simulation loop
+- [x] **CLI and Web Visualization**: Dedicated fungal view mode showing decomposer activity
+
+#### Water Dispersal Systems (RECENTLY COMPLETED)
+- [x] **Aquatic Seed Dispersal**: Seeds travel via water currents with realistic flow mechanics
+- [x] **River/Stream Flow**: Water movement affects dispersal patterns with directional flow
+- [x] **Seasonal Flooding**: Flood events create enhanced seed dispersal opportunities
+- [x] **Aquatic Plant Types**: 3 specialized aquatic plants (lily, reed, kelp) with water-specific adaptations
+- [x] **Wetland Ecosystems**: Water-based plant communities with specialized survival mechanisms
+- [x] **Current Interaction**: Water currents interact with wind patterns for complex dispersal
+- [x] **Hydrochory Mechanics**: Water-adapted seed structures and buoyancy systems
+
+#### Enhanced Pheromone Trail Persistence (RECENTLY COMPLETED)
+- [x] **Trail Reinforcement**: Entities using trails strengthen them through repeated use
+- [x] **Environmental Decay Factors**: Temperature, humidity, and wind affect trail persistence
+- [x] **Usage-Based Persistence**: Frequently used trails last longer with persistence bonuses
+- [x] **Sophisticated Decay Calculations**: Complex mathematical models for realistic trail fade
+- [x] **Trail Memory System**: Enhanced memory tracking for trail effectiveness and usage patterns
+- [x] **Environmental Integration**: Weather and seasonal effects on pheromone persistence
+
+#### Parasitic and Symbiotic Relationships (RECENTLY COMPLETED)
+- [x] **Parasitic Entities**: Organisms that depend on host organisms for survival with virulence and transmission mechanics
+- [x] **Mutualistic Relationships**: Beneficial partnerships between different species with mutual energy/trait benefits
+- [x] **Commensalism**: Neutral relationships where one benefits, other unaffected with energy transfer mechanics
+- [x] **Host-Parasite Co-evolution**: Arms race between parasites and hosts with resistance/virulence evolution
+- [x] **Disease Transmission**: Pathogenic spread through populations with proximity-based infection
+- [x] **Symbiotic Relationship System**: Comprehensive system managing relationship formation, dissolution, and effects
+- [x] **Evolutionary Pressure**: Host resistance evolution and parasite virulence/transmission evolution
+- [x] **Compatibility Matching**: Entity trait-based compatibility system for relationship formation
+- [x] **CLI and Web Interface**: Complete "symbiotic" view mode displaying relationship statistics and disease characteristics
+- [x] **World Integration**: Full integration into main simulation loop with configurable update intervals
+
 ---
 
 ## 🚧 IN PROGRESS
 
-### Advanced Seed Dispersal
-**Status**: Not Started
-**Priority**: MEDIUM - Expands plant reproduction
-**Dependencies**: Wind system (✅ completed), Physics system (✅ completed)
-
-#### Features to Implement:
-- [ ] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based
-- [ ] **Seed Dormancy**: Seeds wait for optimal conditions to germinate
-- [ ] **Dispersal Timing**: Seeds released at optimal times
-- [ ] **Animal-Mediated Dispersal**: Entities carry seeds to new locations
-- [ ] **Seed Banks**: Accumulated seeds in soil waiting to germinate
-- [ ] **Germination Triggers**: Environmental cues for seed activation
-
-### Chemical Communication Enhancement
-**Status**: Partially Implemented  
-**Priority**: MEDIUM - Enhances existing communication
-**Dependencies**: Communication system (✅ completed), Insect capabilities (✅ completed)
-
-#### Features to Implement:
-- [ ] **Airborne Plant Signals**: Plants release chemical warnings
-- [ ] **Enhanced Pheromone Systems**: More complex chemical marking and tracking beyond current 8 pheromone types
-- [ ] **Chemical Ecology**: Complex chemical interactions between species
-- [ ] **Advanced Scent Trails**: More persistent chemical paths for navigation
-- [ ] **Chemical Defenses**: Plants release toxins when threatened
-- [ ] **Chemical Attractants**: Plants attract beneficial entities
+*No features currently in progress*
 
 ---
 
 ## 📋 HIGH PRIORITY (Immediate Impact)
 
-### Insect Pollinator System
-**Status**: Not Started
+### Insect Pollinator System (RECENTLY COMPLETED)
+**Status**: Completed
 **Priority**: HIGH - Adds biological complexity and realism
 **Dependencies**: Wind system (✅ completed), Entity system (✅ completed), Plant Networks (✅ completed), Insect capabilities (✅ completed)
 
-#### Features to Implement:
-- [ ] **Pollinating Insects**: New entity types specialized for pollination
-- [ ] **Plant-Insect Co-evolution**: Mutual adaptation between plants and pollinators
-- [ ] **Specialized Relationships**: Some plants only pollinated by specific insects
-- [ ] **Nectar Rewards**: Plants provide energy to attract pollinators
-- [ ] **Pollinator Efficiency**: Different insects have different pollination success rates
-- [ ] **Seasonal Pollinator Activity**: Insect availability varies by season
-- [ ] **Communication Networks**: Insects can use plant networks for navigation
-- [ ] **Pollinator Memory**: Insects remember successful flower locations
+#### Features Implemented:
+- [x] **Pollinating Insects**: New entity types specialized for pollination with 8+ specialized traits
+- [x] **Plant-Insect Co-evolution**: Mutual adaptation between plants and pollinators with preference systems
+- [x] **Specialized Relationships**: Three pollinator types (generalist, specialist, hybrid) with plant preferences  
+- [x] **Nectar Rewards**: Plants provide energy to attract pollinators with dynamic nectar production
+- [x] **Pollinator Efficiency**: Different insects have different pollination success rates and memory systems
+- [x] **Seasonal Pollinator Activity**: Insect availability varies by season (Spring 130%, Summer 100%, Autumn 60%, Winter 20%)
+- [x] **Communication Networks**: Pollinators can use plant networks for navigation and flower location memory
+- [x] **Pollinator Memory**: Insects remember successful flower locations with success rate tracking
+- [x] **Cross-species Pollination**: Works alongside existing wind-based pollination system
 
-### Multi-Colony Warfare and Diplomacy System
-**Status**: Not Started  
+### Multi-Colony Warfare and Diplomacy System (RECENTLY COMPLETED)
+**Status**: Completed  
 **Priority**: HIGH - Leverages completed caste and hive mind systems
 **Dependencies**: Caste system (✅ completed), Hive mind system (✅ completed), Communication system (✅ completed)
 
-#### Features to Implement:
-- [ ] **Inter-Colony Interactions**: Warfare, alliance, and trade between different colonies
-- [ ] **Resource Competition**: Colonies compete for territories and food sources
-- [ ] **Diplomatic Relations**: Alliance formation, trade agreements, peace treaties
-- [ ] **Colony Expansion**: Territorial growth and border conflicts
-- [ ] **Resource Trading**: Exchange of food, materials, and information between allied colonies
-- [ ] **War Declarations**: Formal conflict initiation with strategic planning
+#### Features Implemented:
+- [x] **Inter-Colony Interactions**: Warfare, alliance, and trade between different colonies with 6 diplomatic relation types
+- [x] **Resource Competition**: Colonies compete for territories and food sources with proximity-based pressure
+- [x] **Diplomatic Relations**: Alliance formation, trade agreements, peace treaties with trust and reputation systems
+- [x] **Colony Expansion**: Territorial growth and border conflicts with automatic border detection
+- [x] **Resource Trading**: Exchange of food, materials, and information between allied colonies (framework complete)
+- [x] **War Declarations**: Formal conflict initiation with strategic planning and 4 conflict types (Border Skirmish, Resource War, Total War, Raid)
+- [x] **Military Combat**: Strength calculations, battle resolution, casualties, and territory claiming mechanics
+- [x] **Post-War Relations**: Relationship changes based on war outcomes, peace treaties, and conflict intensity
+- [x] **Comprehensive Statistics**: New "warfare" CLI view displaying conflicts, diplomacy, and colony information
 
-### Enhanced Metamorphosis and Life Stages
-**Status**: Not Started
-**Priority**: HIGH - Natural extension of insect capabilities system  
-**Dependencies**: Insect capabilities (✅ completed), Reproduction system (✅ completed)
+#### Ecosystem Monitoring and Metrics Enhancement (RECENTLY COMPLETED)
+- [x] **Genetic Diversity Indices**: Shannon and Simpson diversity calculations for populations
+- [x] **Species Count Metrics**: Real-time tracking of active species and extinction rates  
+- [x] **Network Connectivity Measurements**: Analysis of plant network and social network connectivity
+- [x] **Pollination Success Metrics**: Detailed tracking of pollination efficiency and cross-species interactions
+- [x] **Dispersal Distance Analytics**: Statistical analysis of seed and pollen dispersal patterns
+- [x] **Ecosystem Health Indicators**: Overall ecosystem stability and resilience measurements
+- [x] **Comprehensive Health Score**: 0-100 ecosystem health scoring system based on multiple factors
+- [x] **Trend Analysis**: Multi-generational trend detection for diversity, population, and stability
+- [x] **CLI and Web Integration**: Complete ecosystem view mode in both CLI and web interfaces
+- [x] **Real-time Monitoring**: Automatic metrics updates every 20 ticks for performance efficiency
 
-#### Features to Implement:
-- [ ] **Life Stage Transitions**: Larva, pupa, adult stages for complex insects
-- [ ] **Stage-Specific Traits**: Different capabilities and vulnerabilities per life stage
-- [ ] **Metamorphosis Triggers**: Environmental and nutritional factors affecting development
-- [ ] **Stage-Specific Behaviors**: Larvae focus on growth, adults on reproduction
-- [ ] **Energy Requirements**: Different nutritional needs per life stage
-- [ ] **Predation Vulnerabilities**: Some stages more vulnerable than others
+#### Advanced Neural Networks and AI (COMPLETED)
+- [x] **Neural Network Framework**: Complete entity-based neural networks with configurable architectures (FeedForward, Recurrent, Convolutional, Reinforcement)
+- [x] **Adaptive Learning System**: AI-driven behavior evolution with reinforcement learning and experience-based adaptation
+- [x] **Intelligent Decision Making**: Sophisticated decision-making systems processing environmental inputs (vision, energy, threat, food, social)
+- [x] **Learning and Memory**: Networks learn from outcomes (success/failure) and adapt weights and connection strengths
+- [x] **Multi-Agent Coordination**: Foundation for coordinated intelligent entity groups through collective behaviors
+- [x] **Intelligence-Guided Evolution**: Neural fitness affects overall entity fitness, driving evolution toward better adapted intelligence
+- [x] **Emergent AI Behaviors**: Unprogrammed intelligent behaviors discovered through learning and adaptation
+- [x] **Experience-Based Development**: Neural networks grow in complexity and capability based on entity intelligence traits
+- [x] **CLI and Web Interface**: Complete "neural" view mode displaying network statistics, learning metrics, and individual entity neural data
+- [x] **World Integration**: Full integration into main simulation loop with automatic network creation for intelligent entities
+- [x] **Comprehensive Statistics**: Real-time tracking of learning events, success rates, network complexity, and collective intelligence patterns
+- [x] **CRITICAL INTEGRATION**: Neural networks now actually control entity behavior through environmental input processing and decision-making
+- [x] **Environmental Processing**: 5-input system processing vision, energy, threat, food, and social interaction levels
+- [x] **Action Translation**: Neural outputs (moveX, moveY, actionIntensity) directly control entity movement and behavior
+- [x] **Learning Feedback**: Real-time success/failure feedback based on energy efficiency, threat avoidance, food seeking, and social behavior
+- [x] **Performance Validation**: Comprehensive integration testing shows entities with neural networks behave differently than those without
 
-### Advanced Seed Dispersal
-**Status**: Not Started
-**Priority**: MEDIUM - Expands plant reproduction
-**Dependencies**: Wind system (✅ completed), Physics system (✅ completed)
+#### Advanced Biome Boundary Interactions (COMPLETED)
+- [x] **Dynamic Boundary Detection**: Automatic detection of boundaries between adjacent biomes with real-time position tracking
+- [x] **4 Boundary Types**: Soft boundaries (gradual transitions), Sharp boundaries (abrupt changes), Ecotone zones (enhanced biodiversity), Barrier boundaries (movement restrictions)
+- [x] **Ecotone Effects**: Resource bonuses, enhanced mutation rates, migration speed increases, and biodiversity hotspots
+- [x] **Barrier Effects**: Movement penalties, energy costs for crossing, realistic permeability based on biome combinations
+- [x] **Environmental Gradients**: Temperature, moisture, and pressure gradients across boundaries affecting entity adaptation
+- [x] **Migration Enhancement**: Speed bonuses and evolutionary pressure in transition zones driving adaptation
+- [x] **Trait Modifiers**: Boundary-specific trait enhancements (adaptability, endurance, intelligence) based on environmental challenges
+- [x] **Dynamic Stability**: Boundaries shift over time based on environmental conditions and stability factors
+- [x] **CLI and Web Interface**: Complete "biomeboundary" view mode displaying boundary statistics, types, and ecological effects
+- [x] **World Integration**: Full integration into main simulation loop with configurable update frequency
+- [x] **Comprehensive Testing**: Complete test coverage for boundary detection, classification, and effects application
 
-#### Features to Implement:
-- [ ] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based
-- [ ] **Seed Dormancy**: Seeds wait for optimal conditions to germinate
-- [ ] **Dispersal Timing**: Seeds released at optimal times
-- [ ] **Animal-Mediated Dispersal**: Entities carry seeds to new locations
-- [ ] **Seed Banks**: Accumulated seeds in soil waiting to germinate
-- [ ] **Germination Triggers**: Environmental cues for seed activation
+---
 
-### Chemical Communication
-**Status**: Partially Implemented
-**Priority**: MEDIUM - Enhances existing communication
-**Dependencies**: Communication system (✅ completed)
+## 🚧 IN PROGRESS
 
-#### Features to Implement:
-- [ ] **Airborne Plant Signals**: Plants release chemical warnings
-- [ ] **Pheromone Systems**: Entity chemical marking and tracking
-- [ ] **Chemical Ecology**: Complex chemical interactions between species
-- [ ] **Scent Trails**: Persistent chemical paths for navigation
-- [ ] **Chemical Defenses**: Plants release toxins when threatened
-- [ ] **Chemical Attractants**: Plants attract beneficial entities
+*No features currently in progress*
+
+---
+
+## 📋 MEDIUM PRIORITY (Ecosystem Enhancement)
+
+#### Advanced Environmental Pressures (RECENTLY COMPLETED)
+- [x] **Climate Change Simulation**: Long-term environmental shifts affecting species adaptation with temperature and precipitation changes
+- [x] **Pollution Events**: Environmental contamination affecting entity health and reproduction with toxicity spread
+- [x] **Habitat Fragmentation**: Landscape changes creating isolated populations with movement penalties and genetic isolation
+- [x] **Resource Depletion Cycles**: Periodic scarcity driving adaptive pressure with reduced food/water availability  
+- [x] **Environmental Pressure System**: Comprehensive system managing 6 pressure types (climate change, pollution, habitat fragmentation, invasive species, resource depletion, extreme weather)
+- [x] **Dynamic Pressure Effects**: Real-time application of pressure effects to entities, plants, and world grid
+- [x] **Pressure Statistics**: Complete tracking of active pressures, severity levels, and historical data
+- [x] **World Integration**: Full integration into main simulation loop with configurable update intervals
 
 ---
 
 ## 📋 LOW PRIORITY (Future Expansion)
 
-### Fungal Networks
-**Status**: Not Started
-**Priority**: LOW - Advanced ecosystem feature
-**Dependencies**: Underground networks (not started)
+## 📋 LOW PRIORITY (Future Expansion)
 
-#### Features to Implement:
-- [ ] **Decomposer Organisms**: Fungi break down dead organic matter
-- [ ] **Nutrient Cycling**: Complete ecosystem nutrient loops
-- [ ] **Symbiotic Relationships**: Beneficial fungi-plant partnerships
-- [ ] **Fungal Reproduction**: Spore-based fungal spreading
-- [ ] **Soil Health**: Fungal activity affects plant growth
-- [ ] **Disease Dynamics**: Pathogenic fungi affecting plant health
-
-### Water Dispersal Systems
-**Status**: Not Started
-**Priority**: LOW - Specialized environment
-**Dependencies**: Physics system (✅ completed)
-
-#### Features to Implement:
-- [ ] **Aquatic Seed Dispersal**: Seeds travel via water currents
-- [ ] **River/Stream Flow**: Water movement affects dispersal patterns
-- [ ] **Wetland Ecosystems**: Specialized aquatic plant communities
-- [ ] **Flood Dispersal**: Seasonal flooding spreads seeds
-- [ ] **Hydrochory**: Water-adapted seed structures
-- [ ] **Aquatic Plant Types**: Plants specialized for water environments
+*No remaining low priority features - all implemented or moved to higher priority categories*
 
 ---
 
@@ -478,23 +545,34 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ## 🎯 NEXT STEPS
 
-### Immediate Tasks (Next Session)
-1. **Plant-Insect Co-evolution**: Implement mutual adaptation between plants and insect pollinators leveraging completed insect capabilities system
-2. **Inter-Colony Warfare**: Develop conflict and alliance systems between different colonies using completed caste and hive mind systems
-3. **Advanced Metamorphosis**: Add life stage transitions (larva, pupa, adult) for complex insects
-4. **Enhanced Chemical Communication**: Expand plant chemical signaling beyond current pheromone system
+#### Advanced Biome Boundary Interactions (COMPLETED)
+- [x] **Dynamic Boundary Detection**: Automatic detection of boundaries between adjacent biomes with real-time position tracking
+- [x] **4 Boundary Types**: Soft boundaries (gradual transitions), Sharp boundaries (abrupt changes), Ecotone zones (enhanced biodiversity), Barrier boundaries (movement restrictions)
+- [x] **Ecotone Effects**: Resource bonuses, enhanced mutation rates, migration speed increases, and biodiversity hotspots
+- [x] **Barrier Effects**: Movement penalties, energy costs for crossing, realistic permeability based on biome combinations
+- [x] **Environmental Gradients**: Temperature, moisture, and pressure gradients across boundaries affecting entity adaptation
+- [x] **Migration Enhancement**: Speed bonuses and evolutionary pressure in transition zones driving adaptation
+- [x] **Trait Modifiers**: Boundary-specific trait enhancements (adaptability, endurance, intelligence) based on environmental challenges
+- [x] **Dynamic Stability**: Boundaries shift over time based on environmental conditions and stability factors
+- [x] **CLI and Web Interface**: Complete "biomeboundary" view mode displaying boundary statistics, types, and ecological effects
+- [x] **World Integration**: Full integration into main simulation loop with configurable update frequency
+- [x] **Comprehensive Testing**: Complete test coverage for boundary detection, classification, and effects application
+2. **Enhanced Pollinator Specialization**: Develop deeper co-evolutionary pressure between specific plant-pollinator pairs  
+3. **Climate Change Response Systems**: Add ecosystem-wide adaptive responses to environmental pressures
+4. **Advanced Collective Intelligence**: Enhance hive mind systems with cross-species knowledge sharing
 
 ### Short-term Goals (Next 2-3 Sessions)
-1. Complete insect pollinator system with plant-insect mutualism
-2. Implement inter-colony warfare and diplomatic relations
-3. Add metamorphosis stages (larva, pupa, adult) for complex insects
-4. Develop advanced seed dispersal mechanisms beyond wind
-5. Create multi-generational hive mind knowledge transfer systems
+1. **Multi-Species Intelligence Networks**: Allow neural networks to share learned behaviors across compatible species
+2. **Advanced Environmental Simulation**: Expand environmental pressure systems with more realistic long-term climate modeling
+3. **Enhanced Social Structures**: Develop more complex inter-colony relationships and territorial dynamics
+4. **Adaptive Neural Architectures**: Allow neural networks to evolve their own structures based on environmental needs
 
 ### Long-term Vision
 Create a fully realistic evolutionary ecosystem where:
-- Advanced insect societies with metamorphosis, castes, and collective intelligence compete and cooperate
-- Complex inter-colony politics drive territorial expansion and resource competition
+- Advanced neural networks drive sophisticated intelligent behaviors and cross-species learning
+- Multi-species collective intelligence creates complex social structures and knowledge networks
+- Dynamic environmental pressures continuously shape both genetic and neural evolution
+- Complex inter-colony politics and warfare drive territorial expansion and resource competition
 - Plant-insect mutualism creates intricate ecological webs and co-evolutionary pressure
 - Multiple reproduction and dispersal strategies exist including sophisticated pheromone communication
 - Complex social structures (colonies, hives, castes) interact and compete in dynamic ways
