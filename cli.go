@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies", "warfare", "fungal"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies", "warfare", "fungal", "cultural"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -359,6 +359,8 @@ func (m CLIModel) View() string {
 		content = m.warfareView()
 	case "fungal":
 		content = m.fungalView()
+	case "cultural":
+		content = m.culturalView()
 	default:
 		content = m.gridView()
 	}
@@ -4099,6 +4101,106 @@ func (m CLIModel) fungalView() string {
 		
 		content.WriteString(fmt.Sprintf("Undecayed organic matter: %d items\n", undecayedCount))
 		content.WriteString(fmt.Sprintf("Total available nutrients: %.1f\n", totalNutrients))
+	}
+
+	return content.String()
+}
+
+// culturalView displays the cultural knowledge system status
+func (m CLIModel) culturalView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🧠 Cultural Knowledge & Learning") + "\n\n")
+
+	if m.world.CulturalKnowledgeSystem == nil {
+		content.WriteString("Cultural knowledge system not initialized\n")
+		return content.String()
+	}
+
+	// Get cultural knowledge statistics
+	stats := m.world.CulturalKnowledgeSystem.GetCulturalStats()
+
+	// General Statistics
+	content.WriteString("=== CULTURAL KNOWLEDGE STATUS ===\n")
+	content.WriteString(fmt.Sprintf("Total knowledge types: %v\n", stats["total_knowledge_types"]))
+	content.WriteString(fmt.Sprintf("Entities with knowledge: %v\n", stats["total_entities"]))
+	content.WriteString(fmt.Sprintf("Active innovations: %v\n", stats["active_innovations"]))
+	content.WriteString(fmt.Sprintf("Average knowledge per entity: %.1f\n", stats["avg_knowledge_per_entity"]))
+
+	// Learning and Teaching Statistics
+	content.WriteString("\n=== LEARNING & TEACHING ACTIVITY ===\n")
+	content.WriteString(fmt.Sprintf("Total teaching events: %v\n", stats["total_teaching_events"]))
+	content.WriteString(fmt.Sprintf("Total learning events: %v\n", stats["total_learning_events"]))
+	content.WriteString(fmt.Sprintf("Total innovations created: %v\n", stats["total_innovations_created"]))
+	content.WriteString(fmt.Sprintf("Knowledge loss events: %v\n", stats["knowledge_loss_events"]))
+
+	// Knowledge Type Distribution
+	if typeDistribution, ok := stats["knowledge_type_distribution"].(map[string]int); ok {
+		content.WriteString("\n=== KNOWLEDGE TYPE DISTRIBUTION ===\n")
+		for knowledgeType, count := range typeDistribution {
+			content.WriteString(fmt.Sprintf("%s: %d\n", knowledgeType, count))
+		}
+	}
+
+	// Active Knowledge List
+	content.WriteString("\n=== ACTIVE KNOWLEDGE TYPES ===\n")
+	for _, knowledge := range m.world.CulturalKnowledgeSystem.AllKnowledge {
+		icon := "📚"
+		if knowledge.Innovation {
+			icon = "💡"
+		}
+		
+		content.WriteString(fmt.Sprintf("%s %s (ID: %d)\n", icon, knowledge.Type.String(), knowledge.ID))
+		content.WriteString(fmt.Sprintf("  Effectiveness: %.2f | Complexity: %.2f\n", 
+			knowledge.Effectiveness, knowledge.Complexity))
+		content.WriteString(fmt.Sprintf("  Teachers: %d | Learners: %d\n", 
+			knowledge.TeacherCount, knowledge.LearnerCount))
+		content.WriteString(fmt.Sprintf("  Age: %d generations | Last used: tick %d\n", 
+			knowledge.AgeInGeneration, knowledge.LastUsed))
+		
+		if knowledge.Innovation {
+			content.WriteString("  ⚡ Recent Innovation\n")
+		}
+		content.WriteString("\n")
+	}
+
+	// Entity Knowledge Examples
+	content.WriteString("\n=== ENTITY KNOWLEDGE EXAMPLES ===\n")
+	displayCount := 0
+	for entityID, memory := range m.world.CulturalKnowledgeSystem.EntityMemories {
+		if displayCount >= 5 {
+			break
+		}
+		
+		content.WriteString(fmt.Sprintf("Entity #%d:\n", entityID))
+		content.WriteString(fmt.Sprintf("  Known knowledge: %d/%d\n", 
+			len(memory.KnownKnowledge), memory.KnowledgeCapacity))
+		content.WriteString(fmt.Sprintf("  Teaching ability: %.2f | Learning ability: %.2f\n", 
+			memory.TeachingAbility, memory.LearningAbility))
+		content.WriteString(fmt.Sprintf("  Innovation chance: %.3f\n", memory.InnovationChance))
+		
+		// Show some of the knowledge this entity has
+		knowledgeTypes := make([]string, 0)
+		for _, knowledge := range memory.KnownKnowledge {
+			knowledgeTypes = append(knowledgeTypes, knowledge.Type.String())
+			if len(knowledgeTypes) >= 3 {
+				break
+			}
+		}
+		
+		if len(knowledgeTypes) > 0 {
+			content.WriteString(fmt.Sprintf("  Sample knowledge: %s\n", strings.Join(knowledgeTypes, ", ")))
+			if len(memory.KnownKnowledge) > 3 {
+				content.WriteString(fmt.Sprintf("  ... and %d more\n", len(memory.KnownKnowledge)-3))
+			}
+		}
+		
+		content.WriteString("\n")
+		displayCount++
+	}
+
+	if len(m.world.CulturalKnowledgeSystem.EntityMemories) > 5 {
+		content.WriteString(fmt.Sprintf("... and %d more entities with knowledge\n", 
+			len(m.world.CulturalKnowledgeSystem.EntityMemories)-5))
 	}
 
 	return content.String()

@@ -74,6 +74,8 @@ type ViewData struct {
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
 	Reproduction     ReproductionData     `json:"reproduction"`
 	Warfare          WarfareData          `json:"warfare"`
+	Fungal           FungalData           `json:"fungal"`
+	Cultural         CulturalData         `json:"cultural"`
 	Statistical      StatisticalData      `json:"statistical"`
 	Anomalies        AnomaliesData        `json:"anomalies"`
 	// Historical data
@@ -394,6 +396,33 @@ type ColonyDetailData struct {
 	TrustLevels map[int]float64          `json:"trust_levels"`
 }
 
+// FungalData represents fungal network state for web interface
+type FungalData struct {
+	TotalOrganisms     int     `json:"total_organisms"`
+	DecomposerCount    int     `json:"decomposer_count"`
+	MycorrhizalCount   int     `json:"mycorrhizal_count"`
+	PathogenicCount    int     `json:"pathogenic_count"`
+	ActiveSpores       int     `json:"active_spores"`
+	TotalBiomass       float64 `json:"total_biomass"`
+	NutrientCycling    float64 `json:"nutrient_cycling"`
+	DecompositionEvents int    `json:"decomposition_events"`
+	NetworkConnections int     `json:"network_connections"`
+	AvgConnections     float64 `json:"avg_connections"`
+}
+
+// CulturalData represents cultural knowledge state for web interface
+type CulturalData struct {
+	TotalKnowledgeTypes       int                `json:"total_knowledge_types"`
+	TotalEntities             int                `json:"total_entities"`
+	ActiveInnovations         int                `json:"active_innovations"`
+	TotalTeachingEvents       int                `json:"total_teaching_events"`
+	TotalLearningEvents       int                `json:"total_learning_events"`
+	TotalInnovationsCreated   int                `json:"total_innovations_created"`
+	KnowledgeLossEvents       int                `json:"knowledge_loss_events"`
+	AvgKnowledgePerEntity     float64            `json:"avg_knowledge_per_entity"`
+	KnowledgeTypeDistribution map[string]int     `json:"knowledge_type_distribution"`
+}
+
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
 	// Capture historical data every 5 ticks
@@ -428,6 +457,8 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		FeedbackLoops:    vm.getFeedbackLoopData(),
 		Reproduction:     vm.getReproductionData(),
 		Warfare:          vm.getWarfareData(),
+		Fungal:           vm.getFungalData(),
+		Cultural:         vm.getCulturalData(),
 		Statistical:      vm.getStatisticalData(),
 		Anomalies:        vm.getAnomaliesData(),
 		// Include historical data
@@ -1664,6 +1695,118 @@ func (vm *ViewManager) getWarfareData() WarfareData {
 			
 			data.ColonyDetails = append(data.ColonyDetails, colonyData)
 		}
+	}
+	
+	return data
+}
+
+// getFungalData returns fungal network state for web interface
+func (vm *ViewManager) getFungalData() FungalData {
+	data := FungalData{
+		TotalOrganisms:      0,
+		DecomposerCount:     0,
+		MycorrhizalCount:    0,
+		PathogenicCount:     0,
+		ActiveSpores:        0,
+		TotalBiomass:        0.0,
+		NutrientCycling:     0.0,
+		DecompositionEvents: 0,
+		NetworkConnections:  0,
+		AvgConnections:      0.0,
+	}
+	
+	// Check if fungal system exists
+	if vm.world.FungalNetwork == nil {
+		return data
+	}
+	
+	// Get fungal network statistics
+	stats := vm.world.FungalNetwork.GetStats()
+	
+	// Convert to FungalData
+	if val, ok := stats["total_organisms"].(int); ok {
+		data.TotalOrganisms = val
+	}
+	if val, ok := stats["decomposer_count"].(int); ok {
+		data.DecomposerCount = val
+	}
+	if val, ok := stats["mycorrhizal_count"].(int); ok {
+		data.MycorrhizalCount = val
+	}
+	if val, ok := stats["pathogenic_count"].(int); ok {
+		data.PathogenicCount = val
+	}
+	if val, ok := stats["active_spores"].(int); ok {
+		data.ActiveSpores = val
+	}
+	if val, ok := stats["total_biomass"].(float64); ok {
+		data.TotalBiomass = val
+	}
+	if val, ok := stats["nutrient_cycling"].(float64); ok {
+		data.NutrientCycling = val
+	}
+	if val, ok := stats["decomposition_events"].(int); ok {
+		data.DecompositionEvents = val
+	}
+	if val, ok := stats["network_connections"].(int); ok {
+		data.NetworkConnections = val
+	}
+	if val, ok := stats["avg_connections"].(float64); ok {
+		data.AvgConnections = val
+	}
+	
+	return data
+}
+
+// getCulturalData returns cultural knowledge state for web interface
+func (vm *ViewManager) getCulturalData() CulturalData {
+	data := CulturalData{
+		TotalKnowledgeTypes:       0,
+		TotalEntities:             0,
+		ActiveInnovations:         0,
+		TotalTeachingEvents:       0,
+		TotalLearningEvents:       0,
+		TotalInnovationsCreated:   0,
+		KnowledgeLossEvents:       0,
+		AvgKnowledgePerEntity:     0.0,
+		KnowledgeTypeDistribution: make(map[string]int),
+	}
+	
+	// Check if cultural knowledge system exists
+	if vm.world.CulturalKnowledgeSystem == nil {
+		return data
+	}
+	
+	// Get cultural knowledge statistics
+	stats := vm.world.CulturalKnowledgeSystem.GetCulturalStats()
+	
+	// Convert to CulturalData
+	if val, ok := stats["total_knowledge_types"].(int); ok {
+		data.TotalKnowledgeTypes = val
+	}
+	if val, ok := stats["total_entities"].(int); ok {
+		data.TotalEntities = val
+	}
+	if val, ok := stats["active_innovations"].(int); ok {
+		data.ActiveInnovations = val
+	}
+	if val, ok := stats["total_teaching_events"].(int); ok {
+		data.TotalTeachingEvents = val
+	}
+	if val, ok := stats["total_learning_events"].(int); ok {
+		data.TotalLearningEvents = val
+	}
+	if val, ok := stats["total_innovations_created"].(int); ok {
+		data.TotalInnovationsCreated = val
+	}
+	if val, ok := stats["knowledge_loss_events"].(int); ok {
+		data.KnowledgeLossEvents = val
+	}
+	if val, ok := stats["avg_knowledge_per_entity"].(float64); ok {
+		data.AvgKnowledgePerEntity = val
+	}
+	if val, ok := stats["knowledge_type_distribution"].(map[string]int); ok {
+		data.KnowledgeTypeDistribution = val
 	}
 	
 	return data

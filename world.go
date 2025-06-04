@@ -174,6 +174,9 @@ type World struct {
 	ReproductionSystem      *ReproductionSystem                  // Reproduction, gestation, and decay management
 	FungalNetwork           *FungalNetwork                       // Fungal decomposer and nutrient cycling system
 	
+	// Cultural Knowledge System
+	CulturalKnowledgeSystem *CulturalKnowledgeSystem             // Multi-generational knowledge transfer and cultural evolution
+	
 	// Statistical Analysis System
 	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
 	
@@ -266,6 +269,9 @@ func NewWorld(config WorldConfig) *World {
 	// Initialize reproduction and decay system
 	world.ReproductionSystem = NewReproductionSystem(world.CentralEventBus)
 	world.FungalNetwork = NewFungalNetwork()
+	
+	// Initialize cultural knowledge system
+	world.CulturalKnowledgeSystem = NewCulturalKnowledgeSystem()
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
@@ -931,6 +937,11 @@ func (w *World) Update() {
 	// Update fungal network (decomposition and nutrient cycling)
 	if w.FungalNetwork != nil {
 		w.FungalNetwork.Update(w, w.Tick)
+	}
+	
+	// Update cultural knowledge system (multi-generational knowledge transfer)
+	if w.CulturalKnowledgeSystem != nil {
+		w.CulturalKnowledgeSystem.Update(w.AllEntities, w.Tick)
 	}
 
 	// Remove dead entities and plants

@@ -622,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES', 'WARFARE', 'FUNGAL'
+            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL'
         ];
         
         // Initialize view tabs
@@ -841,6 +841,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'FUNGAL':
                     viewContent.innerHTML = '<div class="stats-section">' + renderFungal(data.fungal) + '</div>';
+                    break;
+                    
+                case 'CULTURAL':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderCultural(data.cultural) + '</div>';
                     break;
                     
                 default:
@@ -3034,6 +3038,55 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<div class="event-list">';
                 fungal.recent_events.slice(0, 10).forEach(event => {
                     html += '<div class="event-item">• ' + event + '</div>';
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render cultural knowledge view
+        function renderCultural(cultural) {
+            if (!cultural) {
+                return '<h3>🧠 Cultural Knowledge</h3><div>Cultural knowledge system data not available</div>';
+            }
+            
+            let html = '<h3>🧠 Cultural Knowledge & Learning System</h3>';
+            
+            // General overview
+            html += '<h4>📊 Knowledge Overview:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Knowledge Types: <strong>' + (cultural.total_knowledge_types || 0) + '</strong></div>';
+            html += '<div class="stat-item">Entities with Knowledge: <strong>' + (cultural.total_entities || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Active Innovations: <strong>' + (cultural.active_innovations || 0) + '</strong></div>';
+            html += '<div class="stat-item">Avg Knowledge/Entity: <strong>' + (cultural.avg_knowledge_per_entity || 0).toFixed(1) + '</strong></div>';
+            html += '</div>';
+            
+            // Learning activity
+            html += '<h4>🎓 Learning & Teaching Activity:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Teaching Events: <strong>' + (cultural.total_teaching_events || 0) + '</strong></div>';
+            html += '<div class="stat-item">Learning Events: <strong>' + (cultural.total_learning_events || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Innovations Created: <strong>' + (cultural.total_innovations_created || 0) + '</strong></div>';
+            html += '<div class="stat-item">Knowledge Lost: <strong>' + (cultural.knowledge_loss_events || 0) + '</strong></div>';
+            html += '</div>';
+            
+            // Knowledge type distribution
+            if (cultural.knowledge_type_distribution) {
+                html += '<h4>📚 Knowledge Types:</h4>';
+                html += '<div class="knowledge-distribution">';
+                Object.entries(cultural.knowledge_type_distribution).forEach(([type, count]) => {
+                    const barWidth = Math.max(5, (count / Math.max(...Object.values(cultural.knowledge_type_distribution))) * 200);
+                    html += '<div class="knowledge-type-item">';
+                    html += '<div class="knowledge-type-label">' + type + ': ' + count + '</div>';
+                    html += '<div class="knowledge-bar" style="width: ' + barWidth + 'px; background: #4CAF50; height: 20px; margin: 2px 0;"></div>';
+                    html += '</div>';
                 });
                 html += '</div>';
             }
