@@ -490,6 +490,109 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             font-size: 13px;
             margin: 2px 0;
         }
+        
+        /* View Description Styles */
+        .view-description {
+            background-color: #2a4a2a;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .view-description h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+        
+        .description-toggle {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .description-toggle:hover {
+            background-color: #45a049;
+        }
+        
+        .description-content {
+            display: none;
+        }
+        
+        .description-content.expanded {
+            display: block;
+        }
+        
+        /* Tooltip Styles */
+        .tooltip {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted #4CAF50;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #2a2a2a;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid #4CAF50;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #4CAF50 transparent transparent transparent;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Stat item tooltip styles */
+        .stat-item {
+            position: relative;
+            cursor: help;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .stat-item:hover {
+            background-color: #3a3a3a;
+        }
+        
+        /* Help icon styles */
+        .help-icon {
+            color: #4CAF50;
+            font-size: 14px;
+            margin-left: 5px;
+            cursor: help;
+        }
     </style>
 </head>
 <body>
@@ -678,6 +781,142 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             });
         }
         
+        // Toggle view description expansion
+        function toggleDescription(viewMode) {
+            const content = document.getElementById(viewMode.toLowerCase() + '-description-content');
+            const button = document.getElementById(viewMode.toLowerCase() + '-description-toggle');
+            if (content && button) {
+                content.classList.toggle('expanded');
+                if (content.classList.contains('expanded')) {
+                    button.textContent = 'Hide Description ▲';
+                } else {
+                    button.textContent = 'Show Description ▼';
+                }
+            }
+        }
+        
+        // Get view description HTML
+        function getViewDescription(viewMode) {
+            const descriptions = {
+                'GRID': {
+                    title: 'Grid View - Main World Visualization',
+                    description: 'Displays the complete 2D simulation world showing entities, plants, biomes, and environmental features in real-time. Entities appear as symbols (🐰 herbivores, 🐺 predators, 🐻 omnivores) moving through different biomes. Click on any cell to see detailed information about entities and environment.'
+                },
+                'STATS': {
+                    title: 'Statistics View - Population Analytics',
+                    description: 'Shows comprehensive population statistics including average fitness, energy levels, age distributions, and trait averages. Tracks evolutionary progress through numerical metrics and helps identify population trends and health indicators.'
+                },
+                'EVENTS': {
+                    title: 'Events View - World Event Log',
+                    description: 'Displays recent significant events including births, deaths, environmental changes, discoveries, and other important occurrences. Events are timestamped and categorized to help track simulation progress and understand population dynamics.'
+                },
+                'POPULATIONS': {
+                    title: 'Populations View - Species Demographics',
+                    description: 'Detailed breakdown of all active species showing population counts, genetic diversity, and species-specific traits. Tracks species formation, extinction events, and genetic drift over time.'
+                },
+                'COMMUNICATION': {
+                    title: 'Communication View - Signal Networks',
+                    description: 'Monitors entity communication through 6 signal types: Alert (danger warnings), Food (source locations), Mating (reproductive calls), Territory (boundary claims), Distress (help requests), and Cooperation (group activities). Shows signal strength and propagation patterns.'
+                },
+                'CIVILIZATION': {
+                    title: 'Civilization View - Colony Development',
+                    description: 'Tracks tribal organization and structure development including 8 building types: Nests, Food Storage, Watchtowers, Barriers, Workshops, Temples, Trade Posts, and Academies. Shows technology advancement and collective resource management.'
+                },
+                'PHYSICS': {
+                    title: 'Physics View - Simulation Mechanics',
+                    description: 'Displays physics engine state including collision detection, environmental forces, movement patterns, and momentum calculations. Shows how physical laws affect entity behavior and world interactions.'
+                },
+                'WIND': {
+                    title: 'Wind View - Atmospheric System',
+                    description: 'Visualizes wind patterns, pollen dispersal, and seed distribution. Shows wind direction, strength, turbulence levels, and weather patterns. Critical for understanding plant reproduction and genetic mixing through atmospheric transport.'
+                },
+                'SPECIES': {
+                    title: 'Species View - Evolutionary Tracking',
+                    description: 'Monitors species formation through genetic distance tracking. Shows when populations split into new species, genetic compatibility matrices, and reproductive barriers. Tracks speciation events and phylogenetic relationships.'
+                },
+                'NETWORK': {
+                    title: 'Network View - Underground Plant Networks',
+                    description: 'Displays mycorrhizal networks connecting compatible plants underground. Shows resource sharing, chemical signal propagation, and network health. Three connection types: Mycorrhizal (fungal), Root (direct), and Chemical (signaling).'
+                },
+                'DNA': {
+                    title: 'DNA View - Genetic Systems',
+                    description: 'Shows detailed genetic information including nucleotide sequences (A, T, G, C), chromosome structure, gene expression levels, and inheritance patterns. Displays dominant/recessive alleles and genetic crossover during reproduction.'
+                },
+                'CELLULAR': {
+                    title: 'Cellular View - Microscopic Structure',
+                    description: 'Examines organisms at cellular level showing 8 cell types (Stem, Nerve, Muscle, Digestive, Reproductive, Defensive, Photosynthetic, Storage) and 8 organelle types. Displays cellular complexity levels from simple (Level 1) to highly complex (Level 5).'
+                },
+                'EVOLUTION': {
+                    title: 'Evolution View - Macro Evolution',
+                    description: 'Tracks large-scale evolutionary changes including species lineages, phylogenetic trees, and major evolutionary events. Shows environmental pressure correlation and identifies speciation, extinction, and adaptation events.'
+                },
+                'TOPOLOGY': {
+                    title: 'Topology View - World Terrain',
+                    description: 'Displays world geography including mountains, valleys, rivers, lakes, and underground features. Shows geological processes like earthquakes, volcanic eruptions, and erosion affecting evolution. Includes elevation maps and terrain cross-sections.'
+                },
+                'TOOLS': {
+                    title: 'Tools View - Technology System',
+                    description: 'Monitors tool creation and usage including 10 tool types: Stone, Stick, Spear, Hammer, Blade, Digger, Crusher, Container, Fire, and Weaving tools. Shows tool durability, efficiency, ownership, and modification systems.'
+                },
+                'ENVIRONMENT': {
+                    title: 'Environment View - World Modifications',
+                    description: 'Tracks environmental modifications created by entities including 12 types: Tunnels, Burrows, Caches, Traps, Waterholes, Paths, Bridges, Towers, Shelters, Workshops, Farms, and Walls. Shows persistent structures that affect future generations.'
+                },
+                'BEHAVIOR': {
+                    title: 'Behavior View - Emergent Behaviors',
+                    description: 'Monitors discovery and spread of 8 emergent behaviors: Tool Making, Cache Building, Trap Setting, Tunnel Building, Group Hunting, Nest Construction, Resource Hoarding, and Social Learning. Shows behavior proficiency and social transmission.'
+                },
+                'REPRODUCTION': {
+                    title: 'Reproduction View - Mating Systems',
+                    description: 'Displays reproductive patterns including 4 reproduction modes (DirectCoupling, EggLaying, LiveBirth, Budding) and 4 mating strategies (Monogamous, Polygamous, Sequential, Promiscuous). Shows gestation periods and seasonal mating cycles.'
+                },
+                'STATISTICAL': {
+                    title: 'Statistical View - Data Analysis',
+                    description: 'Advanced statistical analysis including trend detection, anomaly identification, data export capabilities, and pattern recognition. Provides comprehensive simulation metrics and analytical tools for researchers.'
+                },
+                'ECOSYSTEM': {
+                    title: 'Ecosystem View - Health Metrics',
+                    description: 'Overall ecosystem health assessment including genetic diversity indices (Shannon/Simpson), species count tracking, network connectivity, pollination success rates, and ecological stability measurements. Provides 0-100 health scoring.'
+                },
+                'ANOMALIES': {
+                    title: 'Anomalies View - Unusual Events',
+                    description: 'Detects and displays statistical outliers, unusual population behaviors, genetic anomalies, and environmental irregularities. Helps identify interesting evolutionary events and simulation edge cases.'
+                },
+                'WARFARE': {
+                    title: 'Warfare View - Colony Conflicts',
+                    description: 'Monitors inter-colony warfare and diplomacy including 6 relationship types (Neutral, Friendly, Allied, Rival, Hostile, Enemy) and 4 conflict types (Border Skirmish, Resource War, Total War, Raid). Shows battle outcomes and territorial changes.'
+                },
+                'FUNGAL': {
+                    title: 'Fungal View - Decomposer System',
+                    description: 'Tracks decomposer organisms that break down dead organic matter and recycle nutrients. Shows fungal reproduction through spores, mycelium network formation, and soil health enhancement through organic matter processing.'
+                },
+                'CULTURAL': {
+                    title: 'Cultural View - Knowledge Systems',
+                    description: 'Monitors cultural evolution and knowledge transmission including learned behaviors, cultural traits, knowledge inheritance, and social learning patterns. Shows how culture evolves alongside genetics.'
+                },
+                'SYMBIOTIC': {
+                    title: 'Symbiotic View - Organism Relationships',
+                    description: 'Displays parasitic and mutualistic relationships between organisms including disease transmission, host-parasite co-evolution, symbiotic partnerships, and relationship formation/dissolution dynamics.'
+                },
+                'NEURAL': {
+                    title: 'Neural Networks View - AI Learning System',
+                    description: 'Monitors neural network learning in intelligent entities (intelligence > 0.3). Shows network creation, learning events, behavior patterns, and decision-making processes. Entities appear when they gain neural networks and disappear when they die or lose intelligence. Learned information is stored in synaptic weights and passed to offspring through the intelligence trait.'
+                }
+            };
+            
+            const info = descriptions[viewMode] || { title: viewMode + ' View', description: 'View description not available.' };
+            
+            return `
+                <div class="view-description">
+                    <button class="description-toggle" id="${viewMode.toLowerCase()}-description-toggle" onclick="toggleDescription('${viewMode}')">Show Description ▼</button>
+                    <div id="${viewMode.toLowerCase()}-description-content" class="description-content">
+                        <h4>${info.title}</h4>
+                        <p>${info.description}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
         // Switch view mode
         function switchView(mode) {
             currentView = mode;
@@ -782,6 +1021,9 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             const viewContent = document.getElementById('view-content');
             
+            // Add view description at the top
+            let contentHtml = getViewDescription(currentView);
+            
             switch (currentView) {
                 case 'GRID':
                     const gridHtml = renderGrid(data.grid);
@@ -789,116 +1031,123 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     // Update the existing grid container directly
                     const gridContainer = document.getElementById('grid-view');
                     if (gridContainer) {
-                        gridContainer.innerHTML = gridHtml;
+                        // Only update the grid content, preserve the description
+                        if (!document.getElementById('grid-description-toggle')) {
+                            viewContent.innerHTML = contentHtml + '<div class="grid-container" id="grid-view" onclick="handleGridClick(event)">' + gridHtml + '</div>';
+                        } else {
+                            gridContainer.innerHTML = gridHtml;
+                        }
                         // Add click listener for movement control
-                        gridContainer.onclick = handleGridClick;
+                        if (gridContainer.onclick !== handleGridClick) {
+                            gridContainer.onclick = handleGridClick;
+                        }
                     } else {
-                        viewContent.innerHTML = '<div class="grid-container" id="grid-view" onclick="handleGridClick(event)">' + gridHtml + '</div>';
+                        viewContent.innerHTML = contentHtml + '<div class="grid-container" id="grid-view" onclick="handleGridClick(event)">' + gridHtml + '</div>';
                     }
                     break;
                     
                 case 'STATS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderStats(data.stats) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderStats(data.stats) + '</div>';
                     break;
                     
                 case 'EVENTS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderEvents(data.events) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderEvents(data.events) + '</div>';
                     break;
                     
                 case 'POPULATIONS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderPopulations(data.populations, data.population_history) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderPopulations(data.populations, data.population_history) + '</div>';
                     break;
                     
                 case 'COMMUNICATION':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderCommunication(data.communication, data.communication_history) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderCommunication(data.communication, data.communication_history) + '</div>';
                     break;
                     
                 case 'CIVILIZATION':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderCivilization(data.civilization) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderCivilization(data.civilization) + '</div>';
                     break;
                     
                 case 'PHYSICS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderPhysics(data.physics, data.physics_history) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderPhysics(data.physics, data.physics_history) + '</div>';
                     break;
                     
                 case 'WIND':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderWind(data.wind) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderWind(data.wind) + '</div>';
                     break;
                     
                 case 'SPECIES':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderSpecies(data.species) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderSpecies(data.species) + '</div>';
                     break;
                     
                 case 'NETWORK':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderNetwork(data.network) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderNetwork(data.network) + '</div>';
                     break;
                     
                 case 'DNA':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderDNA(data.dna) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderDNA(data.dna) + '</div>';
                     break;
                     
                 case 'CELLULAR':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderCellular(data.cellular) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderCellular(data.cellular) + '</div>';
                     break;
                     
                 case 'EVOLUTION':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderEvolution(data.evolution) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderEvolution(data.evolution) + '</div>';
                     break;
                     
                 case 'TOPOLOGY':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderTopology(data.topology) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderTopology(data.topology) + '</div>';
                     break;
                     
                 case 'TOOLS':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderTools(data.tools) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderTools(data.tools) + '</div>';
                     break;
                     
                 case 'ENVIRONMENT':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderEnvironment(data.environmental_mod, data.environmental_pressures) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderEnvironment(data.environmental_mod, data.environmental_pressures) + '</div>';
                     break;
                     
                 case 'BEHAVIOR':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderBehavior(data.emergent_behavior) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderBehavior(data.emergent_behavior) + '</div>';
                     break;
                     
                 case 'REPRODUCTION':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderReproduction(data.reproduction) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderReproduction(data.reproduction) + '</div>';
                     break;
                     
                 case 'STATISTICAL':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderStatistical(data.statistical) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderStatistical(data.statistical) + '</div>';
                     break;
                     
                 case 'ECOSYSTEM':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderEcosystem(data.ecosystem) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderEcosystem(data.ecosystem) + '</div>';
                     break;
                     
                 case 'ANOMALIES':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderAnomalies(data.anomalies) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderAnomalies(data.anomalies) + '</div>';
                     break;
                     
                 case 'WARFARE':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderWarfare(data.warfare) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderWarfare(data.warfare) + '</div>';
                     break;
                     
                 case 'FUNGAL':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderFungal(data.fungal) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderFungal(data.fungal) + '</div>';
                     break;
                     
                 case 'CULTURAL':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderCultural(data.cultural) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderCultural(data.cultural) + '</div>';
                     break;
                     
                 case 'SYMBIOTIC':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderSymbiotic(data.symbiotic_relationships) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderSymbiotic(data.symbiotic_relationships) + '</div>';
                     break;
                     
                 case 'NEURAL':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderNeural(data.neural) + '</div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section">' + renderNeural(data.neural) + '</div>';
                     break;
                     
                 default:
-                    viewContent.innerHTML = '<div class="stats-section"><h3>' + currentView + '</h3><p>View not yet implemented</p></div>';
+                    viewContent.innerHTML = contentHtml + '<div class="stats-section"><h3>' + currentView + '</h3><p>View not yet implemented</p></div>';
             }
         }
         
@@ -3346,37 +3595,50 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             // Basic neural statistics
             html += '<div class="stats-row">';
-            html += '<div class="stat-item">Total Networks: <strong>' + (neural.total_networks || 0) + '</strong></div>';
-            html += '<div class="stat-item">Active Networks: <strong>' + (neural.active_network_count || 0) + '</strong></div>';
+            html += '<div class="stat-item tooltip">Total Networks: <strong>' + (neural.total_networks || 0) + '</strong><span class="tooltiptext">Total number of neural networks ever created. Networks are created automatically for entities with intelligence > 0.3.</span></div>';
+            html += '<div class="stat-item tooltip">Active Networks: <strong>' + (neural.active_network_count || 0) + '</strong><span class="tooltiptext">Currently active neural networks belonging to living entities. Networks disappear when entities die or lose intelligence.</span></div>';
             html += '</div>';
             
             html += '<div class="stats-row">';
-            html += '<div class="stat-item">Total Behaviors: <strong>' + (neural.total_behaviors || 0) + '</strong></div>';
-            html += '<div class="stat-item">Emergent Behaviors: <strong>' + (neural.emergent_behaviors || 0) + '</strong></div>';
+            html += '<div class="stat-item tooltip">Total Behaviors: <strong>' + (neural.total_behaviors || 0) + '</strong><span class="tooltiptext">Number of learned behavior patterns stored in neural networks.</span></div>';
+            html += '<div class="stat-item tooltip">Emergent Behaviors: <strong>' + (neural.emergent_behaviors || 0) + '</strong><span class="tooltiptext">Novel behaviors discovered through neural learning that weren\'t programmed.</span></div>';
             html += '</div>';
             
             html += '<div class="stats-row">';
-            html += '<div class="stat-item">Learning Events: <strong>' + (neural.total_learning_events || 0) + '</strong></div>';
-            html += '<div class="stat-item">Collective Behaviors: <strong>' + (neural.collective_behavior_count || 0) + '</strong></div>';
+            html += '<div class="stat-item tooltip">Learning Events: <strong>' + (neural.total_learning_events || 0) + '</strong><span class="tooltiptext">Total number of learning updates performed. Each action outcome provides feedback to strengthen or weaken neural connections.</span></div>';
+            html += '<div class="stat-item tooltip">Collective Behaviors: <strong>' + (neural.collective_behavior_count || 0) + '</strong><span class="tooltiptext">Shared behaviors learned by multiple entities through social learning.</span></div>';
             html += '</div>';
             
             // Learning and adaptation metrics
             html += '<h4>🎯 Learning Metrics:</h4>';
             html += '<div class="stats-row">';
-            html += '<div class="stat-item">Avg Network Complexity: <strong>' + (neural.avg_network_complexity || 0).toFixed(3) + '</strong></div>';
-            html += '<div class="stat-item">Success Rate: <strong>' + (neural.success_rate * 100 || 0).toFixed(1) + '%</strong></div>';
+            html += '<div class="stat-item tooltip">Avg Network Complexity: <strong>' + (neural.avg_network_complexity || 0).toFixed(3) + '</strong><span class="tooltiptext">Average number of neurons and connections per network. More intelligent entities have more complex networks.</span></div>';
+            html += '<div class="stat-item tooltip">Success Rate: <strong>' + (neural.success_rate * 100 || 0).toFixed(1) + '%</strong><span class="tooltiptext">Percentage of neural decisions that improved entity fitness (better food finding, threat avoidance, energy management).</span></div>';
             html += '</div>';
             
             html += '<div class="stats-row">';
-            html += '<div class="stat-item">Base Learning Rate: <strong>' + (neural.base_learning_rate || 0).toFixed(3) + '</strong></div>';
-            html += '<div class="stat-item">Adaptation Rate: <strong>' + (neural.adaptation_rate || 0).toFixed(3) + '</strong></div>';
+            html += '<div class="stat-item tooltip">Base Learning Rate: <strong>' + (neural.base_learning_rate || 0).toFixed(3) + '</strong><span class="tooltiptext">How quickly neural networks adapt their weights based on feedback. Higher values mean faster learning.</span></div>';
+            html += '<div class="stat-item tooltip">Adaptation Rate: <strong>' + (neural.adaptation_rate || 0).toFixed(3) + '</strong><span class="tooltiptext">Rate at which networks change their structure and behavior patterns over time.</span></div>';
             html += '</div>';
             
             // Experience metrics
             html += '<h4>📚 Experience:</h4>';
             html += '<div class="stats-row">';
-            html += '<div class="stat-item">Total Experience: <strong>' + (neural.total_experience || 0).toFixed(1) + '</strong></div>';
-            html += '<div class="stat-item">Avg Experience per Network: <strong>' + (neural.avg_experience_per_network || 0).toFixed(1) + '</strong></div>';
+            html += '<div class="stat-item tooltip">Total Experience: <strong>' + (neural.total_experience || 0).toFixed(1) + '</strong><span class="tooltiptext">Accumulated learning experience across all networks. Experience points are gained through successful actions and lost through failures.</span></div>';
+            html += '<div class="stat-item tooltip">Avg Experience per Network: <strong>' + (neural.avg_experience_per_network || 0).toFixed(1) + '</strong><span class="tooltiptext">Average experience level per neural network. More experienced networks make better decisions.</span></div>';
+            html += '</div>';
+            
+            // What happens when entities disappear explanation
+            html += '<h4>❓ Neural Network Lifecycle:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div style="background-color: #3a3a3a; padding: 10px; border-radius: 5px; margin: 5px 0;">';
+            html += '<strong>Why do entities appear/disappear from this view?</strong><br>';
+            html += '• <strong>Appear:</strong> When entities gain intelligence > 0.3 and their first neural network is created<br>';
+            html += '• <strong>Disappear:</strong> When entities die (networks are deleted) or intelligence drops below 0.3<br>';
+            html += '• <strong>Learning:</strong> Networks never "finish" learning - they continuously adapt based on experience<br>';
+            html += '• <strong>Memory:</strong> Learned information is stored in synaptic weights and connection strengths<br>';
+            html += '• <strong>Inheritance:</strong> Neural capabilities pass to offspring through the intelligence genetic trait';
+            html += '</div>';
             html += '</div>';
             
             // Successful strategies
@@ -3385,7 +3647,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<div class="strategy-list">';
                 neural.successful_strategies.forEach((strategy, index) => {
                     if (index < 10) { // Limit to top 10
-                        html += '<div class="strategy-item">• ' + strategy + '</div>';
+                        html += '<div class="strategy-item tooltip">• ' + strategy + '<span class="tooltiptext">A behavior pattern that has been successful across multiple entities and is being reinforced through learning.</span></div>';
                     }
                 });
                 html += '</div>';
@@ -3398,6 +3660,25 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 
                 let count = 0;
                 Object.entries(neural.entity_networks).forEach(([entityId, networkData]) => {
+                    if (count < 5 && networkData) { // Show first 5 networks
+                        html += '<div class="entity-network-item">';
+                        html += '<div class="entity-id tooltip">Entity #' + entityId + '<span class="tooltiptext">Individual entity with an active neural network. This entity has intelligence > 0.3 and is learning from its experiences.</span></div>';
+                        html += '<div class="network-type tooltip">Type: ' + (networkData.type || 'Unknown') + '<span class="tooltiptext">Neural network architecture type: FeedForward (basic), Recurrent (memory), Convolutional (pattern recognition), or Reinforcement (trial-and-error).</span></div>';
+                        html += '<div class="network-complexity tooltip">Complexity: ' + (networkData.complexity_score || 0).toFixed(3) + '<span class="tooltiptext">Network complexity based on number of neurons, connections, and layers. More intelligent entities have higher complexity.</span></div>';
+                        html += '<div class="network-experience tooltip">Experience: ' + (networkData.experience || 0).toFixed(1) + '<span class="tooltiptext">Total learning experience accumulated. Gained through successful actions, lost through failures. Higher experience means better decision-making.</span></div>';
+                        if (networkData.total_decisions && networkData.total_decisions > 0) {
+                            const successRate = ((networkData.correct_decisions || 0) / networkData.total_decisions * 100);
+                            html += '<div class="network-success tooltip">Success: ' + successRate.toFixed(1) + '% (' + (networkData.correct_decisions || 0) + '/' + networkData.total_decisions + ')<span class="tooltiptext">Percentage of decisions that improved fitness. Tracks how well this network has learned to make beneficial choices.</span></div>';
+                        }
+                        html += '</div>';
+                        count++;
+                    }
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
                     if (count < 5) { // Show max 5 entities
                         html += '<div class="entity-network-item">';
                         html += '<div class="entity-id">Entity #' + entityId + '</div>';
