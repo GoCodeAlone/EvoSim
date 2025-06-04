@@ -877,17 +877,17 @@ func (cws *ColonyWarfareSystem) executeTrade(agreement *TradeAgreement, colony1,
 	// Check if both colonies can fulfill their trade obligations
 	canTrade := true
 	
-	// Check if colony1 can provide what it offers
+	// Check if colony1 can provide what it offers (considering strategic reserves)
 	for resourceType, amount := range agreement.ResourcesOffered {
-		if !colony1.CanAffordResource(resourceType, amount*agreement.TradeVolume) {
+		if !colony1.CanAffordResourceForTrade(resourceType, amount*agreement.TradeVolume) {
 			canTrade = false
 			break
 		}
 	}
 	
-	// Check if colony2 can provide what colony1 wants
+	// Check if colony2 can provide what colony1 wants (considering strategic reserves)
 	for resourceType, amount := range agreement.ResourcesWanted {
-		if !colony2.CanAffordResource(resourceType, amount*agreement.TradeVolume) {
+		if !colony2.CanAffordResourceForTrade(resourceType, amount*agreement.TradeVolume) {
 			canTrade = false
 			break
 		}
@@ -897,9 +897,12 @@ func (cws *ColonyWarfareSystem) executeTrade(agreement *TradeAgreement, colony1,
 		return false
 	}
 	
-	// Execute the trade with route efficiency
+	// Execute the trade with route efficiency and relationship bonuses
 	efficiency := cws.calculateTradeRouteEfficiency(colony1, colony2, agreement)
-	actualVolume := agreement.TradeVolume * efficiency
+	trustBonus := cws.calculateTrustBonus(colony1, colony2)
+	relationshipMultiplier := cws.calculateRelationshipMultiplier(colony1, colony2)
+	
+	actualVolume := agreement.TradeVolume * efficiency * trustBonus * relationshipMultiplier
 	
 	// Colony1 gives what it offers, gets what it wants
 	for resourceType, amount := range agreement.ResourcesOffered {
@@ -1574,4 +1577,53 @@ func (cws *ColonyWarfareSystem) shouldFormAlliance(colony1, colony2 *CasteColony
 	
 	// More likely to ally if they have common enemies
 	return commonThreats > 0 && rand.Float64() < 0.3
+}
+
+// calculateTrustBonus returns a multiplier based on trust level between colonies
+func (cws *ColonyWarfareSystem) calculateTrustBonus(colony1, colony2 *CasteColony) float64 {
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	if diplomacy1 == nil {
+		return 1.0 // No diplomacy data, neutral bonus
+	}
+	
+	trust := diplomacy1.TrustLevels[colony2.ID]
+	
+	// Trust bonus ranges from 0.5x (low trust) to 2.0x (very high trust)
+	// Base trust of 0.5 gives 1.0x multiplier
+	if trust <= 0.0 {
+		return 0.5 // Very low trust penalty
+	} else if trust <= 0.3 {
+		return 0.5 + (trust * 1.67) // 0.5 to 1.0
+	} else if trust <= 0.7 {
+		return 1.0 + ((trust - 0.3) * 1.25) // 1.0 to 1.5
+	} else {
+		return 1.5 + ((trust - 0.7) * 1.67) // 1.5 to 2.0
+	}
+}
+
+// calculateRelationshipMultiplier returns a multiplier based on diplomatic relationship
+func (cws *ColonyWarfareSystem) calculateRelationshipMultiplier(colony1, colony2 *CasteColony) float64 {
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	if diplomacy1 == nil {
+		return 1.0 // No diplomacy data, neutral multiplier
+	}
+	
+	relation := diplomacy1.Relations[colony2.ID]
+	
+	switch relation {
+	case Allied:
+		return 1.5 // 50% bonus for allies
+	case Trading:
+		return 1.3 // 30% bonus for trading partners
+	case Neutral:
+		return 1.0 // No bonus/penalty for neutral
+	case Truce:
+		return 0.8 // 20% penalty for truce (cautious trading)
+	case Vassal:
+		return 1.2 // 20% bonus for vassal relationships
+	case Enemy:
+		return 0.1 // 90% penalty for enemies (barely any trade)
+	default:
+		return 1.0
+	}
 }

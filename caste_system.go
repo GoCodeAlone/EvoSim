@@ -1150,6 +1150,50 @@ func (cc *CasteColony) CanAffordResource(resourceType string, amount float64) bo
 	return false
 }
 
+// CanAffordResourceForTrade checks if the colony can afford to trade a resource (considering strategic reserves)
+func (cc *CasteColony) CanAffordResourceForTrade(resourceType string, amount float64) bool {
+	current, exists := cc.Resources[resourceType]
+	if !exists {
+		return false
+	}
+	
+	// Calculate strategic reserve requirements
+	strategicReserve := cc.calculateStrategicReserve(resourceType)
+	
+	// Can only trade if we have more than strategic reserve + requested amount
+	return current >= strategicReserve + amount
+}
+
+// calculateStrategicReserve determines how much of a resource to keep in reserve
+func (cc *CasteColony) calculateStrategicReserve(resourceType string) float64 {
+	// Strategic reserves based on colony size and consumption patterns
+	baseReserve := float64(cc.ColonySize) * 0.5 // 0.5 per colony member
+	
+	// Additional reserves based on resource type
+	switch resourceType {
+	case "food":
+		// Keep 15 ticks worth of food consumption in reserve
+		if consumption, exists := cc.ResourceConsumption["food"]; exists {
+			return math.Max(baseReserve, consumption * 15.0 * float64(cc.ColonySize) * 0.1)
+		}
+		return baseReserve * 2.0 // Double reserve for food if no consumption data
+	case "energy":
+		// Keep 10 ticks worth of energy consumption in reserve
+		if consumption, exists := cc.ResourceConsumption["energy"]; exists {
+			return math.Max(baseReserve, consumption * 10.0 * float64(cc.ColonySize) * 0.1)
+		}
+		return baseReserve * 1.5
+	case "materials":
+		// Keep strategic materials reserve (less critical for survival)
+		return baseReserve * 0.5
+	case "biomass":
+		// Keep biomass reserve for growth and reproduction
+		return baseReserve * 1.2
+	default:
+		return baseReserve
+	}
+}
+
 // ConsumeResource removes resources from the colony stockpile
 func (cc *CasteColony) ConsumeResource(resourceType string, amount float64) bool {
 	if cc.CanAffordResource(resourceType, amount) {
