@@ -5,7 +5,7 @@ import (
 )
 
 func TestReproductionSystem(t *testing.T) {
-	rs := NewReproductionSystem()
+	rs := NewReproductionSystem(NewCentralEventBus(1000))
 	
 	if rs == nil {
 		t.Fatal("Failed to create reproduction system")
@@ -59,7 +59,7 @@ func TestCanMate(t *testing.T) {
 }
 
 func TestEggLaying(t *testing.T) {
-	rs := NewReproductionSystem()
+	rs := NewReproductionSystem(NewCentralEventBus(1000))
 	
 	// Create two parent entities
 	parent1 := NewEntity(1, []string{"strength", "speed"}, "test", Position{X: 10, Y: 10})
@@ -86,7 +86,7 @@ func TestEggLaying(t *testing.T) {
 }
 
 func TestGestation(t *testing.T) {
-	rs := NewReproductionSystem()
+	rs := NewReproductionSystem(NewCentralEventBus(1000))
 	
 	// Create parent entities
 	parent1 := NewEntity(1, []string{"strength", "speed"}, "test", Position{X: 10, Y: 10})
@@ -108,7 +108,7 @@ func TestGestation(t *testing.T) {
 }
 
 func TestEggHatching(t *testing.T) {
-	rs := NewReproductionSystem()
+	rs := NewReproductionSystem(NewCentralEventBus(1000))
 	
 	// Create an egg
 	egg := &Egg{
@@ -147,7 +147,7 @@ func TestEggHatching(t *testing.T) {
 }
 
 func TestDecaySystem(t *testing.T) {
-	rs := NewReproductionSystem()
+	rs := NewReproductionSystem(NewCentralEventBus(1000))
 	
 	// Add a decaying item
 	rs.AddDecayingItem("corpse", Position{X: 5, Y: 5}, 50.0, "test_species", 10.0, 0)

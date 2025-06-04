@@ -5,7 +5,7 @@ import (
 )
 
 func TestToolSystem(t *testing.T) {
-	toolSystem := NewToolSystem()
+	toolSystem := NewToolSystem(NewCentralEventBus(1000))
 	
 	// Create a test entity
 	entity := &Entity{
@@ -43,7 +43,7 @@ func TestToolSystem(t *testing.T) {
 }
 
 func TestEnvironmentalModificationSystem(t *testing.T) {
-	modSystem := NewEnvironmentalModificationSystem()
+	modSystem := NewEnvironmentalModificationSystem(NewCentralEventBus(1000))
 	
 	// Create a test entity
 	entity := &Entity{

@@ -5,7 +5,7 @@ import (
 )
 
 func TestDNASystem(t *testing.T) {
-	dnaSystem := NewDNASystem()
+	dnaSystem := NewDNASystem(NewCentralEventBus(1000))
 	
 	// Test DNA generation
 	dna := dnaSystem.GenerateRandomDNA(1, 0)
@@ -30,8 +30,8 @@ func TestDNASystem(t *testing.T) {
 }
 
 func TestCellularSystem(t *testing.T) {
-	dnaSystem := NewDNASystem()
-	cellularSystem := NewCellularSystem(dnaSystem)
+	dnaSystem := NewDNASystem(NewCentralEventBus(1000))
+	cellularSystem := NewCellularSystem(dnaSystem, NewCentralEventBus(1000))
 	
 	// Create DNA and cellular organism
 	dna := dnaSystem.GenerateRandomDNA(1, 0)

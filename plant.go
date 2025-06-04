@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -428,15 +429,24 @@ func (p *Plant) SetSizeWithTracking(newSize float64, world *World, reason string
 
 // LogPlantDeath logs when a plant dies with context about the cause
 func (p *Plant) LogPlantDeath(world *World, cause string, contributingFactors map[string]interface{}) {
+	metadata := map[string]interface{}{
+		"cause":      cause,
+		"age":        p.Age,
+		"energy":     p.Energy,
+		"size":       p.Size,
+		"plant_type": p.Type,
+		"factors":    contributingFactors,
+	}
+
+	// Log to central event bus
+	if world.CentralEventBus != nil {
+		plantTypeName := GetPlantConfigs()[p.Type].Name
+		world.CentralEventBus.EmitPlantEvent(world.Tick, "death", "death", "plant_lifecycle", 
+			fmt.Sprintf("Plant %d (%s) died: %s", p.ID, plantTypeName, cause), p, true, false)
+	}
+
+	// Legacy statistical reporter logging
 	if world.StatisticalReporter != nil {
-		metadata := map[string]interface{}{
-			"cause":      cause,
-			"age":        p.Age,
-			"energy":     p.Energy,
-			"size":       p.Size,
-			"plant_type": p.Type,
-			"factors":    contributingFactors,
-		}
 		world.StatisticalReporter.LogPlantEvent(world.Tick, "plant_death", p, true, false)
 		world.StatisticalReporter.LogSystemEvent(world.Tick, "plant_death", cause, metadata)
 	}
@@ -445,13 +455,21 @@ func (p *Plant) LogPlantDeath(world *World, cause string, contributingFactors ma
 
 // LogPlantBirth logs when a plant is born/reproduced with parental information
 func (p *Plant) LogPlantBirth(world *World, parent *Plant, reproductionType string) {
+	metadata := map[string]interface{}{
+		"parent_id":         parent.ID,
+		"parent_type":       parent.Type,
+		"reproduction_type": reproductionType,
+	}
+
+	// Log to central event bus
+	if world.CentralEventBus != nil {
+		plantTypeName := GetPlantConfigs()[p.Type].Name
+		world.CentralEventBus.EmitPlantEvent(world.Tick, "birth", "birth", "plant_lifecycle", 
+			fmt.Sprintf("Plant %d (%s) born from parent %d via %s", p.ID, plantTypeName, parent.ID, reproductionType), p, false, true)
+	}
+	
+	// Legacy statistical reporter logging
 	if world.StatisticalReporter != nil {
-		metadata := map[string]interface{}{
-			"parent_id":         parent.ID,
-			"parent_type":       parent.Type,
-			"reproduction_type": reproductionType,
-		}
-		
 		world.StatisticalReporter.LogPlantEvent(world.Tick, "plant_birth", p, false, true)
 		world.StatisticalReporter.LogSystemEvent(world.Tick, "plant_birth", reproductionType, metadata)
 	}

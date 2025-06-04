@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -91,10 +92,13 @@ type WindSystem struct {
 	TotalPollenReleased            int
 	SuccessfulPollinationsThisTick int
 	TotalCrossPollinations         int
+	
+	// Event tracking
+	EventBus *CentralEventBus
 }
 
 // NewWindSystem creates a new wind and pollen dispersal system
-func NewWindSystem(worldWidth, worldHeight int) *WindSystem {
+func NewWindSystem(worldWidth, worldHeight int, eventBus *CentralEventBus) *WindSystem {
 	cellSize := 10.0 // Each wind cell covers 10x10 world units
 	mapWidth := int(math.Ceil(float64(worldWidth) / cellSize))
 	mapHeight := int(math.Ceil(float64(worldHeight) / cellSize))
@@ -114,6 +118,7 @@ func NewWindSystem(worldWidth, worldHeight int) *WindSystem {
 		WeatherPattern:     0, // Start calm
 		WeatherDuration:    100 + rand.Intn(200),
 		RegionalStorms:     make([]RegionalStorm, 0),
+		EventBus:           eventBus,
 	}
 
 	// Initialize wind map
@@ -153,7 +158,7 @@ func (ws *WindSystem) Update(season Season, tick int) {
 	}
 
 	// Update weather patterns
-	ws.updateWeatherPattern()
+	ws.updateWeatherPattern(tick)
 	
 	// Update regional storms
 	ws.updateRegionalStorms()
@@ -240,7 +245,7 @@ func (ws *WindSystem) GetWindAt(pos Position) WindVector {
 }
 
 // ReleasePollen creates pollen from a flowering plant
-func (ws *WindSystem) ReleasePollen(plant *Plant, amount int) {
+func (ws *WindSystem) ReleasePollen(plant *Plant, amount int, tick int) {
 	if !plant.IsAlive || amount <= 0 {
 		return
 	}
@@ -271,6 +276,27 @@ func (ws *WindSystem) ReleasePollen(plant *Plant, amount int) {
 		ws.AllPollenGrains = append(ws.AllPollenGrains, pollen)
 		ws.NextPollenID++
 		ws.TotalPollenReleased++
+	}
+
+	// Emit event for pollen release
+	if ws.EventBus != nil && amount > 0 {
+		plantTypeNames := []string{"grass", "bush", "tree", "mushroom", "algae", "cactus"}
+		plantTypeName := "unknown"
+		if int(plant.Type) < len(plantTypeNames) {
+			plantTypeName = plantTypeNames[plant.Type]
+		}
+
+		metadata := map[string]interface{}{
+			"plant_id":      plant.ID,
+			"plant_type":    plantTypeName,
+			"pollen_count":  amount,
+			"wind_strength": ws.BaseWindStrength,
+			"weather":       ws.WeatherPattern,
+		}
+
+		ws.EventBus.EmitSystemEvent(tick, "pollen_released", "wind", "wind_system",
+			fmt.Sprintf("Plant %d released %d pollen grains", plant.ID, amount),
+			&plant.Position, metadata)
 	}
 }
 
@@ -339,7 +365,7 @@ func (ws *WindSystem) updatePollenClouds() {
 }
 
 // TryPollination attempts cross-pollination between pollen and plants
-func (ws *WindSystem) TryPollination(plants []*Plant, speciationSystem *SpeciationSystem) []*Plant {
+func (ws *WindSystem) TryPollination(plants []*Plant, speciationSystem *SpeciationSystem, tick int) []*Plant {
 	newOffspring := make([]*Plant, 0)
 
 	for _, grain := range ws.AllPollenGrains {
@@ -363,7 +389,7 @@ func (ws *WindSystem) TryPollination(plants []*Plant, speciationSystem *Speciati
 
 			if distance <= pollinationRange {
 				// Attempt cross-pollination
-				if offspring := ws.crossPollinate(plant, grain, speciationSystem); offspring != nil {
+				if offspring := ws.crossPollinate(plant, grain, speciationSystem, tick); offspring != nil {
 					newOffspring = append(newOffspring, offspring)
 					ws.SuccessfulPollinationsThisTick++
 					ws.TotalCrossPollinations++
@@ -380,7 +406,7 @@ func (ws *WindSystem) TryPollination(plants []*Plant, speciationSystem *Speciati
 }
 
 // crossPollinate creates a hybrid offspring from two plant genetic sources
-func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrain, speciationSystem *SpeciationSystem) *Plant {
+func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrain, speciationSystem *SpeciationSystem, tick int) *Plant {
 	// Check genetic compatibility first (if speciation system is available)
 	if speciationSystem != nil {
 		// Calculate genetic distance directly from the pollen grain genetics and mother plant
@@ -391,11 +417,13 @@ func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrai
 	}
 
 	// Only pollinate compatible plant types (same type or similar)
+	isCrossSpecies := false
 	if motherPlant.Type != pollenGrain.PlantType {
 		// Allow some cross-type pollination based on compatibility
 		if !ws.areCompatibleTypes(motherPlant.Type, pollenGrain.PlantType) {
 			return nil
 		}
+		isCrossSpecies = true
 	}
 
 	// Check if mother plant is ready for reproduction
@@ -456,6 +484,46 @@ func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrai
 	config := GetPlantConfigs()[motherPlant.Type]
 	motherPlant.Energy -= config.BaseEnergy * 0.3
 
+	// Emit event for successful cross-pollination
+	if ws.EventBus != nil {
+		plantTypeNames := []string{"grass", "bush", "tree", "mushroom", "algae", "cactus"}
+		motherTypeName := "unknown"
+		fatherTypeName := "unknown"
+		offspringTypeName := "unknown"
+		
+		if int(motherPlant.Type) < len(plantTypeNames) {
+			motherTypeName = plantTypeNames[motherPlant.Type]
+		}
+		if int(pollenGrain.PlantType) < len(plantTypeNames) {
+			fatherTypeName = plantTypeNames[pollenGrain.PlantType]
+		}
+		if int(offspringType) < len(plantTypeNames) {
+			offspringTypeName = plantTypeNames[offspringType]
+		}
+
+		metadata := map[string]interface{}{
+			"mother_id":       motherPlant.ID,
+			"mother_type":     motherTypeName,
+			"father_id":       pollenGrain.PlantID,
+			"father_type":     fatherTypeName,
+			"offspring_id":    offspring.ID,
+			"offspring_type":  offspringTypeName,
+			"is_cross_species": isCrossSpecies,
+			"generation":      offspring.Generation,
+			"pollen_viability": pollenGrain.Viability,
+		}
+
+		eventType := "cross_pollination"
+		if isCrossSpecies {
+			eventType = "hybrid_pollination"
+		}
+
+		ws.EventBus.EmitSystemEvent(tick, eventType, "wind", "wind_system",
+			fmt.Sprintf("Plant %d (%s) pollinated by pollen from plant %d (%s), offspring: %d (%s)", 
+				motherPlant.ID, motherTypeName, pollenGrain.PlantID, fatherTypeName, offspring.ID, offspringTypeName),
+			&newPos, metadata)
+	}
+
 	return offspring
 }
 
@@ -496,7 +564,7 @@ func (ws *WindSystem) updateSeasonalEffects(season Season) {
 }
 
 // updateWeatherPattern changes weather conditions over time
-func (ws *WindSystem) updateWeatherPattern() {
+func (ws *WindSystem) updateWeatherPattern(tick int) {
 	ws.WeatherDuration--
 
 	if ws.WeatherDuration <= 0 {
@@ -582,6 +650,33 @@ func (ws *WindSystem) updateWeatherPattern() {
 		}
 		if ws.BaseWindStrength > 0.9 {
 			ws.BaseWindStrength = 0.9
+		}
+		
+		// Emit event for weather pattern change if patterns differ
+		if oldPattern != ws.WeatherPattern && ws.EventBus != nil {
+			weatherNames := []string{"calm", "windy", "storm", "tornado", "hurricane"}
+			oldWeatherName := "unknown"
+			newWeatherName := "unknown"
+			
+			if oldPattern < len(weatherNames) {
+				oldWeatherName = weatherNames[oldPattern]
+			}
+			if ws.WeatherPattern < len(weatherNames) {
+				newWeatherName = weatherNames[ws.WeatherPattern]
+			}
+
+			metadata := map[string]interface{}{
+				"old_pattern":      oldPattern,
+				"new_pattern":      ws.WeatherPattern,
+				"duration":         ws.WeatherDuration,
+				"wind_direction":   ws.BaseWindDirection,
+				"wind_strength":    ws.BaseWindStrength,
+				"seasonal_mult":    ws.SeasonalMultiplier,
+			}
+
+			ws.EventBus.EmitSystemEvent(tick, "weather_change", "wind", "wind_system",
+				fmt.Sprintf("Weather changed from %s to %s (duration: %d ticks)", oldWeatherName, newWeatherName, ws.WeatherDuration),
+				nil, metadata)
 		}
 	}
 }

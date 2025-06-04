@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -76,10 +77,11 @@ type CellularSystem struct {
 	OrganelleNames   map[OrganelleType]string     `json:"organelle_names"`
 	ComplexityThresholds map[int]int              `json:"complexity_thresholds"` // Level -> min cells
 	DNASystem        *DNASystem                   `json:"-"`
+	eventBus         *CentralEventBus             `json:"-"` // Event tracking
 }
 
 // NewCellularSystem creates a new cellular management system
-func NewCellularSystem(dnaSystem *DNASystem) *CellularSystem {
+func NewCellularSystem(dnaSystem *DNASystem, eventBus *CentralEventBus) *CellularSystem {
 	return &CellularSystem{
 		NextCellID:  1,
 		OrganismMap: make(map[int]*CellularOrganism),
@@ -111,6 +113,7 @@ func NewCellularSystem(dnaSystem *DNASystem) *CellularSystem {
 			5: 500,  // Highly complex
 		},
 		DNASystem: dnaSystem,
+		eventBus:  eventBus,
 	}
 }
 
@@ -347,6 +350,8 @@ func (cs *CellularSystem) performCellDivision(parentCell *Cell, organism *Cellul
 	// Create daughter cell
 	daughterCell := cs.createCell(parentCell.Type, parentCell.DNA, parentCell.Position)
 	
+	originalParentEnergy := parentCell.Energy
+	
 	// Split energy between parent and daughter
 	parentCell.Energy *= 0.6
 	daughterCell.Energy = parentCell.Energy * 0.4
@@ -363,6 +368,34 @@ func (cs *CellularSystem) performCellDivision(parentCell *Cell, organism *Cellul
 	organism.Cells = append(organism.Cells, daughterCell)
 	organism.CellDivisions++
 	
+	// Emit cell division event
+	if cs.eventBus != nil {
+		metadata := map[string]interface{}{
+			"entity_id":          organism.EntityID,
+			"parent_cell_id":     parentCell.ID,
+			"daughter_cell_id":   daughterCell.ID,
+			"cell_type":          cs.CellTypeNames[parentCell.Type],
+			"original_energy":    originalParentEnergy,
+			"parent_energy":      parentCell.Energy,
+			"daughter_energy":    daughterCell.Energy,
+			"total_divisions":    organism.CellDivisions,
+			"organism_complexity": organism.ComplexityLevel,
+			"total_cells":        len(organism.Cells),
+			"generation":         organism.Generation,
+		}
+		
+		cs.eventBus.EmitSystemEvent(
+			-1,
+			"cell_division",
+			"cellular",
+			"cellular_system",
+			fmt.Sprintf("Cell division in entity %d: %s cell %d created daughter cell %d (%d total cells)", 
+				organism.EntityID, cs.CellTypeNames[parentCell.Type], parentCell.ID, daughterCell.ID, len(organism.Cells)),
+			&parentCell.Position,
+			metadata,
+		)
+	}
+	
 	// Potential for specialization in multicellular organisms
 	if organism.ComplexityLevel >= 2 && rand.Float64() < 0.3 {
 		cs.specializeDaughterCell(daughterCell, organism)
@@ -377,12 +410,37 @@ func (cs *CellularSystem) specializeDaughterCell(cell *Cell, organism *CellularO
 		CellTypeDefensive, CellTypeStorage,
 	}
 	
+	oldType := cell.Type
 	newType := cellTypes[rand.Intn(len(cellTypes))]
 	cell.Type = newType
 	cell.Specialized = true
 	
 	// Update organelles for new specialization
 	cs.addOrganellesToCell(cell, cell.DNA)
+	
+	// Emit cell specialization event
+	if cs.eventBus != nil {
+		metadata := map[string]interface{}{
+			"entity_id":         organism.EntityID,
+			"cell_id":           cell.ID,
+			"old_type":          cs.CellTypeNames[oldType],
+			"new_type":          cs.CellTypeNames[newType],
+			"complexity_level":  organism.ComplexityLevel,
+			"total_cells":       len(organism.Cells),
+			"generation":        organism.Generation,
+		}
+		
+		cs.eventBus.EmitSystemEvent(
+			-1,
+			"cell_specialization",
+			"cellular",
+			"cellular_system",
+			fmt.Sprintf("Cell specialization in entity %d: cell %d changed from %s to %s", 
+				organism.EntityID, cell.ID, cs.CellTypeNames[oldType], cs.CellTypeNames[newType]),
+			&cell.Position,
+			metadata,
+		)
+	}
 }
 
 // handleCellDeath removes dead cells from organism

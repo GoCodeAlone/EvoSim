@@ -1700,14 +1700,22 @@ func (e *Entity) SetTraitWithTracking(name string, value float64, world *World, 
 
 // LogEntityDeath logs when an entity dies with context about the cause
 func (e *Entity) LogEntityDeath(world *World, cause string, contributingFactors map[string]interface{}) {
+	metadata := map[string]interface{}{
+		"cause":     cause,
+		"age":       e.Age,
+		"energy":    e.Energy,
+		"species":   e.Species,
+		"factors":   contributingFactors,
+	}
+
+	// Log to central event bus
+	if world.CentralEventBus != nil {
+		world.CentralEventBus.EmitEntityEvent(world.Tick, "death", "death", "entity_lifecycle", 
+			fmt.Sprintf("Entity %d (%s) died: %s", e.ID, e.Species, cause), e, true, false, nil)
+	}
+
+	// Legacy statistical reporter logging
 	if world.StatisticalReporter != nil {
-		metadata := map[string]interface{}{
-			"cause":     cause,
-			"age":       e.Age,
-			"energy":    e.Energy,
-			"species":   e.Species,
-			"factors":   contributingFactors,
-		}
 		world.StatisticalReporter.LogEntityEvent(world.Tick, "entity_death", e, true, false, nil)
 		world.StatisticalReporter.LogSystemEvent(world.Tick, "entity_death", cause, metadata)
 	}
@@ -1716,26 +1724,37 @@ func (e *Entity) LogEntityDeath(world *World, cause string, contributingFactors 
 
 // LogEntityBirth logs when an entity is born with parental information
 func (e *Entity) LogEntityBirth(world *World, parent1, parent2 *Entity) {
+	metadata := map[string]interface{}{
+		"parent1_id":      parent1.ID,
+		"parent1_species": parent1.Species,
+		"parent1_fitness": parent1.Fitness,
+	}
+	
+	if parent2 != nil {
+		metadata["parent2_id"] = parent2.ID
+		metadata["parent2_species"] = parent2.Species
+		metadata["parent2_fitness"] = parent2.Fitness
+	}
+	
+	var impactedEntities []*Entity
+	if parent2 != nil {
+		impactedEntities = []*Entity{parent1, parent2}
+	} else {
+		impactedEntities = []*Entity{parent1}
+	}
+
+	// Log to central event bus
+	if world.CentralEventBus != nil {
+		description := fmt.Sprintf("Entity %d (%s) born from parent %d", e.ID, e.Species, parent1.ID)
+		if parent2 != nil {
+			description = fmt.Sprintf("Entity %d (%s) born from parents %d and %d", e.ID, e.Species, parent1.ID, parent2.ID)
+		}
+		world.CentralEventBus.EmitEntityEvent(world.Tick, "birth", "birth", "entity_lifecycle", 
+			description, e, false, true, impactedEntities)
+	}
+	
+	// Legacy statistical reporter logging
 	if world.StatisticalReporter != nil {
-		metadata := map[string]interface{}{
-			"parent1_id":      parent1.ID,
-			"parent1_species": parent1.Species,
-			"parent1_fitness": parent1.Fitness,
-		}
-		
-		if parent2 != nil {
-			metadata["parent2_id"] = parent2.ID
-			metadata["parent2_species"] = parent2.Species
-			metadata["parent2_fitness"] = parent2.Fitness
-		}
-		
-		var impactedEntities []*Entity
-		if parent2 != nil {
-			impactedEntities = []*Entity{parent1, parent2}
-		} else {
-			impactedEntities = []*Entity{parent1}
-		}
-		
 		world.StatisticalReporter.LogEntityEvent(world.Tick, "entity_birth", e, false, true, impactedEntities)
 		world.StatisticalReporter.LogSystemEvent(world.Tick, "entity_birth", "reproduction", metadata)
 	}

@@ -134,7 +134,8 @@ type World struct {
 	Grid        [][]GridCell
 	Biomes      map[BiomeType]Biome
 	Events      []*WorldEvent
-	EventLogger *EventLogger // Event logging system
+	EventLogger *EventLogger // Event logging system (legacy)
+	CentralEventBus *CentralEventBus // Unified event system
 	NextID      int
 	NextPlantID int // ID counter for plants
 	Tick        int
@@ -201,6 +202,7 @@ func NewWorld(config WorldConfig) *World {
 		Biomes:      initializeBiomes(),
 		Events:      make([]*WorldEvent, 0),
 		EventLogger: NewEventLogger(1000), // Keep up to 1000 events
+		CentralEventBus: NewCentralEventBus(50000), // Central event bus with 50k events
 		NextID:      0,
 		NextPlantID: 0,
 		Tick:        0,
@@ -227,35 +229,70 @@ func NewWorld(config WorldConfig) *World {
 			}
 		}
 	} // Initialize advanced systems
-	world.CommunicationSystem = NewCommunicationSystem()
-	world.GroupBehaviorSystem = NewGroupBehaviorSystem()
+	world.CommunicationSystem = NewCommunicationSystem(world.CentralEventBus)
+	world.GroupBehaviorSystem = NewGroupBehaviorSystem(world.CentralEventBus)
 	world.PhysicsSystem = NewPhysicsSystem()
 	world.CollisionSystem = NewCollisionSystem()
 	world.PhysicsComponents = make(map[int]*PhysicsComponent)
 	world.AdvancedTimeSystem = NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
-	world.CivilizationSystem = NewCivilizationSystem()
+	world.CivilizationSystem = NewCivilizationSystem(world.CentralEventBus)
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
-	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height))
+	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
 	world.SpeciationSystem = NewSpeciationSystem()
-	world.PlantNetworkSystem = NewPlantNetworkSystem()
+	world.PlantNetworkSystem = NewPlantNetworkSystem(world.CentralEventBus)
 	world.SpeciesNaming = NewSpeciesNaming()
 
 	// Initialize new evolution and topology systems
-	world.DNASystem = NewDNASystem()
-	world.CellularSystem = NewCellularSystem(world.DNASystem)
+	world.DNASystem = NewDNASystem(world.CentralEventBus)
+	world.CellularSystem = NewCellularSystem(world.DNASystem, world.CentralEventBus)
 	world.MacroEvolutionSystem = NewMacroEvolutionSystem()
 	world.TopologySystem = NewTopologySystem(config.GridWidth, config.GridHeight)
 
 	// Initialize tool and environmental modification systems
-	world.ToolSystem = NewToolSystem()
-	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem()
+	world.ToolSystem = NewToolSystem(world.CentralEventBus)
+	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem(world.CentralEventBus)
 	world.EmergentBehaviorSystem = NewEmergentBehaviorSystem()
 	
 	// Initialize reproduction and decay system
-	world.ReproductionSystem = NewReproductionSystem()
+	world.ReproductionSystem = NewReproductionSystem(world.CentralEventBus)
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
+	
+	// Connect StatisticalReporter to CentralEventBus
+	world.CentralEventBus.AddListener(func(event CentralEvent) {
+		// Convert CentralEvent to StatisticalEvent format
+		statEvent := StatisticalEvent{
+			Timestamp:   event.Timestamp,
+			Tick:        event.Tick,
+			EventType:   event.Type,
+			Category:    event.Category,
+			EntityID:    event.EntityID,
+			PlantID:     event.PlantID,
+			Position:    event.Position,
+			OldValue:    event.OldValue,
+			NewValue:    event.NewValue,
+			Change:      event.Change,
+			Metadata:    event.Metadata,
+			ImpactedIDs: event.ImpactedIDs,
+		}
+		world.StatisticalReporter.addEvent(statEvent)
+	})
+	
+	// Connect EventLogger to CentralEventBus for legacy event types
+	world.CentralEventBus.AddListener(func(event CentralEvent) {
+		// Convert certain events to legacy LogEvent format
+		if event.Category == "system" || event.Type == "extinction" || event.Type == "birth" || event.Type == "evolution" {
+			logEvent := LogEvent{
+				Timestamp:   event.Timestamp,
+				Tick:        event.Tick,
+				Type:        event.Type,
+				Description: event.Description,
+				Data:        event.Metadata,
+			}
+			world.EventLogger.addEvent(logEvent)
+		}
+	})
 	
 	// Initialize hive mind, caste, and insect systems
 	world.HiveMindSystem = NewHiveMindSystem()
@@ -834,13 +871,13 @@ func (w *World) Update() {
 
 	// 5. Reset collision counters and check collisions
 	w.PhysicsSystem.ResetCollisionCounters()
-	w.CollisionSystem.CheckCollisions(w.AllEntities, w.PhysicsComponents, w.PhysicsSystem)
+	w.CollisionSystem.CheckCollisions(w.AllEntities, w.PhysicsComponents, w.PhysicsSystem, w)
 
 	// Update grid with current entity and plant positions
 	w.updateGrid()
 
 	// 6. Update group behavior system
-	w.GroupBehaviorSystem.UpdateGroups()
+	w.GroupBehaviorSystem.UpdateGroups(w.Tick)
 
 	// Try to form new groups based on proximity and compatibility
 	if w.Tick%10 == 0 {
@@ -854,7 +891,7 @@ func (w *World) Update() {
 	w.applyBiomeEffects()
 	
 	// 7. Update civilization system
-	w.CivilizationSystem.Update()
+	w.CivilizationSystem.Update(w.Tick)
 
 	// Process civilization activities
 	w.processCivilizationActivities()
@@ -1213,11 +1250,11 @@ func (w *World) reproducePlants() {
 				pollenAmount = int(float64(pollenAmount) * 0.7) // Cacti conserve resources
 			}
 
-			w.WindSystem.ReleasePollen(plant, pollenAmount)
+			w.WindSystem.ReleasePollen(plant, pollenAmount, w.Tick)
 		}
 	}
 	// Process wind-based cross-pollination
-	crossPollinatedPlants := w.WindSystem.TryPollination(w.AllPlants, w.SpeciationSystem)
+	crossPollinatedPlants := w.WindSystem.TryPollination(w.AllPlants, w.SpeciationSystem, w.Tick)
 
 	// Assign IDs to cross-pollinated plants
 	for _, offspring := range crossPollinatedPlants {
@@ -2252,24 +2289,24 @@ func (w *World) handleEntityCommunication(entity *Entity) {
 			w.CommunicationSystem.SendSignal(entity, SignalDanger, map[string]interface{}{
 				"energy":  entity.Energy,
 				"species": entity.Species,
-			})
+			}, w.Tick)
 		} else if entity.Energy > 80 && rand.Float64() < 0.05 {
 			// Food found signal
 			w.CommunicationSystem.SendSignal(entity, SignalFood, map[string]interface{}{
 				"position": entity.Position,
 				"energy":   entity.Energy,
-			})
+			}, w.Tick)
 		} else if cooperation > 0.6 && rand.Float64() < 0.03 {
 			// Cooperation signal
 			w.CommunicationSystem.SendSignal(entity, SignalHelp, map[string]interface{}{
 				"species":     entity.Species,
 				"cooperation": cooperation,
-			})
+			}, w.Tick)
 		}
 	}
 
 	// Receive and respond to signals
-	receivedSignals := w.CommunicationSystem.ReceiveSignals(entity)
+	receivedSignals := w.CommunicationSystem.ReceiveSignals(entity, w.Tick)
 	for _, signal := range receivedSignals {
 		w.respondToSignal(entity, signal)
 	}
@@ -2376,7 +2413,7 @@ func (w *World) attemptGroupFormation() {
 						purpose = "migration"
 					}
 
-					w.GroupBehaviorSystem.FormGroup(nearbyEntities, purpose)
+					w.GroupBehaviorSystem.FormGroup(nearbyEntities, purpose, w.Tick)
 				}
 			}
 		}
@@ -2386,7 +2423,7 @@ func (w *World) attemptGroupFormation() {
 // processCivilizationActivities handles tribe activities and structure management
 func (w *World) processCivilizationActivities() {
 	// Update civilization system
-	w.CivilizationSystem.Update()
+	w.CivilizationSystem.Update(w.Tick)
 
 	// Process tribe activities
 	for _, tribe := range w.CivilizationSystem.Tribes {
@@ -3468,7 +3505,7 @@ func (w *World) attemptCasteColonyFormation() {
 					// Create a corresponding tribe for civilization system integration
 					if w.CivilizationSystem != nil {
 						tribeName := fmt.Sprintf("Colony-%d", colony.ID)
-						tribe := w.CivilizationSystem.FormTribe(nearbyEntities, tribeName)
+						tribe := w.CivilizationSystem.FormTribe(nearbyEntities, tribeName, w.Tick)
 						if tribe != nil {
 							tribe.ID = colony.ID // Sync IDs
 						}

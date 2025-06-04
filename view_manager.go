@@ -680,9 +680,25 @@ func (vm *ViewManager) getEventsData() []EventData {
 		})
 	}
 	
-	// Add recent historical events from event logger
+	// Add recent events from central event bus (prioritized)
+	if vm.world.CentralEventBus != nil {
+		centralEvents := vm.world.CentralEventBus.GetRecentEvents(15) // Show last 15 central events
+		for _, centralEvent := range centralEvents {
+			events = append(events, EventData{
+				Name:        vm.formatEventName(centralEvent.Type),
+				Description: centralEvent.Description,
+				Duration:    0, // Central events have no duration
+				Tick:        centralEvent.Tick,
+				Type:        "central",
+				EventType:   centralEvent.Type,
+				Timestamp:   centralEvent.Timestamp.Format("15:04:05"),
+			})
+		}
+	}
+	
+	// Add recent historical events from event logger (legacy)
 	if vm.world.EventLogger != nil {
-		historyCount := 10 // Show last 10 historical events
+		historyCount := 5 // Reduced to 5 since we have central events
 		logEvents := vm.world.EventLogger.Events
 		startIdx := 0
 		if len(logEvents) > historyCount {

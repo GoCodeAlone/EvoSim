@@ -7,7 +7,7 @@ import (
 func TestReproductiveMaturityWithClassification(t *testing.T) {
 	timeSystem := NewAdvancedTimeSystem(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
-	reproductionSystem := NewReproductionSystem()
+	reproductionSystem := NewReproductionSystem(NewCentralEventBus(1000))
 	
 	// Create entities with different classifications
 	young := NewEntity(1, []string{"intelligence", "endurance"}, "test", Position{})

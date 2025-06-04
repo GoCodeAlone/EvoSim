@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -20,6 +21,54 @@ const (
 	ToolFire                       // Fire-making tool
 	ToolWeavingTool               // Crafting tool
 )
+
+// getToolTypeName returns the string name for a tool type
+func getToolTypeName(toolType ToolType) string {
+	switch toolType {
+	case ToolStone:
+		return "stone"
+	case ToolStick:
+		return "stick"
+	case ToolSpear:
+		return "spear"
+	case ToolHammer:
+		return "hammer"
+	case ToolBlade:
+		return "blade"
+	case ToolDigger:
+		return "digger"
+	case ToolCrusher:
+		return "crusher"
+	case ToolContainer:
+		return "container"
+	case ToolFire:
+		return "fire"
+	case ToolWeavingTool:
+		return "weaving_tool"
+	default:
+		return "unknown"
+	}
+}
+
+// getMaterialTypeName returns the string name for a material type
+func getMaterialTypeName(materialType MaterialType) string {
+	switch materialType {
+	case MaterialStone:
+		return "stone"
+	case MaterialWood:
+		return "wood"
+	case MaterialBone:
+		return "bone"
+	case MaterialMetal:
+		return "metal"
+	case MaterialPlant:
+		return "plant"
+	case MaterialComposite:
+		return "composite"
+	default:
+		return "unknown"
+	}
+}
 
 // Tool represents a tool that can be created, used, and passed down
 type Tool struct {
@@ -74,6 +123,7 @@ type ToolSystem struct {
 	Tools      map[int]*Tool  `json:"tools"`       // All tools by ID
 	NextToolID int            `json:"next_tool_id"`
 	ToolRecipes map[ToolType]ToolRecipe `json:"tool_recipes"` // How to create tools
+	eventBus   *CentralEventBus `json:"-"` // Event tracking
 }
 
 // ToolRecipe defines what's needed to create a tool
@@ -88,11 +138,12 @@ type ToolRecipe struct {
 }
 
 // NewToolSystem creates a new tool management system
-func NewToolSystem() *ToolSystem {
+func NewToolSystem(eventBus *CentralEventBus) *ToolSystem {
 	ts := &ToolSystem{
 		Tools:       make(map[int]*Tool),
 		NextToolID:  1,
 		ToolRecipes: make(map[ToolType]ToolRecipe),
+		eventBus:    eventBus,
 	}
 	
 	// Initialize tool recipes
@@ -219,6 +270,34 @@ func (ts *ToolSystem) CreateTool(creator *Entity, toolType ToolType, position Po
 	ts.Tools[tool.ID] = tool
 	ts.NextToolID++
 	
+	// Emit tool creation event
+	if ts.eventBus != nil {
+		metadata := map[string]interface{}{
+			"tool_id":          tool.ID,
+			"tool_type":        getToolTypeName(toolType),
+			"creator_id":       creator.ID,
+			"creator_species":  creator.Species,
+			"intelligence":     intelligence,
+			"skill_bonus":      skillBonus,
+			"energy_cost":      recipe.RequiredEnergy,
+			"durability":       tool.Durability,
+			"efficiency":       tool.Efficiency,
+			"material":         getMaterialTypeName(tool.Material),
+			"creation_time":    recipe.CreationTime,
+		}
+		
+		ts.eventBus.EmitSystemEvent(
+			0, // Will be updated by caller with actual tick
+			"tool_created",
+			"tools",
+			"tool_system",
+			fmt.Sprintf("Entity %d (%s) created %s tool %d (efficiency: %.2f, durability: %.2f)", 
+				creator.ID, creator.Species, getToolTypeName(toolType), tool.ID, tool.Efficiency, tool.Durability),
+			&position,
+			metadata,
+		)
+	}
+	
 	return tool
 }
 
@@ -255,6 +334,9 @@ func (ts *ToolSystem) UseTool(tool *Tool, user *Entity, intensity float64) float
 		return 0.0
 	}
 	
+	oldDurability := tool.Durability
+	oldOwner := tool.Owner
+	
 	// Calculate effectiveness based on tool efficiency and user skill
 	userSkill := user.GetTrait("intelligence")
 	effectiveness := tool.Efficiency * (0.5 + userSkill*0.5) * intensity
@@ -269,6 +351,40 @@ func (ts *ToolSystem) UseTool(tool *Tool, user *Entity, intensity float64) float
 	// Transfer ownership if different user
 	if tool.Owner != user {
 		tool.Owner = user
+	}
+	
+	// Emit tool usage event
+	if ts.eventBus != nil {
+		metadata := map[string]interface{}{
+			"tool_id":          tool.ID,
+			"tool_type":        getToolTypeName(tool.Type),
+			"user_id":          user.ID,
+			"user_species":     user.Species,
+			"user_skill":       userSkill,
+			"intensity":        intensity,
+			"effectiveness":    effectiveness,
+			"durability_before": oldDurability,
+			"durability_after":  tool.Durability,
+			"durability_loss":   durabilityLoss,
+			"ownership_changed": oldOwner != user,
+			"tool_broken":       tool.Durability <= 0,
+		}
+		
+		eventType := "tool_used"
+		if tool.Durability <= 0 {
+			eventType = "tool_broken"
+		}
+		
+		ts.eventBus.EmitSystemEvent(
+			0, // Will be updated by caller
+			eventType,
+			"tools",
+			"tool_system",
+			fmt.Sprintf("Entity %d used %s tool %d (effectiveness: %.2f, durability: %.2f -> %.2f)", 
+				user.ID, getToolTypeName(tool.Type), tool.ID, effectiveness, oldDurability, tool.Durability),
+			&tool.Position,
+			metadata,
+		)
 	}
 	
 	return effectiveness

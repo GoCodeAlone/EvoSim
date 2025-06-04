@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -209,7 +210,7 @@ func NewCollisionSystem() *CollisionSystem {
 }
 
 // CheckCollisions detects and resolves collisions between entities
-func (cs *CollisionSystem) CheckCollisions(entities []*Entity, physicsComponents map[int]*PhysicsComponent, physicsSystem *PhysicsSystem) {
+func (cs *CollisionSystem) CheckCollisions(entities []*Entity, physicsComponents map[int]*PhysicsComponent, physicsSystem *PhysicsSystem, world *World) {
 	for i, entity1 := range entities {
 		if !entity1.IsAlive {
 			continue
@@ -235,6 +236,21 @@ func (cs *CollisionSystem) CheckCollisions(entities []*Entity, physicsComponents
 				cs.CollisionRadius*(1.0+entity2.GetTrait("size"))
 
 			if distance < collisionDistance {
+				// Emit collision event to central event bus
+				if world != nil && world.CentralEventBus != nil {
+					metadata := map[string]interface{}{
+						"entity1_id":     entity1.ID,
+						"entity2_id":     entity2.ID,
+						"entity1_species": entity1.Species,
+						"entity2_species": entity2.Species,
+						"distance":       distance,
+						"collision_force": collisionDistance - distance,
+					}
+					world.CentralEventBus.EmitSystemEvent(world.Tick, "collision", "physics", "collision_system",
+						fmt.Sprintf("Collision between entity %d (%s) and entity %d (%s)", entity1.ID, entity1.Species, entity2.ID, entity2.Species),
+						&entity1.Position, metadata)
+				}
+
 				// Collision detected - apply elastic collision physics
 				cs.resolveCollision(entity1, entity2, physics1, physics2)
 				// Track collision

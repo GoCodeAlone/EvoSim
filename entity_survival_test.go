@@ -230,8 +230,8 @@ func TestEntitySurvivalInDifferentBiomes(t *testing.T) {
 func TestEnergyDecayRates(t *testing.T) {
 	// Create necessary systems for the new classification system
 	timeSystem := NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
-	dnaSystem := NewDNASystem()
-	cellularSystem := NewCellularSystem(dnaSystem)
+	dnaSystem := NewDNASystem(NewCentralEventBus(1000))
+	cellularSystem := NewCellularSystem(dnaSystem, NewCentralEventBus(1000))
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	// Create a test entity with average traits

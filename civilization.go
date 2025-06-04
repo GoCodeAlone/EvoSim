@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -260,7 +261,7 @@ func (t *Tribe) getRequiredTechLevel(structureType StructureType) int {
 }
 
 // BuildStructure attempts to build a structure
-func (t *Tribe) BuildStructure(structureType StructureType, position Position, builder *Entity, nextID int) *Structure {
+func (t *Tribe) BuildStructure(structureType StructureType, position Position, builder *Entity, nextID int, eventBus *CentralEventBus, tick int) *Structure {
 	if !t.CanBuild(structureType) {
 		return nil
 	}
@@ -274,13 +275,41 @@ func (t *Tribe) BuildStructure(structureType StructureType, position Position, b
 	// Create structure
 	structure := NewStructure(nextID, structureType, position, builder)
 	structure.Tribe = t
+	structure.CreationTick = tick
 	t.Structures = append(t.Structures, structure)
+
+	// Emit event for structure building
+	if eventBus != nil {
+		structureTypeNames := []string{"nest", "cache", "barrier", "trap", "farm", "well", "tower", "market"}
+		structureTypeName := "unknown"
+		if int(structureType) < len(structureTypeNames) {
+			structureTypeName = structureTypeNames[structureType]
+		}
+
+		metadata := map[string]interface{}{
+			"structure_id":   structure.ID,
+			"structure_type": structureTypeName,
+			"tribe_id":       t.ID,
+			"tribe_name":     t.Name,
+			"builder_id":     builder.ID,
+			"tech_level":     t.TechLevel,
+			"cost":           cost,
+			"max_health":     structure.MaxHealth,
+			"capacity":       structure.Capacity,
+		}
+
+		eventBus.EmitSystemEvent(tick, "structure_built", "civilization", "civilization_system",
+			fmt.Sprintf("Tribe %s built %s at (%.1f, %.1f)", t.Name, structureTypeName, position.X, position.Y),
+			&position, metadata)
+	}
 
 	return structure
 }
 
 // Update maintains the tribe
-func (t *Tribe) Update() {
+func (t *Tribe) Update(eventBus *CentralEventBus, tick int) {
+	originalMemberCount := len(t.Members)
+	
 	// Remove dead members
 	aliveMembers := make([]*Entity, 0)
 	for _, member := range t.Members {
@@ -292,19 +321,67 @@ func (t *Tribe) Update() {
 
 	// Disband if no members
 	if len(t.Members) == 0 {
+		if eventBus != nil {
+			metadata := map[string]interface{}{
+				"tribe_id":           t.ID,
+				"tribe_name":         t.Name,
+				"original_members":   originalMemberCount,
+				"tech_level":         t.TechLevel,
+				"structure_count":    len(t.Structures),
+			}
+
+			eventBus.EmitSystemEvent(tick, "tribe_disbanded", "civilization", "civilization_system",
+				fmt.Sprintf("Tribe %s disbanded (no surviving members)", t.Name),
+				nil, metadata)
+		}
 		return
 	}
 
 	// Update leader if current leader is dead
-	if !t.Leader.IsAlive {
+	oldLeaderID := 0
+	if t.Leader != nil {
+		oldLeaderID = t.Leader.ID
+	}
+	
+	if t.Leader == nil || !t.Leader.IsAlive {
+		oldLeader := t.Leader
 		t.electNewLeader()
+		
+		if eventBus != nil && t.Leader != nil && (oldLeader == nil || t.Leader.ID != oldLeaderID) {
+			metadata := map[string]interface{}{
+				"tribe_id":       t.ID,
+				"tribe_name":     t.Name,
+				"old_leader_id":  oldLeaderID,
+				"new_leader_id":  t.Leader.ID,
+				"member_count":   len(t.Members),
+			}
+
+			eventBus.EmitSystemEvent(tick, "tribe_leader_changed", "civilization", "civilization_system",
+				fmt.Sprintf("Tribe %s elected new leader (entity %d)", t.Name, t.Leader.ID),
+				&t.Leader.Position, metadata)
+		}
 	}
 
 	// Collect resources from structures
 	t.collectResources()
 
 	// Research and development
+	oldTechLevel := t.TechLevel
 	t.advanceTechnology()
+	
+	if eventBus != nil && t.TechLevel > oldTechLevel {
+		metadata := map[string]interface{}{
+			"tribe_id":       t.ID,
+			"tribe_name":     t.Name,
+			"old_tech_level": oldTechLevel,
+			"new_tech_level": t.TechLevel,
+			"member_count":   len(t.Members),
+		}
+
+		eventBus.EmitSystemEvent(tick, "tech_advancement", "civilization", "civilization_system",
+			fmt.Sprintf("Tribe %s advanced to tech level %d", t.Name, t.TechLevel),
+			&t.Leader.Position, metadata)
+	}
 
 	// Maintain structures
 	t.maintainStructures()
@@ -583,25 +660,27 @@ type CivilizationSystem struct {
 	TradeSystem     *TradeSystem
 	NextTribeID     int
 	NextStructureID int
+	EventBus        *CentralEventBus // For event tracking
 }
 
 // NewCivilizationSystem creates a new civilization system
-func NewCivilizationSystem() *CivilizationSystem {
+func NewCivilizationSystem(eventBus *CentralEventBus) *CivilizationSystem {
 	return &CivilizationSystem{
 		Tribes:          make([]*Tribe, 0),
 		Structures:      make([]*Structure, 0),
 		TradeSystem:     NewTradeSystem(),
 		NextTribeID:     1,
 		NextStructureID: 1,
+		EventBus:        eventBus,
 	}
 }
 
 // Update maintains all civilization features
-func (cs *CivilizationSystem) Update() {
+func (cs *CivilizationSystem) Update(tick int) {
 	// Update all tribes
 	activeTrbs := make([]*Tribe, 0)
 	for _, tribe := range cs.Tribes {
-		tribe.Update()
+		tribe.Update(cs.EventBus, tick)
 		if len(tribe.Members) > 0 {
 			activeTrbs = append(activeTrbs, tribe)
 		}
@@ -611,7 +690,33 @@ func (cs *CivilizationSystem) Update() {
 	// Update all structures
 	activeStructures := make([]*Structure, 0)
 	for _, structure := range cs.Structures {
+		wasActive := structure.IsActive
 		structure.Update()
+		
+		// Emit event for structure destruction
+		if wasActive && !structure.IsActive && cs.EventBus != nil {
+			structureTypeNames := []string{"nest", "cache", "barrier", "trap", "farm", "well", "tower", "market"}
+			structureTypeName := "unknown"
+			if int(structure.Type) < len(structureTypeNames) {
+				structureTypeName = structureTypeNames[structure.Type]
+			}
+
+			metadata := map[string]interface{}{
+				"structure_id":   structure.ID,
+				"structure_type": structureTypeName,
+				"tribe_id":       0,
+				"tribe_name":     "",
+			}
+			if structure.Tribe != nil {
+				metadata["tribe_id"] = structure.Tribe.ID
+				metadata["tribe_name"] = structure.Tribe.Name
+			}
+
+			cs.EventBus.EmitSystemEvent(tick, "structure_destroyed", "civilization", "civilization_system",
+				fmt.Sprintf("Structure %s destroyed at (%.1f, %.1f)", structureTypeName, structure.Position.X, structure.Position.Y),
+				&structure.Position, metadata)
+		}
+		
 		if structure.IsActive || structure.Health > 0 {
 			activeStructures = append(activeStructures, structure)
 		}
@@ -663,7 +768,7 @@ func (cs *CivilizationSystem) generateRandomTrades() {
 }
 
 // FormTribe creates a new tribe from compatible entities
-func (cs *CivilizationSystem) FormTribe(entities []*Entity, name string) *Tribe {
+func (cs *CivilizationSystem) FormTribe(entities []*Entity, name string, tick int) *Tribe {
 	if len(entities) == 0 {
 		return nil
 	}
@@ -688,12 +793,33 @@ func (cs *CivilizationSystem) FormTribe(entities []*Entity, name string) *Tribe 
 	cs.NextTribeID++
 
 	// Add all entities to the tribe
+	memberIDs := make([]int, 0, len(entities))
 	for _, entity := range entities {
+		memberIDs = append(memberIDs, entity.ID)
 		if entity != leader {
 			tribe.AddMember(entity)
 		}
 	}
 
 	cs.Tribes = append(cs.Tribes, tribe)
+
+	// Emit event for tribe formation
+	if cs.EventBus != nil {
+		metadata := map[string]interface{}{
+			"tribe_id":       tribe.ID,
+			"tribe_name":     name,
+			"leader_id":      leader.ID,
+			"member_count":   len(entities),
+			"member_ids":     memberIDs,
+			"tech_level":     tribe.TechLevel,
+			"avg_cooperation": tribe.Culture["cooperation"],
+			"avg_intelligence": tribe.Culture["innovation"],
+		}
+
+		cs.EventBus.EmitSystemEvent(tick, "tribe_formed", "civilization", "civilization_system",
+			fmt.Sprintf("Tribe %s formed with %d members (leader: entity %d)", name, len(entities), leader.ID),
+			&leader.Position, metadata)
+	}
+
 	return tribe
 }
