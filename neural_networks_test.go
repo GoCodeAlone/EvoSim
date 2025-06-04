@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"testing"
 )
 
@@ -332,6 +333,123 @@ func TestEntityNeuralData(t *testing.T) {
 	if data["output_count"].(int) != 3 {
 		t.Errorf("Expected 3 output neurons, got %d", data["output_count"].(int))
 	}
+}
+
+// TestNeuralNetworkIntegration tests that neural networks actually affect entity behavior
+func TestNeuralNetworkIntegration(t *testing.T) {
+	// Create a minimal world for testing neural integration
+	config := WorldConfig{
+		Width:          100,
+		Height:         100,
+		NumPopulations: 1,
+		PopulationSize: 5,
+		GridWidth:      10,
+		GridHeight:     10,
+	}
+	
+	world := NewWorld(config)
+	
+	// Add a population with high intelligence entities
+	popConfig := PopulationConfig{
+		Name:       "test",
+		Species:    "testspecies",
+		BaseTraits: map[string]float64{
+			"intelligence": 0.8,
+			"vision":       0.7,
+			"speed":        0.6,
+			"cooperation":  0.5,
+			"aggression":   0.3,
+		},
+		StartPos: Position{X: 50, Y: 50},
+		Spread:   10,
+		BaseMutationRate: 0.01,
+	}
+	
+	world.AddPopulation(popConfig)
+	
+	// Ensure entities are alive and have high intelligence
+	intelligentCount := 0
+	for _, entity := range world.AllEntities {
+		if entity.IsAlive && entity.GetTrait("intelligence") > 0.3 {
+			intelligentCount++
+		}
+	}
+	
+	if intelligentCount == 0 {
+		t.Error("Should have intelligent entities for neural network testing")
+	}
+	
+	// Run world update to create neural networks
+	world.Update()
+	
+	// Check that neural networks were created for intelligent entities
+	networkCount := len(world.NeuralAISystem.EntityNetworks)
+	if networkCount == 0 {
+		t.Error("Neural networks should be created for intelligent entities")
+	}
+	
+	// Record initial positions
+	initialPositions := make(map[int]Position)
+	for _, entity := range world.AllEntities {
+		if entity.IsAlive {
+			initialPositions[entity.ID] = entity.Position
+		}
+	}
+	
+	// Run several updates to let neural networks make decisions
+	for i := 0; i < 10; i++ {
+		world.Update()
+	}
+	
+	// Check that entities with neural networks moved (neural decision making worked)
+	entitiesMoved := 0
+	neurallControlledEntities := 0
+	
+	for _, entity := range world.AllEntities {
+		if entity.IsAlive && world.NeuralAISystem.EntityNetworks[entity.ID] != nil {
+			neurallControlledEntities++
+			initialPos := initialPositions[entity.ID]
+			currentPos := entity.Position
+			
+			// Check if entity moved significantly (more than 1 unit)
+			distance := math.Sqrt(math.Pow(currentPos.X-initialPos.X, 2) + math.Pow(currentPos.Y-initialPos.Y, 2))
+			if distance > 1.0 {
+				entitiesMoved++
+			}
+		}
+	}
+	
+	if neurallControlledEntities == 0 {
+		t.Error("Should have entities with neural networks")
+	}
+	
+	// At least some entities should have moved due to neural decisions
+	// (Note: might not be 100% due to energy constraints or neural decisions to stay put)
+	if entitiesMoved == 0 {
+		t.Error("Entities with neural networks should have moved based on neural decisions")
+	}
+	
+	// Check that neural networks are learning
+	totalLearningEvents := world.NeuralAISystem.TotalLearningEvents
+	if totalLearningEvents == 0 {
+		t.Error("Neural networks should be learning from their decisions")
+	}
+	
+	// Check that neural networks have made decisions
+	totalDecisions := 0
+	for _, network := range world.NeuralAISystem.EntityNetworks {
+		totalDecisions += network.TotalDecisions
+	}
+	
+	if totalDecisions == 0 {
+		t.Error("Neural networks should be making decisions")
+	}
+	
+	t.Logf("Neural Integration Test Results:")
+	t.Logf("  Entities with neural networks: %d", neurallControlledEntities)
+	t.Logf("  Entities that moved: %d", entitiesMoved)
+	t.Logf("  Total learning events: %d", totalLearningEvents)
+	t.Logf("  Total neural decisions: %d", totalDecisions)
 }
 
 // TestNeuralNetworkCleanup tests cleanup of networks for dead entities

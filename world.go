@@ -1056,6 +1056,9 @@ func (w *World) Update() {
 	// Update neural AI system
 	w.NeuralAISystem.Update(w.AllEntities, w.Tick)
 	
+	// Process neural decision making for intelligent entities
+	w.processNeuralDecisions()
+	
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks
 		w.attemptHiveMindFormation()
@@ -5048,4 +5051,215 @@ func (w *World) isValidPosition(position Position) bool {
 	x := int(position.X)
 	y := int(position.Y)
 	return x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight
+}
+
+// processNeuralDecisions handles neural network decision making for intelligent entities
+func (w *World) processNeuralDecisions() {
+	for _, entity := range w.AllEntities {
+		if !entity.IsAlive || entity.GetTrait("intelligence") <= 0.3 {
+			continue // Skip dead or non-intelligent entities
+		}
+		
+		// Check if entity has a neural network
+		if w.NeuralAISystem.EntityNetworks[entity.ID] == nil {
+			continue // Network will be created on next update
+		}
+		
+		// Create environmental inputs for the neural network
+		environmentInputs := w.createEnvironmentalInputs(entity)
+		
+		// Get neural network decision
+		outputs := w.NeuralAISystem.ProcessNeuralDecision(entity, environmentInputs, w.Tick)
+		
+		// Apply neural decision to entity behavior
+		w.applyNeuralDecision(entity, outputs, environmentInputs)
+	}
+}
+
+// createEnvironmentalInputs creates environmental input vector for neural network
+func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
+	inputs := make([]float64, 5) // 5 inputs: vision, energy, threat, food, social
+	
+	// Input 0: Vision/Environmental awareness (0-1)
+	// Based on entity's vision trait and nearby environment
+	vision := entity.GetTrait("vision")
+	gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+	gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+	
+	// Environmental awareness based on biome favorability
+	biome := w.Grid[gridY][gridX].Biome
+	biomeScore := w.evaluateBiomeForEntity(entity, w.Biomes[biome])
+	inputs[0] = math.Max(0, math.Min(1, (biomeScore + 100) / 200)) * vision
+	
+	// Input 1: Energy level (0-1)
+	inputs[1] = math.Max(0, math.Min(1, entity.Energy / 100.0))
+	
+	// Input 2: Threat level (0-1)
+	// Based on nearby dangerous entities and environmental threats
+	threatLevel := 0.0
+	
+	// Check for nearby aggressive entities
+	for _, other := range w.AllEntities {
+		if other.ID != entity.ID && other.IsAlive {
+			distance := entity.DistanceTo(other)
+			if distance < 10.0 { // Within threat detection range
+				aggression := other.GetTrait("aggression")
+				threat := aggression * (10.0 - distance) / 10.0
+				threatLevel = math.Max(threatLevel, threat)
+			}
+		}
+	}
+	
+	// Check for environmental threats (events, toxic biomes)
+	if w.Grid[gridY][gridX].Event != nil {
+		threatLevel = math.Max(threatLevel, w.Grid[gridY][gridX].Event.GlobalDamage / 50.0)
+	}
+	
+	inputs[2] = math.Max(0, math.Min(1, threatLevel))
+	
+	// Input 3: Food availability (0-1)
+	// Based on nearby food sources (plants and prey)
+	foodLevel := 0.0
+	
+	// Check for nearby plants
+	for _, plant := range w.AllPlants {
+		if plant.IsAlive {
+			distance := math.Sqrt(math.Pow(entity.Position.X - plant.Position.X, 2) + 
+								  math.Pow(entity.Position.Y - plant.Position.Y, 2))
+			if distance < 15.0 { // Within foraging range
+				plantValue := plant.Energy / 100.0
+				foodLevel += plantValue * (15.0 - distance) / 15.0
+			}
+		}
+	}
+	
+	// Check for nearby prey entities (if carnivorous)
+	if entity.GetTrait("aggression") > 0.3 {
+		for _, other := range w.AllEntities {
+			if other.ID != entity.ID && other.IsAlive {
+				distance := entity.DistanceTo(other)
+				if distance < 10.0 && other.Energy < entity.Energy { // Potential prey
+					preyValue := other.Energy / 100.0
+					foodLevel += preyValue * (10.0 - distance) / 10.0
+				}
+			}
+		}
+	}
+	
+	inputs[3] = math.Max(0, math.Min(1, foodLevel / 3.0)) // Normalize
+	
+	// Input 4: Social interaction level (0-1)
+	// Based on nearby entities and cooperation opportunities
+	socialLevel := 0.0
+	cooperation := entity.GetTrait("cooperation")
+	
+	if cooperation > 0.3 {
+		nearbyEntities := 0
+		for _, other := range w.AllEntities {
+			if other.ID != entity.ID && other.IsAlive {
+				distance := entity.DistanceTo(other)
+				if distance < 8.0 { // Social interaction range
+					if other.Species == entity.Species || other.GetTrait("cooperation") > 0.3 {
+						socialLevel += cooperation * (8.0 - distance) / 8.0
+						nearbyEntities++
+					}
+				}
+			}
+		}
+		
+		if nearbyEntities > 0 {
+			socialLevel /= float64(nearbyEntities) // Average social interaction
+		}
+	}
+	
+	inputs[4] = math.Max(0, math.Min(1, socialLevel))
+	
+	return inputs
+}
+
+// applyNeuralDecision translates neural network outputs into entity actions
+func (w *World) applyNeuralDecision(entity *Entity, outputs []float64, inputs []float64) {
+	if len(outputs) < 3 {
+		return // Invalid output
+	}
+	
+	// Output 0: Movement X direction (-1 to 1)
+	// Output 1: Movement Y direction (-1 to 1)
+	// Output 2: Action intensity (0 to 1)
+	
+	moveX := outputs[0] // Already between -1 and 1 due to tanh activation
+	moveY := outputs[1]
+	actionIntensity := math.Max(0, math.Min(1, outputs[2])) // Ensure 0-1 range
+	
+	// Apply movement with neural decision
+	if math.Abs(moveX) > 0.1 || math.Abs(moveY) > 0.1 { // Only move if significant output
+		speed := entity.GetTrait("speed") * actionIntensity * 2.0 // Neural decision affects speed
+		
+		// Calculate target position
+		targetX := entity.Position.X + moveX * speed
+		targetY := entity.Position.Y + moveY * speed
+		
+		// Apply environment-aware movement
+		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		biome := w.Grid[gridY][gridX].Biome
+		
+		entity.MoveToWithEnvironment(targetX, targetY, speed, biome)
+		
+		// Provide learning feedback based on movement outcome
+		w.provideNeuralFeedback(entity, inputs, outputs, actionIntensity)
+	}
+}
+
+// provideNeuralFeedback gives learning feedback to neural networks based on outcomes
+func (w *World) provideNeuralFeedback(entity *Entity, inputs []float64, outputs []float64, actionIntensity float64) {
+	// Calculate success/failure based on multiple factors
+	success := false
+	reward := 0.0
+	
+	// Energy efficiency: Moving when energy is high is good
+	if inputs[1] > 0.5 && actionIntensity > 0.3 { // Good energy, decided to move
+		reward += 0.3
+		success = true
+	}
+	
+	// Threat avoidance: Moving away from high threat is good
+	if inputs[2] > 0.5 && actionIntensity > 0.4 { // High threat, decided to move
+		reward += 0.4
+		success = true
+	}
+	
+	// Food seeking: Moving when food is available is good
+	if inputs[3] > 0.4 && actionIntensity > 0.3 { // Food available, decided to move
+		reward += 0.3
+		success = true
+	}
+	
+	// Social behavior: Moving when social opportunities exist
+	if inputs[4] > 0.4 && entity.GetTrait("cooperation") > 0.3 {
+		reward += 0.2
+		success = true
+	}
+	
+	// Energy conservation: Not moving when energy is low is good
+	if inputs[1] < 0.3 && actionIntensity < 0.2 { // Low energy, decided not to move much
+		reward += 0.3
+		success = true
+	}
+	
+	// Penalize poor decisions
+	if inputs[1] < 0.2 && actionIntensity > 0.7 { // Very low energy but high activity
+		reward -= 0.5
+		success = false
+	}
+	
+	// Normalize reward
+	reward = math.Max(-1.0, math.Min(1.0, reward))
+	
+	// Provide feedback to neural network
+	w.NeuralAISystem.LearnFromOutcome(entity.ID, success, reward, w.Tick)
 }
