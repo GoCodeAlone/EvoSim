@@ -3419,6 +3419,116 @@ func (m CLIModel) warfareView() string {
 		}
 	}
 	
+	// Active Trade Agreements
+	content.WriteString("=== ACTIVE TRADE AGREEMENTS ===\n")
+	tradeAgreements := m.world.ColonyWarfareSystem.TradeAgreements
+	activeTradeCount := 0
+	for _, agreement := range tradeAgreements {
+		if agreement.IsActive {
+			activeTradeCount++
+		}
+	}
+	
+	if activeTradeCount == 0 {
+		content.WriteString("No active trade agreements\n")
+	} else {
+		displayCount := 0
+		for _, agreement := range tradeAgreements {
+			if !agreement.IsActive {
+				continue
+			}
+			if displayCount >= 5 { // Show only first 5 agreements
+				content.WriteString(fmt.Sprintf("... and %d more trade agreements\n", activeTradeCount-5))
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("Trade Agreement #%d:\n", agreement.ID))
+			content.WriteString(fmt.Sprintf("  Colonies: %d ↔ %d\n", 
+				agreement.Colony1ID, agreement.Colony2ID))
+			content.WriteString(fmt.Sprintf("  Volume: %.1f units/trade\n", agreement.TradeVolume))
+			
+			// Show what's being traded
+			if len(agreement.ResourcesOffered) > 0 {
+				content.WriteString("  Offering: ")
+				first := true
+				for resource, amount := range agreement.ResourcesOffered {
+					if !first {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%.1f %s", amount, resource))
+					first = false
+				}
+				content.WriteString("\n")
+			}
+			
+			if len(agreement.ResourcesWanted) > 0 {
+				content.WriteString("  Wanting: ")
+				first := true
+				for resource, amount := range agreement.ResourcesWanted {
+					if !first {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%.1f %s", amount, resource))
+					first = false
+				}
+				content.WriteString("\n")
+			}
+			
+			content.WriteString("\n")
+			displayCount++
+		}
+	}
+	
+	// Active Alliances
+	content.WriteString("=== ACTIVE ALLIANCES ===\n")
+	alliances := m.world.ColonyWarfareSystem.Alliances
+	activeAllianceCount := 0
+	for _, alliance := range alliances {
+		if alliance.IsActive {
+			activeAllianceCount++
+		}
+	}
+	
+	if activeAllianceCount == 0 {
+		content.WriteString("No active alliances\n")
+	} else {
+		displayCount := 0
+		for _, alliance := range alliances {
+			if !alliance.IsActive {
+				continue
+			}
+			if displayCount >= 3 { // Show only first 3 alliances
+				content.WriteString(fmt.Sprintf("... and %d more alliances\n", activeAllianceCount-3))
+				break
+			}
+			
+			content.WriteString(fmt.Sprintf("Alliance #%d (%s):\n", alliance.ID, alliance.AllianceType))
+			content.WriteString(fmt.Sprintf("  Members: "))
+			for i, memberID := range alliance.Members {
+				if i > 0 {
+					content.WriteString(", ")
+				}
+				content.WriteString(fmt.Sprintf("Colony %d", memberID))
+			}
+			content.WriteString("\n")
+			
+			if alliance.ResourceShare > 0 {
+				content.WriteString(fmt.Sprintf("  Resource sharing: %.1f%%\n", alliance.ResourceShare*100))
+			}
+			
+			if alliance.SharedDefense {
+				content.WriteString("  Shared defense: Active\n")
+			}
+			
+			// Show alliance age
+			age := m.world.Tick - alliance.StartTick
+			content.WriteString(fmt.Sprintf("  Age: %d ticks\n", age))
+			
+			content.WriteString("\n")
+			displayCount++
+		}
+	}
+	
 	// Colony Information
 	content.WriteString("=== COLONY OVERVIEW ===\n")
 	colonies := m.world.CasteSystem.Colonies
@@ -3439,23 +3549,40 @@ func (m CLIModel) warfareView() string {
 			content.WriteString(fmt.Sprintf("  Territory: %d areas, Fitness: %.2f\n", 
 				len(colony.Territory), colony.ColonyFitness))
 			
+			// Show resource stockpiles
+			if len(colony.Resources) > 0 {
+				content.WriteString("  Resources: ")
+				first := true
+				for resource, amount := range colony.Resources {
+					if !first {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%.1f %s", amount, resource))
+					first = false
+				}
+				content.WriteString("\n")
+			}
+			
 			if diplomacy != nil {
 				content.WriteString(fmt.Sprintf("  Reputation: %.2f\n", diplomacy.Reputation))
 				
 				// Count relations
 				allies := 0
 				enemies := 0
+				trading := 0
 				for _, relation := range diplomacy.Relations {
 					switch relation {
 					case Allied:
 						allies++
 					case Enemy:
 						enemies++
+					case Trading:
+						trading++
 					}
 				}
 				
-				if allies > 0 || enemies > 0 {
-					content.WriteString(fmt.Sprintf("  Allies: %d, Enemies: %d\n", allies, enemies))
+				if allies > 0 || enemies > 0 || trading > 0 {
+					content.WriteString(fmt.Sprintf("  Allies: %d, Enemies: %d, Trading: %d\n", allies, enemies, trading))
 				}
 				
 				// Show active conflicts for this colony
@@ -3467,6 +3594,17 @@ func (m CLIModel) warfareView() string {
 				}
 				if activeConflictsForColony > 0 {
 					content.WriteString(fmt.Sprintf("  Active conflicts: %d\n", activeConflictsForColony))
+				}
+				
+				// Show trade agreements for this colony
+				tradeCount := 0
+				for _, agreement := range tradeAgreements {
+					if agreement.IsActive && (agreement.Colony1ID == colony.ID || agreement.Colony2ID == colony.ID) {
+						tradeCount++
+					}
+				}
+				if tradeCount > 0 {
+					content.WriteString(fmt.Sprintf("  Trade agreements: %d\n", tradeCount))
 				}
 			}
 			

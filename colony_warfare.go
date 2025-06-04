@@ -82,6 +82,7 @@ type TradeAgreement struct {
 	TradeRoute       []Position         `json:"trade_route"`       // Path between colonies
 	TradeVolume      float64            `json:"trade_volume"`      // Amount traded per tick
 	IsActive         bool               `json:"is_active"`
+	LastTradeTime    int                `json:"last_trade_time"`   // Last tick when trade occurred
 }
 
 // Alliance represents a military alliance between colonies
@@ -817,4 +818,760 @@ func (cws *ColonyWarfareSystem) Update(colonies []*CasteColony, tick int) {
 	
 	// Attempt diplomatic interactions
 	cws.AttemptDiplomacy(colonies, tick)
+	
+	// Process active trade agreements
+	cws.ProcessTradeAgreements(colonies, tick)
+	
+	// Attempt to establish new beneficial trade agreements
+	cws.AttemptAutomaticTrading(colonies, tick)
+	
+	// Process alliance benefits and military cooperation
+	cws.ProcessAlliances(colonies, tick)
+	
+	// Attempt to form new beneficial alliances
+	cws.AttemptAllianceFormation(colonies, tick)
+}
+
+// ProcessTradeAgreements executes resource trades between colonies
+func (cws *ColonyWarfareSystem) ProcessTradeAgreements(colonies []*CasteColony, tick int) {
+	activeAgreements := make([]*TradeAgreement, 0)
+	
+	for _, agreement := range cws.TradeAgreements {
+		if !agreement.IsActive {
+			continue
+		}
+		
+		// Check if agreement has expired
+		if agreement.Duration > 0 && tick-agreement.StartTick > agreement.Duration {
+			agreement.IsActive = false
+			continue
+		}
+		
+		colony1 := cws.findColonyByID(colonies, agreement.Colony1ID)
+		colony2 := cws.findColonyByID(colonies, agreement.Colony2ID)
+		
+		if colony1 == nil || colony2 == nil {
+			agreement.IsActive = false
+			continue
+		}
+		
+		// Execute trade if enough time has passed
+		if tick-agreement.LastTradeTime >= 10 { // Trade every 10 ticks
+			if cws.executeTrade(agreement, colony1, colony2, tick) {
+				agreement.LastTradeTime = tick
+				activeAgreements = append(activeAgreements, agreement)
+			} else {
+				// Trade failed, possibly suspend agreement
+				agreement.IsActive = false
+			}
+		} else {
+			activeAgreements = append(activeAgreements, agreement)
+		}
+	}
+	
+	cws.TradeAgreements = activeAgreements
+}
+
+// executeTrade performs the actual resource exchange
+func (cws *ColonyWarfareSystem) executeTrade(agreement *TradeAgreement, colony1, colony2 *CasteColony, tick int) bool {
+	// Check if both colonies can fulfill their trade obligations
+	canTrade := true
+	
+	// Check if colony1 can provide what it offers
+	for resourceType, amount := range agreement.ResourcesOffered {
+		if !colony1.CanAffordResource(resourceType, amount*agreement.TradeVolume) {
+			canTrade = false
+			break
+		}
+	}
+	
+	// Check if colony2 can provide what colony1 wants
+	for resourceType, amount := range agreement.ResourcesWanted {
+		if !colony2.CanAffordResource(resourceType, amount*agreement.TradeVolume) {
+			canTrade = false
+			break
+		}
+	}
+	
+	if !canTrade {
+		return false
+	}
+	
+	// Execute the trade with route efficiency
+	efficiency := cws.calculateTradeRouteEfficiency(colony1, colony2, agreement)
+	actualVolume := agreement.TradeVolume * efficiency
+	
+	// Colony1 gives what it offers, gets what it wants
+	for resourceType, amount := range agreement.ResourcesOffered {
+		if colony1.ConsumeResource(resourceType, amount*actualVolume) {
+			colony2.AddResource(resourceType, amount*actualVolume)
+		}
+	}
+	
+	for resourceType, amount := range agreement.ResourcesWanted {
+		if colony2.ConsumeResource(resourceType, amount*actualVolume) {
+			colony1.AddResource(resourceType, amount*actualVolume)
+		}
+	}
+	
+	// Update diplomatic relations (trading improves trust)
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	diplomacy2 := cws.ColonyDiplomacies[colony2.ID]
+	
+	if diplomacy1 != nil && diplomacy2 != nil {
+		trustIncrease := 0.02 * efficiency // Small trust increase from successful trade
+		diplomacy1.TrustLevels[colony2.ID] = math.Min(1.0, diplomacy1.TrustLevels[colony2.ID]+trustIncrease)
+		diplomacy2.TrustLevels[colony1.ID] = math.Min(1.0, diplomacy2.TrustLevels[colony1.ID]+trustIncrease)
+		
+		// Trading relationships tend toward "Trading" diplomatic status
+		if diplomacy1.Relations[colony2.ID] == Neutral && diplomacy1.TrustLevels[colony2.ID] > 0.6 {
+			diplomacy1.Relations[colony2.ID] = Trading
+			diplomacy2.Relations[colony1.ID] = Trading
+		}
+	}
+	
+	return true
+}
+
+// calculateTradeRouteEfficiency determines how efficient a trade route is
+func (cws *ColonyWarfareSystem) calculateTradeRouteEfficiency(colony1, colony2 *CasteColony, agreement *TradeAgreement) float64 {
+	// Base efficiency
+	efficiency := 0.8
+	
+	// Distance penalty
+	distance := math.Sqrt(
+		math.Pow(colony1.NestLocation.X-colony2.NestLocation.X, 2) +
+		math.Pow(colony1.NestLocation.Y-colony2.NestLocation.Y, 2),
+	)
+	distancePenalty := math.Min(0.3, distance/200.0) // Max 30% penalty for distance
+	efficiency -= distancePenalty
+	
+	// Diplomatic relation bonus
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	if diplomacy1 != nil {
+		relation := diplomacy1.Relations[colony2.ID]
+		switch relation {
+		case Allied:
+			efficiency += 0.2
+		case Trading:
+			efficiency += 0.1
+		case Enemy:
+			efficiency -= 0.5 // Very inefficient to trade with enemies
+		case Truce:
+			efficiency -= 0.1
+		}
+		
+		// Trust level affects efficiency
+		trust := diplomacy1.TrustLevels[colony2.ID]
+		efficiency += (trust - 0.5) * 0.2 // ±0.1 based on trust
+	}
+	
+	// Security affects efficiency (conflicts reduce efficiency)
+	for _, conflict := range cws.ActiveConflicts {
+		if (conflict.Attacker == colony1.ID || conflict.Defender == colony1.ID) ||
+		   (conflict.Attacker == colony2.ID || conflict.Defender == colony2.ID) {
+			efficiency -= 0.3 * conflict.Intensity // Conflicts disrupt trade
+		}
+	}
+	
+	return math.Max(0.1, math.Min(1.0, efficiency))
+}
+
+// CreateTradeAgreement establishes a new trade agreement between colonies
+func (cws *ColonyWarfareSystem) CreateTradeAgreement(colony1, colony2 *CasteColony, 
+	offeredResources, wantedResources map[string]float64, duration int, tick int) *TradeAgreement {
+	
+	// Check diplomatic compatibility
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	if diplomacy1 == nil {
+		return nil
+	}
+	
+	relation := diplomacy1.Relations[colony2.ID]
+	if relation == Enemy {
+		return nil // Cannot trade with enemies
+	}
+	
+	agreement := &TradeAgreement{
+		ID:               cws.NextTradeID,
+		Colony1ID:        colony1.ID,
+		Colony2ID:        colony2.ID,
+		StartTick:        tick,
+		Duration:         duration,
+		ResourcesOffered: make(map[string]float64),
+		ResourcesWanted:  make(map[string]float64),
+		TradeVolume:      1.0, // Default trade volume
+		IsActive:         true,
+		LastTradeTime:    tick,
+	}
+	
+	// Copy resource maps
+	for resource, amount := range offeredResources {
+		agreement.ResourcesOffered[resource] = amount
+	}
+	for resource, amount := range wantedResources {
+		agreement.ResourcesWanted[resource] = amount
+	}
+	
+	cws.NextTradeID++
+	cws.TradeAgreements = append(cws.TradeAgreements, agreement)
+	
+	// Update diplomatic tracking
+	diplomacy1.TradeAgreements[colony2.ID] = agreement
+	diplomacy2 := cws.ColonyDiplomacies[colony2.ID]
+	if diplomacy2 != nil {
+		diplomacy2.TradeAgreements[colony1.ID] = agreement
+	}
+	
+	// Record diplomatic event
+	event := DiplomaticEvent{
+		Tick:               tick,
+		EventType:          "trade_agreement",
+		OtherColonyID:      colony2.ID,
+		Description:        "Trade agreement established",
+		ImpactOnTrust:      0.1,
+		ImpactOnReputation: 0.05,
+	}
+	diplomacy1.RelationHistory[colony2.ID] = append(diplomacy1.RelationHistory[colony2.ID], event)
+	
+	return agreement
+}
+
+// AttemptAutomaticTrading tries to establish beneficial trade agreements
+func (cws *ColonyWarfareSystem) AttemptAutomaticTrading(colonies []*CasteColony, tick int) {
+	if tick%100 != 0 { // Check for new trades every 100 ticks
+		return
+	}
+	
+	for i, colony1 := range colonies {
+		for j, colony2 := range colonies {
+			if i >= j {
+				continue
+			}
+			
+			// Check if they should consider trading
+			if cws.shouldAttemptTrading(colony1, colony2) {
+				cws.evaluateAndCreateTrade(colony1, colony2, tick)
+			}
+		}
+	}
+}
+
+// shouldAttemptTrading determines if two colonies should consider trading
+func (cws *ColonyWarfareSystem) shouldAttemptTrading(colony1, colony2 *CasteColony) bool {
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	if diplomacy1 == nil {
+		return false
+	}
+	
+	relation := diplomacy1.Relations[colony2.ID]
+	
+	// Don't trade with enemies or if already have trade agreement
+	if relation == Enemy {
+		return false
+	}
+	
+	if _, hasAgreement := diplomacy1.TradeAgreements[colony2.ID]; hasAgreement {
+		return false
+	}
+	
+	// Must have sufficient trust
+	trust := diplomacy1.TrustLevels[colony2.ID]
+	return trust > 0.4
+}
+
+// evaluateAndCreateTrade analyzes mutual benefits and creates trade if beneficial
+func (cws *ColonyWarfareSystem) evaluateAndCreateTrade(colony1, colony2 *CasteColony, tick int) {
+	// Find resources where colony1 has surplus and colony2 has need
+	offeredResources := make(map[string]float64)
+	wantedResources := make(map[string]float64)
+	
+	resourceTypes := []string{"food", "biomass", "energy", "materials"}
+	
+	for _, resourceType := range resourceTypes {
+		surplus1 := colony1.GetResourceSurplus(resourceType)
+		need2 := colony2.GetResourceNeed(resourceType)
+		
+		surplus2 := colony2.GetResourceSurplus(resourceType)
+		need1 := colony1.GetResourceNeed(resourceType)
+		
+		// Colony1 can offer what colony2 needs
+		if surplus1 > 10 && need2 > 10 {
+			tradeAmount := math.Min(surplus1*0.3, need2*0.5) // Conservative trade amount
+			offeredResources[resourceType] = tradeAmount
+		}
+		
+		// Colony1 wants what colony2 can offer
+		if surplus2 > 10 && need1 > 10 {
+			tradeAmount := math.Min(surplus2*0.3, need1*0.5) // Conservative trade amount
+			wantedResources[resourceType] = tradeAmount
+		}
+	}
+	
+	// Only create trade if both sides have something to offer and want
+	if len(offeredResources) > 0 && len(wantedResources) > 0 {
+		duration := 500 + rand.Intn(1000) // 500-1500 tick duration
+		agreement := cws.CreateTradeAgreement(colony1, colony2, offeredResources, wantedResources, duration, tick)
+		
+		if agreement != nil {
+			// Successful trade agreement
+			diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+			diplomacy2 := cws.ColonyDiplomacies[colony2.ID]
+			
+			// Improve relations
+			if diplomacy1.Relations[colony2.ID] == Neutral {
+				diplomacy1.Relations[colony2.ID] = Trading
+			}
+			if diplomacy2.Relations[colony1.ID] == Neutral {
+				diplomacy2.Relations[colony1.ID] = Trading
+			}
+		}
+	}
+}
+
+// Alliance Enhancement - Military Cooperation Methods
+
+// ProcessAlliances handles alliance benefits and coordination
+func (cws *ColonyWarfareSystem) ProcessAlliances(colonies []*CasteColony, tick int) {
+	for _, alliance := range cws.Alliances {
+		if !alliance.IsActive {
+			continue
+		}
+		
+		// Check if alliance has expired
+		if alliance.Duration > 0 && tick-alliance.StartTick > alliance.Duration {
+			alliance.IsActive = false
+			continue
+		}
+		
+		// Process resource sharing if enabled
+		if alliance.ResourceShare > 0 {
+			cws.processAllianceResourceSharing(alliance, colonies)
+		}
+		
+		// Check for shared defense opportunities
+		if alliance.SharedDefense {
+			cws.processSharedDefense(alliance, colonies, tick)
+		}
+		
+		// Coordinate joint military actions
+		cws.coordinateJointOperations(alliance, colonies, tick)
+	}
+}
+
+// processAllianceResourceSharing redistributes resources among alliance members
+func (cws *ColonyWarfareSystem) processAllianceResourceSharing(alliance *Alliance, colonies []*CasteColony) {
+	memberColonies := make([]*CasteColony, 0)
+	
+	// Gather alliance member colonies
+	for _, memberID := range alliance.Members {
+		colony := cws.findColonyByID(colonies, memberID)
+		if colony != nil {
+			memberColonies = append(memberColonies, colony)
+		}
+	}
+	
+	if len(memberColonies) < 2 {
+		return
+	}
+	
+	resourceTypes := []string{"food", "biomass", "energy", "materials"}
+	
+	for _, resourceType := range resourceTypes {
+		// Calculate total resources and needs
+		totalSurplus := 0.0
+		totalNeed := 0.0
+		surplusColonies := make([]*CasteColony, 0)
+		needyColonies := make([]*CasteColony, 0)
+		
+		for _, colony := range memberColonies {
+			surplus := colony.GetResourceSurplus(resourceType)
+			need := colony.GetResourceNeed(resourceType)
+			
+			if surplus > 20 {
+				totalSurplus += surplus
+				surplusColonies = append(surplusColonies, colony)
+			}
+			if need > 20 {
+				totalNeed += need
+				needyColonies = append(needyColonies, colony)
+			}
+		}
+		
+		// Redistribute if there's surplus and need
+		if totalSurplus > 0 && totalNeed > 0 && len(surplusColonies) > 0 && len(needyColonies) > 0 {
+			redistributionAmount := math.Min(totalSurplus, totalNeed) * alliance.ResourceShare
+			
+			// Take from surplus colonies proportionally
+			for _, colony := range surplusColonies {
+				surplus := colony.GetResourceSurplus(resourceType)
+				proportion := surplus / totalSurplus
+				contribution := redistributionAmount * proportion
+				colony.ConsumeResource(resourceType, contribution)
+			}
+			
+			// Give to needy colonies proportionally
+			for _, colony := range needyColonies {
+				need := colony.GetResourceNeed(resourceType)
+				proportion := need / totalNeed
+				allocation := redistributionAmount * proportion
+				colony.AddResource(resourceType, allocation)
+			}
+		}
+	}
+}
+
+// processSharedDefense coordinates defensive assistance among allies
+func (cws *ColonyWarfareSystem) processSharedDefense(alliance *Alliance, colonies []*CasteColony, tick int) {
+	// Find alliance members under attack
+	for _, conflict := range cws.ActiveConflicts {
+		if !conflict.IsActive {
+			continue
+		}
+		
+		// Check if defender is alliance member
+		defenderIsAlly := false
+		for _, memberID := range alliance.Members {
+			if conflict.Defender == memberID {
+				defenderIsAlly = true
+				break
+			}
+		}
+		
+		if defenderIsAlly {
+			// Rally other alliance members to help
+			defender := cws.findColonyByID(colonies, conflict.Defender)
+			if defender != nil {
+				cws.rallyAlliesForDefense(alliance, defender, conflict, colonies, tick)
+			}
+		}
+	}
+}
+
+// rallyAlliesForDefense brings in alliance members to help defend
+func (cws *ColonyWarfareSystem) rallyAlliesForDefense(alliance *Alliance, defender *CasteColony, 
+	conflict *Conflict, colonies []*CasteColony, tick int) {
+	
+	for _, memberID := range alliance.Members {
+		if memberID == defender.ID {
+			continue // Skip the defender itself
+		}
+		
+		ally := cws.findColonyByID(colonies, memberID)
+		if ally == nil {
+			continue
+		}
+		
+		// Check if ally is not already in conflict
+		allyInConflict := false
+		for _, activeConflict := range cws.ActiveConflicts {
+			if activeConflict.Attacker == ally.ID || activeConflict.Defender == ally.ID {
+				allyInConflict = true
+				break
+			}
+		}
+		
+		if !allyInConflict {
+			// Calculate distance to determine if ally can help
+			distance := math.Sqrt(
+				math.Pow(ally.NestLocation.X-defender.NestLocation.X, 2) +
+				math.Pow(ally.NestLocation.Y-defender.NestLocation.Y, 2),
+			)
+			
+			// Only help if reasonably close (within 100 units)
+			if distance <= 100 {
+				// Add defensive bonus to the conflict
+				cws.addAlliedDefensiveSupport(conflict, ally, defender)
+			}
+		}
+	}
+}
+
+// addAlliedDefensiveSupport provides military support to an ally
+func (cws *ColonyWarfareSystem) addAlliedDefensiveSupport(conflict *Conflict, ally, defender *CasteColony) {
+	// Calculate support strength (based on ally's military capacity)
+	supportStrength := cws.calculateMilitaryStrength(ally) * 0.3 // 30% of ally's strength
+	
+	// Apply support by temporarily boosting defender's strength
+	// This is simplified - in a more complex system, you'd track supporting units
+	defender.ColonyFitness += supportStrength * 0.1
+	
+	// Ally takes some losses for helping
+	supportCost := int(float64(ally.ColonySize) * 0.05) // 5% casualty risk for helping
+	if supportCost > 0 {
+		ally.ColonySize = int(math.Max(1, float64(ally.ColonySize) - float64(supportCost)))
+	}
+}
+
+// coordinateJointOperations plans cooperative military actions
+func (cws *ColonyWarfareSystem) coordinateJointOperations(alliance *Alliance, colonies []*CasteColony, tick int) {
+	if len(alliance.Members) < 2 {
+		return
+	}
+	
+	// Only attempt joint operations occasionally
+	if tick%200 != 0 { // Every 200 ticks
+		return
+	}
+	
+	// Find potential common enemies (colonies that are enemies to multiple alliance members)
+	enemyCounts := make(map[int]int)
+	
+	for _, memberID := range alliance.Members {
+		diplomacy := cws.ColonyDiplomacies[memberID]
+		if diplomacy == nil {
+			continue
+		}
+		
+		for otherColonyID, relation := range diplomacy.Relations {
+			if relation == Enemy {
+				enemyCounts[otherColonyID]++
+			}
+		}
+	}
+	
+	// Find enemies that are hostile to multiple alliance members
+	for enemyID, hostileCount := range enemyCounts {
+		if hostileCount >= 2 { // At least 2 alliance members consider this an enemy
+			enemy := cws.findColonyByID(colonies, enemyID)
+			if enemy != nil {
+				// Consider joint operation against this enemy
+				if cws.shouldLaunchJointOperation(alliance, enemy, colonies) {
+					cws.launchJointOperation(alliance, enemy, colonies, tick)
+					break // Only one joint operation at a time
+				}
+			}
+		}
+	}
+}
+
+// shouldLaunchJointOperation determines if a joint attack is worthwhile
+func (cws *ColonyWarfareSystem) shouldLaunchJointOperation(alliance *Alliance, target *CasteColony, colonies []*CasteColony) bool {
+	// Calculate combined alliance strength
+	combinedStrength := 0.0
+	memberCount := 0
+	
+	for _, memberID := range alliance.Members {
+		member := cws.findColonyByID(colonies, memberID)
+		if member != nil {
+			combinedStrength += cws.calculateMilitaryStrength(member)
+			memberCount++
+		}
+	}
+	
+	if memberCount < 2 {
+		return false
+	}
+	
+	targetStrength := cws.calculateMilitaryStrength(target)
+	
+	// Only attack if alliance has significant advantage
+	return combinedStrength > targetStrength * 1.5
+}
+
+// launchJointOperation executes a coordinated attack by alliance members
+func (cws *ColonyWarfareSystem) launchJointOperation(alliance *Alliance, target *CasteColony, colonies []*CasteColony, tick int) {
+	// Find the alliance member closest to the target to lead the attack
+	var primaryAttacker *CasteColony
+	minDistance := math.Inf(1)
+	
+	for _, memberID := range alliance.Members {
+		member := cws.findColonyByID(colonies, memberID)
+		if member != nil {
+			distance := math.Sqrt(
+				math.Pow(member.NestLocation.X-target.NestLocation.X, 2) +
+				math.Pow(member.NestLocation.Y-target.NestLocation.Y, 2),
+			)
+			if distance < minDistance {
+				minDistance = distance
+				primaryAttacker = member
+			}
+		}
+	}
+	
+	if primaryAttacker == nil {
+		return
+	}
+	
+	// Start the conflict with the primary attacker
+	conflict := cws.StartConflict(primaryAttacker, target, TotalWar, tick)
+	if conflict != nil {
+		// Add support from other alliance members
+		for _, memberID := range alliance.Members {
+			if memberID == primaryAttacker.ID {
+				continue
+			}
+			
+			supporter := cws.findColonyByID(colonies, memberID)
+			if supporter != nil {
+				// Add 20% of supporter's strength to the conflict
+				supportStrength := cws.calculateMilitaryStrength(supporter) * 0.2
+				primaryAttacker.ColonyFitness += supportStrength * 0.1
+				
+				// Supporter takes minor losses for participating
+				supportCost := int(float64(supporter.ColonySize) * 0.03)
+				supporter.ColonySize = int(math.Max(1, float64(supporter.ColonySize) - float64(supportCost)))
+			}
+		}
+		
+		// Mark this as a joint operation
+		conflict.WarGoal = "alliance_dominance"
+		conflict.Intensity = math.Min(1.0, conflict.Intensity + 0.2) // Higher intensity for joint ops
+	}
+}
+
+// CreateAlliance establishes a new military alliance
+func (cws *ColonyWarfareSystem) CreateAlliance(members []int, allianceType string, resourceShare float64, tick int) *Alliance {
+	if len(members) < 2 {
+		return nil
+	}
+	
+	// Check that all members can form alliances (not enemies with each other)
+	for i, member1 := range members {
+		for j, member2 := range members {
+			if i >= j {
+				continue
+			}
+			
+			diplomacy1 := cws.ColonyDiplomacies[member1]
+			if diplomacy1 == nil {
+				return nil
+			}
+			
+			if diplomacy1.Relations[member2] == Enemy {
+				return nil // Cannot ally with enemies
+			}
+		}
+	}
+	
+	alliance := &Alliance{
+		ID:            cws.NextAllianceID,
+		Members:       make([]int, len(members)),
+		StartTick:     tick,
+		Duration:      -1, // Permanent by default
+		AllianceType:  allianceType,
+		SharedDefense: true,
+		ResourceShare: math.Min(0.3, math.Max(0.0, resourceShare)), // Cap at 30%
+		IsActive:      true,
+	}
+	
+	copy(alliance.Members, members)
+	cws.NextAllianceID++
+	cws.Alliances = append(cws.Alliances, alliance)
+	
+	// Update diplomatic relations for all members
+	for i, member1 := range members {
+		diplomacy1 := cws.ColonyDiplomacies[member1]
+		if diplomacy1 == nil {
+			continue
+		}
+		
+		diplomacy1.Alliances[alliance.ID] = alliance
+		
+		for j, member2 := range members {
+			if i == j {
+				continue
+			}
+			
+			// Set all members as allies
+			diplomacy1.Relations[member2] = Allied
+			diplomacy1.TrustLevels[member2] = math.Max(diplomacy1.TrustLevels[member2], 0.8)
+			
+			// Record alliance event
+			event := DiplomaticEvent{
+				Tick:               tick,
+				EventType:          "alliance_formed",
+				OtherColonyID:      member2,
+				Description:        "Military alliance established",
+				ImpactOnTrust:      0.3,
+				ImpactOnReputation: 0.1,
+			}
+			diplomacy1.RelationHistory[member2] = append(diplomacy1.RelationHistory[member2], event)
+		}
+	}
+	
+	return alliance
+}
+
+// AttemptAllianceFormation tries to form beneficial alliances
+func (cws *ColonyWarfareSystem) AttemptAllianceFormation(colonies []*CasteColony, tick int) {
+	if tick%300 != 0 { // Check for new alliances every 300 ticks
+		return
+	}
+	
+	// Look for potential alliance pairs
+	for i, colony1 := range colonies {
+		for j, colony2 := range colonies {
+			if i >= j {
+				continue
+			}
+			
+			if cws.shouldFormAlliance(colony1, colony2) {
+				// Check if they're not already in an alliance together
+				alreadyAllied := false
+				for _, alliance := range cws.Alliances {
+					if !alliance.IsActive {
+						continue
+					}
+					
+					hasColony1 := false
+					hasColony2 := false
+					for _, memberID := range alliance.Members {
+						if memberID == colony1.ID {
+							hasColony1 = true
+						}
+						if memberID == colony2.ID {
+							hasColony2 = true
+						}
+					}
+					
+					if hasColony1 && hasColony2 {
+						alreadyAllied = true
+						break
+					}
+				}
+				
+				if !alreadyAllied {
+					members := []int{colony1.ID, colony2.ID}
+					resourceShare := 0.1 + rand.Float64()*0.1 // 10-20% resource sharing
+					alliance := cws.CreateAlliance(members, "defensive", resourceShare, tick)
+					
+					if alliance != nil {
+						// Successfully formed alliance
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+// shouldFormAlliance determines if two colonies should form an alliance
+func (cws *ColonyWarfareSystem) shouldFormAlliance(colony1, colony2 *CasteColony) bool {
+	diplomacy1 := cws.ColonyDiplomacies[colony1.ID]
+	if diplomacy1 == nil {
+		return false
+	}
+	
+	// Must have good relations and high trust
+	relation := diplomacy1.Relations[colony2.ID]
+	trust := diplomacy1.TrustLevels[colony2.ID]
+	
+	if relation == Enemy || trust < 0.7 {
+		return false
+	}
+	
+	// Look for common threats (shared enemies)
+	commonThreats := 0
+	diplomacy2 := cws.ColonyDiplomacies[colony2.ID]
+	if diplomacy2 != nil {
+		for enemyID := range diplomacy1.Relations {
+			if diplomacy1.Relations[enemyID] == Enemy && diplomacy2.Relations[enemyID] == Enemy {
+				commonThreats++
+			}
+		}
+	}
+	
+	// More likely to ally if they have common enemies
+	return commonThreats > 0 && rand.Float64() < 0.3
 }

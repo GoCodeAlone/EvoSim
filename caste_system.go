@@ -97,6 +97,20 @@ func NewCasteStatus(role CasteRole) *CasteStatus {
 	}
 }
 
+// TradeRoute represents an active trade route between colonies
+type TradeRoute struct {
+	ID               int                `json:"id"`
+	OriginColonyID   int                `json:"origin_colony_id"`
+	DestinationColonyID int             `json:"destination_colony_id"`
+	ResourceType     string             `json:"resource_type"`
+	TradeVolume      float64            `json:"trade_volume"`      // Resources per tick
+	RouteEfficiency  float64            `json:"route_efficiency"`  // 0.0-1.0 efficiency
+	Security         float64            `json:"security"`          // 0.0-1.0 security level
+	Distance         float64            `json:"distance"`          // Route distance
+	IsActive         bool               `json:"is_active"`
+	LastTradeTime    int                `json:"last_trade_time"`
+}
+
 // CasteColony represents a colony with a caste-based social structure
 type CasteColony struct {
 	ID                int               `json:"id"`
@@ -113,6 +127,12 @@ type CasteColony struct {
 	MaxColonySize     int               `json:"max_colony_size"`
 	ReproductionRate  float64           `json:"reproduction_rate"`
 	CreationTick      int               `json:"creation_tick"`
+	
+	// Resource management for trading
+	Resources         map[string]float64 `json:"resources"`          // Colony resource stockpiles
+	ResourceGeneration map[string]float64 `json:"resource_generation"` // Resource production per tick
+	ResourceConsumption map[string]float64 `json:"resource_consumption"` // Resource consumption per tick
+	TradeRoutes       []*TradeRoute      `json:"trade_routes"`       // Active trade routes
 }
 
 // NewCasteColony creates a new caste-based colony
@@ -145,6 +165,23 @@ func NewCasteColony(id int, queen *Entity, nestLocation Position) *CasteColony {
 		ColonyFitness:     queen.Fitness,
 		MaxColonySize:     100 + rand.Intn(400), // 100-500 members
 		ReproductionRate:  0.1,
+		Resources: map[string]float64{
+			"food":     25.0 + rand.Float64()*25.0, // 25-50 starting food
+			"biomass":  10.0 + rand.Float64()*15.0, // 10-25 starting biomass
+			"energy":   15.0 + rand.Float64()*20.0, // 15-35 starting energy
+			"materials": 5.0 + rand.Float64()*10.0, // 5-15 starting materials
+		},
+		ResourceGeneration: map[string]float64{
+			"food":     0.5, // Base food generation per tick
+			"biomass":  0.2, // Base biomass generation per tick
+			"energy":   0.3, // Base energy generation per tick
+			"materials": 0.1, // Base materials generation per tick
+		},
+		ResourceConsumption: map[string]float64{
+			"food":     0.3, // Base food consumption per tick
+			"energy":   0.2, // Base energy consumption per tick
+		},
+		TradeRoutes: make([]*TradeRoute, 0),
 	}
 
 	colony.CasteDistribution[Queen] = 1
@@ -850,6 +887,9 @@ func (cc *CasteColony) Update(world *World, tick int) {
 	// Update colony age and fitness
 	cc.ColonyAge++
 	cc.updateColonyFitness()
+	
+	// Update resource management
+	cc.UpdateResources(tick)
 
 	// Check for role reassignments
 	if tick%100 == 0 { // Every 100 ticks
@@ -1044,4 +1084,111 @@ func AddCasteStatusToEntity(entity *Entity) {
 		
 		entity.CasteStatus = NewCasteStatus(role)
 	}
+}
+
+// Resource Management Methods for CasteColony
+
+// UpdateResources processes resource generation and consumption for the colony
+func (cc *CasteColony) UpdateResources(tick int) {
+	if cc.ColonySize == 0 {
+		return
+	}
+
+	// Scale resource generation based on colony efficiency and caste distribution
+	workerEfficiency := float64(cc.CasteDistribution[Worker]) * 0.8
+	builderEfficiency := float64(cc.CasteDistribution[Builder]) * 0.5
+	specialistEfficiency := float64(cc.CasteDistribution[Specialist]) * 1.2
+
+	// Generate resources
+	for resourceType, baseGeneration := range cc.ResourceGeneration {
+		production := baseGeneration
+		
+		switch resourceType {
+		case "food":
+			production *= (1.0 + workerEfficiency*0.1) // Workers boost food production
+		case "biomass":
+			production *= (1.0 + builderEfficiency*0.1) // Builders boost biomass production
+		case "energy":
+			production *= (1.0 + specialistEfficiency*0.05) // Specialists boost energy production
+		case "materials":
+			production *= (1.0 + builderEfficiency*0.15) // Builders significantly boost materials
+		}
+		
+		// Apply colony size scaling
+		production *= math.Sqrt(float64(cc.ColonySize)) * 0.1
+		
+		cc.Resources[resourceType] += production
+	}
+
+	// Consume resources
+	for resourceType, baseConsumption := range cc.ResourceConsumption {
+		consumption := baseConsumption * float64(cc.ColonySize) * 0.1
+		
+		if cc.Resources[resourceType] >= consumption {
+			cc.Resources[resourceType] -= consumption
+		} else {
+			// Resource shortage affects colony fitness
+			shortage := consumption - cc.Resources[resourceType]
+			cc.ColonyFitness *= math.Max(0.1, 1.0 - shortage*0.1)
+			cc.Resources[resourceType] = 0
+		}
+	}
+
+	// Ensure non-negative resources
+	for resourceType := range cc.Resources {
+		if cc.Resources[resourceType] < 0 {
+			cc.Resources[resourceType] = 0
+		}
+	}
+}
+
+// CanAffordResource checks if the colony has enough of a resource
+func (cc *CasteColony) CanAffordResource(resourceType string, amount float64) bool {
+	if current, exists := cc.Resources[resourceType]; exists {
+		return current >= amount
+	}
+	return false
+}
+
+// ConsumeResource removes resources from the colony stockpile
+func (cc *CasteColony) ConsumeResource(resourceType string, amount float64) bool {
+	if cc.CanAffordResource(resourceType, amount) {
+		cc.Resources[resourceType] -= amount
+		return true
+	}
+	return false
+}
+
+// AddResource adds resources to the colony stockpile
+func (cc *CasteColony) AddResource(resourceType string, amount float64) {
+	if _, exists := cc.Resources[resourceType]; !exists {
+		cc.Resources[resourceType] = 0
+	}
+	cc.Resources[resourceType] += amount
+}
+
+// GetResourceSurplus calculates how much excess resource the colony has
+func (cc *CasteColony) GetResourceSurplus(resourceType string) float64 {
+	current := cc.Resources[resourceType]
+	if consumption, exists := cc.ResourceConsumption[resourceType]; exists {
+		// Consider 20 ticks worth of consumption as reserve
+		reserve := consumption * 20.0 * float64(cc.ColonySize) * 0.1
+		surplus := current - reserve
+		return math.Max(0, surplus)
+	}
+	// If no consumption defined, consider anything above 50 as surplus
+	return math.Max(0, current - 50.0)
+}
+
+// GetResourceNeed calculates how much the colony needs of a resource
+func (cc *CasteColony) GetResourceNeed(resourceType string) float64 {
+	current := cc.Resources[resourceType]
+	if consumption, exists := cc.ResourceConsumption[resourceType]; exists {
+		// Want 30 ticks worth of consumption as ideal stockpile
+		ideal := consumption * 30.0 * float64(cc.ColonySize) * 0.1
+		need := ideal - current
+		return math.Max(0, need)
+	}
+	// If no consumption defined, want at least 100 as stockpile
+	return math.Max(0, 100.0 - current)
 }
