@@ -188,6 +188,9 @@ func TestCulturalKnowledgeStats(t *testing.T) {
 	entity.SetTrait("foraging_efficiency", 0.6)
 	entity.SetTrait("vigilance", 0.7)
 	entity.SetTrait("territorial_range", 0.8)
+	entity.SetTrait("aggression", 0.3)
+	entity.SetTrait("communication_skill", 0.6)
+	entity.SetTrait("curiosity", 0.5)
 	entity.IsAlive = true
 	
 	entities := []*Entity{entity}
