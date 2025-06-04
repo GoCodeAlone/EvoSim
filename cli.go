@@ -365,6 +365,8 @@ func (m CLIModel) View() string {
 		content = m.culturalView()
 	case "symbiotic":
 		content = m.symbioticView()
+	case "neural":
+		content = m.neuralView()
 	default:
 		content = m.gridView()
 	}
@@ -4556,6 +4558,100 @@ func (m CLIModel) symbioticView() string {
 	content.WriteString(fmt.Sprintf("Dissolution Rate: %.3f\n", m.world.SymbioticRelationships.DissolutionRate))
 	content.WriteString(fmt.Sprintf("Transmission Radius: %.1f\n", m.world.SymbioticRelationships.TransmissionRadius))
 	content.WriteString(fmt.Sprintf("Coevolution Rate: %.3f\n", m.world.SymbioticRelationships.CoevolutionRate))
+
+	return content.String()
+}
+
+// neuralView displays neural networks and AI system information
+func (m *CLIModel) neuralView() string {
+	if m.world.NeuralAISystem == nil {
+		return "🧠 NEURAL AI SYSTEM\n\nNeural AI system not available"
+	}
+
+	var content strings.Builder
+	content.WriteString("🧠 NEURAL AI SYSTEM\n\n")
+
+	// Get system statistics
+	stats := m.world.NeuralAISystem.GetNeuralStats()
+
+	// General Statistics
+	content.WriteString("=== SYSTEM OVERVIEW ===\n")
+	content.WriteString(fmt.Sprintf("Total Neural Networks: %d\n", stats["total_networks"].(int)))
+	content.WriteString(fmt.Sprintf("Total Learned Behaviors: %d\n", stats["total_behaviors"].(int)))
+	content.WriteString(fmt.Sprintf("Total Learning Events: %d\n", stats["total_learning_events"].(int)))
+	content.WriteString(fmt.Sprintf("Emergent Behaviors: %d\n", stats["emergent_behaviors"].(int)))
+	content.WriteString(fmt.Sprintf("Average Network Complexity: %.2f\n", stats["avg_network_complexity"].(float64)))
+	content.WriteString("\n")
+
+	// Learning Statistics
+	content.WriteString("=== LEARNING METRICS ===\n")
+	content.WriteString(fmt.Sprintf("Success Rate: %.1f%%\n", stats["success_rate"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Total Experience: %.1f\n", stats["total_experience"].(float64)))
+	content.WriteString(fmt.Sprintf("Avg Experience per Network: %.2f\n", stats["avg_experience_per_network"].(float64)))
+	content.WriteString(fmt.Sprintf("Base Learning Rate: %.4f\n", stats["base_learning_rate"].(float64)))
+	content.WriteString(fmt.Sprintf("Adaptation Rate: %.4f\n", stats["adaptation_rate"].(float64)))
+	content.WriteString("\n")
+
+	// Entity Neural Networks
+	content.WriteString("=== ENTITY NEURAL NETWORKS ===\n")
+	count := 0
+	for _, entity := range m.world.AllEntities {
+		if entity.IsAlive {
+			neuralData := m.world.NeuralAISystem.GetEntityNeuralData(entity.ID)
+			if neuralData != nil {
+				content.WriteString(fmt.Sprintf("Entity %d (%s):\n", entity.ID, entity.Species))
+				content.WriteString(fmt.Sprintf("  Network Type: %s\n", neuralData["architecture"].(string)))
+				content.WriteString(fmt.Sprintf("  Neurons: %d (%d inputs, %d outputs, %d hidden layers)\n", 
+					neuralData["neuron_count"].(int), neuralData["input_count"].(int), 
+					neuralData["output_count"].(int), neuralData["hidden_layers"].(int)))
+				content.WriteString(fmt.Sprintf("  Experience: %.2f\n", neuralData["experience"].(float64)))
+				content.WriteString(fmt.Sprintf("  Learning Rate: %.4f\n", neuralData["learning_rate"].(float64)))
+				content.WriteString(fmt.Sprintf("  Decisions: %d (%.1f%% correct)\n", 
+					neuralData["total_decisions"].(int), neuralData["success_rate"].(float64)*100))
+				content.WriteString(fmt.Sprintf("  Complexity Score: %.2f\n", neuralData["complexity_score"].(float64)))
+				content.WriteString("\n")
+				count++
+				
+				// Limit display to prevent screen overflow
+				if count >= 10 {
+					remaining := len(m.world.NeuralAISystem.EntityNetworks) - count
+					if remaining > 0 {
+						content.WriteString(fmt.Sprintf("... and %d more networks\n", remaining))
+					}
+					break
+				}
+			}
+		}
+	}
+
+	if count == 0 {
+		content.WriteString("No neural networks currently active\n")
+	}
+
+	// Collective Intelligence Patterns
+	content.WriteString("\n=== COLLECTIVE INTELLIGENCE ===\n")
+	if len(m.world.NeuralAISystem.CollectiveBehaviors) > 0 {
+		content.WriteString("Shared Learned Behaviors:\n")
+		for name, behavior := range m.world.NeuralAISystem.CollectiveBehaviors {
+			content.WriteString(fmt.Sprintf("  %s: %.1f%% success (used %d times)\n", 
+				name, behavior.SuccessRate*100, behavior.UsageCount))
+		}
+	} else {
+		content.WriteString("No collective behaviors learned yet\n")
+	}
+
+	content.WriteString("\n")
+	if len(m.world.NeuralAISystem.SuccessfulStrategies) > 0 {
+		content.WriteString("Most Successful Strategies:\n")
+		for i, strategy := range m.world.NeuralAISystem.SuccessfulStrategies {
+			content.WriteString(fmt.Sprintf("  %d. %s\n", i+1, strategy))
+			if i >= 4 { // Show top 5
+				break
+			}
+		}
+	} else {
+		content.WriteString("No successful strategies identified yet\n")
+	}
 
 	return content.String()
 }

@@ -188,6 +188,9 @@ type World struct {
 	CasteSystem             *CasteSystem                         // Caste-based social organization
 	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
 	InsectPollinationSystem *InsectPollinationSystem             // Insect pollination and plant-insect mutualism
+	
+	// Advanced AI and Neural Networks
+	NeuralAISystem          *NeuralAISystem                      // Neural networks and AI-driven behaviors
 	ColonyWarfareSystem     *ColonyWarfareSystem                 // Inter-colony warfare and diplomacy
 	
 	// Organism classification and lifespan system
@@ -323,6 +326,9 @@ func NewWorld(config WorldConfig) *World {
 	world.InsectSystem = NewInsectSystem()
 	world.InsectPollinationSystem = NewInsectPollinationSystem()
 	world.ColonyWarfareSystem = NewColonyWarfareSystem()
+	
+	// Initialize advanced AI and neural networks system
+	world.NeuralAISystem = NewNeuralAISystem()
 	
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
@@ -1046,6 +1052,9 @@ func (w *World) Update() {
 	
 	// Update colony warfare and diplomacy system
 	w.ColonyWarfareSystem.Update(w.CasteSystem.Colonies, w.Tick)
+	
+	// Update neural AI system
+	w.NeuralAISystem.Update(w.AllEntities, w.Tick)
 	
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks

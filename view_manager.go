@@ -81,6 +81,7 @@ type ViewData struct {
 	Statistical      StatisticalData      `json:"statistical"`
 	Ecosystem        EcosystemMetrics     `json:"ecosystem"`
 	Anomalies        AnomaliesData        `json:"anomalies"`
+	Neural           NeuralData           `json:"neural"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
 	CommunicationHistory []CommunicationHistorySnapshot `json:"communication_history"`
@@ -461,6 +462,24 @@ type CulturalData struct {
 	KnowledgeTypeDistribution map[string]int     `json:"knowledge_type_distribution"`
 }
 
+// NeuralData represents neural networks and AI state for web interface
+type NeuralData struct {
+	TotalNetworks            int                      `json:"total_networks"`
+	TotalBehaviors           int                      `json:"total_behaviors"`
+	TotalLearningEvents      int                      `json:"total_learning_events"`
+	EmergentBehaviors        int                      `json:"emergent_behaviors"`
+	AvgNetworkComplexity     float64                  `json:"avg_network_complexity"`
+	SuccessRate              float64                  `json:"success_rate"`
+	TotalExperience          float64                  `json:"total_experience"`
+	AvgExperiencePerNetwork  float64                  `json:"avg_experience_per_network"`
+	BaseLearningRate         float64                  `json:"base_learning_rate"`
+	AdaptationRate           float64                  `json:"adaptation_rate"`
+	ActiveNetworkCount       int                      `json:"active_network_count"`
+	CollectiveBehaviorCount  int                      `json:"collective_behavior_count"`
+	SuccessfulStrategies     []string                 `json:"successful_strategies"`
+	EntityNetworks           map[string]interface{}   `json:"entity_networks"`     // Entity ID -> neural data
+}
+
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
 	// Capture historical data every 5 ticks
@@ -502,6 +521,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Statistical:      vm.getStatisticalData(),
 		Ecosystem:        vm.getEcosystemData(),
 		Anomalies:        vm.getAnomaliesData(),
+		Neural:           vm.getNeuralData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
 		CommunicationHistory: vm.communicationHistory,
@@ -1297,7 +1317,7 @@ func (vm *ViewManager) GetViewModes() []string {
 		"GRID", "STATS", "EVENTS", "POPULATIONS", "COMMUNICATION",
 		"CIVILIZATION", "PHYSICS", "WIND", "SPECIES", "NETWORK",
 		"DNA", "CELLULAR", "EVOLUTION", "TOPOLOGY", "TOOLS", "ENVIRONMENT", "BEHAVIOR",
-		"REPRODUCTION", "WARFARE", "STATISTICAL", "ANOMALIES", "ECOSYSTEM", "FUNGAL", "CULTURAL", "SYMBIOTIC",
+		"REPRODUCTION", "WARFARE", "STATISTICAL", "ANOMALIES", "ECOSYSTEM", "FUNGAL", "CULTURAL", "SYMBIOTIC", "NEURAL",
 	}
 }
 
@@ -2150,4 +2170,108 @@ func (vm *ViewManager) getAnomaliesData() AnomaliesData {
 		AnomalyTypes:    anomalyTypes,
 		Recommendations: recommendations,
 	}
+}
+
+// getNeuralData returns neural AI system state for web interface
+func (vm *ViewManager) getNeuralData() NeuralData {
+	data := NeuralData{
+		TotalNetworks:            0,
+		TotalBehaviors:           0,
+		TotalLearningEvents:      0,
+		EmergentBehaviors:        0,
+		AvgNetworkComplexity:     0.0,
+		SuccessRate:              0.0,
+		TotalExperience:          0.0,
+		AvgExperiencePerNetwork:  0.0,
+		BaseLearningRate:         0.0,
+		AdaptationRate:           0.0,
+		ActiveNetworkCount:       0,
+		CollectiveBehaviorCount:  0,
+		SuccessfulStrategies:     make([]string, 0),
+		EntityNetworks:           make(map[string]interface{}),
+	}
+	
+	// Check if neural AI system exists
+	if vm.world.NeuralAISystem == nil {
+		return data
+	}
+	
+	// Get neural AI system statistics
+	stats := vm.world.NeuralAISystem.GetNeuralStats()
+	
+	// Convert to NeuralData
+	if val, ok := stats["total_networks"].(int); ok {
+		data.TotalNetworks = val
+	}
+	if val, ok := stats["total_behaviors"].(int); ok {
+		data.TotalBehaviors = val
+	}
+	if val, ok := stats["total_learning_events"].(int); ok {
+		data.TotalLearningEvents = val
+	}
+	if val, ok := stats["emergent_behaviors"].(int); ok {
+		data.EmergentBehaviors = val
+	}
+	if val, ok := stats["avg_network_complexity"].(float64); ok {
+		data.AvgNetworkComplexity = val
+	}
+	if val, ok := stats["success_rate"].(float64); ok {
+		data.SuccessRate = val
+	}
+	if val, ok := stats["total_experience"].(float64); ok {
+		data.TotalExperience = val
+	}
+	if val, ok := stats["avg_experience_per_network"].(float64); ok {
+		data.AvgExperiencePerNetwork = val
+	}
+	if val, ok := stats["base_learning_rate"].(float64); ok {
+		data.BaseLearningRate = val
+	}
+	if val, ok := stats["adaptation_rate"].(float64); ok {
+		data.AdaptationRate = val
+	}
+	
+	// Count active networks and get entity data
+	data.ActiveNetworkCount = len(vm.world.NeuralAISystem.EntityNetworks)
+	
+	// Get individual entity neural data (limit to prevent overwhelming web interface)
+	count := 0
+	for entityID := range vm.world.NeuralAISystem.EntityNetworks {
+		if count >= 20 { // Limit to 20 networks for web display
+			break
+		}
+		
+		entityData := vm.world.NeuralAISystem.GetEntityNeuralData(entityID)
+		if entityData != nil {
+			// Convert network type enum to string for JSON
+			if networkType, ok := entityData["type"].(NeuralNetworkType); ok {
+				switch networkType {
+				case FeedForward:
+					entityData["type"] = "FeedForward"
+				case Recurrent:
+					entityData["type"] = "Recurrent"
+				case Convolutional:
+					entityData["type"] = "Convolutional"
+				case Reinforcement:
+					entityData["type"] = "Reinforcement"
+				default:
+					entityData["type"] = "Unknown"
+				}
+			}
+			
+			data.EntityNetworks[fmt.Sprintf("%d", entityID)] = entityData
+		}
+		count++
+	}
+	
+	// Collective behaviors
+	data.CollectiveBehaviorCount = len(vm.world.NeuralAISystem.CollectiveBehaviors)
+	
+	// Successful strategies
+	data.SuccessfulStrategies = vm.world.NeuralAISystem.SuccessfulStrategies
+	if len(data.SuccessfulStrategies) > 10 {
+		data.SuccessfulStrategies = data.SuccessfulStrategies[:10] // Limit to top 10
+	}
+	
+	return data
 }

@@ -622,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL', 'SYMBIOTIC'
+            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL', 'SYMBIOTIC', 'NEURAL'
         ];
         
         // Initialize view tabs
