@@ -2109,6 +2109,22 @@ func (w *World) handleEntityPlantInteractions() {
 				}
 			}
 		}
+		
+		// Attempt to drink water if thirsty
+		if rand.Float64() < 0.6 { // 60% chance to attempt drinking each tick
+			if entity.DrinkWater(w, w.Tick) {
+				// Log successful drinking (less frequently than eating)
+				if rand.Float64() < 0.05 { // Log 5% of drinking events
+					w.EventLogger.LogEcosystemShift(w.Tick,
+						fmt.Sprintf("%s drank water", entity.Species),
+						map[string]interface{}{
+							"entity_species": entity.Species,
+							"entity_energy":  entity.Energy,
+							"biome": int(w.getBiomeAtPosition(entity.Position.X, entity.Position.Y)),
+						})
+				}
+			}
+		}
 	}
 }
 
@@ -2376,38 +2392,107 @@ func (w *World) String() string {
 
 // applyTimeEffects applies time-of-day and seasonal effects to entities
 func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
-	// Circadian effects - some entities prefer day, others prefer night
+	// Initialize biorhythm if not present (for compatibility with existing entities)
+	if entity.BioRhythm == nil {
+		entity.BioRhythm = NewBioRhythm(entity.ID, entity)
+	}
+	
+	// Update biorhythm system
+	entity.BioRhythm.Update(w.Tick, entity, timeState)
+	
+	// Apply activity-based energy effects
+	activityModifier := entity.BioRhythm.GetActivityModifier(entity, timeState)
+	currentActivity := entity.BioRhythm.GetCurrentActivity()
+	
+	// Enhanced circadian effects based on activity and preferences
 	circadianPref := entity.GetTrait("circadian_preference") // -1 to 1, negative = nocturnal
+	
+	// Base energy effects from circadian rhythm
 	if timeState.IsNight() && circadianPref < 0 {
 		// Nocturnal entities get energy boost at night
-		entity.Energy += math.Abs(circadianPref) * 0.5
+		entity.Energy += math.Abs(circadianPref) * 0.4 * activityModifier
 	} else if !timeState.IsNight() && circadianPref > 0 {
 		// Diurnal entities get energy boost during day
-		entity.Energy += circadianPref * 0.5
+		entity.Energy += circadianPref * 0.4 * activityModifier
 	} else {
 		// Entities active at "wrong" time lose extra energy
-		entity.Energy -= 0.2
+		entity.Energy -= 0.15 * (2.0 - activityModifier) // Less penalty if resting
 	}
-	// Seasonal effects
+	
+	// Activity-specific energy costs/benefits
+	switch currentActivity {
+	case ActivitySleep:
+		// Already handled in biorhythm system
+	case ActivityEat:
+		// Eating has energy cost but leads to energy gain in interactions
+		entity.Energy -= 0.1
+	case ActivityDrink:
+		// Drinking has minimal energy cost, handled in biorhythm
+	case ActivityPlay:
+		// Playing costs energy but improves fitness long-term
+		entity.Energy -= 0.15
+	case ActivityExplore:
+		// Exploration costs significant energy
+		entity.Energy -= 0.2
+	case ActivityScavenge:
+		// Scavenging has moderate energy cost
+		entity.Energy -= 0.12
+	case ActivityRest:
+		// Resting restores energy
+		entity.Energy += 0.1
+	case ActivitySocialize:
+		// Socializing has small energy cost
+		entity.Energy -= 0.08
+	}
+	
+	// Seasonal effects on biorhythm and energy
 	switch timeState.Season {
 	case Spring:
 		// More food available, slight energy bonus
 		entity.Energy += 0.1
+		// Spring increases play and exploration drives
+		if entity.BioRhythm.Activities[ActivityPlay] != nil {
+			entity.BioRhythm.Activities[ActivityPlay].NeedLevel += 0.01
+		}
+		if entity.BioRhythm.Activities[ActivityExplore] != nil {
+			entity.BioRhythm.Activities[ActivityExplore].NeedLevel += 0.01
+		}
 	case Summer:
 		// Peak activity season
-		entity.Energy += 0.2
+		entity.Energy += 0.15
+		// Higher thirst needs in summer
+		if entity.BioRhythm.Activities[ActivityDrink] != nil {
+			entity.BioRhythm.Activities[ActivityDrink].NeedLevel += 0.02
+		}
 	case Autumn:
 		// Preparation time, entities with high intelligence store energy
 		if entity.GetTrait("intelligence") > 0.5 {
-			entity.Energy += 0.15
+			entity.Energy += 0.1
+		}
+		// Increased foraging behavior in autumn
+		if entity.BioRhythm.Activities[ActivityScavenge] != nil {
+			entity.BioRhythm.Activities[ActivityScavenge].NeedLevel += 0.015
 		}
 	case Winter:
 		// Harsh season, higher energy drain
-		entity.Energy -= 0.5
+		entity.Energy -= 0.4
 		// Entities with good endurance survive better
 		if entity.GetTrait("endurance") < 0.3 {
-			entity.Energy -= 0.3
+			entity.Energy -= 0.2
 		}
+		// Higher sleep needs in winter
+		if entity.BioRhythm.Activities[ActivitySleep] != nil {
+			entity.BioRhythm.Activities[ActivitySleep].NeedLevel += 0.02
+		}
+		// Lower exploration in winter
+		if entity.BioRhythm.Activities[ActivityExplore] != nil {
+			entity.BioRhythm.Activities[ActivityExplore].NeedLevel *= 0.8
+		}
+	}
+	
+	// Ensure energy doesn't go negative from time effects
+	if entity.Energy < 0 {
+		entity.Energy = 0
 	}
 }
 
