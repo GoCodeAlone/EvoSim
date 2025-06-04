@@ -1496,6 +1496,20 @@ func (m CLIModel) windView() string {
 	}
 	content.WriteString(fmt.Sprintf("Pollination success rate: %.2f%%\n", successRate))
 
+	// Insect Pollination Activity  
+	content.WriteString("\n=== INSECT POLLINATION ===\n")
+	pollinationStats := m.world.InsectPollinationSystem.GetPollinationStats()
+	
+	content.WriteString(fmt.Sprintf("Active flower patches: %d\n", pollinationStats["active_flower_patches"].(int)))
+	content.WriteString(fmt.Sprintf("Active pollinators: %d\n", pollinationStats["active_pollinators"].(int)))
+	content.WriteString(fmt.Sprintf("Total insect pollinations: %d\n", pollinationStats["total_pollinations"].(int)))
+	content.WriteString(fmt.Sprintf("Cross-species pollinations: %d\n", pollinationStats["cross_species_pollinations"].(int)))
+	content.WriteString(fmt.Sprintf("Cross-species rate: %.2f%%\n", pollinationStats["cross_species_rate"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Nectar produced: %.1f\n", pollinationStats["nectar_produced"].(float64)))
+	content.WriteString(fmt.Sprintf("Nectar consumed: %.1f\n", pollinationStats["nectar_consumed"].(float64)))
+	content.WriteString(fmt.Sprintf("Recent pollination events: %d\n", pollinationStats["recent_pollination_events"].(int)))
+	content.WriteString(fmt.Sprintf("Seasonal modifier: %.2f\n", pollinationStats["seasonal_modifier"].(float64)))
+
 	// Plant Reproduction Analysis
 	content.WriteString("\n=== PLANT REPRODUCTION ===\n")
 

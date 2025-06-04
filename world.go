@@ -178,6 +178,7 @@ type World struct {
 	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
 	CasteSystem             *CasteSystem                         // Caste-based social organization
 	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
+	InsectPollinationSystem *InsectPollinationSystem             // Insect pollination and plant-insect mutualism
 	
 	// Organism classification and lifespan system
 	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
@@ -298,6 +299,7 @@ func NewWorld(config WorldConfig) *World {
 	world.HiveMindSystem = NewHiveMindSystem()
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
+	world.InsectPollinationSystem = NewInsectPollinationSystem()
 	
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
@@ -778,6 +780,7 @@ func (w *World) AddPopulation(config PopulationConfig) {
 
 		// Enhance entity with specialized systems
 		AddInsectTraitsToEntity(entity)
+		AddPollinatorTraitsToEntity(entity)
 		AddCasteStatusToEntity(entity)
 
 		w.AllEntities = append(w.AllEntities, entity)
@@ -973,6 +976,10 @@ func (w *World) Update() {
 	w.HiveMindSystem.Update()
 	w.CasteSystem.Update(w, w.Tick)
 	w.InsectSystem.Update(w.Tick)
+	
+	// Update insect pollination system
+	currentSeason := w.AdvancedTimeSystem.GetTimeState().Season
+	w.InsectPollinationSystem.Update(w.AllEntities, w.AllPlants, currentSeason, w.Tick)
 	
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks
@@ -2122,6 +2129,7 @@ func (w *World) spawnNewEntities() {
 
 				// Enhance entity with specialized systems
 				AddInsectTraitsToEntity(newEntity)
+				AddPollinatorTraitsToEntity(newEntity)
 				AddCasteStatusToEntity(newEntity)
 
 				pop.Entities = append(pop.Entities, newEntity)
@@ -3618,6 +3626,7 @@ func (w *World) enhanceEntitiesWithSpecializedSystems() {
 		// Add insect traits to suitable entities
 		if IsEntityInsectLike(entity) {
 			AddInsectTraitsToEntity(entity)
+			AddPollinatorTraitsToEntity(entity) // Add pollinator traits for insect-like entities
 		}
 
 		// Add caste status to entities that don't have it
@@ -3688,6 +3697,7 @@ func (w *World) CreateOffspring(parent1, parent2 *Entity) *Entity {
 	AddCasteStatusToEntity(offspring)
 	if IsEntityInsectLike(offspring) {
 		AddInsectTraitsToEntity(offspring)
+		AddPollinatorTraitsToEntity(offspring)
 	}
 	
 	return offspring
