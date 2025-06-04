@@ -179,6 +179,8 @@ type World struct {
 	
 	// Statistical Analysis System
 	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
+	EcosystemMonitor        *EcosystemMonitor                    // Advanced ecosystem metrics and health monitoring
+	EnvironmentalPressures  *EnvironmentalPressureSystem         // Long-term environmental pressures and stresses
 	
 	// Hive Mind, Caste, and Insect Systems
 	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
@@ -275,6 +277,8 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
+	world.EcosystemMonitor = NewEcosystemMonitor(100) // Keep 100 historical snapshots
+	world.EnvironmentalPressures = NewEnvironmentalPressureSystem() // Environmental pressure monitoring
 	
 	// Connect StatisticalReporter to CentralEventBus
 	world.CentralEventBus.AddListener(func(event CentralEvent) {
@@ -1012,6 +1016,16 @@ func (w *World) Update() {
 		if w.Tick%w.StatisticalReporter.AnalysisInterval == 0 {
 			w.StatisticalReporter.PerformAnalysis(w)
 		}
+	}
+	
+	// Update ecosystem monitoring and metrics (every 20 ticks to avoid overhead)
+	if w.EcosystemMonitor != nil && w.Tick%20 == 0 {
+		w.EcosystemMonitor.UpdateMetrics(w)
+	}
+	
+	// Update environmental pressures (every 10 ticks)
+	if w.EnvironmentalPressures != nil && w.Tick%10 == 0 {
+		w.EnvironmentalPressures.Update(w, w.Tick)
 	}
 	
 	// Update hive mind, caste, and insect systems

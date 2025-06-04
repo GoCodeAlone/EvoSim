@@ -296,14 +296,7 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ---
 
-## 🚧 IN PROGRESS
-
-### Advanced Seed Dispersal (RECENTLY COMPLETED)
-**Status**: Completed
-**Priority**: MEDIUM - Expands plant reproduction beyond simple asexual reproduction
-**Dependencies**: Wind system (✅ completed), Physics system (✅ completed)
-
-#### Features Implemented:
+#### Advanced Seed Dispersal System (RECENTLY COMPLETED)
 - [x] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based dispersal with automatic method selection
 - [x] **Seed Dormancy**: Seeds enter dormancy when environmental conditions are unsuitable and wait for favorable conditions
 - [x] **Dispersal Timing**: Seeds released during reproduction with realistic timing and viability windows  
@@ -314,12 +307,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Comprehensive Statistics**: Tracking of dispersal methods, germination events, dormancy activations, and seed bank status
 - [x] **CLI and Web Visualization**: Enhanced wind view displays seed dispersal statistics alongside pollen information
 
-### Chemical Communication Enhancement (RECENTLY COMPLETED)
-**Status**: Completed
-**Priority**: MEDIUM - Enhances existing communication with airborne chemical signals
-**Dependencies**: Communication system (✅ completed), Plant network system (✅ completed)
-
-#### Features Implemented:
+#### Enhanced Chemical Communication System (RECENTLY COMPLETED)
 - [x] **Airborne Plant Signals**: Plants release airborne chemical warnings, toxins, and attractants complementing underground network signals
 - [x] **Enhanced Chemical Ecology**: Sophisticated airborne chemical interactions separate from underground plant networks
 - [x] **Chemical Signal Types**: Toxin, attractant, warning, and scent signals with wind-based dispersal
@@ -329,6 +317,48 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Wind-Dispersed Chemistry**: Airborne signals move with wind patterns for realistic chemical dispersal
 - [x] **Behavioral Responses**: Entities are attracted or repelled by chemical signals based on their traits
 - [x] **Chemical Environment Tracking**: Real-time chemical signal strength calculations at any position
+
+#### Enhanced Alliance and Trade System (RECENTLY COMPLETED)
+- [x] **Dynamic Trade Economics**: Trade volume scaling based on trust levels (0.5x-2.0x multiplier)
+- [x] **Relationship-Based Bonuses**: Allies receive +50% trade bonuses, enemies suffer -90% penalties
+- [x] **Strategic Resource Reserves**: Colonies maintain reserves preventing over-trading and economic vulnerability
+- [x] **Multi-Factor Trade Efficiency**: Complex calculations including distance, trust, relationship, and diplomatic factors
+- [x] **Trade Route Security**: Threat detection, escort protection, and enhanced route management
+- [x] **Military Cooperation**: Joint operations, coordinated defenses, and alliance-based warfare
+- [x] **Economic Warfare**: Trade blockades, resource competition, and economic pressure tactics
+
+#### Fungal Networks and Decomposer System (RECENTLY COMPLETED)
+- [x] **Decomposer Organisms**: Fungi break down dead organic matter and recycle nutrients
+- [x] **Nutrient Cycling**: Complete ecosystem nutrient loops with soil enrichment
+- [x] **Fungal Reproduction**: Spore-based reproduction system with environmental dispersal
+- [x] **Network Formation**: Mycelium networks connecting decomposer organisms
+- [x] **Soil Health Enhancement**: Fungal activity improves plant growth and ecosystem health
+- [x] **Organic Matter Processing**: Dead entities and plants decompose into soil nutrients
+- [x] **Environmental Integration**: Fungal networks integrated into main simulation loop
+- [x] **CLI and Web Visualization**: Dedicated fungal view mode showing decomposer activity
+
+#### Water Dispersal Systems (RECENTLY COMPLETED)
+- [x] **Aquatic Seed Dispersal**: Seeds travel via water currents with realistic flow mechanics
+- [x] **River/Stream Flow**: Water movement affects dispersal patterns with directional flow
+- [x] **Seasonal Flooding**: Flood events create enhanced seed dispersal opportunities
+- [x] **Aquatic Plant Types**: 3 specialized aquatic plants (lily, reed, kelp) with water-specific adaptations
+- [x] **Wetland Ecosystems**: Water-based plant communities with specialized survival mechanisms
+- [x] **Current Interaction**: Water currents interact with wind patterns for complex dispersal
+- [x] **Hydrochory Mechanics**: Water-adapted seed structures and buoyancy systems
+
+#### Enhanced Pheromone Trail Persistence (RECENTLY COMPLETED)
+- [x] **Trail Reinforcement**: Entities using trails strengthen them through repeated use
+- [x] **Environmental Decay Factors**: Temperature, humidity, and wind affect trail persistence
+- [x] **Usage-Based Persistence**: Frequently used trails last longer with persistence bonuses
+- [x] **Sophisticated Decay Calculations**: Complex mathematical models for realistic trail fade
+- [x] **Trail Memory System**: Enhanced memory tracking for trail effectiveness and usage patterns
+- [x] **Environmental Integration**: Weather and seasonal effects on pheromone persistence
+
+---
+
+## 🚧 IN PROGRESS
+
+*No features currently in progress*
 
 ---
 
@@ -366,61 +396,75 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Post-War Relations**: Relationship changes based on war outcomes, peace treaties, and conflict intensity
 - [x] **Comprehensive Statistics**: New "warfare" CLI view displaying conflicts, diplomacy, and colony information
 
-### Advanced Seed Dispersal
+#### Ecosystem Monitoring and Metrics Enhancement (RECENTLY COMPLETED)
+- [x] **Genetic Diversity Indices**: Shannon and Simpson diversity calculations for populations
+- [x] **Species Count Metrics**: Real-time tracking of active species and extinction rates  
+- [x] **Network Connectivity Measurements**: Analysis of plant network and social network connectivity
+- [x] **Pollination Success Metrics**: Detailed tracking of pollination efficiency and cross-species interactions
+- [x] **Dispersal Distance Analytics**: Statistical analysis of seed and pollen dispersal patterns
+- [x] **Ecosystem Health Indicators**: Overall ecosystem stability and resilience measurements
+- [x] **Comprehensive Health Score**: 0-100 ecosystem health scoring system based on multiple factors
+- [x] **Trend Analysis**: Multi-generational trend detection for diversity, population, and stability
+- [x] **CLI and Web Integration**: Complete ecosystem view mode in both CLI and web interfaces
+- [x] **Real-time Monitoring**: Automatic metrics updates every 20 ticks for performance efficiency
+
+---
+
+## 🚧 IN PROGRESS
+
+*No features currently in progress*
+
+---
+
+## 📋 MEDIUM PRIORITY (Ecosystem Enhancement)
+
+### Advanced Environmental Pressures (READY TO IMPLEMENT)
 **Status**: Not Started
-**Priority**: MEDIUM - Expands plant reproduction
-**Dependencies**: Wind system (✅ completed), Physics system (✅ completed)
+**Priority**: HIGH - Increases evolutionary complexity  
+**Dependencies**: Environmental events (✅ completed), Biome system (✅ completed), Ecosystem monitoring (✅ completed)
+**Status**: Not Started
+**Priority**: MEDIUM - Increases evolutionary complexity
+**Dependencies**: Environmental events (✅ completed), Biome system (✅ completed)
 
 #### Features to Implement:
-- [ ] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based
-- [ ] **Seed Dormancy**: Seeds wait for optimal conditions to germinate
-- [ ] **Dispersal Timing**: Seeds released at optimal times
-- [ ] **Animal-Mediated Dispersal**: Entities carry seeds to new locations
-- [ ] **Seed Banks**: Accumulated seeds in soil waiting to germinate
-- [ ] **Germination Triggers**: Environmental cues for seed activation
-
-### Chemical Communication
-**Status**: Partially Implemented
-**Priority**: MEDIUM - Enhances existing communication
-**Dependencies**: Communication system (✅ completed)
-
-#### Features to Implement:
-- [ ] **Airborne Plant Signals**: Plants release chemical warnings
-- [ ] **Pheromone Systems**: Entity chemical marking and tracking
-- [ ] **Chemical Ecology**: Complex chemical interactions between species
-- [ ] **Scent Trails**: Persistent chemical paths for navigation
-- [ ] **Chemical Defenses**: Plants release toxins when threatened
-- [ ] **Chemical Attractants**: Plants attract beneficial entities
+- [ ] **Climate Change Simulation**: Long-term environmental shifts affecting species adaptation
+- [ ] **Pollution Events**: Environmental contamination affecting entity health and reproduction
+- [ ] **Habitat Fragmentation**: Landscape changes creating isolated populations
+- [ ] **Invasive Species**: Introduction of new species disrupting existing ecosystems
+- [ ] **Resource Depletion Cycles**: Periodic scarcity driving adaptive pressure
+- [ ] **Extreme Weather Adaptation**: Enhanced weather survival mechanisms
 
 ---
 
 ## 📋 LOW PRIORITY (Future Expansion)
 
-### Fungal Networks
+## 📋 LOW PRIORITY (Future Expansion)
+
+### Parasitic and Symbiotic Relationships
 **Status**: Not Started
-**Priority**: LOW - Advanced ecosystem feature
-**Dependencies**: Underground networks (not started)
+**Priority**: LOW - Advanced ecological complexity
+**Dependencies**: Entity system (✅ completed), Molecular system (✅ completed)
 
 #### Features to Implement:
-- [ ] **Decomposer Organisms**: Fungi break down dead organic matter
-- [ ] **Nutrient Cycling**: Complete ecosystem nutrient loops
-- [ ] **Symbiotic Relationships**: Beneficial fungi-plant partnerships
-- [ ] **Fungal Reproduction**: Spore-based fungal spreading
-- [ ] **Soil Health**: Fungal activity affects plant growth
-- [ ] **Disease Dynamics**: Pathogenic fungi affecting plant health
+- [ ] **Parasitic Entities**: Organisms that depend on host organisms for survival
+- [ ] **Mutualistic Relationships**: Beneficial partnerships between different species
+- [ ] **Commensalism**: Neutral relationships where one benefits, other unaffected
+- [ ] **Host-Parasite Co-evolution**: Arms race between parasites and hosts
+- [ ] **Symbiont Transfer**: Movement of beneficial organisms between hosts
+- [ ] **Disease Transmission**: Pathogenic spread through populations
 
-### Water Dispersal Systems
-**Status**: Not Started
-**Priority**: LOW - Specialized environment
-**Dependencies**: Physics system (✅ completed)
+### Advanced Neural Networks and AI
+**Status**: Not Started  
+**Priority**: LOW - Sophisticated intelligence
+**Dependencies**: Hive mind system (✅ completed), Behavioral system (✅ completed)
 
 #### Features to Implement:
-- [ ] **Aquatic Seed Dispersal**: Seeds travel via water currents
-- [ ] **River/Stream Flow**: Water movement affects dispersal patterns
-- [ ] **Wetland Ecosystems**: Specialized aquatic plant communities
-- [ ] **Flood Dispersal**: Seasonal flooding spreads seeds
-- [ ] **Hydrochory**: Water-adapted seed structures
-- [ ] **Aquatic Plant Types**: Plants specialized for water environments
+- [ ] **Machine Learning Integration**: AI-driven behavior evolution
+- [ ] **Neural Network Brains**: Sophisticated decision-making systems
+- [ ] **Adaptive AI**: Learning systems that improve over time
+- [ ] **Emergent AI Behaviors**: Unprogrammed intelligent behaviors
+- [ ] **Multi-Agent AI Systems**: Coordinated intelligent entity groups
+- [ ] **AI-Driven Evolution**: Intelligence-guided evolutionary pressure
 
 ---
 
@@ -488,19 +532,24 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ## 🎯 NEXT STEPS
 
+## 🎯 NEXT STEPS
+
 ### Immediate Tasks (Next Session)
-1. **Alliance and Trade System Enhancement**: Build on completed warfare system to implement active resource trading and military cooperation
-2. **Fungal Networks**: Begin implementing decomposer organisms and nutrient cycling to complement plant networks  
-3. **Water Dispersal Systems**: Extend seed dispersal to include aquatic environments and river/stream flow
-4. **Enhanced Pheromone Trail Persistence**: Improve existing insect pheromone system with longer-lasting trails
+1. **Ecosystem Monitoring Enhancement**: Implement genetic diversity indices, species count metrics, and ecosystem health indicators
+2. **Advanced Environmental Pressures**: Begin implementing climate change simulation and pollution events
+3. **Parasitic Relationships**: Start basic host-parasite system to add ecological complexity
+4. **Enhanced Metrics**: Add Shannon diversity, Simpson diversity, and network connectivity measurements
 
 ### Short-term Goals (Next 2-3 Sessions)  
 1. ✅ Complete enhanced metamorphosis and life stages for complex insects
 2. ✅ Implement advanced seed dispersal mechanisms beyond wind
 3. ✅ Develop enhanced chemical communication with airborne plant signals
-4. Enhance alliance and trade system for more complex inter-colony economics
-5. Begin fungal networks and decomposer organism system
-6. Implement water-based dispersal for aquatic environments
+4. ✅ Enhance alliance and trade system for more complex inter-colony economics
+5. ✅ Complete fungal networks and decomposer organism system
+6. ✅ Implement water-based dispersal for aquatic environments
+7. ✅ Complete enhanced pheromone trail persistence system
+8. ✅ Implement cultural knowledge transfer system
+9. **Next**: Focus on ecosystem monitoring and environmental pressure systems
 
 ### Long-term Vision
 Create a fully realistic evolutionary ecosystem where:

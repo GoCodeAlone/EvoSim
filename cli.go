@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies", "warfare", "fungal", "cultural"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "ecosystem", "anomalies", "warfare", "fungal", "cultural"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -353,6 +353,8 @@ func (m CLIModel) View() string {
 		content = m.reproductionView()
 	case "statistical":
 		content = m.statisticalView()
+	case "ecosystem":
+		content = m.ecosystemView()
 	case "anomalies":
 		content = m.anomaliesView()
 	case "warfare":
@@ -3240,6 +3242,33 @@ func (m *CLIModel) statisticalView() string {
 		content.WriteString(fmt.Sprintf("  Signal Efficiency: %.4f\n", latest.CommunicationMetrics.SignalEfficiency))
 	}
 	content.WriteString("\n")
+	
+	// Ecosystem metrics
+	if m.world.EcosystemMonitor != nil {
+		metrics := m.world.EcosystemMonitor.CurrentMetrics
+		content.WriteString("ECOSYSTEM METRICS:\n")
+		content.WriteString(fmt.Sprintf("  Shannon Diversity: %.4f\n", metrics.ShannonDiversity))
+		content.WriteString(fmt.Sprintf("  Simpson Diversity: %.4f\n", metrics.SimpsonDiversity))
+		content.WriteString(fmt.Sprintf("  Species Richness: %d\n", metrics.SpeciesRichness))
+		content.WriteString(fmt.Sprintf("  Species Evenness: %.4f\n", metrics.SpeciesEvenness))
+		content.WriteString(fmt.Sprintf("  Total Population: %d\n", metrics.TotalPopulation))
+		content.WriteString(fmt.Sprintf("  Network Connectivity: %.4f\n", metrics.NetworkConnectivity))
+		content.WriteString(fmt.Sprintf("  Pollination Success: %.4f\n", metrics.PollinationSuccess))
+		content.WriteString(fmt.Sprintf("  Ecosystem Stability: %.4f\n", metrics.EcosystemStability))
+		content.WriteString(fmt.Sprintf("  Biodiversity Index: %.4f\n", metrics.BiodiversityIndex))
+		
+		// Health score
+		healthScore := m.world.EcosystemMonitor.GetHealthScore()
+		content.WriteString(fmt.Sprintf("  Ecosystem Health: %.1f/100\n", healthScore))
+		
+		// Trends
+		trends := m.world.EcosystemMonitor.GetTrends()
+		content.WriteString(fmt.Sprintf("  Diversity Trend: %s\n", trends["diversity"]))
+		content.WriteString(fmt.Sprintf("  Population Trend: %s\n", trends["population"]))
+		content.WriteString(fmt.Sprintf("  Stability Trend: %s\n", trends["stability"]))
+		
+		content.WriteString("\n")
+	}
 
 	// Recent events
 	recentEvents := m.world.StatisticalReporter.Events
@@ -3256,6 +3285,123 @@ func (m *CLIModel) statisticalView() string {
 	}
 
 	content.WriteString("\nControls: [v] Next View [E] Export Data [R] Reset Analysis")
+
+	return content.String()
+}
+
+// ecosystemView shows comprehensive ecosystem metrics and health indicators
+func (m *CLIModel) ecosystemView() string {
+	if m.world.EcosystemMonitor == nil {
+		return "Ecosystem monitoring not available"
+	}
+
+	var content strings.Builder
+	content.WriteString("🌍 ECOSYSTEM METRICS\n\n")
+
+	metrics := m.world.EcosystemMonitor.CurrentMetrics
+	
+	// Diversity metrics
+	content.WriteString("DIVERSITY METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Shannon Diversity Index: %.4f\n", metrics.ShannonDiversity))
+	content.WriteString(fmt.Sprintf("  Simpson Diversity Index: %.4f\n", metrics.SimpsonDiversity))
+	content.WriteString(fmt.Sprintf("  Species Richness: %d\n", metrics.SpeciesRichness))
+	content.WriteString(fmt.Sprintf("  Species Evenness: %.4f\n", metrics.SpeciesEvenness))
+	content.WriteString("\n")
+	
+	// Population metrics
+	content.WriteString("POPULATION METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Total Population: %d\n", metrics.TotalPopulation))
+	content.WriteString(fmt.Sprintf("  Extinction Rate: %.4f%%\n", metrics.ExtinctionRate*100))
+	content.WriteString(fmt.Sprintf("  Speciation Rate: %.4f%%\n", metrics.SpeciationRate*100))
+	content.WriteString("\n")
+	
+	// Network connectivity
+	content.WriteString("NETWORK & INTERACTION METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Network Connectivity: %.4f\n", metrics.NetworkConnectivity))
+	content.WriteString(fmt.Sprintf("  Average Path Length: %.2f\n", metrics.AveragePathLength))
+	content.WriteString(fmt.Sprintf("  Clustering Coefficient: %.4f\n", metrics.ClusteringCoefficient))
+	content.WriteString("\n")
+	
+	// Pollination metrics
+	content.WriteString("POLLINATION METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Pollination Success Rate: %.2f%%\n", metrics.PollinationSuccess*100))
+	content.WriteString(fmt.Sprintf("  Cross-Species Pollination: %.2f%%\n", metrics.CrossSpeciesPollination*100))
+	if len(metrics.PollinatorEfficiency) > 0 {
+		content.WriteString("  Pollinator Efficiency:\n")
+		for polType, efficiency := range metrics.PollinatorEfficiency {
+			content.WriteString(fmt.Sprintf("    %s: %.1f%%\n", polType, efficiency*100))
+		}
+	}
+	content.WriteString("\n")
+	
+	// Dispersal metrics
+	content.WriteString("DISPERSAL METRICS:\n")
+	content.WriteString(fmt.Sprintf("  Average Dispersal Distance: %.2f\n", metrics.AverageDispersalDistance))
+	content.WriteString(fmt.Sprintf("  Seed Bank Size: %d\n", metrics.SeedBankSize))
+	content.WriteString(fmt.Sprintf("  Germination Rate: %.2f%%\n", metrics.GerminationRate*100))
+	if len(metrics.DispersalMethods) > 0 {
+		content.WriteString("  Dispersal Methods:\n")
+		for method, count := range metrics.DispersalMethods {
+			content.WriteString(fmt.Sprintf("    %s: %d\n", method, count))
+		}
+	}
+	content.WriteString("\n")
+	
+	// Ecosystem health
+	content.WriteString("ECOSYSTEM HEALTH:\n")
+	healthScore := m.world.EcosystemMonitor.GetHealthScore()
+	content.WriteString(fmt.Sprintf("  Overall Health Score: %.1f/100\n", healthScore))
+	content.WriteString(fmt.Sprintf("  Biodiversity Index: %.4f\n", metrics.BiodiversityIndex))
+	content.WriteString(fmt.Sprintf("  Ecosystem Stability: %.4f\n", metrics.EcosystemStability))
+	content.WriteString(fmt.Sprintf("  Ecosystem Resilience: %.4f\n", metrics.EcosystemResilience))
+	content.WriteString(fmt.Sprintf("  Carrying Capacity: %.0f\n", metrics.CarryingCapacity))
+	content.WriteString("\n")
+	
+	// Trends
+	trends := m.world.EcosystemMonitor.GetTrends()
+	content.WriteString("TRENDS:\n")
+	content.WriteString(fmt.Sprintf("  Diversity Trend: %s\n", trends["diversity"]))
+	content.WriteString(fmt.Sprintf("  Population Trend: %s\n", trends["population"]))
+	content.WriteString(fmt.Sprintf("  Stability Trend: %s\n", trends["stability"]))
+	content.WriteString("\n")
+	
+	// Top species by population
+	if len(metrics.PopulationBySpecies) > 0 {
+		content.WriteString("TOP SPECIES BY POPULATION:\n")
+		
+		// Convert to slice and sort by population
+		type speciesCount struct {
+			name string
+			count int
+		}
+		var species []speciesCount
+		for name, count := range metrics.PopulationBySpecies {
+			species = append(species, speciesCount{name, count})
+		}
+		
+		// Sort by count descending
+		for i := 0; i < len(species)-1; i++ {
+			for j := i + 1; j < len(species); j++ {
+				if species[j].count > species[i].count {
+					species[i], species[j] = species[j], species[i]
+				}
+			}
+		}
+		
+		// Display top 10
+		maxDisplay := len(species)
+		if maxDisplay > 10 {
+			maxDisplay = 10
+		}
+		for i := 0; i < maxDisplay; i++ {
+			content.WriteString(fmt.Sprintf("  %s: %d\n", species[i].name, species[i].count))
+		}
+		if len(species) > 10 {
+			content.WriteString(fmt.Sprintf("  ... and %d more species\n", len(species)-10))
+		}
+	}
+
+	content.WriteString("\nControls: [v] Next View")
 
 	return content.String()
 }

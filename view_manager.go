@@ -77,6 +77,7 @@ type ViewData struct {
 	Fungal           FungalData           `json:"fungal"`
 	Cultural         CulturalData         `json:"cultural"`
 	Statistical      StatisticalData      `json:"statistical"`
+	Ecosystem        EcosystemMetrics     `json:"ecosystem"`
 	Anomalies        AnomaliesData        `json:"anomalies"`
 	// Historical data
 	PopulationHistory    []PopulationHistorySnapshot    `json:"population_history"`
@@ -460,6 +461,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Fungal:           vm.getFungalData(),
 		Cultural:         vm.getCulturalData(),
 		Statistical:      vm.getStatisticalData(),
+		Ecosystem:        vm.getEcosystemData(),
 		Anomalies:        vm.getAnomaliesData(),
 		// Include historical data
 		PopulationHistory:    vm.populationHistory,
@@ -1963,6 +1965,15 @@ func (vm *ViewManager) getStatisticalData() StatisticalData {
 		RecentEvents:    recentEvents,
 		LatestSnapshot:  latestSnapshot,
 	}
+}
+
+// getEcosystemData returns ecosystem metrics for web interface
+func (vm *ViewManager) getEcosystemData() EcosystemMetrics {
+	if vm.world.EcosystemMonitor == nil {
+		return EcosystemMetrics{}
+	}
+	
+	return vm.world.EcosystemMonitor.CurrentMetrics
 }
 
 // getAnomaliesData returns anomaly detection data for web interface

@@ -622,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL'
+            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL'
         ];
         
         // Initialize view tabs
@@ -829,6 +829,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'STATISTICAL':
                     viewContent.innerHTML = '<div class="stats-section">' + renderStatistical(data.statistical) + '</div>';
+                    break;
+                    
+                case 'ECOSYSTEM':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEcosystem(data.ecosystem) + '</div>';
                     break;
                     
                 case 'ANOMALIES':
@@ -2762,6 +2766,90 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                         html += '<div>' + trait + ': ' + avg.toFixed(3) + '</div>';
                     });
                 }
+            }
+            
+            return html;
+        }
+        
+        // Render ecosystem metrics view
+        function renderEcosystem(ecosystem) {
+            if (!ecosystem) {
+                return '<h3>🌍 Ecosystem Metrics</h3><div>Ecosystem monitoring not available</div>';
+            }
+            
+            let html = '<h3>🌍 Ecosystem Metrics</h3>';
+            
+            // Diversity metrics
+            html += '<h4>Diversity Metrics:</h4>';
+            html += '<div>Shannon Diversity Index: ' + (ecosystem.shannon_diversity || 0).toFixed(4) + '</div>';
+            html += '<div>Simpson Diversity Index: ' + (ecosystem.simpson_diversity || 0).toFixed(4) + '</div>';
+            html += '<div>Species Richness: ' + (ecosystem.species_richness || 0) + '</div>';
+            html += '<div>Species Evenness: ' + (ecosystem.species_evenness || 0).toFixed(4) + '</div>';
+            
+            // Population metrics
+            html += '<h4>Population Metrics:</h4>';
+            html += '<div>Total Population: ' + (ecosystem.total_population || 0) + '</div>';
+            if (ecosystem.extinction_rate !== undefined) {
+                html += '<div>Extinction Rate: ' + (ecosystem.extinction_rate * 100).toFixed(2) + '%</div>';
+            }
+            if (ecosystem.speciation_rate !== undefined) {
+                html += '<div>Speciation Rate: ' + (ecosystem.speciation_rate * 100).toFixed(2) + '%</div>';
+            }
+            
+            // Network connectivity
+            html += '<h4>Network & Interaction Metrics:</h4>';
+            html += '<div>Network Connectivity: ' + (ecosystem.network_connectivity || 0).toFixed(4) + '</div>';
+            html += '<div>Average Path Length: ' + (ecosystem.average_path_length || 0).toFixed(2) + '</div>';
+            html += '<div>Clustering Coefficient: ' + (ecosystem.clustering_coefficient || 0).toFixed(4) + '</div>';
+            
+            // Pollination metrics
+            html += '<h4>Pollination Metrics:</h4>';
+            html += '<div>Pollination Success Rate: ' + ((ecosystem.pollination_success || 0) * 100).toFixed(2) + '%</div>';
+            html += '<div>Cross-Species Pollination: ' + ((ecosystem.cross_species_pollination || 0) * 100).toFixed(2) + '%</div>';
+            
+            // Dispersal metrics
+            html += '<h4>Dispersal Metrics:</h4>';
+            html += '<div>Average Dispersal Distance: ' + (ecosystem.average_dispersal_distance || 0).toFixed(2) + '</div>';
+            html += '<div>Seed Bank Size: ' + (ecosystem.seed_bank_size || 0) + '</div>';
+            html += '<div>Germination Rate: ' + ((ecosystem.germination_rate || 0) * 100).toFixed(2) + '%</div>';
+            
+            // Ecosystem health
+            html += '<h4>Ecosystem Health:</h4>';
+            const healthScore = ecosystem.ecosystem_stability !== undefined 
+                ? (ecosystem.biodiversity_index || 0) * 10 + (ecosystem.ecosystem_stability || 0) * 50 + (ecosystem.network_connectivity || 0) * 30
+                : 0;
+            html += '<div>Overall Health Score: ' + Math.min(healthScore, 100).toFixed(1) + '/100</div>';
+            html += '<div>Biodiversity Index: ' + (ecosystem.biodiversity_index || 0).toFixed(4) + '</div>';
+            html += '<div>Ecosystem Stability: ' + (ecosystem.ecosystem_stability || 0).toFixed(4) + '</div>';
+            html += '<div>Ecosystem Resilience: ' + (ecosystem.ecosystem_resilience || 0).toFixed(4) + '</div>';
+            
+            // Population by species
+            if (ecosystem.population_by_species && Object.keys(ecosystem.population_by_species).length > 0) {
+                html += '<h4>Population by Species:</h4>';
+                html += '<div style="max-height: 200px; overflow-y: auto;">';
+                const sortedSpecies = Object.entries(ecosystem.population_by_species)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 10); // Top 10 species
+                sortedSpecies.forEach(([species, count]) => {
+                    html += '<div style="margin: 2px 0;">' + species + ': ' + count + '</div>';
+                });
+                html += '</div>';
+            }
+            
+            // Pollinator efficiency
+            if (ecosystem.pollinator_efficiency && Object.keys(ecosystem.pollinator_efficiency).length > 0) {
+                html += '<h4>Pollinator Efficiency:</h4>';
+                Object.entries(ecosystem.pollinator_efficiency).forEach(([type, efficiency]) => {
+                    html += '<div>' + type + ': ' + (efficiency * 100).toFixed(1) + '%</div>';
+                });
+            }
+            
+            // Dispersal methods
+            if (ecosystem.dispersal_methods && Object.keys(ecosystem.dispersal_methods).length > 0) {
+                html += '<h4>Dispersal Methods:</h4>';
+                Object.entries(ecosystem.dispersal_methods).forEach(([method, count]) => {
+                    html += '<div>' + method + ': ' + count + '</div>';
+                });
             }
             
             return html;
