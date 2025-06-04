@@ -70,6 +70,8 @@ type ViewData struct {
 	Topology       TopologyData           `json:"topology"`
 	Tools          ToolData               `json:"tools"`
 	EnvironmentalMod EnvironmentalModData `json:"environmental_mod"`
+	EnvironmentalPressures EnvironmentalPressureData `json:"environmental_pressures"`
+	SymbioticRelationships SymbioticRelationshipData `json:"symbiotic_relationships"`
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
 	Reproduction     ReproductionData     `json:"reproduction"`
@@ -239,6 +241,41 @@ type EnvironmentalModData struct {
 	AvgDurability         float64                `json:"avg_durability"`
 	TunnelNetworks        int                    `json:"tunnel_networks"`
 	ModificationTypes     map[string]int         `json:"modification_types"`
+}
+
+// EnvironmentalPressureData represents environmental pressure system state
+type EnvironmentalPressureData struct {
+	ActivePressures   int                    `json:"active_pressures"`
+	TotalHistory      int                    `json:"total_history"`
+	AverageSeverity   float64                `json:"average_severity"`
+	PressureTypes     map[string]int         `json:"pressure_types"`
+	ActiveDetails     []PressureDetail       `json:"active_details"`
+}
+
+// SymbioticRelationshipData represents symbiotic relationship system state
+type SymbioticRelationshipData struct {
+	TotalRelationships     int                    `json:"total_relationships"`
+	ActiveRelationships    int                    `json:"active_relationships"`
+	ActiveParasitic        int                    `json:"active_parasitic"`
+	ActiveMutualistic      int                    `json:"active_mutualistic"`
+	ActiveCommensal        int                    `json:"active_commensal"`
+	AverageRelationshipAge float64                `json:"average_relationship_age"`
+	DiseaseTransmissionRate float64               `json:"disease_transmission_rate"`
+	AverageVirulence       float64                `json:"average_virulence"`
+	AverageTransmission    float64                `json:"average_transmission"`
+	RelationshipTypes      map[string]int         `json:"relationship_types"`
+}
+
+// PressureDetail represents details of an active environmental pressure
+type PressureDetail struct {
+	ID          int     `json:"id"`
+	Type        string  `json:"type"`
+	Name        string  `json:"name"`
+	Severity    float64 `json:"severity"`
+	Duration    int     `json:"duration"`
+	AffectedX   float64 `json:"affected_x"`
+	AffectedY   float64 `json:"affected_y"`
+	Radius      float64 `json:"radius"`
 }
 
 // EmergentBehaviorData represents emergent behavior system state
@@ -454,6 +491,8 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		Topology:        vm.getTopologyData(),
 		Tools:           vm.getToolData(),
 		EnvironmentalMod: vm.getEnvironmentalModData(),
+		EnvironmentalPressures: vm.getEnvironmentalPressuresData(),
+		SymbioticRelationships: vm.getSymbioticRelationshipData(),
 		EmergentBehavior: vm.getEmergentBehaviorData(),
 		FeedbackLoops:    vm.getFeedbackLoopData(),
 		Reproduction:     vm.getReproductionData(),
@@ -1322,6 +1361,93 @@ func (vm *ViewManager) getEnvironmentalModData() EnvironmentalModData {
 			for modType, count := range modTypes {
 				data.ModificationTypes[GetEnvironmentalModTypeName(modType)] = count
 			}
+		}
+	}
+	
+	return data
+}
+func (vm *ViewManager) getEnvironmentalPressuresData() EnvironmentalPressureData {
+	data := EnvironmentalPressureData{
+		PressureTypes: make(map[string]int),
+		ActiveDetails: make([]PressureDetail, 0),
+	}
+	
+	if vm.world.EnvironmentalPressures != nil {
+		stats := vm.world.EnvironmentalPressures.GetPressureStats()
+		
+		if activePressures, ok := stats["active_pressures"].(int); ok {
+			data.ActivePressures = activePressures
+		}
+		if totalHistory, ok := stats["total_pressure_history"].(int); ok {
+			data.TotalHistory = totalHistory
+		}
+		if avgSeverity, ok := stats["average_severity"].(float64); ok {
+			data.AverageSeverity = avgSeverity
+		}
+		if pressureTypes, ok := stats["pressure_types"].(map[string]int); ok {
+			data.PressureTypes = pressureTypes
+		}
+		
+		// Collect details of active pressures (limit to first 5 for web interface)
+		activePressures := vm.world.EnvironmentalPressures.ActivePressures
+		for i, pressure := range activePressures {
+			if i >= 5 { // Limit to prevent web interface overload
+				break
+			}
+			
+			detail := PressureDetail{
+				ID:        pressure.ID,
+				Type:      pressure.Type,
+				Name:      pressure.Name,
+				Severity:  pressure.Severity,
+				Duration:  pressure.Duration,
+				AffectedX: pressure.AffectedArea.X,
+				AffectedY: pressure.AffectedArea.Y,
+				Radius:    pressure.Radius,
+			}
+			data.ActiveDetails = append(data.ActiveDetails, detail)
+		}
+	}
+	
+	return data
+}
+func (vm *ViewManager) getSymbioticRelationshipData() SymbioticRelationshipData {
+	data := SymbioticRelationshipData{
+		RelationshipTypes: make(map[string]int),
+	}
+	
+	if vm.world.SymbioticRelationships != nil {
+		stats := vm.world.SymbioticRelationships.GetSymbioticStats()
+		
+		if totalRelationships, ok := stats["total_relationships"].(int); ok {
+			data.TotalRelationships = totalRelationships
+		}
+		if activeRelationships, ok := stats["active_relationships"].(int); ok {
+			data.ActiveRelationships = activeRelationships
+		}
+		if activeParasitic, ok := stats["active_parasitic"].(int); ok {
+			data.ActiveParasitic = activeParasitic
+		}
+		if activeMutualistic, ok := stats["active_mutualistic"].(int); ok {
+			data.ActiveMutualistic = activeMutualistic
+		}
+		if activeCommensal, ok := stats["active_commensal"].(int); ok {
+			data.ActiveCommensal = activeCommensal
+		}
+		if avgAge, ok := stats["average_relationship_age"].(float64); ok {
+			data.AverageRelationshipAge = avgAge
+		}
+		if diseaseRate, ok := stats["disease_transmission_rate"].(float64); ok {
+			data.DiseaseTransmissionRate = diseaseRate
+		}
+		if avgVirulence, ok := stats["average_virulence"].(float64); ok {
+			data.AverageVirulence = avgVirulence
+		}
+		if avgTransmission, ok := stats["average_transmission"].(float64); ok {
+			data.AverageTransmission = avgTransmission
+		}
+		if relationshipTypes, ok := stats["relationship_types"].(map[string]int); ok {
+			data.RelationshipTypes = relationshipTypes
 		}
 	}
 	

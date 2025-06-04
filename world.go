@@ -181,6 +181,7 @@ type World struct {
 	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
 	EcosystemMonitor        *EcosystemMonitor                    // Advanced ecosystem metrics and health monitoring
 	EnvironmentalPressures  *EnvironmentalPressureSystem         // Long-term environmental pressures and stresses
+	SymbioticRelationships  *SymbioticRelationshipSystem         // Parasitic and symbiotic relationships between entities
 	
 	// Hive Mind, Caste, and Insect Systems
 	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
@@ -279,6 +280,7 @@ func NewWorld(config WorldConfig) *World {
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
 	world.EcosystemMonitor = NewEcosystemMonitor(100) // Keep 100 historical snapshots
 	world.EnvironmentalPressures = NewEnvironmentalPressureSystem() // Environmental pressure monitoring
+	world.SymbioticRelationships = NewSymbioticRelationshipSystem() // Parasitic and symbiotic relationships
 	
 	// Connect StatisticalReporter to CentralEventBus
 	world.CentralEventBus.AddListener(func(event CentralEvent) {
@@ -1026,6 +1028,11 @@ func (w *World) Update() {
 	// Update environmental pressures (every 10 ticks)
 	if w.EnvironmentalPressures != nil && w.Tick%10 == 0 {
 		w.EnvironmentalPressures.Update(w, w.Tick)
+	}
+	
+	// Update symbiotic relationships (every 5 ticks)
+	if w.SymbioticRelationships != nil && w.Tick%5 == 0 {
+		w.SymbioticRelationships.Update(w, w.Tick)
 	}
 	
 	// Update hive mind, caste, and insect systems

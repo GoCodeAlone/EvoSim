@@ -622,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL'
+            'REPRODUCTION', 'STATISTICAL', 'ECOSYSTEM', 'ANOMALIES', 'WARFARE', 'FUNGAL', 'CULTURAL', 'SYMBIOTIC'
         ];
         
         // Initialize view tabs
@@ -816,7 +816,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     break;
                     
                 case 'ENVIRONMENT':
-                    viewContent.innerHTML = '<div class="stats-section">' + renderEnvironment(data.environmental_mod) + '</div>';
+                    viewContent.innerHTML = '<div class="stats-section">' + renderEnvironment(data.environmental_mod, data.environmental_pressures) + '</div>';
                     break;
                     
                 case 'BEHAVIOR':
@@ -849,6 +849,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'CULTURAL':
                     viewContent.innerHTML = '<div class="stats-section">' + renderCultural(data.cultural) + '</div>';
+                    break;
+                    
+                case 'SYMBIOTIC':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderSymbiotic(data.symbiotic_relationships) + '</div>';
                     break;
                     
                 default:
@@ -2590,8 +2594,50 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         }
         
         // Render environment view
-        function renderEnvironment(envMod) {
-            let html = '<h3>🏗️ Environmental Modification</h3>';
+        function renderEnvironment(envMod, envPressures) {
+            let html = '<h3>🌍 Environmental Systems</h3>';
+            
+            // Environmental Pressures Section
+            html += '<h4>🌡️ Environmental Pressures</h4>';
+            if (envPressures) {
+                html += '<div>Active Pressures: ' + envPressures.active_pressures + '</div>';
+                html += '<div>Historical Events: ' + envPressures.total_history + '</div>';
+                html += '<div>Average Severity: ' + envPressures.average_severity.toFixed(3) + '</div>';
+                
+                if (envPressures.pressure_types && Object.keys(envPressures.pressure_types).length > 0) {
+                    html += '<br><strong>Active Pressure Types:</strong><br>';
+                    Object.entries(envPressures.pressure_types).forEach(([type, count]) => {
+                        html += '<div>• ' + type + ': ' + count + '</div>';
+                    });
+                } else {
+                    html += '<br><div>No active environmental pressures</div>';
+                }
+                
+                if (envPressures.active_details && envPressures.active_details.length > 0) {
+                    html += '<br><strong>Active Pressure Details:</strong><br>';
+                    envPressures.active_details.forEach((pressure, index) => {
+                        if (index >= 3) return; // Limit display
+                        const durationText = pressure.duration > 0 ? pressure.duration + ' ticks' : 'Permanent';
+                        html += '<div style="margin: 5px 0; padding: 5px; border-left: 3px solid #ff6b6b;">';
+                        html += '<strong>' + pressure.name + '</strong> (ID: ' + pressure.id + ')<br>';
+                        html += 'Type: ' + pressure.type + '<br>';
+                        html += 'Severity: ' + pressure.severity.toFixed(2) + '<br>';
+                        html += 'Duration: ' + durationText + '<br>';
+                        html += 'Area: (' + pressure.affected_x.toFixed(1) + ', ' + pressure.affected_y.toFixed(1) + ') radius ' + pressure.radius.toFixed(1);
+                        html += '</div>';
+                    });
+                    if (envPressures.active_details.length > 3) {
+                        html += '<div>... and ' + (envPressures.active_details.length - 3) + ' more pressures</div>';
+                    }
+                }
+            } else {
+                html += '<div>Environmental pressure system not initialized</div>';
+            }
+            
+            html += '<br>';
+            
+            // Environmental Modifications Section
+            html += '<h4>🏗️ Environmental Modifications</h4>';
             html += '<div>Total Modifications: ' + envMod.total_modifications + '</div>';
             html += '<div>Active Modifications: ' + envMod.active_modifications + '</div>';
             html += '<div>Inactive Modifications: ' + envMod.inactive_modifications + '</div>';
@@ -2599,7 +2645,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             html += '<div>Tunnel Networks: ' + envMod.tunnel_networks + '</div>';
             
             if (envMod.modification_types && Object.keys(envMod.modification_types).length > 0) {
-                html += '<h4>Modification Types:</h4>';
+                html += '<br><strong>Modification Types:</strong><br>';
                 Object.entries(envMod.modification_types).forEach(([type, count]) => {
                     html += '<div>' + type + ': ' + count + '</div>';
                 });
@@ -2607,7 +2653,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 html += '<br><div>No environmental modifications yet</div>';
             }
             
-            html += '<br><h4>Modification Activity:</h4>';
+            html += '<br><strong>Modification Activity:</strong><br>';
             if (envMod.total_modifications === 0) {
                 html += '<div>Activity Level: No modifications</div>';
             } else if (envMod.active_modifications < 3) {
@@ -3175,6 +3221,72 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     html += '<div class="knowledge-type-label">' + type + ': ' + count + '</div>';
                     html += '<div class="knowledge-bar" style="width: ' + barWidth + 'px; background: #4CAF50; height: 20px; margin: 2px 0;"></div>';
                     html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        // Render symbiotic relationships view
+        function renderSymbiotic(symbiotic) {
+            if (!symbiotic) {
+                return '<h3>🦠 Symbiotic Relationships</h3><div>Symbiotic relationships system data not available</div>';
+            }
+            
+            let html = '<h3>🦠 Symbiotic Relationships</h3>';
+            
+            // Basic statistics
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Total Relationships: <strong>' + (symbiotic.total_relationships || 0) + '</strong></div>';
+            html += '<div class="stat-item">Active Relationships: <strong>' + (symbiotic.active_relationships || 0) + '</strong></div>';
+            html += '</div>';
+            
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">Average Age: <strong>' + (symbiotic.average_relationship_age || 0).toFixed(1) + ' ticks</strong></div>';
+            html += '<div class="stat-item">Disease Rate: <strong>' + (symbiotic.disease_transmission_rate || 0).toFixed(3) + '</strong></div>';
+            html += '</div>';
+            
+            // Relationship types
+            html += '<h4>🔬 Relationship Types:</h4>';
+            html += '<div class="stats-row">';
+            html += '<div class="stat-item">🦠 Parasitic: <strong>' + (symbiotic.active_parasitic || 0) + '</strong></div>';
+            html += '<div class="stat-item">🤝 Mutualistic: <strong>' + (symbiotic.active_mutualistic || 0) + '</strong></div>';
+            html += '<div class="stat-item">🐠 Commensal: <strong>' + (symbiotic.active_commensal || 0) + '</strong></div>';
+            html += '</div>';
+            
+            // Disease characteristics (if parasitic relationships exist)
+            if (symbiotic.active_parasitic > 0) {
+                html += '<h4>🦠 Disease Characteristics:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Average Virulence: <strong>' + (symbiotic.average_virulence || 0).toFixed(3) + '</strong></div>';
+                html += '<div class="stat-item">Average Transmission: <strong>' + (symbiotic.average_transmission || 0).toFixed(3) + '</strong></div>';
+                html += '</div>';
+            }
+            
+            // Relationship type distribution visualization
+            if (symbiotic.relationship_types && Object.keys(symbiotic.relationship_types).length > 0) {
+                html += '<h4>📊 Distribution:</h4>';
+                html += '<div class="relationship-distribution">';
+                
+                const total = Object.values(symbiotic.relationship_types).reduce((sum, count) => sum + count, 0);
+                const colors = {
+                    'parasitic': '#ff6b6b',
+                    'mutualistic': '#4ecdc4',
+                    'commensal': '#45b7d1'
+                };
+                
+                Object.entries(symbiotic.relationship_types).forEach(([type, count]) => {
+                    if (count > 0) {
+                        const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                        const barWidth = total > 0 ? Math.max(5, (count / total) * 200) : 5;
+                        const color = colors[type] || '#888';
+                        
+                        html += '<div class="relationship-type-item">';
+                        html += '<div class="relationship-type-label">' + type + ': ' + count + ' (' + percentage + '%)</div>';
+                        html += '<div class="relationship-bar" style="width: ' + barWidth + 'px; background: ' + color + '; height: 20px; margin: 2px 0;"></div>';
+                        html += '</div>';
+                    }
                 });
                 html += '</div>';
             }

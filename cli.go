@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "ecosystem", "anomalies", "warfare", "fungal", "cultural"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "ecosystem", "anomalies", "warfare", "fungal", "cultural", "symbiotic"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -363,6 +363,8 @@ func (m CLIModel) View() string {
 		content = m.fungalView()
 	case "cultural":
 		content = m.culturalView()
+	case "symbiotic":
+		content = m.symbioticView()
 	default:
 		content = m.gridView()
 	}
@@ -3922,11 +3924,77 @@ func (m CLIModel) toolsView() string {
 	return content.String()
 }
 
-// environmentView renders environmental modification information
+// environmentView renders environmental modification and pressure information
 func (m CLIModel) environmentView() string {
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("🏗️ Environmental Modification") + "\n\n")
+	content.WriteString(titleStyle.Render("🌍 Environmental Systems") + "\n\n")
 
+	// === ENVIRONMENTAL PRESSURES SECTION ===
+	content.WriteString("=== 🌡️ ENVIRONMENTAL PRESSURES ===\n")
+	if m.world.EnvironmentalPressures != nil {
+		pressureStats := m.world.EnvironmentalPressures.GetPressureStats()
+		
+		activePressures := 0
+		if ap, ok := pressureStats["active_pressures"].(int); ok {
+			activePressures = ap
+		}
+		
+		totalHistory := 0
+		if th, ok := pressureStats["total_pressure_history"].(int); ok {
+			totalHistory = th
+		}
+		
+		avgSeverity := 0.0
+		if as, ok := pressureStats["average_severity"].(float64); ok {
+			avgSeverity = as
+		}
+		
+		content.WriteString(fmt.Sprintf("Active Pressures: %d\n", activePressures))
+		content.WriteString(fmt.Sprintf("Historical Events: %d\n", totalHistory))
+		content.WriteString(fmt.Sprintf("Average Severity: %.3f\n", avgSeverity))
+		
+		// Show pressure types
+		if pressureTypes, ok := pressureStats["pressure_types"].(map[string]int); ok && len(pressureTypes) > 0 {
+			content.WriteString("\nActive Pressure Types:\n")
+			for pressureType, count := range pressureTypes {
+				content.WriteString(fmt.Sprintf("• %s: %d\n", pressureType, count))
+			}
+		} else {
+			content.WriteString("\nNo active environmental pressures\n")
+		}
+		
+		// Show detailed active pressures
+		if len(m.world.EnvironmentalPressures.ActivePressures) > 0 {
+			content.WriteString("\n=== ACTIVE PRESSURE DETAILS ===\n")
+			for i, pressure := range m.world.EnvironmentalPressures.ActivePressures {
+				if i >= 3 { // Limit to first 3 pressures
+					remaining := len(m.world.EnvironmentalPressures.ActivePressures) - i
+					content.WriteString(fmt.Sprintf("... and %d more pressures\n", remaining))
+					break
+				}
+				
+				durationText := "Permanent"
+				if pressure.Duration > 0 {
+					durationText = fmt.Sprintf("%d ticks", pressure.Duration)
+				}
+				
+				content.WriteString(fmt.Sprintf("%s (ID: %d):\n", pressure.Name, pressure.ID))
+				content.WriteString(fmt.Sprintf("  Type: %s\n", pressure.Type))
+				content.WriteString(fmt.Sprintf("  Severity: %.2f\n", pressure.Severity))
+				content.WriteString(fmt.Sprintf("  Duration: %s\n", durationText))
+				content.WriteString(fmt.Sprintf("  Affected Area: (%.1f, %.1f) radius %.1f\n", 
+					pressure.AffectedArea.X, pressure.AffectedArea.Y, pressure.Radius))
+				content.WriteString("\n")
+			}
+		}
+	} else {
+		content.WriteString("Environmental pressure system not initialized\n")
+	}
+
+	content.WriteString("\n")
+
+	// === ENVIRONMENTAL MODIFICATIONS SECTION ===
+	content.WriteString("=== 🏗️ ENVIRONMENTAL MODIFICATIONS ===\n")
 	if m.world.EnvironmentalModSystem == nil {
 		content.WriteString("Environmental modification system not initialized\n")
 		return content.String()
@@ -4348,6 +4416,146 @@ func (m CLIModel) culturalView() string {
 		content.WriteString(fmt.Sprintf("... and %d more entities with knowledge\n", 
 			len(m.world.CulturalKnowledgeSystem.EntityMemories)-5))
 	}
+
+	return content.String()
+}
+
+// symbioticView renders symbiotic relationships information
+func (m CLIModel) symbioticView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("🦠 Symbiotic Relationships") + "\n\n")
+
+	if m.world.SymbioticRelationships == nil {
+		content.WriteString("Symbiotic relationships system not initialized\n")
+		return content.String()
+	}
+
+	// Get symbiotic relationship statistics
+	stats := m.world.SymbioticRelationships.GetSymbioticStats()
+
+	// Basic relationship statistics
+	content.WriteString("=== RELATIONSHIP STATISTICS ===\n")
+	if totalRelationships, ok := stats["total_relationships"].(int); ok {
+		content.WriteString(fmt.Sprintf("Total Relationships: %d\n", totalRelationships))
+	}
+	if activeRelationships, ok := stats["active_relationships"].(int); ok {
+		content.WriteString(fmt.Sprintf("Active Relationships: %d\n", activeRelationships))
+	}
+	if avgAge, ok := stats["average_relationship_age"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Relationship Age: %.1f ticks\n", avgAge))
+	}
+	if diseaseRate, ok := stats["disease_transmission_rate"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Disease Transmission Rate: %.3f\n", diseaseRate))
+	}
+
+	// Relationship types breakdown
+	content.WriteString("\n=== RELATIONSHIP TYPES ===\n")
+	if relationshipTypes, ok := stats["relationship_types"].(map[string]int); ok {
+		if parasitic, exists := relationshipTypes["parasitic"]; exists {
+			content.WriteString(fmt.Sprintf("🦠 Parasitic: %d\n", parasitic))
+		}
+		if mutualistic, exists := relationshipTypes["mutualistic"]; exists {
+			content.WriteString(fmt.Sprintf("🤝 Mutualistic: %d\n", mutualistic))
+		}
+		if commensal, exists := relationshipTypes["commensal"]; exists {
+			content.WriteString(fmt.Sprintf("🐠 Commensal: %d\n", commensal))
+		}
+	}
+
+	// Disease characteristics
+	content.WriteString("\n=== DISEASE CHARACTERISTICS ===\n")
+	if avgVirulence, ok := stats["average_virulence"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Virulence: %.3f\n", avgVirulence))
+	}
+	if avgTransmission, ok := stats["average_transmission"].(float64); ok {
+		content.WriteString(fmt.Sprintf("Average Transmission: %.3f\n", avgTransmission))
+	}
+
+	// Active relationships details
+	content.WriteString("\n=== ACTIVE RELATIONSHIPS ===\n")
+	relationshipCount := 0
+	for _, relationship := range m.world.SymbioticRelationships.Relationships {
+		if relationshipCount >= 8 { // Limit display to prevent overcrowding
+			remaining := len(m.world.SymbioticRelationships.Relationships) - relationshipCount
+			content.WriteString(fmt.Sprintf("... and %d more relationships\n", remaining))
+			break
+		}
+
+		typeSymbol := "❓"
+		typeName := "Unknown"
+		switch relationship.Type {
+		case RelationshipParasitic:
+			typeSymbol = "🦠"
+			typeName = "Parasitic"
+		case RelationshipMutualistic:
+			typeSymbol = "🤝"
+			typeName = "Mutualistic"
+		case RelationshipCommensal:
+			typeSymbol = "🐠"
+			typeName = "Commensal"
+		}
+
+		content.WriteString(fmt.Sprintf("%s %s (ID: %d):\n", typeSymbol, typeName, relationship.ID))
+		content.WriteString(fmt.Sprintf("  Host: Entity %d | Symbiont: Entity %d\n", relationship.HostID, relationship.SymbiontID))
+		content.WriteString(fmt.Sprintf("  Strength: %.2f | Duration: %d ticks\n", relationship.Strength, relationship.Duration))
+		
+		if relationship.Type == RelationshipParasitic {
+			content.WriteString(fmt.Sprintf("  Virulence: %.2f | Transmission: %.2f\n", relationship.Virulence, relationship.Transmission))
+		}
+		
+		content.WriteString(fmt.Sprintf("  Host Benefit: %.2f | Symbiont Benefit: %.2f\n", 
+			relationship.HostBenefit, relationship.SymbiontBenefit))
+		content.WriteString("\n")
+		relationshipCount++
+	}
+
+	if len(m.world.SymbioticRelationships.Relationships) == 0 {
+		content.WriteString("No active symbiotic relationships\n")
+	}
+
+	// Evolutionary pressure analysis
+	content.WriteString("\n=== EVOLUTIONARY PRESSURE ===\n")
+	parasitizedEntities := 0
+	totalResistance := 0.0
+	resistanceCount := 0
+
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		
+		// Check if entity is parasitized
+		isParasitized := false
+		for _, relationship := range m.world.SymbioticRelationships.Relationships {
+			if relationship.HostID == entity.ID && relationship.Type == RelationshipParasitic {
+				isParasitized = true
+				break
+			}
+		}
+		
+		if isParasitized {
+			parasitizedEntities++
+		}
+		
+		// Track resistance levels
+		if defenseTrait, exists := entity.Traits["defense"]; exists {
+			totalResistance += defenseTrait.Value
+			resistanceCount++
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("Parasitized Entities: %d\n", parasitizedEntities))
+	if resistanceCount > 0 {
+		avgResistance := totalResistance / float64(resistanceCount)
+		content.WriteString(fmt.Sprintf("Average Population Resistance: %.3f\n", avgResistance))
+	}
+
+	// System configuration
+	content.WriteString("\n=== SYSTEM CONFIGURATION ===\n")
+	content.WriteString(fmt.Sprintf("Formation Rate: %.3f\n", m.world.SymbioticRelationships.FormationRate))
+	content.WriteString(fmt.Sprintf("Dissolution Rate: %.3f\n", m.world.SymbioticRelationships.DissolutionRate))
+	content.WriteString(fmt.Sprintf("Transmission Radius: %.1f\n", m.world.SymbioticRelationships.TransmissionRadius))
+	content.WriteString(fmt.Sprintf("Coevolution Rate: %.3f\n", m.world.SymbioticRelationships.CoevolutionRate))
 
 	return content.String()
 }
