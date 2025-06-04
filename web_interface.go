@@ -622,7 +622,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             'GRID', 'STATS', 'EVENTS', 'POPULATIONS', 'COMMUNICATION',
             'CIVILIZATION', 'PHYSICS', 'WIND', 'SPECIES', 'NETWORK',
             'DNA', 'CELLULAR', 'EVOLUTION', 'TOPOLOGY', 'TOOLS', 'ENVIRONMENT', 'BEHAVIOR',
-            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES', 'WARFARE'
+            'REPRODUCTION', 'STATISTICAL', 'ANOMALIES', 'WARFARE', 'FUNGAL'
         ];
         
         // Initialize view tabs
@@ -837,6 +837,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                     
                 case 'WARFARE':
                     viewContent.innerHTML = '<div class="stats-section">' + renderWarfare(data.warfare) + '</div>';
+                    break;
+                    
+                case 'FUNGAL':
+                    viewContent.innerHTML = '<div class="stats-section">' + renderFungal(data.fungal) + '</div>';
                     break;
                     
                 default:
@@ -2971,6 +2975,70 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             if (intensity < 0.3) return '#FFC107'; // Low intensity - yellow
             if (intensity < 0.7) return '#FF9800'; // Medium intensity - orange  
             return '#F44336'; // High intensity - red
+        }
+        
+        function renderFungal(fungal) {
+            if (!fungal) {
+                return '<h3>🍄 Fungal Networks</h3><div>Fungal system data not available</div>';
+            }
+            
+            let html = '<h3>🍄 Fungal Networks & Decomposer System</h3>';
+            
+            // Decomposer overview
+            if (fungal.total_decomposers !== undefined) {
+                html += '<h4>🧪 Decomposer Status:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Total Decomposers: <strong>' + (fungal.total_decomposers || 0) + '</strong></div>';
+                html += '<div class="stat-item">Active Decomposers: <strong>' + (fungal.active_decomposers || 0) + '</strong></div>';
+                html += '</div>';
+            }
+            
+            // Nutrient cycling statistics
+            if (fungal.nutrient_cycling) {
+                html += '<h4>♻️ Nutrient Cycling:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Decomposition Rate: <strong>' + (fungal.nutrient_cycling.decomposition_rate || 0).toFixed(2) + '/tick</strong></div>';
+                html += '<div class="stat-item">Nutrients Released: <strong>' + (fungal.nutrient_cycling.nutrients_released || 0).toFixed(1) + '</strong></div>';
+                html += '</div>';
+                
+                if (fungal.nutrient_cycling.nutrient_types) {
+                    html += '<div class="nutrient-breakdown">';
+                    Object.entries(fungal.nutrient_cycling.nutrient_types).forEach(([nutrient, amount]) => {
+                        html += '<div class="nutrient-item">' + nutrient + ': ' + amount.toFixed(1) + '</div>';
+                    });
+                    html += '</div>';
+                }
+            }
+            
+            // Spore networks
+            if (fungal.spore_networks) {
+                html += '<h4>🌐 Spore Networks:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Network Connections: <strong>' + (fungal.spore_networks.connections || 0) + '</strong></div>';
+                html += '<div class="stat-item">Network Efficiency: <strong>' + ((fungal.spore_networks.efficiency || 0) * 100).toFixed(1) + '%</strong></div>';
+                html += '</div>';
+            }
+            
+            // Fungal reproduction
+            if (fungal.reproduction) {
+                html += '<h4>🌱 Fungal Reproduction:</h4>';
+                html += '<div class="stats-row">';
+                html += '<div class="stat-item">Spores Released: <strong>' + (fungal.reproduction.spores_released || 0) + '</strong></div>';
+                html += '<div class="stat-item">Successful Germinations: <strong>' + (fungal.reproduction.germinations || 0) + '</strong></div>';
+                html += '</div>';
+            }
+            
+            // Recent events
+            if (fungal.recent_events && fungal.recent_events.length > 0) {
+                html += '<h4>📋 Recent Fungal Activity:</h4>';
+                html += '<div class="event-list">';
+                fungal.recent_events.slice(0, 10).forEach(event => {
+                    html += '<div class="event-item">• ' + event + '</div>';
+                });
+                html += '</div>';
+            }
+            
+            return html;
         }
     </script>
 </body>

@@ -316,7 +316,12 @@ func (oc *OrganismClassifier) CalculateReproductiveVigor(entity *Entity, classif
 	
 	if entity.Age >= data.SenescenceAge {
 		// Declining reproductive capability in old age
-		senescenceProgress := float64(entity.Age - data.SenescenceAge) / float64(entity.MaxLifespan - data.SenescenceAge)
+		senescenceSpan := entity.MaxLifespan - data.SenescenceAge
+		if senescenceSpan <= 0 {
+			// Edge case: senescence age is at or beyond max lifespan
+			return 0.2 // Minimal reproductive vigor
+		}
+		senescenceProgress := float64(entity.Age - data.SenescenceAge) / float64(senescenceSpan)
 		vigor := 1.0 - senescenceProgress*0.8 // Up to 80% reduction in old age
 		return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 	}
