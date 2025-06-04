@@ -56,6 +56,9 @@ type ViewData struct {
 	EventCount     int                    `json:"event_count"`
 	SpeedMultiplier float64               `json:"speed_multiplier"`
 	Paused         bool                   `json:"paused"`
+	ViewportX      int                    `json:"viewport_x"`
+	ViewportY      int                    `json:"viewport_y"`
+	ZoomLevel      float64                `json:"zoom_level"`
 	Grid           [][]CellData           `json:"grid"`
 	Stats          map[string]interface{} `json:"stats"`
 	Events         []EventData            `json:"events"`
@@ -522,6 +525,11 @@ type BioRhythmEntityData struct {
 
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
+	return vm.GetViewDataWithViewport(0, 0, 1.0)
+}
+
+// GetViewDataWithViewport returns the current simulation state with viewport information
+func (vm *ViewManager) GetViewDataWithViewport(viewportX, viewportY int, zoomLevel float64) *ViewData {
 	// Capture historical data every 5 ticks
 	if vm.world.Tick%5 == 0 {
 		vm.captureHistoricalData()
@@ -536,7 +544,10 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		EventCount:      len(vm.world.Events),
 		SpeedMultiplier: vm.world.GetSpeedMultiplier(),
 		Paused:          vm.world.IsPaused(),
-		Grid:            vm.buildGridData(),
+		ViewportX:       viewportX,
+		ViewportY:       viewportY,
+		ZoomLevel:       zoomLevel,
+		Grid:            vm.buildGridDataWithViewport(viewportX, viewportY, zoomLevel),
 		Stats:           vm.getStatsData(),
 		Events:          vm.getEventsData(),
 		Populations:     vm.getPopulationsData(),
@@ -622,16 +633,68 @@ func (vm *ViewManager) captureHistoricalData() {
 
 // buildGridData builds the grid representation
 func (vm *ViewManager) buildGridData() [][]CellData {
-	grid := make([][]CellData, vm.world.Config.GridHeight)
+	return vm.buildGridDataWithViewport(0, 0, 1.0)
+}
+
+func (vm *ViewManager) buildGridDataWithViewport(viewportX, viewportY int, zoomLevel float64) [][]CellData {
+	// Calculate visible grid dimensions based on zoom
+	visibleWidth := int(float64(vm.world.Config.GridWidth) / zoomLevel)
+	visibleHeight := int(float64(vm.world.Config.GridHeight) / zoomLevel)
+	
+	// Ensure minimum visible area
+	if visibleWidth < 5 {
+		visibleWidth = 5
+	}
+	if visibleHeight < 5 {
+		visibleHeight = 5
+	}
+	
+	// Clamp viewport to valid bounds
+	maxViewportX := vm.world.Config.GridWidth - visibleWidth
+	maxViewportY := vm.world.Config.GridHeight - visibleHeight
+	if viewportX < 0 {
+		viewportX = 0
+	}
+	if viewportY < 0 {
+		viewportY = 0
+	}
+	if viewportX > maxViewportX {
+		viewportX = maxViewportX
+	}
+	if viewportY > maxViewportY {
+		viewportY = maxViewportY
+	}
+	
+	grid := make([][]CellData, visibleHeight)
 	totalEntities := 0
 	totalPlants := 0
 	
-	for y := 0; y < vm.world.Config.GridHeight; y++ {
-		grid[y] = make([]CellData, vm.world.Config.GridWidth)
-		for x := 0; x < vm.world.Config.GridWidth; x++ {
-			cell := vm.world.Grid[y][x]
+	for y := 0; y < visibleHeight; y++ {
+		grid[y] = make([]CellData, visibleWidth)
+		for x := 0; x < visibleWidth; x++ {
+			// Calculate actual world coordinates
+			worldX := viewportX + x
+			worldY := viewportY + y
+			
+			// Ensure we don't go out of bounds
+			if worldX >= vm.world.Config.GridWidth || worldY >= vm.world.Config.GridHeight {
+				// Create empty cell for out-of-bounds areas
+				grid[y][x] = CellData{
+					X:           x,
+					Y:           y,
+					EntityCount: 0,
+					PlantCount:  0,
+					HasEvent:    false,
+					Biome:       "void",
+					BiomeSymbol: " ",
+					BiomeColor:  "#000000",
+				}
+				continue
+			}
+			
+			cell := vm.world.Grid[worldY][worldX]
 			cellData := CellData{
-				X:           x,
+				X:           x, // Grid position in viewport
 				Y:           y,
 				EntityCount: len(cell.Entities),
 				PlantCount:  len(cell.Plants),
