@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -47,6 +48,22 @@ const (
 	Raid                               // Quick resource grab
 )
 
+// String returns the string representation of ConflictType
+func (ct ConflictType) String() string {
+	switch ct {
+	case BorderSkirmish:
+		return "Border Skirmish"
+	case ResourceWar:
+		return "Resource War"
+	case TotalWar:
+		return "Total War"
+	case Raid:
+		return "Raid"
+	default:
+		return "Unknown Conflict"
+	}
+}
+
 // ColonyDiplomacy tracks diplomatic relationships and history
 type ColonyDiplomacy struct {
 	ColonyID         int                            `json:"colony_id"`
@@ -83,6 +100,18 @@ type TradeAgreement struct {
 	TradeVolume      float64            `json:"trade_volume"`      // Amount traded per tick
 	IsActive         bool               `json:"is_active"`
 	LastTradeTime    int                `json:"last_trade_time"`   // Last tick when trade occurred
+	SecurityLevel    float64            `json:"security_level"`    // 0.0-1.0, affects trade success rate
+	RouteThreats     []TradeThreat      `json:"route_threats"`     // Active threats to this trade route
+	EscortStrength   float64            `json:"escort_strength"`   // Military protection for the route
+}
+
+// TradeThreat represents a threat to a trade route
+type TradeThreat struct {
+	ThreatType   string  `json:"threat_type"`   // "raiders", "hostile_colony", "environmental"
+	Severity     float64 `json:"severity"`      // 0.0-1.0, impact on trade success
+	Position     Position `json:"position"`     // Location of the threat
+	Duration     int     `json:"duration"`      // How long the threat lasts
+	Description  string  `json:"description"`   // Human-readable description
 }
 
 // Alliance represents a military alliance between colonies
@@ -95,6 +124,25 @@ type Alliance struct {
 	SharedDefense bool    `json:"shared_defense"` // Automatic defense assistance
 	ResourceShare float64 `json:"resource_share"` // Percentage of resources shared
 	IsActive      bool    `json:"is_active"`
+	// Enhanced coordination features
+	CoordinationLevel    float64            `json:"coordination_level"`    // 0.0-1.0, effectiveness of joint operations
+	JointOperations      []JointOperation   `json:"joint_operations"`      // Active coordinated military actions
+	TradeProtection      bool               `json:"trade_protection"`      // Alliance protects members' trade routes
+	IntelligenceSharing  bool               `json:"intelligence_sharing"`  // Share information about threats
+	SharedTechnology     float64            `json:"shared_technology"`     // Technology sharing level
+}
+
+// JointOperation represents a coordinated military action between alliance members
+type JointOperation struct {
+	ID          int      `json:"id"`
+	AllianceID  int      `json:"alliance_id"`
+	Participants []int   `json:"participants"`  // Colony IDs participating
+	OperationType string `json:"operation_type"` // "joint_defense", "coordinated_attack", "trade_escort"
+	TargetColonyID int   `json:"target_colony_id"` // Target of the operation (if applicable)
+	StartTick   int      `json:"start_tick"`
+	Duration    int      `json:"duration"`
+	Effectiveness float64 `json:"effectiveness"` // 0.0-1.0, success rate of the operation
+	IsActive    bool     `json:"is_active"`
 }
 
 // Conflict represents an active conflict between colonies
@@ -897,12 +945,13 @@ func (cws *ColonyWarfareSystem) executeTrade(agreement *TradeAgreement, colony1,
 		return false
 	}
 	
-	// Execute the trade with route efficiency and relationship bonuses
+	// Execute the trade with route efficiency, relationship bonuses, and security factors
 	efficiency := cws.calculateTradeRouteEfficiency(colony1, colony2, agreement)
 	trustBonus := cws.calculateTrustBonus(colony1, colony2)
 	relationshipMultiplier := cws.calculateRelationshipMultiplier(colony1, colony2)
+	securityMultiplier := cws.calculateSecurityMultiplier(agreement, tick)
 	
-	actualVolume := agreement.TradeVolume * efficiency * trustBonus * relationshipMultiplier
+	actualVolume := agreement.TradeVolume * efficiency * trustBonus * relationshipMultiplier * securityMultiplier
 	
 	// Colony1 gives what it offers, gets what it wants
 	for resourceType, amount := range agreement.ResourcesOffered {
@@ -1006,6 +1055,10 @@ func (cws *ColonyWarfareSystem) CreateTradeAgreement(colony1, colony2 *CasteColo
 		TradeVolume:      1.0, // Default trade volume
 		IsActive:         true,
 		LastTradeTime:    tick,
+		// Initialize security fields
+		SecurityLevel:    0.8, // Start with good security
+		RouteThreats:     make([]TradeThreat, 0),
+		EscortStrength:   0.0, // No escort initially
 	}
 	
 	// Copy resource maps
@@ -1249,6 +1302,11 @@ func (cws *ColonyWarfareSystem) processSharedDefense(alliance *Alliance, colonie
 			}
 		}
 	}
+	
+	// Enhanced: Protect alliance trade routes
+	if alliance.TradeProtection {
+		cws.protectAllianceTradeRoutes(alliance, colonies, tick)
+	}
 }
 
 // rallyAlliesForDefense brings in alliance members to help defend
@@ -1456,6 +1514,12 @@ func (cws *ColonyWarfareSystem) CreateAlliance(members []int, allianceType strin
 		SharedDefense: true,
 		ResourceShare: math.Min(0.3, math.Max(0.0, resourceShare)), // Cap at 30%
 		IsActive:      true,
+		// Initialize enhanced coordination fields
+		CoordinationLevel:    0.5, // Start with moderate coordination
+		JointOperations:      make([]JointOperation, 0),
+		TradeProtection:      true,  // Default trade protection
+		IntelligenceSharing:  true,  // Default intelligence sharing
+		SharedTechnology:     0.2,   // Low initial technology sharing
 	}
 	
 	copy(alliance.Members, members)
@@ -1627,3 +1691,158 @@ func (cws *ColonyWarfareSystem) calculateRelationshipMultiplier(colony1, colony2
 		return 1.0
 	}
 }
+
+// calculateSecurityMultiplier returns a multiplier based on trade route security
+func (cws *ColonyWarfareSystem) calculateSecurityMultiplier(agreement *TradeAgreement, tick int) float64 {
+	baseSecurityLevel := agreement.SecurityLevel
+	
+	// Update and process route threats
+	cws.updateRouteThreats(agreement, tick)
+	
+	// Calculate threat impact
+	threatImpact := 0.0
+	for _, threat := range agreement.RouteThreats {
+		threatImpact += threat.Severity
+	}
+	
+	// Escort protection helps mitigate threats
+	escortBonus := agreement.EscortStrength * 0.5 // Max 50% threat reduction
+	effectiveThreatImpact := math.Max(0.0, threatImpact - escortBonus)
+	
+	// Security level ranges from 0.2 (very dangerous) to 1.0 (completely safe)
+	securityMultiplier := math.Max(0.2, baseSecurityLevel - effectiveThreatImpact)
+	
+	return securityMultiplier
+}
+
+// updateRouteThreats manages threats to trade routes
+func (cws *ColonyWarfareSystem) updateRouteThreats(agreement *TradeAgreement, tick int) {
+	// Remove expired threats
+	activeThreats := make([]TradeThreat, 0)
+	for _, threat := range agreement.RouteThreats {
+		if threat.Duration > 0 {
+			threat.Duration--
+			activeThreats = append(activeThreats, threat)
+		}
+	}
+	agreement.RouteThreats = activeThreats
+	
+	// Check for new threats based on nearby conflicts
+	cws.addProximityThreats(agreement, tick)
+	
+	// Update base security level based on recent threat activity
+	threatCount := len(agreement.RouteThreats)
+	if threatCount == 0 {
+		// No threats, security improves slowly
+		agreement.SecurityLevel = math.Min(1.0, agreement.SecurityLevel + 0.01)
+	} else {
+		// Threats present, security degrades based on threat severity
+		totalSeverity := 0.0
+		for _, threat := range agreement.RouteThreats {
+			totalSeverity += threat.Severity
+		}
+		securityDegradation := totalSeverity * 0.05
+		agreement.SecurityLevel = math.Max(0.1, agreement.SecurityLevel - securityDegradation)
+	}
+}
+
+// addProximityThreats adds threats based on nearby conflicts and hostile colonies
+func (cws *ColonyWarfareSystem) addProximityThreats(agreement *TradeAgreement, tick int) {
+	// Check for nearby active conflicts that could threaten the trade route
+	for _, conflict := range cws.ActiveConflicts {
+		if !conflict.IsActive {
+			continue
+		}
+		
+		// If either trade partner is involved in conflict, add threat
+		if conflict.Attacker == agreement.Colony1ID || 
+		   conflict.Defender == agreement.Colony1ID ||
+		   conflict.Attacker == agreement.Colony2ID || 
+		   conflict.Defender == agreement.Colony2ID {
+			
+			threat := TradeThreat{
+				ThreatType:  "nearby_conflict",
+				Severity:    conflict.Intensity * 0.3, // Conflicts reduce trade efficiency
+				Position:    Position{X: 0, Y: 0}, // Could be more specific with actual positions
+				Duration:    20 + rand.Intn(30), // 20-50 tick threat duration
+				Description: fmt.Sprintf("Trade route threatened by %s conflict", conflict.ConflictType.String()),
+			}
+			
+			// Only add if not already present
+			threatExists := false
+			for _, existingThreat := range agreement.RouteThreats {
+				if existingThreat.ThreatType == threat.ThreatType && existingThreat.Description == threat.Description {
+					threatExists = true
+					break
+				}
+			}
+			
+			if !threatExists {
+				agreement.RouteThreats = append(agreement.RouteThreats, threat)
+			}
+		}
+	}
+	
+	// Add random raider threats occasionally
+	if rand.Float64() < 0.05 { // 5% chance per trade cycle
+		threat := TradeThreat{
+			ThreatType:  "raiders",
+			Severity:    0.1 + rand.Float64() * 0.3, // 10-40% trade loss
+			Position:    Position{X: float64(rand.Intn(100)), Y: float64(rand.Intn(100))},
+			Duration:    10 + rand.Intn(20), // 10-30 tick duration
+			Description: "Raider activity reported along trade route",
+		}
+		agreement.RouteThreats = append(agreement.RouteThreats, threat)
+	}
+}
+
+// protectAllianceTradeRoutes provides military escort for alliance member trade routes
+func (cws *ColonyWarfareSystem) protectAllianceTradeRoutes(alliance *Alliance, colonies []*CasteColony, tick int) {
+	// Find trade routes involving alliance members
+	for _, agreement := range cws.TradeAgreements {
+		if !agreement.IsActive {
+			continue
+		}
+		
+		// Check if either trade partner is an alliance member
+		isAllianceTrade := false
+		for _, memberID := range alliance.Members {
+			if agreement.Colony1ID == memberID || agreement.Colony2ID == memberID {
+				isAllianceTrade = true
+				break
+			}
+		}
+		
+		if isAllianceTrade {
+			// Provide escort protection based on alliance coordination level
+			escortStrength := alliance.CoordinationLevel * 0.5 // Up to 50% threat reduction
+			
+			// Find the strongest alliance member to provide escort
+			maxMilitaryStrength := 0.0
+			for _, memberID := range alliance.Members {
+				colony := cws.findColonyByID(colonies, memberID)
+				if colony != nil {
+					militaryStrength := cws.calculateMilitaryStrength(colony)
+					if militaryStrength > maxMilitaryStrength {
+						maxMilitaryStrength = militaryStrength
+					}
+				}
+			}
+			
+			// Scale escort strength based on available military power
+			if maxMilitaryStrength > 0 {
+				escortStrength = math.Min(escortStrength, maxMilitaryStrength * 0.3) // Use up to 30% of military for escort
+				agreement.EscortStrength = math.Max(agreement.EscortStrength, escortStrength)
+			}
+			
+			// Intelligence sharing reduces threats for alliance trades
+			if alliance.IntelligenceSharing {
+				// Reduce existing threat severity through intelligence
+				for i := range agreement.RouteThreats {
+					agreement.RouteThreats[i].Severity *= 0.85 // 15% threat reduction through intelligence
+				}
+			}
+		}
+	}
+}
+

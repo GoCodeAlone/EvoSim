@@ -3474,6 +3474,22 @@ func (m CLIModel) warfareView() string {
 				content.WriteString("\n")
 			}
 			
+			// Enhanced: Show trade security information
+			content.WriteString(fmt.Sprintf("  Security Level: %.1f%%\n", agreement.SecurityLevel*100))
+			if agreement.EscortStrength > 0 {
+				content.WriteString(fmt.Sprintf("  Escort Protection: %.1f%%\n", agreement.EscortStrength*100))
+			}
+			if len(agreement.RouteThreats) > 0 {
+				content.WriteString(fmt.Sprintf("  Active Threats: %d (", len(agreement.RouteThreats)))
+				for i, threat := range agreement.RouteThreats {
+					if i > 0 {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("%s %.0f%%", threat.ThreatType, threat.Severity*100))
+				}
+				content.WriteString(")\n")
+			}
+			
 			content.WriteString("\n")
 			displayCount++
 		}
@@ -3518,6 +3534,29 @@ func (m CLIModel) warfareView() string {
 			
 			if alliance.SharedDefense {
 				content.WriteString("  Shared defense: Active\n")
+			}
+			
+			// Enhanced: Show coordination features
+			content.WriteString(fmt.Sprintf("  Coordination Level: %.1f%%\n", alliance.CoordinationLevel*100))
+			if alliance.TradeProtection {
+				content.WriteString("  Trade Route Protection: Active\n")
+			}
+			if alliance.IntelligenceSharing {
+				content.WriteString("  Intelligence Sharing: Active\n")
+			}
+			if alliance.SharedTechnology > 0 {
+				content.WriteString(fmt.Sprintf("  Technology Sharing: %.1f%%\n", alliance.SharedTechnology*100))
+			}
+			if len(alliance.JointOperations) > 0 {
+				activeOps := 0
+				for _, op := range alliance.JointOperations {
+					if op.IsActive {
+						activeOps++
+					}
+				}
+				if activeOps > 0 {
+					content.WriteString(fmt.Sprintf("  Active Joint Operations: %d\n", activeOps))
+				}
 			}
 			
 			// Show alliance age
