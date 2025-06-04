@@ -41,6 +41,13 @@ type PheromoneTrail struct {
 	CreationTick int           `json:"creation_tick"`
 	DecayRate    float64       `json:"decay_rate"`    // How fast the trail fades
 	MaxStrength  float64       `json:"max_strength"`  // Maximum pheromone strength
+	// Enhanced persistence features
+	ReinforcementCount int           `json:"reinforcement_count"` // How many times trail was reinforced
+	LastReinforced     int           `json:"last_reinforced"`     // Last tick when reinforced
+	UsageCount         int           `json:"usage_count"`         // How many entities have used this trail
+	EnvironmentalFactor float64     `json:"environmental_factor"` // Environmental effects on persistence
+	PersistenceBonus   float64       `json:"persistence_bonus"`   // Bonus persistence from usage
+	WeatherResistance  float64       `json:"weather_resistance"`  // Resistance to weather effects
 }
 
 // SwarmUnit represents a coordinated group of entities acting as one
@@ -127,6 +134,13 @@ func (is *InsectSystem) CreatePheromoneTrail(producer *Entity, trailType Pheromo
 		CreationTick: 0, // Will be set by world
 		DecayRate:    0.02 + rand.Float64()*0.03, // 2-5% decay per tick
 		MaxStrength:  production,
+		// Enhanced persistence features
+		ReinforcementCount:  0,
+		LastReinforced:     0,
+		UsageCount:         0,
+		EnvironmentalFactor: 1.0, // Start with neutral factor
+		PersistenceBonus:   0.0,
+		WeatherResistance:  0.3 + rand.Float64()*0.4, // 30-70% weather resistance
 	}
 	
 	is.NextTrailID++
@@ -204,6 +218,97 @@ func (is *InsectSystem) FollowPheromoneTrail(entity *Entity, trailType Pheromone
 	return bestX, bestY, found
 }
 
+// ReinforcePheromoneTrail strengthens a trail when an entity uses it
+func (is *InsectSystem) ReinforcePheromoneTrail(entity *Entity, trailType PheromoneType, currentTick int) {
+	production := entity.GetTrait("pheromone_production")
+	if production < 0.1 {
+		return // Cannot reinforce trails effectively
+	}
+	
+	// Find trail that entity is currently on or near
+	entityPos := entity.Position
+	reinforcementRadius := 3.0
+	
+	for _, trail := range is.PheromoneTrails {
+		if trail.Type != trailType {
+			continue
+		}
+		
+		// Check if entity is near this trail
+		for _, trailPos := range trail.Positions {
+			distance := math.Sqrt(math.Pow(entityPos.X-trailPos.X, 2) + math.Pow(entityPos.Y-trailPos.Y, 2))
+			
+			if distance <= reinforcementRadius {
+				// Calculate reinforcement strength based on entity traits
+				reinforcementStrength := production * 0.5
+				
+				// Apply reinforcement to nearby trail points
+				for j := range trail.Positions {
+					trailDistance := math.Sqrt(math.Pow(entityPos.X-trail.Positions[j].X, 2) + 
+						math.Pow(entityPos.Y-trail.Positions[j].Y, 2))
+					
+					if trailDistance <= reinforcementRadius {
+						// Strengthen trail proportional to distance
+						strengthMultiplier := 1.0 - (trailDistance / reinforcementRadius)
+						additionalStrength := reinforcementStrength * strengthMultiplier
+						
+						// Add strength but cap at maximum
+						trail.Strength[j] = math.Min(trail.MaxStrength, trail.Strength[j] + additionalStrength)
+					}
+				}
+				
+				// Update trail statistics
+				trail.ReinforcementCount++
+				trail.LastReinforced = currentTick
+				trail.UsageCount++
+				
+				// Increase persistence bonus based on usage
+				trail.PersistenceBonus = math.Min(0.5, trail.PersistenceBonus + 0.02) // Max 50% bonus
+				
+				return // Only reinforce one trail per call
+			}
+		}
+	}
+}
+
+// reinforceTrailAtPosition reinforces a specific trail near the entity's position
+func (is *InsectSystem) reinforceTrailAtPosition(entity *Entity, trail *PheromoneTrail, currentTick int) {
+	production := entity.GetTrait("pheromone_production")
+	if production < 0.1 {
+		return // Cannot reinforce trails effectively
+	}
+	
+	entityPos := entity.Position
+	reinforcementRadius := 3.0
+	
+	// Apply reinforcement to nearby trail points
+	reinforced := false
+	for i := range trail.Positions {
+		distance := math.Sqrt(math.Pow(entityPos.X-trail.Positions[i].X, 2) + 
+			math.Pow(entityPos.Y-trail.Positions[i].Y, 2))
+		
+		if distance <= reinforcementRadius {
+			// Strengthen trail proportional to distance
+			strengthMultiplier := 1.0 - (distance / reinforcementRadius)
+			additionalStrength := production * 0.3 * strengthMultiplier
+			
+			// Add strength but cap at maximum
+			trail.Strength[i] = math.Min(trail.MaxStrength, trail.Strength[i] + additionalStrength)
+			reinforced = true
+		}
+	}
+	
+	// Update trail statistics if reinforcement occurred
+	if reinforced {
+		trail.ReinforcementCount++
+		trail.LastReinforced = currentTick
+		trail.UsageCount++
+		
+		// Increase persistence bonus based on usage
+		trail.PersistenceBonus = math.Min(0.5, trail.PersistenceBonus + 0.01) // Max 50% bonus
+	}
+}
+
 // findClosestTrailPoint finds the closest point on a pheromone trail
 func (is *InsectSystem) findClosestTrailPoint(pos Position, trail *PheromoneTrail) (int, float64) {
 	if len(trail.Positions) == 0 {
@@ -222,26 +327,6 @@ func (is *InsectSystem) findClosestTrailPoint(pos Position, trail *PheromoneTrai
 	}
 
 	return closestIndex, minDistance
-}
-
-// ReinforcePheromoneTrail strengthens an existing trail
-func (is *InsectSystem) ReinforcePheromoneTrail(entity *Entity, trail *PheromoneTrail) {
-	production := entity.GetTrait("pheromone_production")
-	if production < 0.1 {
-		return
-	}
-
-	// Find closest point on trail
-	closestIndex, closestDistance := is.findClosestTrailPoint(entity.Position, trail)
-	
-	if closestDistance < 5.0 { // Close enough to reinforce
-		// Strengthen nearby points on the trail
-		reinforcement := production * 0.3
-		
-		for i := max(0, closestIndex-2); i <= minInt(len(trail.Strength)-1, closestIndex+2); i++ {
-			trail.Strength[i] = minFloat(trail.MaxStrength, trail.Strength[i]+reinforcement)
-		}
-	}
 }
 
 // CreateSwarmUnit forms a swarm from compatible entities
@@ -622,17 +707,30 @@ func (is *InsectSystem) Update(tick int) {
 	is.updateSwarmUnits()
 }
 
-// updatePheromoneTrails handles trail decay and removal
+// updatePheromoneTrails handles enhanced trail decay, environmental factors, and persistence
 func (is *InsectSystem) updatePheromoneTrails() {
 	activeTrails := make([]*PheromoneTrail, 0)
 
 	for _, trail := range is.PheromoneTrails {
 		stillActive := false
 		
+		// Calculate environmental decay modifier
+		trail.EnvironmentalFactor = is.calculateEnvironmentalFactor(trail)
+		
+		// Calculate effective decay rate considering all factors
+		effectiveDecayRate := is.calculateEffectiveDecayRate(trail)
+		
 		// Decay all points on the trail
 		for i := range trail.Strength {
-			trail.Strength[i] *= (1.0 - trail.DecayRate)
-			if trail.Strength[i] > 0.1 {
+			trail.Strength[i] *= (1.0 - effectiveDecayRate)
+			
+			// Lower threshold for well-used trails
+			persistenceThreshold := 0.1
+			if trail.UsageCount > 5 {
+				persistenceThreshold = 0.05 // Trails with high usage persist longer
+			}
+			
+			if trail.Strength[i] > persistenceThreshold {
 				stillActive = true
 			}
 		}
@@ -644,6 +742,56 @@ func (is *InsectSystem) updatePheromoneTrails() {
 	}
 
 	is.PheromoneTrails = activeTrails
+}
+
+// calculateEnvironmentalFactor determines how environmental conditions affect trail persistence
+func (is *InsectSystem) calculateEnvironmentalFactor(trail *PheromoneTrail) float64 {
+	factor := 1.0
+	
+	// Check weather conditions (simplified)
+	// In a full implementation, this would check actual weather patterns
+	weatherSeverity := rand.Float64() // 0-1, where 1 is severe weather
+	
+	if weatherSeverity > 0.7 {
+		// Severe weather reduces persistence
+		weatherEffect := (1.0 - weatherSeverity) * trail.WeatherResistance
+		factor *= math.Max(0.3, weatherEffect) // Minimum 30% factor
+	}
+	
+	// Temperature effects (simplified)
+	temperatureFactor := 0.8 + rand.Float64()*0.4 // 0.8-1.2
+	factor *= temperatureFactor
+	
+	// Humidity helps preserve pheromones
+	humidityFactor := 0.9 + rand.Float64()*0.2 // 0.9-1.1
+	factor *= humidityFactor
+	
+	return math.Max(0.2, math.Min(2.0, factor)) // Clamp between 0.2 and 2.0
+}
+
+// calculateEffectiveDecayRate calculates the actual decay rate considering all factors
+func (is *InsectSystem) calculateEffectiveDecayRate(trail *PheromoneTrail) float64 {
+	baseDecay := trail.DecayRate
+	
+	// Apply environmental factor
+	environmentalDecay := baseDecay * trail.EnvironmentalFactor
+	
+	// Apply persistence bonus (reduces decay)
+	persistenceReduction := trail.PersistenceBonus
+	effectiveDecay := environmentalDecay * (1.0 - persistenceReduction)
+	
+	// Recently reinforced trails decay slower
+	recentReinforcementBonus := 0.0
+	if trail.ReinforcementCount > 0 {
+		// Decay reduction based on reinforcement count and recency
+		reinforcementFactor := math.Min(0.3, float64(trail.ReinforcementCount) * 0.05) // Max 30% reduction
+		recentReinforcementBonus = reinforcementFactor
+	}
+	
+	effectiveDecay *= (1.0 - recentReinforcementBonus)
+	
+	// Ensure minimum and maximum decay rates
+	return math.Max(0.005, math.Min(0.15, effectiveDecay)) // Between 0.5% and 15% per tick
 }
 
 // updateSwarmUnits maintains swarm integrity and behavior
