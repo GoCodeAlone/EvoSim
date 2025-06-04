@@ -184,6 +184,9 @@ type World struct {
 	// Organism classification and lifespan system
 	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
 	
+	// Metamorphosis and life stage system
+	MetamorphosisSystem     *MetamorphosisSystem                 // Life stage transitions and development
+	
 	// Player event callback for gamification features
 	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
 	PreviousPopulationCounts map[string]int                                     // Track population counts for extinction detection
@@ -305,6 +308,9 @@ func NewWorld(config WorldConfig) *World {
 	
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
+	
+	// Initialize metamorphosis system
+	world.MetamorphosisSystem = NewMetamorphosisSystem()
 	
 	// Initialize enhanced environmental event system
 	world.EnvironmentalEvents = make([]*EnhancedEnvironmentalEvent, 0)
@@ -1044,6 +1050,32 @@ func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime f
 
 		// Update basic entity properties using classification system
 		entity.UpdateWithClassification(w.OrganismClassifier, w.CellularSystem)
+		
+		// Update metamorphosis and life stage development
+		if entity.MetamorphosisStatus == nil {
+			// Initialize metamorphosis status for new entities
+			entity.MetamorphosisStatus = NewMetamorphosisStatus(entity, w.MetamorphosisSystem)
+		}
+		
+		// Get environmental factors for metamorphosis
+		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
+		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
+		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+		
+		environment := w.calculateEnvironmentalFactors(entity, gridX, gridY)
+		stageChanged := w.MetamorphosisSystem.Update(entity, w.Tick, environment)
+		
+		if stageChanged {
+			// Log metamorphosis events
+			w.CentralEventBus.EmitSystemEvent(w.Tick, "metamorphosis", "life_stage", "metamorphosis_system",
+				fmt.Sprintf("Entity %d advanced to %s stage", entity.ID, entity.MetamorphosisStatus.CurrentStage.String()),
+				&entity.Position, map[string]interface{}{
+					"entity_id": entity.ID,
+					"new_stage": entity.MetamorphosisStatus.CurrentStage.String(),
+					"metamorphosis_type": entity.MetamorphosisStatus.Type.String(),
+				})
+		}
 
 		// 4. Apply physics forces and movement
 		physics := w.PhysicsComponents[entity.ID]
@@ -4642,5 +4674,172 @@ func (w *World) attemptBasicToolsAndModifications() {
 					fmt.Sprintf("%s created a trap", entity.Species))
 			}
 		}
+	}
+}
+
+// calculateEnvironmentalFactors determines environmental conditions affecting metamorphosis
+func (w *World) calculateEnvironmentalFactors(entity *Entity, gridX, gridY int) map[string]float64 {
+	environment := make(map[string]float64)
+	
+	// Get grid cell information
+	cell := w.Grid[gridY][gridX]
+	
+	// Temperature based on biome and season
+	timeState := w.AdvancedTimeSystem.GetTimeState()
+	baseTemp := w.getBiomeTemperature(cell.Biome)
+	seasonalMod := w.getSeasonalTemperatureModifier(w.seasonToString(timeState.Season))
+	environment["temperature"] = baseTemp * seasonalMod
+	
+	// Humidity based on biome
+	environment["humidity"] = w.getBiomeHumidity(cell.Biome)
+	
+	// Food availability based on nearby plants and resources
+	foodCount := 0
+	totalNutrition := 0.0
+	searchRadius := 5
+	
+	for dx := -searchRadius; dx <= searchRadius; dx++ {
+		for dy := -searchRadius; dy <= searchRadius; dy++ {
+			checkX := gridX + dx
+			checkY := gridY + dy
+			
+			if checkX >= 0 && checkX < w.Config.GridWidth && checkY >= 0 && checkY < w.Config.GridHeight {
+				checkCell := w.Grid[checkY][checkX]
+				if len(checkCell.Plants) > 0 {
+					for _, plant := range checkCell.Plants {
+						if plant != nil && plant.IsAlive {
+							foodCount++
+							totalNutrition += plant.Energy
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	if foodCount > 0 {
+		environment["food_availability"] = math.Min(1.0, totalNutrition/float64(foodCount)/100.0)
+	} else {
+		environment["food_availability"] = 0.0
+	}
+	
+	// Safety based on nearby predators and threats
+	threatLevel := 0.0
+	entityCount := 0
+	
+	for _, other := range w.AllEntities {
+		if other == nil || !other.IsAlive || other.ID == entity.ID {
+			continue
+		}
+		
+		distance := entity.DistanceTo(other)
+		if distance < 10.0 { // Within threat detection range
+			entityCount++
+			aggression := other.GetTrait("aggression")
+			size := other.GetTrait("size")
+			threat := aggression * (1.0 + size) / (distance + 1.0)
+			threatLevel += threat
+		}
+	}
+	
+	if entityCount > 0 {
+		avgThreat := threatLevel / float64(entityCount)
+		environment["safety"] = math.Max(0.0, 1.0 - avgThreat)
+	} else {
+		environment["safety"] = 1.0
+	}
+	
+	// Population density
+	nearbyCount := float64(entityCount)
+	environment["population_density"] = math.Min(1.0, nearbyCount/20.0)
+	
+	return environment
+}
+
+// getBiomeTemperature returns the temperature characteristic of a biome (0.0 to 1.0)
+func (w *World) getBiomeTemperature(biome BiomeType) float64 {
+	switch biome {
+	case BiomeIce:
+		return 0.1
+	case BiomeTundra:
+		return 0.2
+	case BiomeWater:
+		return 0.4
+	case BiomePlains:
+		return 0.5
+	case BiomeForest:
+		return 0.6
+	case BiomeMountain:
+		return 0.3
+	case BiomeDesert:
+		return 0.9
+	case BiomeRainforest:
+		return 0.8
+	case BiomeHotSpring:
+		return 0.95
+	default:
+		return 0.5
+	}
+}
+
+// getBiomeHumidity returns the humidity characteristic of a biome (0.0 to 1.0)
+func (w *World) getBiomeHumidity(biome BiomeType) float64 {
+	switch biome {
+	case BiomeIce:
+		return 0.3
+	case BiomeTundra:
+		return 0.4
+	case BiomeWater:
+		return 1.0
+	case BiomeDeepWater:
+		return 1.0
+	case BiomePlains:
+		return 0.5
+	case BiomeForest:
+		return 0.7
+	case BiomeMountain:
+		return 0.4
+	case BiomeDesert:
+		return 0.1
+	case BiomeRainforest:
+		return 0.9
+	case BiomeSwamp:
+		return 0.95
+	case BiomeHotSpring:
+		return 0.8
+	default:
+		return 0.5
+	}
+}
+
+// getSeasonalTemperatureModifier returns seasonal temperature adjustment
+func (w *World) getSeasonalTemperatureModifier(season string) float64 {
+	switch season {
+	case "spring":
+		return 0.8
+	case "summer":
+		return 1.2
+	case "autumn":
+		return 0.9
+	case "winter":
+		return 0.6
+	default:
+		return 1.0
+	}
+}
+
+// seasonToString converts Season enum to string
+func (w *World) seasonToString(season Season) string {
+	switch season {
+	case Spring:
+		return "spring"
+	case Summer:
+		return "summer"
+	case Autumn:
+		return "autumn"
+	case Winter:
+		return "winter"
+	default:
+		return "unknown"
 	}
 }
