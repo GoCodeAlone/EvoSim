@@ -150,11 +150,16 @@ type PhysicsData struct {
 
 // WindData represents wind system state
 type WindData struct {
-	Direction       float64 `json:"direction"`
-	Strength        float64 `json:"strength"`
-	TurbulenceLevel float64 `json:"turbulence_level"`
-	WeatherPattern  string  `json:"weather_pattern"`
-	PollenCount     int     `json:"pollen_count"`
+	Direction       float64                `json:"direction"`
+	Strength        float64                `json:"strength"`
+	TurbulenceLevel float64                `json:"turbulence_level"`
+	WeatherPattern  string                 `json:"weather_pattern"`
+	PollenCount     int                    `json:"pollen_count"`
+	SeedCount       int                    `json:"seed_count"`
+	SeedBanks       int                    `json:"seed_banks"`
+	GerminationEvents int                  `json:"germination_events"`
+	DormancyActivations int                `json:"dormancy_activations"`
+	DispersalStats  map[string]interface{} `json:"dispersal_stats"`
 }
 
 // SpeciesData represents species tracking state
@@ -891,6 +896,15 @@ func (vm *ViewManager) getWindData() WindData {
 		data.TurbulenceLevel = vm.world.WindSystem.TurbulenceLevel
 		data.WeatherPattern = vm.getWeatherPatternName(vm.world.WindSystem.WeatherPattern)
 		data.PollenCount = len(vm.world.WindSystem.AllPollenGrains)
+	}
+	
+	// Add seed dispersal system data
+	if vm.world.SeedDispersalSystem != nil {
+		data.SeedCount = len(vm.world.SeedDispersalSystem.AllSeeds)
+		data.SeedBanks = len(vm.world.SeedDispersalSystem.SeedBanks)
+		data.GerminationEvents = vm.world.SeedDispersalSystem.GerminationEvents
+		data.DormancyActivations = vm.world.SeedDispersalSystem.DormancyActivations
+		data.DispersalStats = vm.world.SeedDispersalSystem.GetStats()
 	}
 	
 	return data

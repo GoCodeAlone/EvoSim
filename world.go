@@ -152,6 +152,7 @@ type World struct {
 	CivilizationSystem  *CivilizationSystem
 	ViewportSystem      *ViewportSystem
 	WindSystem          *WindSystem         // Wind and pollen dispersal system
+	SeedDispersalSystem *SeedDispersalSystem // Advanced seed dispersal and germination
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
@@ -243,6 +244,7 @@ func NewWorld(config WorldConfig) *World {
 	world.CivilizationSystem = NewCivilizationSystem(world.CentralEventBus)
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
+	world.SeedDispersalSystem = NewSeedDispersalSystem()
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem(world.CentralEventBus)
 	world.SpeciesNaming = NewSpeciesNaming()
@@ -815,6 +817,9 @@ func (w *World) Update() {
 	// 2. Update wind system (affects pollen dispersal and plant reproduction)
 	w.WindSystem.Update(currentTimeState.Season, w.Tick)
 
+	// 2a. Update seed dispersal system (handles seed movement and germination)
+	w.SeedDispersalSystem.Update(w)
+
 	// 3. Update micro and macro evolution systems
 	w.CellularSystem.UpdateCellularOrganisms()
 	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
@@ -1267,10 +1272,23 @@ func (w *World) reproducePlants() {
 			continue
 		}
 
-		// Asexual reproduction (existing behavior)
-		if offspring := plant.Reproduce(w.NextPlantID); offspring != nil {
-			w.NextPlantID++
-			newPlants = append(newPlants, offspring)
+		// Seed production and dispersal (replaces simple asexual reproduction)
+		if plant.CanReproduce() {
+			// Create seeds instead of direct offspring
+			seedCount := 1 + int(plant.GetTrait("reproduction_rate")*3) // 1-4 seeds typically
+			for i := 0; i < seedCount; i++ {
+				seed := w.SeedDispersalSystem.CreateSeed(plant, w)
+				// Log seed creation
+				if w.CentralEventBus != nil {
+					plantTypeName := GetPlantConfigs()[plant.Type].Name
+					w.CentralEventBus.EmitPlantEvent(w.Tick, "seed_creation", "seed_production", "plant_lifecycle", 
+						fmt.Sprintf("Plant %d (%s) produced seed %d", plant.ID, plantTypeName, seed.ID), plant, false, true)
+				}
+			}
+			
+			// Reproduction costs energy
+			config := GetPlantConfigs()[plant.Type]
+			plant.Energy -= config.BaseEnergy * 0.3 // Reduced cost since seeds may not all germinate
 		}
 
 		// Release pollen for sexual reproduction during flowering
@@ -4825,6 +4843,120 @@ func (w *World) getSeasonalTemperatureModifier(season string) float64 {
 		return 0.6
 	default:
 		return 1.0
+	}
+}
+
+// getTemperatureAt returns temperature at a specific position
+func (w *World) getTemperatureAt(pos Position) float64 {
+	biome := w.getBiomeAtPosition(pos.X, pos.Y)
+	baseTemp := w.getBiomeTemperature(biome)
+	
+	// Apply seasonal modifier
+	season := w.getCurrentSeason()
+	seasonMod := w.getSeasonalTemperatureModifier(season)
+	
+	// Add some randomness for micro-climates
+	randomVariation := (rand.Float64()*2 - 1) * 3.0 // ±3 degrees
+	
+	return baseTemp * seasonMod + randomVariation
+}
+
+// getMoistureAt returns moisture level at a specific position
+func (w *World) getMoistureAt(pos Position) float64 {
+	biome := w.getBiomeAtPosition(pos.X, pos.Y)
+	baseMoisture := w.getBiomeHumidity(biome)
+	
+	// Apply seasonal effects
+	season := w.getCurrentSeason()
+	switch season {
+	case "spring":
+		baseMoisture *= 1.2 // Spring rains
+	case "summer":
+		baseMoisture *= 0.8 // Dry summer
+	case "autumn":
+		baseMoisture *= 1.1 // Autumn rains
+	case "winter":
+		baseMoisture *= 0.9 // Winter conditions
+	}
+	
+	// Add randomness for local weather
+	randomVariation := (rand.Float64()*2 - 1) * 0.2 // ±20%
+	
+	return math.Max(0.0, math.Min(1.0, baseMoisture + randomVariation))
+}
+
+// getSunlightAt returns sunlight level at a specific position
+func (w *World) getSunlightAt(pos Position) float64 {
+	// Base sunlight depends on day/night cycle
+	dayTime := float64(w.Tick % 100) / 100.0 // 100 ticks per day
+	
+	var baseSunlight float64
+	if dayTime >= 0.25 && dayTime <= 0.75 { // Day time
+		// Peak at noon (0.5), fade at dawn/dusk
+		if dayTime <= 0.5 {
+			baseSunlight = (dayTime - 0.25) * 4.0 // 0.25 to 0.5 -> 0 to 1
+		} else {
+			baseSunlight = (0.75 - dayTime) * 4.0 // 0.5 to 0.75 -> 1 to 0
+		}
+	} else {
+		baseSunlight = 0.0 // Night time
+	}
+	
+	// Biome effects on sunlight
+	biome := w.getBiomeAtPosition(pos.X, pos.Y)
+	switch biome {
+	case BiomeForest:
+		baseSunlight *= 0.6 // Forest canopy blocks light
+	case BiomeDeepWater:
+		baseSunlight *= 0.1 // Deep water blocks light
+	case BiomeDesert:
+		baseSunlight *= 1.2 // Desert has intense sunlight
+	case BiomeHighAltitude:
+		baseSunlight *= 1.3 // High altitude has intense sunlight
+	}
+	
+	// Weather effects
+	if w.EnvironmentalEvents != nil {
+		for _, event := range w.EnvironmentalEvents {
+			if event.Type == "storm" || event.Type == "ash_cloud" {
+				// Check if position is affected by the event
+				distance := math.Sqrt(math.Pow(pos.X-event.Position.X, 2) + math.Pow(pos.Y-event.Position.Y, 2))
+				if distance <= event.Radius {
+					baseSunlight *= 0.3 // Storms block sunlight
+				}
+			}
+		}
+	}
+	
+	return math.Max(0.0, math.Min(1.0, baseSunlight))
+}
+
+// getBiomeAt returns biome at a specific position
+func (w *World) getBiomeAt(pos Position) BiomeType {
+	return w.getBiomeAtPosition(pos.X, pos.Y)
+}
+
+// getCurrentSeason returns the current season based on tick
+func (w *World) getCurrentSeason() string {
+	if w.AdvancedTimeSystem != nil {
+		return seasonToString(w.AdvancedTimeSystem.GetTimeState().Season)
+	}
+	
+	// Fallback: calculate season from tick
+	yearTick := w.Tick % (100 * 4) // 400 ticks per year (100 per season)
+	seasonTick := yearTick / 100
+	
+	switch seasonTick {
+	case 0:
+		return "spring"
+	case 1:
+		return "summer"
+	case 2:
+		return "autumn"
+	case 3:
+		return "winter"
+	default:
+		return "spring"
 	}
 }
 

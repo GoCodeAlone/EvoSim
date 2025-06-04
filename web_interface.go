@@ -2107,6 +2107,32 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             html += '<div>Weather: ' + wind.weather_pattern + '</div>';
             html += '<div>Pollen Count: ' + wind.pollen_count + '</div>';
             
+            // Add seed dispersal information
+            html += '<h4>🌱 Seed Dispersal System</h4>';
+            html += '<div>Active Seeds: ' + (wind.seed_count || 0) + '</div>';
+            html += '<div>Seed Banks: ' + (wind.seed_banks || 0) + '</div>';
+            html += '<div>Germination Events: ' + (wind.germination_events || 0) + '</div>';
+            html += '<div>Dormancy Activations: ' + (wind.dormancy_activations || 0) + '</div>';
+            
+            // Display dispersal statistics
+            if (wind.dispersal_stats) {
+                html += '<h4>🎯 Dispersal Methods</h4>';
+                if (wind.dispersal_stats.dispersal_wind) html += '<div>Wind Dispersal: ' + wind.dispersal_stats.dispersal_wind + '</div>';
+                if (wind.dispersal_stats.dispersal_animal) html += '<div>Animal Dispersal: ' + wind.dispersal_stats.dispersal_animal + '</div>';
+                if (wind.dispersal_stats.dispersal_explosive) html += '<div>Explosive Dispersal: ' + wind.dispersal_stats.dispersal_explosive + '</div>';
+                if (wind.dispersal_stats.dispersal_gravity) html += '<div>Gravity Dispersal: ' + wind.dispersal_stats.dispersal_gravity + '</div>';
+                if (wind.dispersal_stats.dispersal_water) html += '<div>Water Dispersal: ' + wind.dispersal_stats.dispersal_water + '</div>';
+                
+                // Display seed type statistics
+                if (wind.dispersal_stats.active_seeds_by_type) {
+                    html += '<h4>🎯 Active Seed Types</h4>';
+                    const seedTypes = wind.dispersal_stats.active_seeds_by_type;
+                    for (const [type, count] of Object.entries(seedTypes)) {
+                        html += '<div>' + type.replace(/_/g, ' ').toUpperCase() + ': ' + count + '</div>';
+                    }
+                }
+            }
+            
             // Add detailed analysis
             html += '<h4>🌪️ Wind Analysis:</h4>';
             const windDirection = (wind.direction * 180 / Math.PI + 360) % 360;
