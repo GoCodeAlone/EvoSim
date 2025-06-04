@@ -315,33 +315,37 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ## 📋 HIGH PRIORITY (Immediate Impact)
 
-### Insect Pollinator System
-**Status**: Not Started
+### Insect Pollinator System (RECENTLY COMPLETED)
+**Status**: Completed
 **Priority**: HIGH - Adds biological complexity and realism
 **Dependencies**: Wind system (✅ completed), Entity system (✅ completed), Plant Networks (✅ completed), Insect capabilities (✅ completed)
 
-#### Features to Implement:
-- [ ] **Pollinating Insects**: New entity types specialized for pollination
-- [ ] **Plant-Insect Co-evolution**: Mutual adaptation between plants and pollinators
-- [ ] **Specialized Relationships**: Some plants only pollinated by specific insects
-- [ ] **Nectar Rewards**: Plants provide energy to attract pollinators
-- [ ] **Pollinator Efficiency**: Different insects have different pollination success rates
-- [ ] **Seasonal Pollinator Activity**: Insect availability varies by season
-- [ ] **Communication Networks**: Insects can use plant networks for navigation
-- [ ] **Pollinator Memory**: Insects remember successful flower locations
+#### Features Implemented:
+- [x] **Pollinating Insects**: New entity types specialized for pollination with 8+ specialized traits
+- [x] **Plant-Insect Co-evolution**: Mutual adaptation between plants and pollinators with preference systems
+- [x] **Specialized Relationships**: Three pollinator types (generalist, specialist, hybrid) with plant preferences  
+- [x] **Nectar Rewards**: Plants provide energy to attract pollinators with dynamic nectar production
+- [x] **Pollinator Efficiency**: Different insects have different pollination success rates and memory systems
+- [x] **Seasonal Pollinator Activity**: Insect availability varies by season (Spring 130%, Summer 100%, Autumn 60%, Winter 20%)
+- [x] **Communication Networks**: Pollinators can use plant networks for navigation and flower location memory
+- [x] **Pollinator Memory**: Insects remember successful flower locations with success rate tracking
+- [x] **Cross-species Pollination**: Works alongside existing wind-based pollination system
 
-### Multi-Colony Warfare and Diplomacy System
-**Status**: Not Started  
+### Multi-Colony Warfare and Diplomacy System (RECENTLY COMPLETED)
+**Status**: Completed  
 **Priority**: HIGH - Leverages completed caste and hive mind systems
 **Dependencies**: Caste system (✅ completed), Hive mind system (✅ completed), Communication system (✅ completed)
 
-#### Features to Implement:
-- [ ] **Inter-Colony Interactions**: Warfare, alliance, and trade between different colonies
-- [ ] **Resource Competition**: Colonies compete for territories and food sources
-- [ ] **Diplomatic Relations**: Alliance formation, trade agreements, peace treaties
-- [ ] **Colony Expansion**: Territorial growth and border conflicts
-- [ ] **Resource Trading**: Exchange of food, materials, and information between allied colonies
-- [ ] **War Declarations**: Formal conflict initiation with strategic planning
+#### Features Implemented:
+- [x] **Inter-Colony Interactions**: Warfare, alliance, and trade between different colonies with 6 diplomatic relation types
+- [x] **Resource Competition**: Colonies compete for territories and food sources with proximity-based pressure
+- [x] **Diplomatic Relations**: Alliance formation, trade agreements, peace treaties with trust and reputation systems
+- [x] **Colony Expansion**: Territorial growth and border conflicts with automatic border detection
+- [x] **Resource Trading**: Exchange of food, materials, and information between allied colonies (framework complete)
+- [x] **War Declarations**: Formal conflict initiation with strategic planning and 4 conflict types (Border Skirmish, Resource War, Total War, Raid)
+- [x] **Military Combat**: Strength calculations, battle resolution, casualties, and territory claiming mechanics
+- [x] **Post-War Relations**: Relationship changes based on war outcomes, peace treaties, and conflict intensity
+- [x] **Comprehensive Statistics**: New "warfare" CLI view displaying conflicts, diplomacy, and colony information
 
 ### Enhanced Metamorphosis and Life Stages
 **Status**: Not Started
@@ -479,10 +483,10 @@ This document tracks the implementation status of ecosystem features for the gen
 ## 🎯 NEXT STEPS
 
 ### Immediate Tasks (Next Session)
-1. **Plant-Insect Co-evolution**: Implement mutual adaptation between plants and insect pollinators leveraging completed insect capabilities system
-2. **Inter-Colony Warfare**: Develop conflict and alliance systems between different colonies using completed caste and hive mind systems
-3. **Advanced Metamorphosis**: Add life stage transitions (larva, pupa, adult) for complex insects
-4. **Enhanced Chemical Communication**: Expand plant chemical signaling beyond current pheromone system
+1. **Enhanced Metamorphosis and Life Stages**: Add life stage transitions (larva, pupa, adult) for complex insects leveraging completed insect capabilities system
+2. **Advanced Seed Dispersal**: Implement multiple dispersal mechanisms beyond wind (animal-mediated, explosive, gravity-based) 
+3. **Enhanced Chemical Communication**: Expand plant chemical signaling beyond current pheromone system with airborne signals
+4. **Alliance and Trade System Enhancement**: Build on warfare system foundation to implement active resource trading and military cooperation
 
 ### Short-term Goals (Next 2-3 Sessions)
 1. Complete insect pollinator system with plant-insect mutualism
