@@ -298,31 +298,37 @@ This document tracks the implementation status of ecosystem features for the gen
 
 ## 🚧 IN PROGRESS
 
-### Advanced Seed Dispersal
-**Status**: Not Started
-**Priority**: MEDIUM - Expands plant reproduction
+### Advanced Seed Dispersal (RECENTLY COMPLETED)
+**Status**: Completed
+**Priority**: MEDIUM - Expands plant reproduction beyond simple asexual reproduction
 **Dependencies**: Wind system (✅ completed), Physics system (✅ completed)
 
-#### Features to Implement:
-- [ ] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based
-- [ ] **Seed Dormancy**: Seeds wait for optimal conditions to germinate
-- [ ] **Dispersal Timing**: Seeds released at optimal times
-- [ ] **Animal-Mediated Dispersal**: Entities carry seeds to new locations
-- [ ] **Seed Banks**: Accumulated seeds in soil waiting to germinate
-- [ ] **Germination Triggers**: Environmental cues for seed activation
+#### Features Implemented:
+- [x] **Multiple Dispersal Mechanisms**: Wind, animal, explosive, gravity-based dispersal with automatic method selection
+- [x] **Seed Dormancy**: Seeds enter dormancy when environmental conditions are unsuitable and wait for favorable conditions
+- [x] **Dispersal Timing**: Seeds released during reproduction with realistic timing and viability windows  
+- [x] **Animal-Mediated Dispersal**: Entities pickup and drop seeds based on seed type and proximity
+- [x] **Seed Banks**: Accumulated seeds in soil grid locations with capacity limits and moisture tracking
+- [x] **Germination Triggers**: Environmental cues (temperature, moisture, sunlight) trigger seed germination into new plants
+- [x] **Integration with Wind System**: Seamless integration with existing wind system for realistic seed movement
+- [x] **Comprehensive Statistics**: Tracking of dispersal methods, germination events, dormancy activations, and seed bank status
+- [x] **CLI and Web Visualization**: Enhanced wind view displays seed dispersal statistics alongside pollen information
 
-### Chemical Communication Enhancement
-**Status**: Partially Implemented  
-**Priority**: MEDIUM - Enhances existing communication
-**Dependencies**: Communication system (✅ completed), Insect capabilities (✅ completed)
+### Chemical Communication Enhancement (RECENTLY COMPLETED)
+**Status**: Completed
+**Priority**: MEDIUM - Enhances existing communication with airborne chemical signals
+**Dependencies**: Communication system (✅ completed), Plant network system (✅ completed)
 
-#### Features to Implement:
-- [ ] **Airborne Plant Signals**: Plants release chemical warnings
-- [ ] **Enhanced Pheromone Systems**: More complex chemical marking and tracking beyond current 8 pheromone types
-- [ ] **Chemical Ecology**: Complex chemical interactions between species
-- [ ] **Advanced Scent Trails**: More persistent chemical paths for navigation
-- [ ] **Chemical Defenses**: Plants release toxins when threatened
-- [ ] **Chemical Attractants**: Plants attract beneficial entities
+#### Features Implemented:
+- [x] **Airborne Plant Signals**: Plants release airborne chemical warnings, toxins, and attractants complementing underground network signals
+- [x] **Enhanced Chemical Ecology**: Sophisticated airborne chemical interactions separate from underground plant networks
+- [x] **Chemical Signal Types**: Toxin, attractant, warning, and scent signals with wind-based dispersal
+- [x] **Persistent Chemical Memory**: Entities remember and respond to previous chemical encounters
+- [x] **Toxin Resistance Evolution**: Entities develop resistance to plant toxins over time through exposure
+- [x] **Chemical Defense Triggers**: Plants automatically release defensive chemicals when threatened by nearby entities
+- [x] **Wind-Dispersed Chemistry**: Airborne signals move with wind patterns for realistic chemical dispersal
+- [x] **Behavioral Responses**: Entities are attracted or repelled by chemical signals based on their traits
+- [x] **Chemical Environment Tracking**: Real-time chemical signal strength calculations at any position
 
 ---
 
@@ -483,17 +489,18 @@ This document tracks the implementation status of ecosystem features for the gen
 ## 🎯 NEXT STEPS
 
 ### Immediate Tasks (Next Session)
-1. **Advanced Seed Dispersal**: Implement multiple dispersal mechanisms beyond wind (animal-mediated, explosive, gravity-based) 
-2. **Enhanced Chemical Communication**: Expand plant chemical signaling beyond current pheromone system with airborne signals
-3. **Alliance and Trade System Enhancement**: Build on warfare system foundation to implement active resource trading and military cooperation
-4. **Fungal Networks**: Begin implementing decomposer organisms and nutrient cycling
+1. **Alliance and Trade System Enhancement**: Build on completed warfare system to implement active resource trading and military cooperation
+2. **Fungal Networks**: Begin implementing decomposer organisms and nutrient cycling to complement plant networks  
+3. **Water Dispersal Systems**: Extend seed dispersal to include aquatic environments and river/stream flow
+4. **Enhanced Pheromone Trail Persistence**: Improve existing insect pheromone system with longer-lasting trails
 
-### Short-term Goals (Next 2-3 Sessions)
+### Short-term Goals (Next 2-3 Sessions)  
 1. ✅ Complete enhanced metamorphosis and life stages for complex insects
-2. Implement advanced seed dispersal mechanisms beyond wind
-3. Develop enhanced chemical communication with airborne plant signals
-4. Create alliance and trade system enhancements for warfare framework
+2. ✅ Implement advanced seed dispersal mechanisms beyond wind
+3. ✅ Develop enhanced chemical communication with airborne plant signals
+4. Enhance alliance and trade system for more complex inter-colony economics
 5. Begin fungal networks and decomposer organism system
+6. Implement water-based dispersal for aquatic environments
 
 ### Long-term Vision
 Create a fully realistic evolutionary ecosystem where:

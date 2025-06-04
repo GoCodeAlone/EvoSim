@@ -153,6 +153,7 @@ type World struct {
 	ViewportSystem      *ViewportSystem
 	WindSystem          *WindSystem         // Wind and pollen dispersal system
 	SeedDispersalSystem *SeedDispersalSystem // Advanced seed dispersal and germination
+	ChemicalEcologySystem *ChemicalEcologySystem // Chemical communication and ecology
 	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
 	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
 	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
@@ -245,6 +246,7 @@ func NewWorld(config WorldConfig) *World {
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
 	world.SeedDispersalSystem = NewSeedDispersalSystem()
+	world.ChemicalEcologySystem = NewChemicalEcologySystem()
 	world.SpeciationSystem = NewSpeciationSystem()
 	world.PlantNetworkSystem = NewPlantNetworkSystem(world.CentralEventBus)
 	world.SpeciesNaming = NewSpeciesNaming()
@@ -819,6 +821,9 @@ func (w *World) Update() {
 
 	// 2a. Update seed dispersal system (handles seed movement and germination)
 	w.SeedDispersalSystem.Update(w)
+	
+	// 2b. Update chemical ecology system (plant and entity chemical communication)
+	w.ChemicalEcologySystem.Update(w)
 
 	// 3. Update micro and macro evolution systems
 	w.CellularSystem.UpdateCellularOrganisms()
