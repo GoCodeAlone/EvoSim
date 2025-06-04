@@ -82,6 +82,9 @@ type Entity struct {
 	// Metamorphosis system
 	MetamorphosisStatus *MetamorphosisStatus `json:"metamorphosis_status"` // Tracks life stage and development
 	OriginalTraits      map[string]float64   `json:"original_traits"`      // Original trait values before stage modifications
+	
+	// Biorhythm system
+	BioRhythm *BioRhythm `json:"biorhythm"` // Tracks biological rhythms and activity needs
 }
 
 // NewEntity creates a new entity with random traits
@@ -126,6 +129,9 @@ func NewEntity(id int, traitNames []string, species string, position Position) *
 	// Metamorphosis status will be initialized by world systems
 	entity.MetamorphosisStatus = nil
 	entity.OriginalTraits = nil
+	
+	// Initialize biorhythm system
+	entity.BioRhythm = NewBioRhythm(id, entity)
 
 	return entity
 }
@@ -235,6 +241,9 @@ func (e *Entity) Clone() *Entity {
 		clone.ReproductionStatus.Mode = e.ReproductionStatus.Mode
 		clone.ReproductionStatus.Strategy = e.ReproductionStatus.Strategy
 	}
+	
+	// Initialize new biorhythm (don't copy - each entity gets a fresh rhythm)
+	clone.BioRhythm = NewBioRhythm(clone.ID, clone)
 
 	return clone
 }
@@ -880,11 +889,26 @@ func (e *Entity) EatPlant(plant *Plant, tick int) bool {
 	if !e.CanEatPlant(plant) {
 		return false
 	}
+	
+	// Check if entity actually wants to eat based on biorhythm
+	if e.BioRhythm != nil {
+		hungerNeed := e.BioRhythm.GetActivityNeed(ActivityEat)
+		// Only eat if hungry enough, energy is low, or this is a forced feeding situation
+		if hungerNeed < 0.2 && e.Energy > 60 {
+			return false // Not hungry enough and energy is good
+		}
+	}
 
 	// Calculate how much to eat based on entity size and hunger
 	baseEatAmount := 10 + e.GetTrait("size")*5
 	if e.Energy < 30 {
 		baseEatAmount *= 1.5 // Eat more when hungry
+	}
+	
+	// Increase eating amount based on biorhythm hunger need
+	if e.BioRhythm != nil {
+		hungerMultiplier := 0.5 + e.BioRhythm.GetActivityNeed(ActivityEat)
+		baseEatAmount *= hungerMultiplier
 	}
 
 	// Use molecular system to determine desirability and consumption
@@ -929,7 +953,87 @@ func (e *Entity) EatPlant(plant *Plant, tick int) bool {
 
 	// Record consumption in dietary memory for feedback loop
 	e.recordPlantConsumption(plant, tick)
+	
+	// Update biorhythm to reflect that entity has eaten
+	if e.BioRhythm != nil && e.BioRhythm.Activities[ActivityEat] != nil {
+		e.BioRhythm.Activities[ActivityEat].LastPerformed = tick
+		// Reduce hunger need based on how much was eaten
+		hungerReduction := math.Min(0.5, baseEatAmount / 50.0) // Scale reduction by amount eaten
+		e.BioRhythm.Activities[ActivityEat].NeedLevel -= hungerReduction
+		if e.BioRhythm.Activities[ActivityEat].NeedLevel < 0 {
+			e.BioRhythm.Activities[ActivityEat].NeedLevel = 0
+		}
+	}
 
+	return true
+}
+
+// DrinkWater attempts to drink water if the entity is in a suitable location
+func (e *Entity) DrinkWater(world *World, tick int) bool {
+	if !e.IsAlive {
+		return false
+	}
+	
+	// Check if entity actually wants to drink based on biorhythm
+	if e.BioRhythm != nil {
+		thirstNeed := e.BioRhythm.GetActivityNeed(ActivityDrink)
+		// Only drink if thirsty enough
+		if thirstNeed < 0.4 {
+			return false // Not thirsty enough
+		}
+	}
+	
+	// Get current biome
+	biome := world.getBiomeAtPosition(e.Position.X, e.Position.Y)
+	
+	// Can drink in water biomes or other suitable locations
+	canDrink := false
+	hydrationGain := 0.0
+	
+	switch biome {
+	case BiomeWater:
+		canDrink = true
+		hydrationGain = 8.0 // Good water source
+	case BiomeSwamp:
+		canDrink = true
+		hydrationGain = 5.0 // Less clean water
+	case BiomeRainforest:
+		canDrink = true
+		hydrationGain = 6.0 // Rain and streams
+	case BiomeTundra:
+		canDrink = true
+		hydrationGain = 4.0 // Ice/snow as water source
+	default:
+		// Small chance of finding water in other biomes
+		if rand.Float64() < 0.1 {
+			canDrink = true
+			hydrationGain = 3.0 // Found small water source
+		}
+	}
+	
+	if !canDrink {
+		return false
+	}
+	
+	// Drinking provides energy and satisfies thirst
+	e.Energy += hydrationGain
+	
+	// Ensure energy doesn't exceed maximum
+	if e.Energy > 100 {
+		e.Energy = 100
+	}
+	
+	// Update biorhythm to reflect drinking
+	if e.BioRhythm != nil && e.BioRhythm.Activities[ActivityDrink] != nil {
+		e.BioRhythm.Activities[ActivityDrink].LastPerformed = tick
+		// Reduce thirst need
+		thirstReduction := 0.6 // Drinking satisfies thirst significantly
+		e.BioRhythm.Activities[ActivityDrink].NeedLevel -= thirstReduction
+		if e.BioRhythm.Activities[ActivityDrink].NeedLevel < 0 {
+			e.BioRhythm.Activities[ActivityDrink].NeedLevel = 0
+		}
+	}
+	
 	return true
 }
 

@@ -41,7 +41,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] Environmental conditions and weather
 
 #### User Interface
-- [x] 20 view modes: Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind, Species, Network, DNA, Cellular, Evolution, Topology, Tools, Environment, Behavior, Reproduction, Statistical, Anomalies
+- [x] 26 view modes: Grid, Stats, Events, Populations, Communication, Civilization, Physics, Wind, Species, Network, DNA, Cellular, Evolution, Topology, Tools, Environment, Behavior, Reproduction, Statistical, Ecosystem, Anomalies, Warfare, Fungal, Cultural, Symbiotic, BioRhythm
 - [x] Multi-zoom viewport navigation (1x, 2x, 4x, 8x)
 - [x] Real-time CLI with controls and statistics
 
@@ -366,6 +366,21 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **CLI and Web Interface**: Complete "symbiotic" view mode displaying relationship statistics and disease characteristics
 - [x] **World Integration**: Full integration into main simulation loop with configurable update intervals
 
+#### Biorhythm and Need-Based Activity System (RECENTLY COMPLETED)
+- [x] **8 Activity Types**: Sleep, Eat, Drink, Play, Explore, Scavenge, Rest, Socialize with individual need tracking and state management
+- [x] **Need-Based Behavior**: Entities only eat when hungry (hunger_need > threshold), drink when thirsty (thirst_need > threshold), eliminating random feeding
+- [x] **Circadian Activity Scheduling**: Nocturnal entities active at night with sleep during day, diurnal entities active during day with sleep at night
+- [x] **Intelligent Activity Selection**: Entities choose activities based on current need levels, time of day preferences, and genetic traits
+- [x] **Trait-Driven Biorhythm Patterns**: 6 new biorhythm traits (circadian_preference, sleep_need, hunger_need, thirst_need, play_drive, exploration_drive, scavenging_behavior)
+- [x] **Activity-Specific Energy Costs**: Sleep and rest restore energy, exploration and play cost energy, eating/drinking provide appropriate benefits
+- [x] **Seasonal Biorhythm Effects**: Winter increases sleep needs and reduces exploration, summer increases thirst, spring boosts play/exploration drives
+- [x] **Enhanced Eating/Drinking Mechanics**: Eating based on actual hunger levels and biorhythm needs, drinking available in water biomes and weather-dependent locations
+- [x] **Species-Specific Biorhythm Profiles**: Predators are nocturnal with high exploration/scavenging, herbivores are diurnal with high hunger/water needs, omnivores are adaptable
+- [x] **Activity Duration and Memory Tracking**: Tracks how long entities perform activities and when they last performed each activity type
+- [x] **Cooperative and Intelligent Behavior Integration**: High intelligence increases play behavior, high cooperation increases socializing, traits influence activity preferences
+- [x] **World Integration**: Full integration into entity update loop with biorhythm affecting energy costs, seasonal effects, and time-based activity modifiers
+- [x] **CLI and Web Interface Integration**: Complete biorhythm view mode showing activity distribution, circadian preferences, need levels, and sample entity biorhythm data
+
 ---
 
 ## 🚧 IN PROGRESS
@@ -504,6 +519,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Molecular evolution tests** - Molecular systems, nutritional requirements, and metabolism
 - [x] **Biome distribution tests** - Terrain generation, environmental effects, and geological processes
 - [x] **Reproduction system tests** - All reproduction modes, gestation, and mating strategies
+- [x] **Biorhythm system tests** - Need-based activity patterns, circadian rhythm effects, eating/drinking behaviors, and seasonal biorhythm changes
 - [x] **All 20 view modes tested** - Complete CLI and web interface view functionality verified
 
 ### Validation Completed
@@ -522,6 +538,7 @@ This document tracks the implementation status of ecosystem features for the gen
 - [x] **Hive mind system validation** - Confirm collective intelligence emergence and coordinated behaviors
 - [x] **Caste system validation** - Verify role specialization and colony dynamics function correctly
 - [x] **Insect system validation** - Ensure pheromone communication and swarm behaviors work as designed
+- [x] **Biorhythm system validation** - Verify need-based eating/drinking, nocturnal vs diurnal activity patterns, and trait-driven behavior selection
 
 ---
 

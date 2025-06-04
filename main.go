@@ -151,6 +151,14 @@ func main() {
 						"underground_nav":    -0.9, // No underground navigation
 						"flying_ability":     -1.0, // Cannot fly
 						"altitude_tolerance": -1.0, // Cannot survive altitude
+						// Biorhythm traits
+						"circadian_preference": 0.2,  // Slightly diurnal
+						"sleep_need":         0.3,   // Moderate sleep requirement
+						"hunger_need":        0.5,   // Higher hunger due to growth
+						"thirst_need":        0.4,   // Moderate thirst
+						"play_drive":         -0.8,  // Minimal play behavior
+						"exploration_drive":  0.1,   // Slight exploration
+						"scavenging_behavior": 0.6,  // Strong scavenging for survival
 					},
 					StartPos:         Position{X: 30, Y: 30},
 					Spread:           25.0, // Widely spread
@@ -174,6 +182,14 @@ func main() {
 						"underground_nav":    -0.7, // Poor underground navigation
 						"flying_ability":     -0.9, // Cannot fly
 						"altitude_tolerance": -0.8, // Poor altitude tolerance
+						// Biorhythm traits
+						"circadian_preference": 0.0,  // Neutral day/night preference
+						"sleep_need":         0.4,   // Moderate sleep requirement
+						"hunger_need":        0.4,   // Moderate hunger
+						"thirst_need":        0.3,   // Lower thirst needs
+						"play_drive":         -0.5,  // Low play behavior
+						"exploration_drive":  0.3,   // Some exploration tendency
+						"scavenging_behavior": 0.4,  // Moderate scavenging
 					},
 					StartPos:         Position{X: 70, Y: 40},
 					Spread:           20.0,
@@ -201,6 +217,14 @@ func main() {
 					"underground_nav":    -0.3, // Poor underground navigation
 					"flying_ability":     -0.8, // Cannot fly
 					"altitude_tolerance": -0.6, // Poor at altitude
+					// Biorhythm traits
+					"circadian_preference": 0.7,  // Strongly diurnal (active during day)
+					"sleep_need":         0.2,   // Lower sleep requirement (grazing animals)
+					"hunger_need":        0.8,   // High hunger needs (constant grazing)
+					"thirst_need":        0.6,   // High water needs
+					"play_drive":         0.3,   // Some play behavior (social animals)
+					"exploration_drive":  0.5,   // Moderate exploration for food
+					"scavenging_behavior": 0.1,  // Minimal scavenging (prefer fresh plants)
 				},
 				StartPos:         Position{X: 20, Y: 20},
 				Spread:           15.0,
@@ -224,6 +248,14 @@ func main() {
 					"underground_nav":    0.2,  // Decent underground navigation
 					"flying_ability":     -0.5, // Poor flying ability
 					"altitude_tolerance": 0.1,  // Slightly better at altitude
+					// Biorhythm traits
+					"circadian_preference": -0.6, // Nocturnal (hunt at night)
+					"sleep_need":         0.4,   // Moderate sleep needs (conserve energy)
+					"hunger_need":        0.3,   // Lower hunger frequency (large meals)
+					"thirst_need":        0.2,   // Lower water needs
+					"play_drive":         -0.3,  // Limited play (focus on survival)
+					"exploration_drive":  0.8,   // High exploration (hunting territory)
+					"scavenging_behavior": 0.7,  // High scavenging behavior
 				},
 				StartPos:         Position{X: 80, Y: 80},
 				Spread:           10.0,
@@ -247,6 +279,14 @@ func main() {
 					"underground_nav":    0.1, // Basic underground navigation
 					"flying_ability":     -0.3, // Limited flying ability
 					"altitude_tolerance": 0.0,  // Average altitude tolerance
+					// Biorhythm traits
+					"circadian_preference": 0.3,  // Slightly diurnal but adaptable
+					"sleep_need":         0.3,   // Moderate sleep needs
+					"hunger_need":        0.6,   // High hunger (active foragers)
+					"thirst_need":        0.5,   // Moderate water needs
+					"play_drive":         0.6,   // High play behavior (intelligent species)
+					"exploration_drive":  0.7,   // High exploration (opportunistic)
+					"scavenging_behavior": 0.8,  // Very high scavenging (opportunistic feeders)
 				},
 				StartPos:         Position{X: 50, Y: 20},
 				Spread:           12.0,

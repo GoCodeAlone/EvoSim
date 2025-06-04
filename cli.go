@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "ecosystem", "anomalies", "warfare", "fungal", "cultural", "symbiotic"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "ecosystem", "anomalies", "warfare", "fungal", "cultural", "symbiotic", "biorhythm"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -367,6 +367,8 @@ func (m CLIModel) View() string {
 		content = m.symbioticView()
 	case "neural":
 		content = m.neuralView()
+	case "biorhythm":
+		content = m.biorhythmView()
 	default:
 		content = m.gridView()
 	}
@@ -4654,6 +4656,237 @@ func (m *CLIModel) neuralView() string {
 	}
 
 	return content.String()
+}
+
+// biorhythmView shows biorhythm system status and entity activities
+func (m CLIModel) biorhythmView() string {
+	var content strings.Builder
+	
+	content.WriteString("=== BIORHYTHM SYSTEM ===\n")
+	
+	if len(m.world.AllEntities) == 0 {
+		content.WriteString("No entities to display biorhythm data\n")
+		return content.String()
+	}
+	
+	// Time context
+	timeState := m.world.AdvancedTimeSystem.GetTimeState()
+	content.WriteString(fmt.Sprintf("Current Time: %s (%s)\n", 
+		getTimeOfDayName(timeState.TimeOfDay), seasonToString(timeState.Season)))
+	content.WriteString(fmt.Sprintf("Is Night: %v\n\n", timeState.IsNight()))
+	
+	// Activity Distribution
+	content.WriteString("=== ACTIVITY DISTRIBUTION ===\n")
+	activityCounts := make(map[ActivityType]int)
+	activityNames := map[ActivityType]string{
+		ActivitySleep:     "Sleep",
+		ActivityEat:       "Eat",
+		ActivityDrink:     "Drink", 
+		ActivityPlay:      "Play",
+		ActivityExplore:   "Explore",
+		ActivityScavenge:  "Scavenge",
+		ActivityRest:      "Rest",
+		ActivitySocialize: "Socialize",
+	}
+	
+	totalEntities := 0
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive || entity.BioRhythm == nil {
+			continue
+		}
+		totalEntities++
+		currentActivity := entity.BioRhythm.GetCurrentActivity()
+		activityCounts[currentActivity]++
+	}
+	
+	for activity, name := range activityNames {
+		count := activityCounts[activity]
+		percentage := 0.0
+		if totalEntities > 0 {
+			percentage = float64(count) / float64(totalEntities) * 100
+		}
+		content.WriteString(fmt.Sprintf("  %-10s: %3d entities (%5.1f%%)\n", 
+			name, count, percentage))
+	}
+	
+	// Circadian Distribution
+	content.WriteString("\n=== CIRCADIAN PREFERENCES ===\n")
+	nocturnalCount := 0
+	diurnalCount := 0
+	crepuscularCount := 0
+	
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive {
+			continue
+		}
+		circadianPref := entity.GetTrait("circadian_preference")
+		if circadianPref < -0.3 {
+			nocturnalCount++
+		} else if circadianPref > 0.3 {
+			diurnalCount++
+		} else {
+			crepuscularCount++
+		}
+	}
+	
+	if totalEntities > 0 {
+		content.WriteString(fmt.Sprintf("  Nocturnal:    %3d entities (%5.1f%%)\n", 
+			nocturnalCount, float64(nocturnalCount)/float64(totalEntities)*100))
+		content.WriteString(fmt.Sprintf("  Diurnal:      %3d entities (%5.1f%%)\n", 
+			diurnalCount, float64(diurnalCount)/float64(totalEntities)*100))
+		content.WriteString(fmt.Sprintf("  Crepuscular:  %3d entities (%5.1f%%)\n", 
+			crepuscularCount, float64(crepuscularCount)/float64(totalEntities)*100))
+	}
+	
+	// Average Need Levels
+	content.WriteString("\n=== AVERAGE NEED LEVELS ===\n")
+	needSums := make(map[ActivityType]float64)
+	needCounts := make(map[ActivityType]int)
+	
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive || entity.BioRhythm == nil {
+			continue
+		}
+		for activity := range activityNames {
+			need := entity.BioRhythm.GetActivityNeed(activity)
+			needSums[activity] += need
+			needCounts[activity]++
+		}
+	}
+	
+	for activity, name := range activityNames {
+		avgNeed := 0.0
+		if needCounts[activity] > 0 {
+			avgNeed = needSums[activity] / float64(needCounts[activity])
+		}
+		// Color code based on need level
+		needStr := fmt.Sprintf("%.3f", avgNeed)
+		if avgNeed > 0.8 {
+			needStr = "🔴 " + needStr + " (HIGH)"
+		} else if avgNeed > 0.5 {
+			needStr = "🟡 " + needStr + " (MED)"
+		} else {
+			needStr = "🟢 " + needStr + " (LOW)"
+		}
+		content.WriteString(fmt.Sprintf("  %-10s: %s\n", name, needStr))
+	}
+	
+	// Biorhythm Efficiency
+	content.WriteString("\n=== BIORHYTHM EFFICIENCY ===\n")
+	if totalEntities > 0 {
+		// Calculate entities operating efficiently (in sync with their circadian preferences)
+		efficientCount := 0
+		for _, entity := range m.world.AllEntities {
+			if !entity.IsAlive || entity.BioRhythm == nil {
+				continue
+			}
+			
+			circadianPref := entity.GetTrait("circadian_preference")
+			currentActivity := entity.BioRhythm.GetCurrentActivity()
+			
+			// Check if entity is acting according to their circadian preference
+			isEfficient := false
+			if circadianPref < -0.3 && timeState.IsNight() && currentActivity != ActivitySleep {
+				// Nocturnal and active at night
+				isEfficient = true
+			} else if circadianPref > 0.3 && !timeState.IsNight() && currentActivity != ActivitySleep {
+				// Diurnal and active during day
+				isEfficient = true
+			} else if currentActivity == ActivitySleep {
+				// Sleeping is always considered efficient when tired
+				sleepNeed := entity.BioRhythm.GetActivityNeed(ActivitySleep)
+				if sleepNeed > 0.6 {
+					isEfficient = true
+				}
+			}
+			
+			if isEfficient {
+				efficientCount++
+			}
+		}
+		
+		efficiency := float64(efficientCount) / float64(totalEntities) * 100
+		content.WriteString(fmt.Sprintf("Entities in sync with biorhythm: %d/%d (%.1f%%)\n", 
+			efficientCount, totalEntities, efficiency))
+	}
+	
+	// Sample Entity Details (first 10 entities)
+	content.WriteString("\n=== SAMPLE ENTITY BIORHYTHMS ===\n")
+	count := 0
+	for _, entity := range m.world.AllEntities {
+		if !entity.IsAlive || entity.BioRhythm == nil || count >= 10 {
+			break
+		}
+		
+		currentActivity := entity.BioRhythm.GetCurrentActivity()
+		activityName := activityNames[currentActivity]
+		circadianPref := entity.GetTrait("circadian_preference")
+		
+		circadianType := "Crepuscular"
+		if circadianPref < -0.3 {
+			circadianType = "Nocturnal"
+		} else if circadianPref > 0.3 {
+			circadianType = "Diurnal"
+		}
+		
+		content.WriteString(fmt.Sprintf("  Entity %d (%s): %s (%s, Energy: %.1f)\n", 
+			entity.ID, entity.Species, activityName, circadianType, entity.Energy))
+		
+		// Show top 3 needs
+		type needPair struct {
+			activity ActivityType
+			need     float64
+		}
+		var needs []needPair
+		for activity := range activityNames {
+			need := entity.BioRhythm.GetActivityNeed(activity)
+			needs = append(needs, needPair{activity, need})
+		}
+		
+		// Sort by need level
+		for i := 0; i < len(needs)-1; i++ {
+			for j := i+1; j < len(needs); j++ {
+				if needs[i].need < needs[j].need {
+					needs[i], needs[j] = needs[j], needs[i]
+				}
+			}
+		}
+		
+		content.WriteString("    Top needs: ")
+		for i := 0; i < 3 && i < len(needs); i++ {
+			if i > 0 {
+				content.WriteString(", ")
+			}
+			content.WriteString(fmt.Sprintf("%s (%.2f)", 
+				activityNames[needs[i].activity], needs[i].need))
+		}
+		content.WriteString("\n")
+		
+		count++
+	}
+	
+	if count == 0 {
+		content.WriteString("No entities with biorhythm data found\n")
+	}
+	
+	return content.String()
+}
+
+func getTimeOfDayName(timeOfDay TimeOfDay) string {
+	names := map[TimeOfDay]string{
+		Dawn:      "Dawn",
+		Morning:   "Morning", 
+		Midday:    "Midday",
+		Afternoon: "Afternoon",
+		Evening:   "Evening",
+		Night:     "Night",
+		Midnight:  "Midnight",
+		LateNight: "Late Night",
+	}
+	if name, exists := names[timeOfDay]; exists {
+		return name
+	}
+	return "Unknown"
 }
 
 // RunCLI starts the CLI interface
