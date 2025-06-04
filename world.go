@@ -179,6 +179,7 @@ type World struct {
 	CasteSystem             *CasteSystem                         // Caste-based social organization
 	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
 	InsectPollinationSystem *InsectPollinationSystem             // Insect pollination and plant-insect mutualism
+	ColonyWarfareSystem     *ColonyWarfareSystem                 // Inter-colony warfare and diplomacy
 	
 	// Organism classification and lifespan system
 	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
@@ -300,6 +301,7 @@ func NewWorld(config WorldConfig) *World {
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
 	world.InsectPollinationSystem = NewInsectPollinationSystem()
+	world.ColonyWarfareSystem = NewColonyWarfareSystem()
 	
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
@@ -980,6 +982,9 @@ func (w *World) Update() {
 	// Update insect pollination system
 	currentSeason := w.AdvancedTimeSystem.GetTimeState().Season
 	w.InsectPollinationSystem.Update(w.AllEntities, w.AllPlants, currentSeason, w.Tick)
+	
+	// Update colony warfare and diplomacy system
+	w.ColonyWarfareSystem.Update(w.CasteSystem.Colonies, w.Tick)
 	
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks

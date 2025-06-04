@@ -189,7 +189,7 @@ func NewCLIModel(world *World) CLIModel {
 		"omnivore":  '◆',
 	}
 	return CLIModel{world: world,
-		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies"},
+		viewModes:      []string{"grid", "stats", "events", "populations", "communication", "civilization", "physics", "wind", "species", "network", "dna", "cellular", "evolution", "topology", "tools", "environment", "behavior", "reproduction", "statistical", "anomalies", "warfare"},
 		selectedView:   "grid",
 		autoAdvance:    true,
 		lastUpdateTime: time.Now(),
@@ -355,6 +355,8 @@ func (m CLIModel) View() string {
 		content = m.statisticalView()
 	case "anomalies":
 		content = m.anomaliesView()
+	case "warfare":
+		content = m.warfareView()
 	default:
 		content = m.gridView()
 	}
@@ -3338,6 +3340,148 @@ func (m *CLIModel) anomaliesView() string {
 
 	content.WriteString("\nControls: [v] Next View [C] Clear Anomalies [A] Auto-Fix")
 
+	return content.String()
+}
+
+// warfareView renders the colony warfare and diplomacy information
+func (m CLIModel) warfareView() string {
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("⚔️ Colony Warfare & Diplomacy") + "\n\n")
+
+	if m.world.ColonyWarfareSystem == nil {
+		content.WriteString("Colony warfare system not initialized\n")
+		return content.String()
+	}
+
+	// Get warfare statistics
+	stats := m.world.ColonyWarfareSystem.GetWarfareStats()
+	
+	// General Statistics
+	content.WriteString("=== SYSTEM STATUS ===\n")
+	content.WriteString(fmt.Sprintf("Total colonies: %d\n", stats["total_colonies"].(int)))
+	content.WriteString(fmt.Sprintf("Active conflicts: %d\n", stats["active_conflicts"].(int)))
+	content.WriteString(fmt.Sprintf("Active alliances: %d\n", stats["total_alliances"].(int)))
+	content.WriteString(fmt.Sprintf("Trade agreements: %d\n", stats["active_trade_agreements"].(int)))
+	
+	// Diplomatic Relations
+	content.WriteString("\n=== DIPLOMATIC RELATIONS ===\n")
+	totalRelations := stats["total_relations"].(int)
+	if totalRelations > 0 {
+		neutralPct := float64(stats["neutral_relations"].(int)) / float64(totalRelations) * 100
+		alliedPct := float64(stats["allied_relations"].(int)) / float64(totalRelations) * 100
+		enemyPct := float64(stats["enemy_relations"].(int)) / float64(totalRelations) * 100
+		trucePct := float64(stats["truce_relations"].(int)) / float64(totalRelations) * 100
+		
+		content.WriteString(fmt.Sprintf("Neutral: %d (%.1f%%)\n", stats["neutral_relations"].(int), neutralPct))
+		content.WriteString(fmt.Sprintf("Allied: %d (%.1f%%)\n", stats["allied_relations"].(int), alliedPct))
+		content.WriteString(fmt.Sprintf("Enemy: %d (%.1f%%)\n", stats["enemy_relations"].(int), enemyPct))
+		content.WriteString(fmt.Sprintf("Truce: %d (%.1f%%)\n", stats["truce_relations"].(int), trucePct))
+	} else {
+		content.WriteString("No diplomatic relations established\n")
+	}
+	
+	// Active Conflicts
+	content.WriteString("\n=== ACTIVE CONFLICTS ===\n")
+	conflicts := m.world.ColonyWarfareSystem.ActiveConflicts
+	if len(conflicts) == 0 {
+		content.WriteString("No active conflicts - Peace prevails!\n")
+	} else {
+		for i, conflict := range conflicts {
+			if i >= 5 { // Show only first 5 conflicts
+				content.WriteString(fmt.Sprintf("... and %d more conflicts\n", len(conflicts)-5))
+				break
+			}
+			
+			conflictTypeStr := "Unknown"
+			switch conflict.ConflictType {
+			case BorderSkirmish:
+				conflictTypeStr = "Border Skirmish"
+			case ResourceWar:
+				conflictTypeStr = "Resource War"
+			case TotalWar:
+				conflictTypeStr = "Total War"
+			case Raid:
+				conflictTypeStr = "Raid"
+			}
+			
+			content.WriteString(fmt.Sprintf("Conflict #%d: %s\n", conflict.ID, conflictTypeStr))
+			content.WriteString(fmt.Sprintf("  Attacker: Colony %d vs Defender: Colony %d\n", 
+				conflict.Attacker, conflict.Defender))
+			content.WriteString(fmt.Sprintf("  Duration: %d ticks, Intensity: %.2f\n", 
+				conflict.TurnsActive, conflict.Intensity))
+			content.WriteString(fmt.Sprintf("  Casualties: %d, War Goal: %s\n", 
+				conflict.CasualtyCount, conflict.WarGoal))
+			
+			if len(conflict.TerritoryClaimed) > 0 {
+				content.WriteString(fmt.Sprintf("  Territory claimed: %d areas\n", len(conflict.TerritoryClaimed)))
+			}
+			content.WriteString("\n")
+		}
+	}
+	
+	// Colony Information
+	content.WriteString("=== COLONY OVERVIEW ===\n")
+	colonies := m.world.CasteSystem.Colonies
+	if len(colonies) == 0 {
+		content.WriteString("No colonies established\n")
+	} else {
+		for i, colony := range colonies {
+			if i >= 8 { // Show only first 8 colonies
+				content.WriteString(fmt.Sprintf("... and %d more colonies\n", len(colonies)-8))
+				break
+			}
+			
+			diplomacy := m.world.ColonyWarfareSystem.ColonyDiplomacies[colony.ID]
+			
+			content.WriteString(fmt.Sprintf("Colony %d:\n", colony.ID))
+			content.WriteString(fmt.Sprintf("  Size: %d members, Age: %d ticks\n", 
+				colony.ColonySize, colony.ColonyAge))
+			content.WriteString(fmt.Sprintf("  Territory: %d areas, Fitness: %.2f\n", 
+				len(colony.Territory), colony.ColonyFitness))
+			
+			if diplomacy != nil {
+				content.WriteString(fmt.Sprintf("  Reputation: %.2f\n", diplomacy.Reputation))
+				
+				// Count relations
+				allies := 0
+				enemies := 0
+				for _, relation := range diplomacy.Relations {
+					switch relation {
+					case Allied:
+						allies++
+					case Enemy:
+						enemies++
+					}
+				}
+				
+				if allies > 0 || enemies > 0 {
+					content.WriteString(fmt.Sprintf("  Allies: %d, Enemies: %d\n", allies, enemies))
+				}
+				
+				// Show active conflicts for this colony
+				activeConflictsForColony := 0
+				for _, conflict := range conflicts {
+					if conflict.Attacker == colony.ID || conflict.Defender == colony.ID {
+						activeConflictsForColony++
+					}
+				}
+				if activeConflictsForColony > 0 {
+					content.WriteString(fmt.Sprintf("  Active conflicts: %d\n", activeConflictsForColony))
+				}
+			}
+			
+			content.WriteString("\n")
+		}
+	}
+	
+	// System Configuration
+	content.WriteString("=== SYSTEM SETTINGS ===\n")
+	content.WriteString(fmt.Sprintf("Border conflict chance: %.1f%%\n", stats["border_conflicts"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Resource competition: %.1f%%\n", stats["resource_competition"].(float64)*100))
+	content.WriteString(fmt.Sprintf("Max simultaneous conflicts: %d\n", m.world.ColonyWarfareSystem.MaxActiveConflicts))
+	
+	content.WriteString("\nControls: [v] Next View")
+	
 	return content.String()
 }
 
