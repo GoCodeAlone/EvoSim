@@ -149,6 +149,12 @@ func (sds *SeedDispersalSystem) determineSeedType(parent *Plant) SeedType {
 			return SeedFleshy // Cactus fruits are often fleshy
 		}
 		return SeedExplosive // Some cacti have explosive seed pods
+	case PlantLily:
+		return SeedFloating // Water lily seeds float on water surface
+	case PlantReed:
+		return SeedFloating // Reed seeds disperse via water currents
+	case PlantKelp:
+		return SeedFloating // Kelp spores drift with water currents
 	default:
 		return SeedSmallLight
 	}
@@ -576,28 +582,235 @@ func (sds *SeedDispersalSystem) disperseByGravity(seed *Seed, world *World) {
 	}
 }
 
-// disperseByWater handles water-based dispersal
+// disperseByWater handles water-based dispersal with realistic flow mechanics
 func (sds *SeedDispersalSystem) disperseByWater(seed *Seed, world *World) {
-	// Find water current direction (simplified)
-	// For now, just move seeds randomly in water areas
 	biome := world.getBiomeAt(seed.Position)
-	if biome == BiomeWater || biome == BiomeDeepWater {
-		// Seeds float and move with water currents
-		seed.Velocity.X += (rand.Float64()*2 - 1) * 0.1
-		seed.Velocity.Y += (rand.Float64()*2 - 1) * 0.1
+	
+	// Enhanced water flow patterns based on biome type
+	switch biome {
+	case BiomeWater:
+		// Shallow water - moderate flow with surface currents
+		flowDirection := sds.calculateWaterFlow(seed.Position, world, false)
+		flowStrength := 0.15
 		
-		// Apply some damping
-		seed.Velocity.X *= 0.98
-		seed.Velocity.Y *= 0.98
+		// Surface currents affected by wind
+		windInfluence := sds.getWindInfluenceOnWater(seed.Position, world)
 		
-		// Update position
-		seed.Position.X += seed.Velocity.X
-		seed.Position.Y += seed.Velocity.Y
-	} else {
-		// Out of water, stop moving
-		seed.Velocity.X = 0
-		seed.Velocity.Y = 0
+		seed.Velocity.X += flowDirection.X * flowStrength + windInfluence.X * 0.05
+		seed.Velocity.Y += flowDirection.Y * flowStrength + windInfluence.Y * 0.05
+		
+	case BiomeDeepWater:
+		// Deep water - stronger, more consistent currents
+		flowDirection := sds.calculateWaterFlow(seed.Position, world, true)
+		flowStrength := 0.25
+		
+		seed.Velocity.X += flowDirection.X * flowStrength
+		seed.Velocity.Y += flowDirection.Y * flowStrength
+		
+	case BiomeSwamp:
+		// Swamp water - slow, stagnant with occasional flow
+		flowDirection := sds.calculateWaterFlow(seed.Position, world, false)
+		flowStrength := 0.08 // Much slower flow
+		
+		// Random vegetation obstacles
+		if rand.Float64() < 0.3 {
+			flowStrength *= 0.5 // Vegetation slows flow
+		}
+		
+		seed.Velocity.X += flowDirection.X * flowStrength
+		seed.Velocity.Y += flowDirection.Y * flowStrength
+		
+	default:
+		// Not in water - check for seasonal flooding
+		if sds.isFloodedArea(seed.Position, world) {
+			// Temporary water flow during floods
+			flowDirection := sds.calculateFloodFlow(seed.Position, world)
+			flowStrength := 0.3 // Strong flood currents
+			
+			seed.Velocity.X += flowDirection.X * flowStrength
+			seed.Velocity.Y += flowDirection.Y * flowStrength
+		} else {
+			// Out of water, seeds settle
+			seed.Velocity.X *= 0.7 // Friction with ground
+			seed.Velocity.Y *= 0.7
+			
+			// Stop if velocity is very low
+			if math.Abs(seed.Velocity.X) < 0.01 && math.Abs(seed.Velocity.Y) < 0.01 {
+				seed.Velocity.X = 0
+				seed.Velocity.Y = 0
+			}
+		}
 	}
+	
+	// Apply water resistance (seeds slow down in water)
+	seed.Velocity.X *= 0.95
+	seed.Velocity.Y *= 0.95
+	
+	// Update position
+	seed.Position.X += seed.Velocity.X
+	seed.Position.Y += seed.Velocity.Y
+	
+	// Floating seeds have enhanced survival in water
+	if seed.SeedType == SeedFloating && (biome == BiomeWater || biome == BiomeDeepWater || biome == BiomeSwamp) {
+		seed.Viability = math.Min(1.0, seed.Viability + 0.001) // Slight recovery in water
+	}
+}
+
+// calculateWaterFlow determines water flow direction based on terrain and currents
+func (sds *SeedDispersalSystem) calculateWaterFlow(position Position, world *World, isDeepWater bool) Vector2D {
+	// Calculate flow based on local topography and nearby water bodies
+	flowVector := Vector2D{}
+	
+	// Check elevation differences in surrounding area
+	currentElevation := world.getElevationAt(position)
+	checkRadius := 3.0
+	
+	for dx := -checkRadius; dx <= checkRadius; dx += 1.0 {
+		for dy := -checkRadius; dy <= checkRadius; dy += 1.0 {
+			if dx == 0 && dy == 0 {
+				continue
+			}
+			
+			checkPos := Position{
+				X: position.X + dx,
+				Y: position.Y + dy,
+			}
+			
+			if world.isValidPosition(checkPos) {
+				elevation := world.getElevationAt(checkPos)
+				
+				// Water flows from high to low elevation
+				elevationDiff := currentElevation - elevation
+				if elevationDiff > 0 {
+					distance := math.Sqrt(dx*dx + dy*dy)
+					strength := elevationDiff / distance
+					
+					flowVector.X += (dx / distance) * strength
+					flowVector.Y += (dy / distance) * strength
+				}
+			}
+		}
+	}
+	
+	// Add some randomness for natural water turbulence
+	turbulence := 0.2
+	if isDeepWater {
+		turbulence = 0.1 // Deep water has less surface turbulence
+	}
+	
+	flowVector.X += (rand.Float64()*2 - 1) * turbulence
+	flowVector.Y += (rand.Float64()*2 - 1) * turbulence
+	
+	// Normalize the flow vector
+	magnitude := math.Sqrt(flowVector.X*flowVector.X + flowVector.Y*flowVector.Y)
+	if magnitude > 0 {
+		flowVector.X /= magnitude
+		flowVector.Y /= magnitude
+	}
+	
+	return flowVector
+}
+
+// getWindInfluenceOnWater calculates how wind affects surface water currents
+func (sds *SeedDispersalSystem) getWindInfluenceOnWater(position Position, world *World) Vector2D {
+	windInfluence := Vector2D{}
+	
+	if world.WindSystem != nil {
+		// Get wind vector at position
+		gridX := int(position.X)
+		gridY := int(position.Y)
+		
+		if gridX >= 0 && gridX < len(world.WindSystem.WindMap[0]) && 
+		   gridY >= 0 && gridY < len(world.WindSystem.WindMap) {
+			windVector := world.WindSystem.WindMap[gridY][gridX]
+			
+			// Wind creates surface currents (reduced effect underwater)
+			// Calculate normalized direction from wind vector
+			magnitude := math.Sqrt(windVector.X*windVector.X + windVector.Y*windVector.Y)
+			if magnitude > 0 {
+				windInfluence.X = (windVector.X / magnitude) * windVector.Strength * 0.3
+				windInfluence.Y = (windVector.Y / magnitude) * windVector.Strength * 0.3
+			}
+		}
+	}
+	
+	return windInfluence
+}
+
+// isFloodedArea checks if the position is temporarily flooded (seasonal floods)
+func (sds *SeedDispersalSystem) isFloodedArea(position Position, world *World) bool {
+	// Check if it's flood season (spring/early summer)
+	season := world.AdvancedTimeSystem.Season
+	if season != Spring && season != Summer {
+		return false
+	}
+	
+	// Check if position is near water bodies
+	waterCheckRadius := 8.0
+	for dx := -waterCheckRadius; dx <= waterCheckRadius; dx += 1.0 {
+		for dy := -waterCheckRadius; dy <= waterCheckRadius; dy += 1.0 {
+			checkPos := Position{
+				X: position.X + dx,
+				Y: position.Y + dy,
+			}
+			
+			if world.isValidPosition(checkPos) {
+				biome := world.getBiomeAt(checkPos)
+				if biome == BiomeWater || biome == BiomeDeepWater || biome == BiomeSwamp {
+					distance := math.Sqrt(dx*dx + dy*dy)
+					
+					// Flood probability decreases with distance from water
+					floodProbability := math.Max(0, 1.0 - (distance/waterCheckRadius))
+					
+					// Random chance based on distance and season intensity
+					if rand.Float64() < floodProbability * 0.3 {
+						return true
+					}
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// calculateFloodFlow determines water flow direction during floods
+func (sds *SeedDispersalSystem) calculateFloodFlow(position Position, world *World) Vector2D {
+	flowVector := Vector2D{}
+	
+	// Find direction to nearest major water body
+	waterCheckRadius := 15.0
+	nearestWaterDistance := math.Inf(1)
+	
+	for dx := -waterCheckRadius; dx <= waterCheckRadius; dx += 2.0 {
+		for dy := -waterCheckRadius; dy <= waterCheckRadius; dy += 2.0 {
+			checkPos := Position{
+				X: position.X + dx,
+				Y: position.Y + dy,
+			}
+			
+			if world.isValidPosition(checkPos) {
+				biome := world.getBiomeAt(checkPos)
+				if biome == BiomeWater || biome == BiomeDeepWater {
+					distance := math.Sqrt(dx*dx + dy*dy)
+					
+					if distance < nearestWaterDistance {
+						nearestWaterDistance = distance
+						
+						// Flow towards the water body
+						flowVector.X = dx / distance
+						flowVector.Y = dy / distance
+					}
+				}
+			}
+		}
+	}
+	
+	// Add strong turbulence for flood conditions
+	flowVector.X += (rand.Float64()*2 - 1) * 0.4
+	flowVector.Y += (rand.Float64()*2 - 1) * 0.4
+	
+	return flowVector
 }
 
 // GetStats returns dispersal statistics

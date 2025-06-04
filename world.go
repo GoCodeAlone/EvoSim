@@ -4993,3 +4993,18 @@ func (w *World) seasonToString(season Season) string {
 		return "unknown"
 	}
 }
+
+// getElevationAt returns the elevation at a given position
+func (w *World) getElevationAt(position Position) float64 {
+	if w.TopologySystem != nil {
+		return w.TopologySystem.getElevationAt(position.X, position.Y)
+	}
+	return 0.0 // Default elevation if no topology system
+}
+
+// isValidPosition checks if a position is within world bounds
+func (w *World) isValidPosition(position Position) bool {
+	x := int(position.X)
+	y := int(position.Y)
+	return x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight
+}
