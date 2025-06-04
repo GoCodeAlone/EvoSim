@@ -8,17 +8,34 @@ import (
 func TestCulturalKnowledgeSystemBasics(t *testing.T) {
 	system := NewCulturalKnowledgeSystem()
 	
-	// Create test entities
-	entity1 := NewEntity(1, []string{"intelligence", "cooperation", "curiosity"}, "testspecies", Position{X: 0, Y: 0})
+	// Create test entities with all required traits for cultural knowledge
+	traitNames := []string{
+		"intelligence", "cooperation", "curiosity", "tool_use", "foraging_efficiency", 
+		"vigilance", "territorial_range", "aggression", "communication_skill",
+	}
+	
+	entity1 := NewEntity(1, traitNames, "testspecies", Position{X: 0, Y: 0})
 	entity1.SetTrait("intelligence", 0.8)
 	entity1.SetTrait("cooperation", 0.7)
 	entity1.SetTrait("curiosity", 0.6)
+	entity1.SetTrait("tool_use", 0.5)
+	entity1.SetTrait("foraging_efficiency", 0.6)
+	entity1.SetTrait("vigilance", 0.7)
+	entity1.SetTrait("territorial_range", 0.8)
+	entity1.SetTrait("aggression", 0.3)
+	entity1.SetTrait("communication_skill", 0.6)
 	entity1.IsAlive = true
 	
-	entity2 := NewEntity(2, []string{"intelligence", "cooperation", "curiosity"}, "testspecies", Position{X: 1, Y: 1})
+	entity2 := NewEntity(2, traitNames, "testspecies", Position{X: 1, Y: 1})
 	entity2.SetTrait("intelligence", 0.6)
 	entity2.SetTrait("cooperation", 0.8)
 	entity2.SetTrait("curiosity", 0.5)
+	entity2.SetTrait("tool_use", 0.4)
+	entity2.SetTrait("foraging_efficiency", 0.7)
+	entity2.SetTrait("vigilance", 0.6)
+	entity2.SetTrait("territorial_range", 0.5)
+	entity2.SetTrait("aggression", 0.4)
+	entity2.SetTrait("communication_skill", 0.7)
 	entity2.IsAlive = true
 	
 	entities := []*Entity{entity1, entity2}
@@ -158,10 +175,19 @@ func TestCulturalKnowledgeInnovation(t *testing.T) {
 func TestCulturalKnowledgeStats(t *testing.T) {
 	system := NewCulturalKnowledgeSystem()
 	
-	// Create test entity
-	entity := NewEntity(1, []string{"intelligence", "cooperation"}, "testspecies", Position{X: 0, Y: 0})
+	// Create test entity with all required traits
+	traitNames := []string{
+		"intelligence", "cooperation", "curiosity", "tool_use", "foraging_efficiency", 
+		"vigilance", "territorial_range", "aggression", "communication_skill",
+	}
+	
+	entity := NewEntity(1, traitNames, "testspecies", Position{X: 0, Y: 0})
 	entity.SetTrait("intelligence", 0.7)
 	entity.SetTrait("cooperation", 0.6)
+	entity.SetTrait("tool_use", 0.5)
+	entity.SetTrait("foraging_efficiency", 0.6)
+	entity.SetTrait("vigilance", 0.7)
+	entity.SetTrait("territorial_range", 0.8)
 	entity.IsAlive = true
 	
 	entities := []*Entity{entity}

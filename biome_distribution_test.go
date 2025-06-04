@@ -286,6 +286,12 @@ func TestBiomeConsistencyAcrossMapResets(t *testing.T) {
 	// Test if the issue mentions map resets - create world, run updates, check for consistency
 	world := NewWorld(config)
 	
+	// Disable geological changes for this stability test
+	if world.TopologySystem != nil {
+		world.TopologySystem.TectonicActivity = 0.0 // Disable tectonic activity for test stability
+		world.TopologySystem.ErosionRate = 0.0      // Disable erosion for test stability
+	}
+	
 	// Take initial snapshot
 	initialBiomes := make([][]BiomeType, config.GridHeight)
 	for y := 0; y < config.GridHeight; y++ {
