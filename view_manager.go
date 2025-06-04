@@ -73,6 +73,7 @@ type ViewData struct {
 	EmergentBehavior EmergentBehaviorData `json:"emergent_behavior"`
 	FeedbackLoops    FeedbackLoopData     `json:"feedback_loops"`
 	Reproduction     ReproductionData     `json:"reproduction"`
+	Warfare          WarfareData          `json:"warfare"`
 	Statistical      StatisticalData      `json:"statistical"`
 	Anomalies        AnomaliesData        `json:"anomalies"`
 	// Historical data
@@ -327,6 +328,72 @@ type AnomalyData struct {
 	Tick        int     `json:"tick"`
 }
 
+// WarfareData represents warfare and diplomacy state for web interface
+type WarfareData struct {
+	TotalColonies        int                   `json:"total_colonies"`
+	ActiveConflicts      int                   `json:"active_conflicts"`
+	TotalAlliances       int                   `json:"total_alliances"`
+	ActiveTradeAgreements int                  `json:"active_trade_agreements"`
+	TotalRelations       int                   `json:"total_relations"`
+	NeutralRelations     int                   `json:"neutral_relations"`
+	AlliedRelations      int                   `json:"allied_relations"`
+	EnemyRelations       int                   `json:"enemy_relations"`
+	TruceRelations       int                   `json:"truce_relations"`
+	TradingRelations     int                   `json:"trading_relations"`
+	VassalRelations      int                   `json:"vassal_relations"`
+	Conflicts            []ConflictData        `json:"conflicts"`
+	Alliances            []AllianceData        `json:"alliances"`
+	TradeAgreements      []TradeAgreementData  `json:"trade_agreements"`
+	ColonyDetails        []ColonyDetailData    `json:"colony_details"`
+}
+
+// ConflictData represents a conflict for web interface
+type ConflictData struct {
+	ID             int     `json:"id"`
+	AttackerID     int     `json:"attacker_id"`
+	DefenderID     int     `json:"defender_id"`
+	ConflictType   string  `json:"conflict_type"`
+	TurnsActive    int     `json:"turns_active"`
+	CasualtyCount  int     `json:"casualty_count"`
+	ResourcesLost  float64 `json:"resources_lost"`
+	Intensity      float64 `json:"intensity"`
+	WarGoal        string  `json:"war_goal"`
+	IsActive       bool    `json:"is_active"`
+}
+
+// AllianceData represents an alliance for web interface
+type AllianceData struct {
+	ID            int      `json:"id"`
+	Members       []int    `json:"members"`
+	AllianceType  string   `json:"alliance_type"`
+	ResourceShare float64  `json:"resource_share"`
+	SharedDefense bool     `json:"shared_defense"`
+	IsActive      bool     `json:"is_active"`
+	Duration      int      `json:"duration"`
+}
+
+// TradeAgreementData represents a trade agreement for web interface
+type TradeAgreementData struct {
+	ID               int                `json:"id"`
+	Colony1ID        int                `json:"colony1_id"`
+	Colony2ID        int                `json:"colony2_id"`
+	OfferedResources map[string]float64 `json:"offered_resources"`
+	WantedResources  map[string]float64 `json:"wanted_resources"`
+	Duration         int                `json:"duration"`
+	IsActive         bool               `json:"is_active"`
+}
+
+// ColonyDetailData represents colony details for web interface
+type ColonyDetailData struct {
+	ID          int                      `json:"id"`
+	Size        int                      `json:"size"`
+	Fitness     float64                  `json:"fitness"`
+	Location    Position                 `json:"location"`
+	Resources   map[string]float64       `json:"resources"`
+	Relations   map[int]string           `json:"relations"`
+	TrustLevels map[int]float64          `json:"trust_levels"`
+}
+
 // GetCurrentViewData returns the current simulation state for rendering
 func (vm *ViewManager) GetCurrentViewData() *ViewData {
 	// Capture historical data every 5 ticks
@@ -360,6 +427,7 @@ func (vm *ViewManager) GetCurrentViewData() *ViewData {
 		EmergentBehavior: vm.getEmergentBehaviorData(),
 		FeedbackLoops:    vm.getFeedbackLoopData(),
 		Reproduction:     vm.getReproductionData(),
+		Warfare:          vm.getWarfareData(),
 		Statistical:      vm.getStatisticalData(),
 		Anomalies:        vm.getAnomaliesData(),
 		// Include historical data
@@ -1157,7 +1225,7 @@ func (vm *ViewManager) GetViewModes() []string {
 		"GRID", "STATS", "EVENTS", "POPULATIONS", "COMMUNICATION",
 		"CIVILIZATION", "PHYSICS", "WIND", "SPECIES", "NETWORK",
 		"DNA", "CELLULAR", "EVOLUTION", "TOPOLOGY", "TOOLS", "ENVIRONMENT", "BEHAVIOR",
-		"STATISTICAL", "ANOMALIES",
+		"REPRODUCTION", "WARFARE", "STATISTICAL", "ANOMALIES",
 	}
 }
 
@@ -1425,6 +1493,178 @@ func (vm *ViewManager) getReproductionData() ReproductionData {
 		}
 	}
 	data.TerritoriesWithMating = territoriesWithMating
+	
+	return data
+}
+
+// getWarfareData returns warfare and diplomacy system state data
+func (vm *ViewManager) getWarfareData() WarfareData {
+	data := WarfareData{
+		Conflicts:       make([]ConflictData, 0),
+		Alliances:       make([]AllianceData, 0),
+		TradeAgreements: make([]TradeAgreementData, 0),
+		ColonyDetails:   make([]ColonyDetailData, 0),
+	}
+	
+	// Check if warfare system exists
+	if vm.world.ColonyWarfareSystem == nil {
+		return data
+	}
+	
+	// Get warfare statistics
+	stats := vm.world.ColonyWarfareSystem.GetWarfareStats()
+	
+	// Extract statistics safely
+	if val, ok := stats["total_colonies"]; ok && val != nil {
+		data.TotalColonies = val.(int)
+	}
+	if val, ok := stats["active_conflicts"]; ok && val != nil {
+		data.ActiveConflicts = val.(int)
+	}
+	if val, ok := stats["total_alliances"]; ok && val != nil {
+		data.TotalAlliances = val.(int)
+	}
+	if val, ok := stats["active_trade_agreements"]; ok && val != nil {
+		data.ActiveTradeAgreements = val.(int)
+	}
+	if val, ok := stats["total_relations"]; ok && val != nil {
+		data.TotalRelations = val.(int)
+	}
+	if val, ok := stats["neutral_relations"]; ok && val != nil {
+		data.NeutralRelations = val.(int)
+	}
+	if val, ok := stats["allied_relations"]; ok && val != nil {
+		data.AlliedRelations = val.(int)
+	}
+	if val, ok := stats["enemy_relations"]; ok && val != nil {
+		data.EnemyRelations = val.(int)
+	}
+	if val, ok := stats["truce_relations"]; ok && val != nil {
+		data.TruceRelations = val.(int)
+	}
+	if val, ok := stats["trading_relations"]; ok && val != nil {
+		data.TradingRelations = val.(int)
+	}
+	if val, ok := stats["vassal_relations"]; ok && val != nil {
+		data.VassalRelations = val.(int)
+	}
+	
+	// Convert active conflicts
+	for _, conflict := range vm.world.ColonyWarfareSystem.ActiveConflicts {
+		if !conflict.IsActive {
+			continue
+		}
+		
+		conflictData := ConflictData{
+			ID:            conflict.ID,
+			AttackerID:    conflict.Attacker,
+			DefenderID:    conflict.Defender,
+			TurnsActive:   conflict.TurnsActive,
+			CasualtyCount: conflict.CasualtyCount,
+			ResourcesLost: conflict.ResourcesLost,
+			Intensity:     conflict.Intensity,
+			WarGoal:       conflict.WarGoal,
+			IsActive:      conflict.IsActive,
+		}
+		
+		// Convert conflict type to string
+		switch conflict.ConflictType {
+		case BorderSkirmish:
+			conflictData.ConflictType = "Border Skirmish"
+		case ResourceWar:
+			conflictData.ConflictType = "Resource War"
+		case TotalWar:
+			conflictData.ConflictType = "Total War"
+		case Raid:
+			conflictData.ConflictType = "Raid"
+		default:
+			conflictData.ConflictType = "Unknown"
+		}
+		
+		data.Conflicts = append(data.Conflicts, conflictData)
+	}
+	
+	// Convert alliances
+	for _, alliance := range vm.world.ColonyWarfareSystem.Alliances {
+		if !alliance.IsActive {
+			continue
+		}
+		
+		allianceData := AllianceData{
+			ID:            alliance.ID,
+			Members:       alliance.Members,
+			AllianceType:  alliance.AllianceType,
+			ResourceShare: alliance.ResourceShare,
+			SharedDefense: alliance.SharedDefense,
+			IsActive:      alliance.IsActive,
+			Duration:      alliance.Duration,
+		}
+		
+		data.Alliances = append(data.Alliances, allianceData)
+	}
+	
+	// Convert trade agreements
+	for _, tradeAgreement := range vm.world.ColonyWarfareSystem.TradeAgreements {
+		if !tradeAgreement.IsActive {
+			continue
+		}
+		
+		tradeData := TradeAgreementData{
+			ID:               tradeAgreement.ID,
+			Colony1ID:        tradeAgreement.Colony1ID,
+			Colony2ID:        tradeAgreement.Colony2ID,
+			OfferedResources: tradeAgreement.ResourcesOffered,
+			WantedResources:  tradeAgreement.ResourcesWanted,
+			Duration:         tradeAgreement.Duration,
+			IsActive:         tradeAgreement.IsActive,
+		}
+		
+		data.TradeAgreements = append(data.TradeAgreements, tradeData)
+	}
+	
+	// Add colony details
+	if vm.world.CasteSystem != nil {
+		for _, colony := range vm.world.CasteSystem.Colonies {
+			colonyData := ColonyDetailData{
+				ID:        colony.ID,
+				Size:      colony.ColonySize,
+				Fitness:   colony.ColonyFitness,
+				Location:  colony.NestLocation,
+				Resources: colony.Resources,
+				Relations: make(map[int]string),
+				TrustLevels: make(map[int]float64),
+			}
+			
+			// Add diplomatic relations
+			if diplomacy, exists := vm.world.ColonyWarfareSystem.ColonyDiplomacies[colony.ID]; exists {
+				for otherID, relation := range diplomacy.Relations {
+					switch relation {
+					case Neutral:
+						colonyData.Relations[otherID] = "Neutral"
+					case Allied:
+						colonyData.Relations[otherID] = "Allied"
+					case Enemy:
+						colonyData.Relations[otherID] = "Enemy"
+					case Truce:
+						colonyData.Relations[otherID] = "Truce"
+					case Trading:
+						colonyData.Relations[otherID] = "Trading"
+					case Vassal:
+						colonyData.Relations[otherID] = "Vassal"
+					default:
+						colonyData.Relations[otherID] = "Unknown"
+					}
+				}
+				
+				// Copy trust levels
+				for otherID, trust := range diplomacy.TrustLevels {
+					colonyData.TrustLevels[otherID] = trust
+				}
+			}
+			
+			data.ColonyDetails = append(data.ColonyDetails, colonyData)
+		}
+	}
 	
 	return data
 }
