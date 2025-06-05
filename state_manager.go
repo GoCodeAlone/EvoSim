@@ -674,7 +674,7 @@ func (sm *StateManager) restoreState(state *SimulationState) error {
 		// Convert string keys back to positions
 		for key, biome := range eventState.BiomeChanges {
 			var x, y float64
-			fmt.Sscanf(key, "%f,%f", &x, &y)
+			_, _ = fmt.Sscanf(key, "%f,%f", &x, &y)
 			event.BiomeChanges[Position{X: x, Y: y}] = biome
 		}
 
@@ -869,7 +869,7 @@ func (sm *StateManager) restoreCellular(state *CellularState, dna *DNAStrand) *C
 		for key, organelleState := range cellState.Organelles {
 			// Convert string key back to OrganelleType
 			var organelleType OrganelleType
-			fmt.Sscanf(key, "%d", (*int)(&organelleType))
+			_, _ = fmt.Sscanf(key, "%d", (*int)(&organelleType))
 
 			cell.Organelles[organelleType] = &Organelle{
 				Type:       organelleState.Type,

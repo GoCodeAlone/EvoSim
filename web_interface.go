@@ -4008,7 +4008,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(html))
+	_, _ = w.Write([]byte(html))
 }
 
 // handleStatus provides a simple status endpoint
@@ -4022,7 +4022,7 @@ func (wi *WebInterface) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 // handleExportEvents exports all events from the central event bus
@@ -4068,7 +4068,7 @@ func (wi *WebInterface) handleExportEvents(w http.ResponseWriter, r *http.Reques
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=events_export.json")
-		json.NewEncoder(w).Encode(exportData)
+		_ = json.NewEncoder(w).Encode(exportData)
 	}
 }
 
@@ -4105,7 +4105,7 @@ func (wi *WebInterface) handleExportAnalysis(w http.ResponseWriter, r *http.Requ
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=analysis_export.json")
-		json.NewEncoder(w).Encode(analysisData)
+		_ = json.NewEncoder(w).Encode(analysisData)
 	}
 }
 
@@ -4142,7 +4142,7 @@ func (wi *WebInterface) handleExportAnomalies(w http.ResponseWriter, r *http.Req
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=anomalies_export.json")
-		json.NewEncoder(w).Encode(anomaliesData)
+		_ = json.NewEncoder(w).Encode(anomaliesData)
 	}
 }
 
@@ -4151,7 +4151,7 @@ func (wi *WebInterface) exportEventsAsCSV(w http.ResponseWriter, events []Centra
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", "attachment; filename=events_export.csv")
 
-	w.Write([]byte("ID,Timestamp,Tick,Type,Category,SubCategory,Source,Description,EntityID,PlantID,Position,Severity\n"))
+	_, _ = w.Write([]byte("ID,Timestamp,Tick,Type,Category,SubCategory,Source,Description,EntityID,PlantID,Position,Severity\n"))
 
 	for _, event := range events {
 		position := ""
@@ -4173,7 +4173,7 @@ func (wi *WebInterface) exportEventsAsCSV(w http.ResponseWriter, events []Centra
 			position,
 			event.Severity,
 		)
-		w.Write([]byte(line))
+		_, _ = w.Write([]byte(line))
 	}
 }
 
@@ -4183,11 +4183,11 @@ func (wi *WebInterface) exportAnalysisAsCSV(w http.ResponseWriter, data map[stri
 	w.Header().Set("Content-Disposition", "attachment; filename=analysis_export.csv")
 
 	// Simple CSV with key-value pairs for analysis data
-	w.Write([]byte("Key,Value\n"))
+	_, _ = w.Write([]byte("Key,Value\n"))
 
 	if stats, ok := data["summary_statistics"].(map[string]interface{}); ok {
 		for key, value := range stats {
-			w.Write([]byte(fmt.Sprintf("%s,%v\n", key, value)))
+			_, _ = w.Write([]byte(fmt.Sprintf("%s,%v\n", key, value)))
 		}
 	}
 }
@@ -4197,7 +4197,7 @@ func (wi *WebInterface) exportAnomaliesAsCSV(w http.ResponseWriter, data map[str
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", "attachment; filename=anomalies_export.csv")
 
-	w.Write([]byte("Type,Severity,Tick,Description,Confidence\n"))
+	_, _ = w.Write([]byte("Type,Severity,Tick,Description,Confidence\n"))
 
 	if anomalies, ok := data["anomalies"].([]Anomaly); ok {
 		for _, anomaly := range anomalies {
@@ -4208,7 +4208,7 @@ func (wi *WebInterface) exportAnomaliesAsCSV(w http.ResponseWriter, data map[str
 				anomaly.Description,
 				anomaly.Confidence,
 			)
-			w.Write([]byte(line))
+			_, _ = w.Write([]byte(line))
 		}
 	}
 }
