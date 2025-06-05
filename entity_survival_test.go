@@ -230,7 +230,7 @@ func TestEntitySurvivalInDifferentBiomes(t *testing.T) {
 // TestEnergyDecayRates tests that energy decay is reasonable under normal conditions
 func TestEnergyDecayRates(t *testing.T) {
 	// Create necessary systems for the new classification system
-	timeSystem := NewAdvancedTimeSystem(480, 120) // 480 ticks/day, 120 days/season
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120) // 480 ticks/day, 120 days/season
 	dnaSystem := NewDNASystem(NewCentralEventBus(1000))
 	cellularSystem := NewCellularSystem(dnaSystem, NewCentralEventBus(1000))
 	classifier := NewOrganismClassifier(timeSystem)

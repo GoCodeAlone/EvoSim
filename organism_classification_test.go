@@ -5,7 +5,7 @@ import (
 )
 
 func TestOrganismClassifierInitialization(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	if classifier == nil {
@@ -40,7 +40,7 @@ func TestOrganismClassifierInitialization(t *testing.T) {
 }
 
 func TestEntityClassificationByTraits(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	// Test prokaryotic classification (low intelligence, size, cooperation)
@@ -67,7 +67,7 @@ func TestEntityClassificationByTraits(t *testing.T) {
 }
 
 func TestLifespanCalculation(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	entity := NewEntity(1, []string{"endurance", "size"}, "test", Position{})
@@ -103,7 +103,7 @@ func TestLifespanCalculation(t *testing.T) {
 }
 
 func TestAgingRateCalculation(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	entity := NewEntity(1, []string{"metabolism", "size"}, "test", Position{})
@@ -127,7 +127,7 @@ func TestAgingRateCalculation(t *testing.T) {
 }
 
 func TestLifespanProgression(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	// Test that more complex organisms have longer lifespans
@@ -149,7 +149,7 @@ func TestLifespanProgression(t *testing.T) {
 }
 
 func TestDeathByOldAge(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	entity := NewEntity(1, []string{"endurance"}, "test", Position{})
@@ -178,7 +178,7 @@ func TestDeathByOldAge(t *testing.T) {
 }
 
 func TestEntityUpdateWithClassification(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	dnaSystem := NewDNASystem(NewCentralEventBus(1000))
 	cellularSystem := NewCellularSystem(dnaSystem, NewCentralEventBus(1000))
@@ -213,7 +213,7 @@ func TestEntityUpdateWithClassification(t *testing.T) {
 }
 
 func TestRealisticLifespanRanges(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	ticksPerDay := float64(timeSystem.DayLength)

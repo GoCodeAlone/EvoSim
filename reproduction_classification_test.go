@@ -5,7 +5,7 @@ import (
 )
 
 func TestReproductiveMaturityWithClassification(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	reproductionSystem := NewReproductionSystem(NewCentralEventBus(1000))
 	
@@ -51,7 +51,7 @@ func TestReproductiveMaturityWithClassification(t *testing.T) {
 }
 
 func TestReproductiveVigor(t *testing.T) {
-	timeSystem := NewAdvancedTimeSystem(480, 120)
+	timeSystem := NewAdvancedTimeSystemLegacy(480, 120)
 	classifier := NewOrganismClassifier(timeSystem)
 	
 	entity := NewEntity(1, []string{"endurance"}, "test", Position{})

@@ -44,9 +44,10 @@ func (ts TimeState) IsNight() bool {
 
 // AdvancedTimeSystem manages complex time cycles
 type AdvancedTimeSystem struct {
+	Config       *TimeConfig // Configuration for time system
 	WorldTick    int
-	DayLength    int // Ticks per day
-	SeasonLength int // Days per season
+	DayLength    int // Ticks per day (from config)
+	SeasonLength int // Days per season (from config)
 	TimeOfDay    TimeOfDay
 	Season       Season
 	DayNumber    int
@@ -56,17 +57,30 @@ type AdvancedTimeSystem struct {
 	SeasonalMod  float64 // Seasonal modifier for resources/difficulty
 }
 
-// NewAdvancedTimeSystem creates a new time system
-func NewAdvancedTimeSystem(dayLength, seasonLength int) *AdvancedTimeSystem {
+// NewAdvancedTimeSystem creates a new time system with configuration
+func NewAdvancedTimeSystem(config *TimeConfig) *AdvancedTimeSystem {
 	return &AdvancedTimeSystem{
-		DayLength:    dayLength,
-		SeasonLength: seasonLength,
+		Config:       config,
+		DayLength:    config.TicksPerDay,
+		SeasonLength: config.DaysPerSeason,
 		TimeOfDay:    Dawn,
 		Season:       Spring,
 		Temperature:  0.5, // Moderate starting temperature
 		Illumination: 0.6, // Dawn lighting
 		SeasonalMod:  1.0,
 	}
+}
+
+// NewAdvancedTimeSystemLegacy creates a time system with legacy parameters (for compatibility)
+func NewAdvancedTimeSystemLegacy(dayLength, seasonLength int) *AdvancedTimeSystem {
+	config := &TimeConfig{
+		TicksPerDay:       dayLength,
+		DaysPerSeason:     seasonLength,
+		DailyEnergyBase:   0.02,
+		NightPenalty:      0.01,
+		SeasonalVariation: 0.3,
+	}
+	return NewAdvancedTimeSystem(config)
 }
 
 // Update advances the time system and calculates environmental effects
@@ -202,17 +216,21 @@ func (ats *AdvancedTimeSystem) getSeasonalBaseTemperature() float64 {
 
 // getSeasonalModifier returns resource/difficulty modifier for current season
 func (ats *AdvancedTimeSystem) getSeasonalModifier() float64 {
+	// Use config's seasonal variation to determine how much seasons affect the environment
+	baseModifier := 1.0
+	variation := ats.Config.SeasonalVariation
+	
 	switch ats.Season {
 	case Spring:
-		return 1.2 // Abundant resources
+		return baseModifier + (0.2 * variation) // Slightly abundant resources
 	case Summer:
-		return 1.0 // Normal resources
+		return baseModifier // Normal resources
 	case Autumn:
-		return 0.9 // Declining resources
+		return baseModifier - (0.1 * variation) // Slightly declining resources
 	case Winter:
-		return 0.6 // Scarce resources
+		return baseModifier - (0.4 * variation) // Scarce resources
 	default:
-		return 1.0
+		return baseModifier
 	}
 }
 

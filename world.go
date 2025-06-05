@@ -128,6 +128,7 @@ type PopulationConfig struct {
 // World represents the environment containing multiple populations
 type World struct {
 	Config      WorldConfig
+	SimConfig   *SimulationConfig // Centralized configuration system
 	Populations map[string]*Population
 	AllEntities []*Entity
 	AllPlants   []*Plant // All plants in the world
@@ -214,13 +215,25 @@ type World struct {
 
 // NewWorld creates a new world with multiple populations
 func NewWorld(config WorldConfig) *World {
+	// Create default simulation config for backward compatibility
+	simConfig := DefaultSimulationConfig()
+	simConfig.World.Width = config.Width
+	simConfig.World.Height = config.Height
+	simConfig.World.GridWidth = config.GridWidth
+	simConfig.World.GridHeight = config.GridHeight
+	
+	return NewWorldWithConfig(config, simConfig)
+}
+
+func NewWorldWithConfig(config WorldConfig, simConfig *SimulationConfig) *World {
 	world := &World{
 		Config:      config,
+		SimConfig:   simConfig,
 		Populations: make(map[string]*Population),
 		AllEntities: make([]*Entity, 0),
 		AllPlants:   make([]*Plant, 0),
 		Grid:        make([][]GridCell, config.GridHeight),
-		Biomes:      initializeBiomes(),
+		Biomes:      initializeBiomesWithConfig(simConfig),
 		Events:      make([]*WorldEvent, 0),
 		EventLogger: NewEventLogger(1000), // Keep up to 1000 events
 		CentralEventBus: NewCentralEventBus(50000), // Central event bus with 50k events
@@ -256,7 +269,7 @@ func NewWorld(config WorldConfig) *World {
 	world.PhysicsSystem = NewPhysicsSystem()
 	world.CollisionSystem = NewCollisionSystem()
 	world.PhysicsComponents = make(map[int]*PhysicsComponent)
-	world.AdvancedTimeSystem = NewAdvancedTimeSystem(1, 91) // 1 tick/day, 91 days/season (realistic evolutionary time scale)
+	world.AdvancedTimeSystem = NewAdvancedTimeSystem(&simConfig.Time) // Use configuration for time system
 	world.CivilizationSystem = NewCivilizationSystem(world.CentralEventBus)
 	world.ViewportSystem = NewViewportSystem(config.Width, config.Height)
 	world.WindSystem = NewWindSystem(int(config.Width), int(config.Height), world.CentralEventBus)
@@ -372,6 +385,12 @@ func NewWorld(config WorldConfig) *World {
 
 // initializeBiomes creates the biome definitions
 func initializeBiomes() map[BiomeType]Biome {
+	// Use default configuration for backward compatibility
+	config := DefaultSimulationConfig()
+	return initializeBiomesWithConfig(config)
+}
+
+func initializeBiomesWithConfig(config *SimulationConfig) map[BiomeType]Biome {
 	biomes := make(map[BiomeType]Biome)
 
 	biomes[BiomePlains] = Biome{
@@ -379,8 +398,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Plains",
 		Color:          "green",
 		TraitModifiers: map[string]float64{"speed": 0.1},
-		MutationRate:   0.0,
-		EnergyDrain:    0.5,
+		MutationRate:   config.GetBiomeMutationModifier(BiomePlains) - 1.0, // Convert to additive modifier
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomePlains),
 		Symbol:         '.',
 		Temperature:    0.0,
 		Pressure:       1.0,
@@ -396,8 +415,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Forest",
 		Color:          "darkgreen",
 		TraitModifiers: map[string]float64{"size": 0.2, "defense": 0.1},
-		MutationRate:   0.0,
-		EnergyDrain:    0.8,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeForest) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeForest),
 		Symbol:         '♠',
 		Temperature:    0.1,
 		Pressure:       1.0,
@@ -413,8 +432,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Desert",
 		Color:          "yellow",
 		TraitModifiers: map[string]float64{"endurance": 0.3, "size": -0.1},
-		MutationRate:   0.05,
-		EnergyDrain:    1.5,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeDesert) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeDesert),
 		Symbol:         '~',
 		Temperature:    0.7,
 		Pressure:       1.0,
@@ -430,8 +449,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Mountain",
 		Color:          "gray",
 		TraitModifiers: map[string]float64{"strength": 0.2, "speed": -0.1},
-		MutationRate:   0.0,
-		EnergyDrain:    1.2,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeMountain) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeMountain),
 		Symbol:         '^',
 		Temperature:    -0.3,
 		Pressure:       0.8,
@@ -447,8 +466,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Water",
 		Color:          "blue",
 		TraitModifiers: map[string]float64{"speed": 0.2, "size": 0.1},
-		MutationRate:   0.0,
-		EnergyDrain:    0.3,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeWater) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeWater),
 		Symbol:         '≈',
 		Temperature:    0.0,
 		Pressure:       1.1,
@@ -464,8 +483,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Radiation",
 		Color:          "red",
 		TraitModifiers: map[string]float64{"endurance": -0.2},
-		MutationRate:   0.3,
-		EnergyDrain:    2.0,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeRadiation) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeRadiation),
 		Symbol:         '☢',
 		Temperature:    0.5,
 		Pressure:       1.2,
@@ -481,8 +500,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Soil",
 		Color:          "brown",
 		TraitModifiers: map[string]float64{"digging_ability": 0.3, "size": -0.1, "underground_nav": 0.2},
-		MutationRate:   0.02,
-		EnergyDrain:    0.7,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeSoil) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeSoil),
 		Symbol:         '■',
 		Temperature:    0.2,
 		Pressure:       1.3,
@@ -498,8 +517,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Air",
 		Color:          "cyan",
 		TraitModifiers: map[string]float64{"flying_ability": 0.4, "altitude_tolerance": 0.3, "size": -0.2},
-		MutationRate:   0.01,
-		EnergyDrain:    1.0,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeAir) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeAir),
 		Symbol:         '☁',
 		Temperature:    -0.5,
 		Pressure:       0.6,
@@ -516,8 +535,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Ice",
 		Color:          "white",
 		TraitModifiers: map[string]float64{"endurance": 0.4, "size": 0.1, "speed": -0.3, "defense": 0.2},
-		MutationRate:   0.02,
-		EnergyDrain:    2.5,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeIce) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeIce),
 		Symbol:         '❅',
 		Temperature:    -0.9,
 		Pressure:       1.0,
@@ -533,8 +552,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Rainforest",
 		Color:          "darkgreen",
 		TraitModifiers: map[string]float64{"agility": 0.3, "intelligence": 0.2, "size": -0.1, "cooperation": 0.2},
-		MutationRate:   0.15,
-		EnergyDrain:    0.3,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeRainforest) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeRainforest),
 		Symbol:         '🌳',
 		Temperature:    0.6,
 		Pressure:       1.0,
@@ -550,8 +569,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Deep Water",
 		Color:          "darkblue",
 		TraitModifiers: map[string]float64{"aquatic_adaptation": 0.5, "strength": 0.3, "endurance": 0.4, "size": 0.2},
-		MutationRate:   0.05,
-		EnergyDrain:    1.8,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeDeepWater) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeDeepWater),
 		Symbol:         '≋',
 		Temperature:    -0.3,
 		Pressure:       2.0,
@@ -567,8 +586,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "High Altitude",
 		Color:          "lightgray",
 		TraitModifiers: map[string]float64{"altitude_tolerance": 0.6, "endurance": 0.5, "flying_ability": 0.3, "size": -0.2},
-		MutationRate:   0.08,
-		EnergyDrain:    3.0,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeHighAltitude) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeHighAltitude),
 		Symbol:         '⛰',
 		Temperature:    -0.8,
 		Pressure:       0.3,
@@ -584,8 +603,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Hot Spring",
 		Color:          "orange",
 		TraitModifiers: map[string]float64{"endurance": 0.3, "agility": 0.2, "aquatic_adaptation": 0.2, "speed": 0.1},
-		MutationRate:   0.12,
-		EnergyDrain:    0.8,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeHotSpring) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeHotSpring),
 		Symbol:         '♨',
 		Temperature:    0.9,
 		Pressure:       1.1,
@@ -601,8 +620,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Tundra",
 		Color:          "lightblue",
 		TraitModifiers: map[string]float64{"endurance": 0.5, "size": 0.2, "speed": -0.2, "defense": 0.3},
-		MutationRate:   0.03,
-		EnergyDrain:    1.8,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeTundra) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeTundra),
 		Symbol:         '❄',
 		Temperature:    -0.7,
 		Pressure:       1.0,
@@ -618,8 +637,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Swamp",
 		Color:          "brown",
 		TraitModifiers: map[string]float64{"aquatic_adaptation": 0.3, "digging_ability": 0.2, "intelligence": 0.1, "defense": 0.2},
-		MutationRate:   0.08,
-		EnergyDrain:    1.2,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeSwamp) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeSwamp),
 		Symbol:         '🌿',
 		Temperature:    0.3,
 		Pressure:       1.1,
@@ -635,8 +654,8 @@ func initializeBiomes() map[BiomeType]Biome {
 		Name:           "Canyon",
 		Color:          "red",
 		TraitModifiers: map[string]float64{"agility": 0.4, "strength": 0.2, "endurance": 0.2, "size": -0.1},
-		MutationRate:   0.06,
-		EnergyDrain:    1.5,
+		MutationRate:   config.GetBiomeMutationModifier(BiomeCanyon) - 1.0,
+		EnergyDrain:    config.GetBiomeEnergyDrain(BiomeCanyon),
 		Symbol:         '⫽',
 		Temperature:    0.4,
 		Pressure:       1.2,
@@ -2410,15 +2429,18 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 	circadianPref := entity.GetTrait("circadian_preference") // -1 to 1, negative = nocturnal
 	
 	// Base energy effects from circadian rhythm
+	circadianBoost := w.SimConfig.Time.DailyEnergyBase * 0.4
+	circadianPenalty := w.SimConfig.Energy.BaseEnergyDrain * 1.5
+	
 	if timeState.IsNight() && circadianPref < 0 {
 		// Nocturnal entities get energy boost at night
-		entity.Energy += math.Abs(circadianPref) * 0.4 * activityModifier
+		entity.Energy += math.Abs(circadianPref) * circadianBoost * activityModifier
 	} else if !timeState.IsNight() && circadianPref > 0 {
 		// Diurnal entities get energy boost during day
-		entity.Energy += circadianPref * 0.4 * activityModifier
+		entity.Energy += circadianPref * circadianBoost * activityModifier
 	} else {
 		// Entities active at "wrong" time lose extra energy
-		entity.Energy -= 0.015 * (2.0 - activityModifier) // Reduced for daily time scale
+		entity.Energy -= circadianPenalty * (2.0 - activityModifier)
 	}
 	
 	// Activity-specific energy costs/benefits
@@ -2427,24 +2449,24 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 		// Already handled in biorhythm system
 	case ActivityEat:
 		// Eating has energy cost but leads to energy gain in interactions
-		entity.Energy -= 0.01 // Reduced for daily time scale
+		entity.Energy -= w.SimConfig.Energy.MovementEnergyCost
 	case ActivityDrink:
 		// Drinking has minimal energy cost, handled in biorhythm
 	case ActivityPlay:
 		// Playing costs energy but improves fitness long-term
-		entity.Energy -= 0.015 // Reduced for daily time scale
+		entity.Energy -= w.SimConfig.Energy.MovementEnergyCost * 1.5
 	case ActivityExplore:
 		// Exploration costs significant energy
-		entity.Energy -= 0.02 // Reduced for daily time scale
+		entity.Energy -= w.SimConfig.Energy.MovementEnergyCost * 2.0
 	case ActivityScavenge:
 		// Scavenging has moderate energy cost
-		entity.Energy -= 0.012 // Reduced for daily time scale
+		entity.Energy -= w.SimConfig.Energy.MovementEnergyCost * 1.2
 	case ActivityRest:
 		// Resting restores energy
-		entity.Energy += 0.01 // Reduced for daily time scale
+		entity.Energy += w.SimConfig.Energy.EnergyRegenerationRate
 	case ActivitySocialize:
 		// Socializing has small energy cost
-		entity.Energy -= 0.008 // Reduced for daily time scale
+		entity.Energy -= w.SimConfig.Energy.MovementEnergyCost * 0.8
 	}
 	
 	// Seasonal effects on biorhythm and energy
@@ -5360,7 +5382,7 @@ func (w *World) provideNeuralFeedback(entity *Entity, inputs []float64, outputs 
 	w.NeuralAISystem.LearnFromOutcome(entity.ID, success, reward, w.Tick)
 }
 
-// SetSpeedMultiplier sets the simulation speed multiplier
+// SetSpeedMultiplier sets the simulation speed multiplier and updates configuration
 func (w *World) SetSpeedMultiplier(multiplier float64) {
 	if multiplier < 0.1 {
 		multiplier = 0.1 // Minimum speed
@@ -5369,6 +5391,11 @@ func (w *World) SetSpeedMultiplier(multiplier float64) {
 		multiplier = 16.0 // Maximum speed
 	}
 	w.SpeedMultiplier = multiplier
+	
+	// Update the simulation configuration to reflect the new speed
+	if w.SimConfig != nil {
+		w.SimConfig = w.SimConfig.ApplySpeedMultiplier(multiplier)
+	}
 }
 
 // GetSpeedMultiplier returns the current simulation speed multiplier
