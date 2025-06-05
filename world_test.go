@@ -119,7 +119,11 @@ func TestWorldUpdate(t *testing.T) {
 		GridHeight:     15,
 	}
 
-	world := NewWorld(config)
+	// Use custom simulation config that ensures energy decreases
+	simConfig := DefaultSimulationConfig()
+	simConfig.Energy.EnergyRegenerationRate = 0.0 // No regeneration for predictable testing
+	
+	world := NewWorldWithConfig(config, simConfig)
 
 	popConfig := PopulationConfig{
 		Name:    "TestPop",
