@@ -40,7 +40,8 @@ sleep 5
 
 # Test 1: Check if web server is responding
 echo "Test 1: Web server responsiveness..."
-if curl -s -o /dev/null -w "%{http_code}" "http://localhost:$WEB_PORT/" | grep -q "200"; then
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$WEB_PORT/")
+if [[ "$HTTP_CODE" == "200" ]]; then
     echo "✓ Web server is responding with HTTP 200"
 else
     echo "✗ Web server is not responding properly"
@@ -51,7 +52,7 @@ fi
 # Test 2: Check if homepage contains expected content
 echo "Test 2: Homepage content..."
 HOMEPAGE_CONTENT=$(curl -s "http://localhost:$WEB_PORT/")
-if echo "$HOMEPAGE_CONTENT" | grep -q "EvoSim"; then
+if [[ "$HOMEPAGE_CONTENT" == *"EvoSim"* ]]; then
     echo "✓ Homepage contains 'EvoSim' title"
 else
     echo "✗ Homepage does not contain expected title"
@@ -62,9 +63,9 @@ fi
 
 # Test 3: Check for essential HTML elements
 echo "Test 3: HTML structure..."
-if echo "$HOMEPAGE_CONTENT" | grep -q "simulation-view" && \
-   echo "$HOMEPAGE_CONTENT" | grep -q "info-panel" && \
-   echo "$HOMEPAGE_CONTENT" | grep -q "controls"; then
+if [[ "$HOMEPAGE_CONTENT" == *"simulation-view"* ]] && \
+   [[ "$HOMEPAGE_CONTENT" == *"info-panel"* ]] && \
+   [[ "$HOMEPAGE_CONTENT" == *"controls"* ]]; then
     echo "✓ Essential HTML elements are present"
 else
     echo "✗ Missing essential HTML elements"
@@ -75,7 +76,7 @@ fi
 # Test 4: Check API status endpoint
 echo "Test 4: API status endpoint..."
 API_RESPONSE=$(curl -s "http://localhost:$WEB_PORT/api/status")
-if echo "$API_RESPONSE" | grep -q '"status"'; then
+if [[ "$API_RESPONSE" == *'"status"'* ]]; then
     echo "✓ API status endpoint is working"
 else
     echo "✗ API status endpoint is not working properly"
@@ -96,8 +97,8 @@ fi
 
 # Test 6: Check for JavaScript functionality
 echo "Test 6: JavaScript files and functionality..."
-if echo "$HOMEPAGE_CONTENT" | grep -q "WebSocket" && \
-   echo "$HOMEPAGE_CONTENT" | grep -q "connect"; then
+if [[ "$HOMEPAGE_CONTENT" == *"WebSocket"* ]] && \
+   [[ "$HOMEPAGE_CONTENT" == *"connect"* ]]; then
     echo "✓ JavaScript WebSocket functionality is present"
 else
     echo "✗ JavaScript WebSocket functionality is missing"
