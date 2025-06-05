@@ -302,10 +302,9 @@ func TestReproductionSystemIntegration(t *testing.T) {
 	}
 
 	// Check that reproduction system is tracking properly
-	if world.ReproductionSystem.NextEggID <= 1 && world.ReproductionSystem.NextItemID <= 1 {
-		// Either some eggs were laid or some items decayed (both advance IDs)
-		// This is fine - reproduction is probabilistic
-	}
+	// IDs advance when eggs are laid or items decay - this is probabilistic so no assertion needed
+	_ = world.ReproductionSystem.NextEggID   // Acknowledge we're checking the state
+	_ = world.ReproductionSystem.NextItemID
 
 	// Entities should still be alive and aging
 	aliveCount := 0

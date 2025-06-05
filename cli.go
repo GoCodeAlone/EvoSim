@@ -14,6 +14,15 @@ import (
 	"golang.org/x/text/language"
 )
 
+// Visual constants for terrain and symbols
+const (
+	SymbolUndergroundSolid = "▓"
+	SymbolUndergroundEmpty = "░"
+	SymbolMountainHigh     = "▲"
+	SymbolMountainLow      = "△"
+	SymbolCellSmall        = "●"
+)
+
 // min returns the minimum of two integers
 func min(a, b int) int {
 	if a < b {
@@ -2870,7 +2879,7 @@ func (m *CLIModel) renderUndergroundMap() string {
 		for y := range undergroundGrid {
 			undergroundGrid[y] = make([]string, sampleWidth)
 			for x := range undergroundGrid[y] {
-				undergroundGrid[y][x] = "░" // Empty underground
+				undergroundGrid[y][x] = SymbolUndergroundEmpty // Empty underground
 			}
 		}
 
@@ -2890,7 +2899,7 @@ func (m *CLIModel) renderUndergroundMap() string {
 				case 10: // Farm (root system)
 					undergroundGrid[y][x] = "┼"
 				default:
-					undergroundGrid[y][x] = "▓"
+					undergroundGrid[y][x] = SymbolUndergroundSolid
 				}
 			}
 		}
@@ -2962,11 +2971,11 @@ func (m *CLIModel) renderCrossSectionView() string {
 
 func (m *CLIModel) getElevationSymbol(elevation float64) string {
 	if elevation > 0.8 {
-		return "▲" // High mountains
+		return SymbolMountainHigh // High mountains
 	} else if elevation > 0.6 {
-		return "▲" // Medium mountains
+		return SymbolMountainHigh // Medium mountains
 	} else if elevation > 0.3 {
-		return "△" // Hills
+		return SymbolMountainLow // Hills
 	} else if elevation > 0.0 {
 		return "." // Plains
 	} else if elevation > -0.3 {
@@ -3870,17 +3879,11 @@ func (m *CLIModel) exportStatisticalData() {
 
 	// Export to CSV
 	csvFilename := fmt.Sprintf("evosim_stats_%d.csv", m.world.Tick)
-	if err := m.world.StatisticalReporter.ExportToCSV(csvFilename); err == nil {
-		// In a real CLI app, we'd show a notification
-		// For now, this happens silently
-	}
+	_ = m.world.StatisticalReporter.ExportToCSV(csvFilename) // Ignore error for silent operation
 
 	// Export to JSON
 	jsonFilename := fmt.Sprintf("evosim_analysis_%d.json", m.world.Tick)
-	if err := m.world.StatisticalReporter.ExportToJSON(jsonFilename); err == nil {
-		// In a real CLI app, we'd show a notification
-		// For now, this happens silently
-	}
+	_ = m.world.StatisticalReporter.ExportToJSON(jsonFilename) // Ignore error for silent operation
 }
 
 // toolsView renders the tool system information

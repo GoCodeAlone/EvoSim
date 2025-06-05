@@ -584,7 +584,7 @@ func (pns *PlantNetworkSystem) processSignalEffect(plant *Plant, signal *Chemica
 		// If plant has excess energy, it might be more willing to share
 		if plant.Energy > 40 {
 			// Increase resource sharing tendency (implemented through higher transfer rates)
-			// This is handled in the transfer logic
+			// This is handled in the transfer logic - no action needed here
 		}
 
 	case SignalThreatDetected:

@@ -143,25 +143,28 @@ func TestWorldUpdate(t *testing.T) {
 	initialTick := world.Tick
 	initialEntityCount := len(world.AllEntities)
 
-	// Update the world
-	world.Update()
-
-	if world.Tick != initialTick+1 {
-		t.Errorf("Expected tick to increment from %d to %d, got %d",
-			initialTick, initialTick+1, world.Tick)
+	// Update the world multiple times to ensure energy changes occur
+	for i := 0; i < 3; i++ {
+		world.Update()
 	}
 
-	// Entities should age and lose energy
+	expectedTick := initialTick + 3
+	if world.Tick != expectedTick {
+		t.Errorf("Expected tick to increment from %d to %d, got %d",
+			initialTick, expectedTick, world.Tick)
+	}
+
+	// Entities should age and lose energy after multiple updates
 	for _, entity := range world.AllEntities {
-		if entity.Age != 1 {
-			t.Errorf("Expected entity age to be 1, got %d", entity.Age)
+		if entity.Age != 3 {
+			t.Errorf("Expected entity age to be 3, got %d", entity.Age)
 		}
 
 		// With BaseEnergyDrain=0.05 + DailyEnergyBase=0.05 + classification costs,
-		// the actual energy decrease might vary due to other factors
+		// the actual energy decrease might vary due to other factors after 3 updates
 		// Use range-based comparison to handle the actual energy costs
-		minExpectedChange := 0.05  // Minimum expected energy decrease (at least base drain)
-		maxExpectedChange := 1.0   // Maximum reasonable energy decrease
+		minExpectedChange := 0.15  // Minimum expected energy decrease (3 updates × base drain)
+		maxExpectedChange := 1.5   // Maximum reasonable energy decrease for 3 updates
 		
 		actualChange := 100.0 - entity.Energy
 		

@@ -5,6 +5,11 @@ import (
 	"math"
 )
 
+// Trend constants
+const (
+	TrendGrowing = "growing"
+)
+
 // EcosystemMetrics provides advanced metrics for monitoring ecosystem health and diversity
 type EcosystemMetrics struct {
 	// Diversity metrics
@@ -427,7 +432,7 @@ func (em *EcosystemMonitor) GetTrends() map[string]string {
 
 	// Population trend
 	if recent[2].TotalPopulation > recent[1].TotalPopulation && recent[1].TotalPopulation > recent[0].TotalPopulation {
-		trends["population"] = "growing"
+		trends["population"] = TrendGrowing
 	} else if recent[2].TotalPopulation < recent[1].TotalPopulation && recent[1].TotalPopulation < recent[0].TotalPopulation {
 		trends["population"] = "declining"
 	} else {

@@ -5,6 +5,11 @@ import (
 	"math/rand"
 )
 
+// Resource type constants
+const (
+	ResourceEnergy = "energy"
+)
+
 // CasteRole represents different roles entities can specialize into
 type CasteRole int
 
@@ -1108,7 +1113,7 @@ func (cc *CasteColony) UpdateResources(tick int) {
 			production *= (1.0 + workerEfficiency*0.1) // Workers boost food production
 		case "biomass":
 			production *= (1.0 + builderEfficiency*0.1) // Builders boost biomass production
-		case "energy":
+		case ResourceEnergy:
 			production *= (1.0 + specialistEfficiency*0.05) // Specialists boost energy production
 		case "materials":
 			production *= (1.0 + builderEfficiency*0.15) // Builders significantly boost materials

@@ -6,6 +6,12 @@ import (
 	"math/rand"
 )
 
+// Season constants
+const (
+	SeasonSpring = "spring"
+	SeasonWinter = "winter"
+)
+
 // PlantType represents different types of plants
 type PlantType int
 
@@ -747,13 +753,13 @@ func (p *Plant) updatePlantNutrients(gridCell *GridCell, season string) float64 
 	// Seasonal effects
 	seasonalMultiplier := 1.0
 	switch season {
-	case "spring":
+	case SeasonSpring:
 		seasonalMultiplier = 1.2 // Growing season
 	case "summer":
 		seasonalMultiplier = 1.1 // Good growth but water stress possible
 	case "autumn":
 		seasonalMultiplier = 0.9 // Slowing down
-	case "winter":
+	case SeasonWinter:
 		seasonalMultiplier = 0.6 // Dormant season
 	}
 
