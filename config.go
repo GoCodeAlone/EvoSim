@@ -7,132 +7,132 @@ import (
 
 // SimulationConfig holds all configuration for the simulation
 type SimulationConfig struct {
-	Time       TimeConfig       `json:"time"`
-	Energy     EnergyConfig     `json:"energy"`
+	Time       TimeConfig               `json:"time"`
+	Energy     EnergyConfig             `json:"energy"`
 	Population PopulationConfigSettings `json:"population"`
-	Physics    PhysicsConfig    `json:"physics"`
+	Physics    PhysicsConfig            `json:"physics"`
 	World      WorldConfigSettings      `json:"world"`
-	Evolution  EvolutionConfig  `json:"evolution"`
-	Biomes     BiomesConfig     `json:"biomes"`
-	Plants     PlantsConfig     `json:"plants"`
-	Web        WebConfig        `json:"web"`
+	Evolution  EvolutionConfig          `json:"evolution"`
+	Biomes     BiomesConfig             `json:"biomes"`
+	Plants     PlantsConfig             `json:"plants"`
+	Web        WebConfig                `json:"web"`
 }
 
 // TimeConfig holds all time-related configuration
 type TimeConfig struct {
-	TicksPerDay       int `json:"ticks_per_day"`        // How many simulation ticks equal one day
-	DaysPerSeason     int `json:"days_per_season"`      // How many days in each season
-	DailyEnergyBase   float64 `json:"daily_energy_base"` // Base daily energy requirement
-	NightPenalty      float64 `json:"night_penalty"`     // Energy penalty during night
+	TicksPerDay       int     `json:"ticks_per_day"`      // How many simulation ticks equal one day
+	DaysPerSeason     int     `json:"days_per_season"`    // How many days in each season
+	DailyEnergyBase   float64 `json:"daily_energy_base"`  // Base daily energy requirement
+	NightPenalty      float64 `json:"night_penalty"`      // Energy penalty during night
 	SeasonalVariation float64 `json:"seasonal_variation"` // How much seasons affect environment
 }
 
 // EnergyConfig holds all energy-related configuration
 type EnergyConfig struct {
-	BaseEnergyDrain      float64           `json:"base_energy_drain"`       // Base energy cost per tick
-	MovementEnergyCost   float64           `json:"movement_energy_cost"`    // Energy cost for movement
-	ReproductionCost     float64           `json:"reproduction_cost"`       // Energy cost for reproduction  
-	SurvivalThreshold    float64           `json:"survival_threshold"`      // Energy level below which entities die
-	MaxEnergyLevel       float64           `json:"max_energy_level"`        // Maximum energy an entity can have
-	EnergyRegenerationRate float64         `json:"energy_regeneration_rate"` // How fast energy naturally regenerates
-	BiomeEnergyModifiers map[string]float64 `json:"biome_energy_modifiers"` // Energy drain per biome type
+	BaseEnergyDrain        float64            `json:"base_energy_drain"`        // Base energy cost per tick
+	MovementEnergyCost     float64            `json:"movement_energy_cost"`     // Energy cost for movement
+	ReproductionCost       float64            `json:"reproduction_cost"`        // Energy cost for reproduction
+	SurvivalThreshold      float64            `json:"survival_threshold"`       // Energy level below which entities die
+	MaxEnergyLevel         float64            `json:"max_energy_level"`         // Maximum energy an entity can have
+	EnergyRegenerationRate float64            `json:"energy_regeneration_rate"` // How fast energy naturally regenerates
+	BiomeEnergyModifiers   map[string]float64 `json:"biome_energy_modifiers"`   // Energy drain per biome type
 }
 
 // PopulationConfigSettings holds population-related configuration
 type PopulationConfigSettings struct {
-	DefaultPopSize     int     `json:"default_pop_size"`     // Default population size per species
-	MaxPopulation      int     `json:"max_population"`       // Maximum total population
-	MutationRateBase   float64 `json:"mutation_rate_base"`   // Base mutation rate
-	MutationRateRange  float64 `json:"mutation_rate_range"`  // Range of mutation rate variation
-	SelectionPressure  float64 `json:"selection_pressure"`   // How strong natural selection is
-	CarryingCapacity   int     `json:"carrying_capacity"`    // Maximum entities per area unit
+	DefaultPopSize    int     `json:"default_pop_size"`    // Default population size per species
+	MaxPopulation     int     `json:"max_population"`      // Maximum total population
+	MutationRateBase  float64 `json:"mutation_rate_base"`  // Base mutation rate
+	MutationRateRange float64 `json:"mutation_rate_range"` // Range of mutation rate variation
+	SelectionPressure float64 `json:"selection_pressure"`  // How strong natural selection is
+	CarryingCapacity  int     `json:"carrying_capacity"`   // Maximum entities per area unit
 }
 
 // PhysicsConfig holds physics-related configuration
 type PhysicsConfig struct {
-	CollisionDetection  bool    `json:"collision_detection"`   // Whether to enable collision detection
-	MaxVelocity        float64 `json:"max_velocity"`          // Maximum entity velocity
-	Friction           float64 `json:"friction"`              // Friction coefficient
-	WindStrength       float64 `json:"wind_strength"`         // Base wind strength
-	GravityStrength    float64 `json:"gravity_strength"`      // Gravity effect strength
+	CollisionDetection bool    `json:"collision_detection"` // Whether to enable collision detection
+	MaxVelocity        float64 `json:"max_velocity"`        // Maximum entity velocity
+	Friction           float64 `json:"friction"`            // Friction coefficient
+	WindStrength       float64 `json:"wind_strength"`       // Base wind strength
+	GravityStrength    float64 `json:"gravity_strength"`    // Gravity effect strength
 }
 
 // WorldConfigSettings holds world generation configuration
 type WorldConfigSettings struct {
-	Width         float64 `json:"width"`          // World width
-	Height        float64 `json:"height"`         // World height
-	GridWidth     int     `json:"grid_width"`     // Grid cells width for visualization
-	GridHeight    int     `json:"grid_height"`    // Grid cells height for visualization
-	BiomeVariety  float64 `json:"biome_variety"`  // How diverse biomes should be
+	Width          float64 `json:"width"`           // World width
+	Height         float64 `json:"height"`          // World height
+	GridWidth      int     `json:"grid_width"`      // Grid cells width for visualization
+	GridHeight     int     `json:"grid_height"`     // Grid cells height for visualization
+	BiomeVariety   float64 `json:"biome_variety"`   // How diverse biomes should be
 	EventFrequency float64 `json:"event_frequency"` // How often world events occur
 }
 
 // EvolutionConfig holds evolution-related configuration
 type EvolutionConfig struct {
-	TraitMutationStrength float64                `json:"trait_mutation_strength"` // How much traits can change
-	TraitBounds          map[string][2]float64   `json:"trait_bounds"`           // Min/max values for each trait
-	FitnessWeights       map[string]float64      `json:"fitness_weights"`        // Weight of each factor in fitness
-	SpeciationThreshold  float64                 `json:"speciation_threshold"`   // Genetic distance for new species
+	TraitMutationStrength float64               `json:"trait_mutation_strength"` // How much traits can change
+	TraitBounds           map[string][2]float64 `json:"trait_bounds"`            // Min/max values for each trait
+	FitnessWeights        map[string]float64    `json:"fitness_weights"`         // Weight of each factor in fitness
+	SpeciationThreshold   float64               `json:"speciation_threshold"`    // Genetic distance for new species
 }
 
 // BiomesConfig holds biome-related configuration
 type BiomesConfig struct {
-	EnergyDrainMultipliers map[string]float64 `json:"energy_drain_multipliers"` // Energy drain by biome
-	MutationRateModifiers  map[string]float64 `json:"mutation_rate_modifiers"`  // Mutation rate by biome
-	TemperatureRanges     map[string][2]float64 `json:"temperature_ranges"`     // Temperature ranges by biome
-	CarryingCapacities    map[string]int        `json:"carrying_capacities"`    // Max entities per biome type
+	EnergyDrainMultipliers map[string]float64    `json:"energy_drain_multipliers"` // Energy drain by biome
+	MutationRateModifiers  map[string]float64    `json:"mutation_rate_modifiers"`  // Mutation rate by biome
+	TemperatureRanges      map[string][2]float64 `json:"temperature_ranges"`       // Temperature ranges by biome
+	CarryingCapacities     map[string]int        `json:"carrying_capacities"`      // Max entities per biome type
 }
 
 // PlantsConfig holds plant-related configuration
 type PlantsConfig struct {
-	GrowthRate           float64           `json:"growth_rate"`            // How fast plants grow
-	MaxAge              int               `json:"max_age"`                // Maximum plant age
-	SeedProductionRate  float64           `json:"seed_production_rate"`   // Rate of seed production
-	PollinationRadius   float64           `json:"pollination_radius"`     // Range for pollination
-	NutrientRequirement map[string]float64 `json:"nutrient_requirement"`  // Nutrient needs by plant type
+	GrowthRate          float64            `json:"growth_rate"`          // How fast plants grow
+	MaxAge              int                `json:"max_age"`              // Maximum plant age
+	SeedProductionRate  float64            `json:"seed_production_rate"` // Rate of seed production
+	PollinationRadius   float64            `json:"pollination_radius"`   // Range for pollination
+	NutrientRequirement map[string]float64 `json:"nutrient_requirement"` // Nutrient needs by plant type
 }
 
 // WebConfig holds web interface configuration
 type WebConfig struct {
 	UpdateInterval time.Duration `json:"update_interval"` // How often to update web interface
-	Port          int           `json:"port"`            // Web server port
-	MaxClients    int           `json:"max_clients"`     // Maximum concurrent clients
+	Port           int           `json:"port"`            // Web server port
+	MaxClients     int           `json:"max_clients"`     // Maximum concurrent clients
 }
 
 // DefaultSimulationConfig returns a default configuration
 func DefaultSimulationConfig() *SimulationConfig {
 	return &SimulationConfig{
 		Time: TimeConfig{
-			TicksPerDay:       1,     // 1 tick = 1 day (realistic evolutionary time scale)
-			DaysPerSeason:     91,    // ~3 months per season
-			DailyEnergyBase:   0.02,  // Base daily energy requirement
-			NightPenalty:      0.01,  // Additional energy cost at night
-			SeasonalVariation: 0.3,   // 30% variation between seasons
+			TicksPerDay:       1,    // 1 tick = 1 day (realistic evolutionary time scale)
+			DaysPerSeason:     91,   // ~3 months per season
+			DailyEnergyBase:   0.02, // Base daily energy requirement
+			NightPenalty:      0.01, // Additional energy cost at night
+			SeasonalVariation: 0.3,  // 30% variation between seasons
 		},
 		Energy: EnergyConfig{
-			BaseEnergyDrain:      0.01,  // Base energy cost per tick
-			MovementEnergyCost:   0.005, // Energy cost for movement
-			ReproductionCost:     20.0,  // Energy cost for reproduction
-			SurvivalThreshold:    10.0,  // Die if energy < 10
-			MaxEnergyLevel:       100.0, // Maximum energy
-			EnergyRegenerationRate: 0.1, // Natural energy gain per tick
+			BaseEnergyDrain:        0.01,  // Base energy cost per tick
+			MovementEnergyCost:     0.005, // Energy cost for movement
+			ReproductionCost:       20.0,  // Energy cost for reproduction
+			SurvivalThreshold:      10.0,  // Die if energy < 10
+			MaxEnergyLevel:         100.0, // Maximum energy
+			EnergyRegenerationRate: 0.1,   // Natural energy gain per tick
 			BiomeEnergyModifiers: map[string]float64{
-				"plains":        0.5,  // Low energy drain
-				"forest":        0.8,  // Moderate energy drain
-				"desert":        1.5,  // High energy drain
-				"mountain":      1.2,  // High energy drain
-				"water":         0.3,  // Low energy drain for aquatic
-				"radiation":     2.0,  // Very high energy drain
-				"soil":          0.7,  // Moderate energy drain
-				"air":           1.0,  // Standard energy drain
-				"ice":           2.5,  // Very high energy drain
-				"rainforest":    0.3,  // Low energy drain (abundant resources)
-				"deep_water":    1.8,  // High energy drain
-				"high_altitude": 3.0,  // Very high energy drain
-				"hot_spring":    0.8,  // Moderate energy drain
-				"tundra":        1.8,  // High energy drain
-				"swamp":         1.2,  // Moderate energy drain
-				"canyon":        1.5,  // High energy drain
+				"plains":        0.5, // Low energy drain
+				"forest":        0.8, // Moderate energy drain
+				"desert":        1.5, // High energy drain
+				"mountain":      1.2, // High energy drain
+				"water":         0.3, // Low energy drain for aquatic
+				"radiation":     2.0, // Very high energy drain
+				"soil":          0.7, // Moderate energy drain
+				"air":           1.0, // Standard energy drain
+				"ice":           2.5, // Very high energy drain
+				"rainforest":    0.3, // Low energy drain (abundant resources)
+				"deep_water":    1.8, // High energy drain
+				"high_altitude": 3.0, // Very high energy drain
+				"hot_spring":    0.8, // Moderate energy drain
+				"tundra":        1.8, // High energy drain
+				"swamp":         1.2, // Moderate energy drain
+				"canyon":        1.5, // High energy drain
 			},
 		},
 		Population: PopulationConfigSettings{
@@ -145,18 +145,18 @@ func DefaultSimulationConfig() *SimulationConfig {
 		},
 		Physics: PhysicsConfig{
 			CollisionDetection: true,
-			MaxVelocity:       10.0,
-			Friction:          0.1,
-			WindStrength:      5.0,
-			GravityStrength:   1.0,
+			MaxVelocity:        10.0,
+			Friction:           0.1,
+			WindStrength:       5.0,
+			GravityStrength:    1.0,
 		},
 		World: WorldConfigSettings{
 			Width:          100.0,
 			Height:         100.0,
 			GridWidth:      40,
 			GridHeight:     25,
-			BiomeVariety:   0.7,  // 70% biome diversity
-			EventFrequency: 0.1,  // 10% chance of events
+			BiomeVariety:   0.7, // 70% biome diversity
+			EventFrequency: 0.1, // 10% chance of events
 		},
 		Evolution: EvolutionConfig{
 			TraitMutationStrength: 0.1, // 10% trait change per mutation
@@ -216,14 +216,14 @@ func DefaultSimulationConfig() *SimulationConfig {
 				"high_altitude": 1.3, // 1.3x mutation rate
 			},
 			TemperatureRanges: map[string][2]float64{
-				"ice":           {-1.0, -0.5},
-				"tundra":        {-0.5, 0.0},
-				"mountain":      {-0.2, 0.3},
-				"plains":        {0.0, 0.7},
-				"forest":        {0.2, 0.8},
-				"rainforest":    {0.6, 0.9},
-				"desert":        {0.7, 1.0},
-				"hot_spring":    {0.8, 1.0},
+				"ice":        {-1.0, -0.5},
+				"tundra":     {-0.5, 0.0},
+				"mountain":   {-0.2, 0.3},
+				"plains":     {0.0, 0.7},
+				"forest":     {0.2, 0.8},
+				"rainforest": {0.6, 0.9},
+				"desert":     {0.7, 1.0},
+				"hot_spring": {0.8, 1.0},
 			},
 			CarryingCapacities: map[string]int{
 				"plains":        60,
@@ -245,23 +245,23 @@ func DefaultSimulationConfig() *SimulationConfig {
 			},
 		},
 		Plants: PlantsConfig{
-			GrowthRate:          0.1,
+			GrowthRate:         0.1,
 			MaxAge:             200,
 			SeedProductionRate: 0.05,
 			PollinationRadius:  5.0,
 			NutrientRequirement: map[string]float64{
-				"grass":        1.0,
-				"flowers":      1.5,
-				"shrubs":       2.0,
-				"trees":        3.0,
-				"mushrooms":    0.8,
-				"aquatic":      1.2,
+				"grass":     1.0,
+				"flowers":   1.5,
+				"shrubs":    2.0,
+				"trees":     3.0,
+				"mushrooms": 0.8,
+				"aquatic":   1.2,
 			},
 		},
 		Web: WebConfig{
 			UpdateInterval: 100 * time.Millisecond,
-			Port:          8080,
-			MaxClients:    100,
+			Port:           8080,
+			MaxClients:     100,
 		},
 	}
 }
@@ -270,7 +270,7 @@ func DefaultSimulationConfig() *SimulationConfig {
 func (config *SimulationConfig) ApplySpeedMultiplier(speedMultiplier float64) *SimulationConfig {
 	// Create a copy of the config to avoid modifying the original
 	speedConfig := *config
-	
+
 	// Adjust time-based values - with speed multiplier, things happen faster
 	// But we keep the relative proportions the same
 	speedConfig.Energy.BaseEnergyDrain *= speedMultiplier
@@ -278,16 +278,16 @@ func (config *SimulationConfig) ApplySpeedMultiplier(speedMultiplier float64) *S
 	speedConfig.Energy.EnergyRegenerationRate *= speedMultiplier
 	speedConfig.Time.DailyEnergyBase *= speedMultiplier
 	speedConfig.Time.NightPenalty *= speedMultiplier
-	
+
 	// Plant growth should scale with speed
 	speedConfig.Plants.GrowthRate *= speedMultiplier
 	speedConfig.Plants.SeedProductionRate *= speedMultiplier
-	
+
 	// Web update interval should decrease with higher speed (more frequent updates)
 	if speedMultiplier > 1.0 {
 		speedConfig.Web.UpdateInterval = time.Duration(float64(config.Web.UpdateInterval) / speedMultiplier)
 	}
-	
+
 	return &speedConfig
 }
 
@@ -334,17 +334,17 @@ func (config *SimulationConfig) GetBiomeEnergyDrain(biomeType BiomeType) float64
 		BiomeSwamp:        "swamp",
 		BiomeCanyon:       "canyon",
 	}
-	
+
 	biomeName, exists := biomeNames[biomeType]
 	if !exists {
 		return config.Energy.BaseEnergyDrain // Default to base energy drain
 	}
-	
+
 	multiplier, exists := config.Energy.BiomeEnergyModifiers[biomeName]
 	if !exists {
 		return config.Energy.BaseEnergyDrain // Default to base energy drain
 	}
-	
+
 	return config.Energy.BaseEnergyDrain * multiplier
 }
 
@@ -352,7 +352,7 @@ func (config *SimulationConfig) GetBiomeEnergyDrain(biomeType BiomeType) float64
 func (config *SimulationConfig) GetBiomeMutationModifier(biomeType BiomeType) float64 {
 	biomeNames := map[BiomeType]string{
 		BiomePlains:       "plains",
-		BiomeForest:       "forest", 
+		BiomeForest:       "forest",
 		BiomeDesert:       "desert",
 		BiomeMountain:     "mountain",
 		BiomeWater:        "water",
@@ -368,16 +368,16 @@ func (config *SimulationConfig) GetBiomeMutationModifier(biomeType BiomeType) fl
 		BiomeSwamp:        "swamp",
 		BiomeCanyon:       "canyon",
 	}
-	
+
 	biomeName, exists := biomeNames[biomeType]
 	if !exists {
 		return 1.0 // Default multiplier
 	}
-	
+
 	modifier, exists := config.Biomes.MutationRateModifiers[biomeName]
 	if !exists {
 		return 1.0 // Default multiplier
 	}
-	
+
 	return modifier
 }

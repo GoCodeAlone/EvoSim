@@ -122,7 +122,7 @@ func TestWorldUpdate(t *testing.T) {
 	// Use custom simulation config that ensures energy decreases
 	simConfig := DefaultSimulationConfig()
 	simConfig.Energy.EnergyRegenerationRate = 0.0 // No regeneration for predictable testing
-	
+
 	world := NewWorldWithConfig(config, simConfig)
 
 	popConfig := PopulationConfig{
@@ -230,7 +230,7 @@ func TestWorldGetStats(t *testing.T) {
 	for name := range populations {
 		speciesNames = append(speciesNames, name)
 	}
-	
+
 	if len(speciesNames) != 2 {
 		t.Errorf("Expected exactly 2 species in stats, got %d: %v", len(speciesNames), speciesNames)
 	}

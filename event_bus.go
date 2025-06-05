@@ -8,23 +8,23 @@ import (
 
 // CentralEvent represents a unified event in the simulation
 type CentralEvent struct {
-	ID           int                    `json:"id"`
-	Timestamp    time.Time              `json:"timestamp"`
-	Tick         int                    `json:"tick"`
-	Type         string                 `json:"type"`
-	Category     string                 `json:"category"`     // "entity", "plant", "environment", "system", "physics", "communication", etc.
-	SubCategory  string                 `json:"sub_category"` // More specific classification
-	Source       string                 `json:"source"`       // Which system generated the event
-	Description  string                 `json:"description"`
-	EntityID     int                    `json:"entity_id,omitempty"`
-	PlantID      int                    `json:"plant_id,omitempty"`
-	Position     *Position              `json:"position,omitempty"`
-	OldValue     interface{}            `json:"old_value,omitempty"`
-	NewValue     interface{}            `json:"new_value,omitempty"`
-	Change       float64                `json:"change,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	ImpactedIDs  []int                  `json:"impacted_ids,omitempty"`
-	Severity     string                 `json:"severity"` // "low", "medium", "high", "critical"
+	ID          int                    `json:"id"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Tick        int                    `json:"tick"`
+	Type        string                 `json:"type"`
+	Category    string                 `json:"category"`     // "entity", "plant", "environment", "system", "physics", "communication", etc.
+	SubCategory string                 `json:"sub_category"` // More specific classification
+	Source      string                 `json:"source"`       // Which system generated the event
+	Description string                 `json:"description"`
+	EntityID    int                    `json:"entity_id,omitempty"`
+	PlantID     int                    `json:"plant_id,omitempty"`
+	Position    *Position              `json:"position,omitempty"`
+	OldValue    interface{}            `json:"old_value,omitempty"`
+	NewValue    interface{}            `json:"new_value,omitempty"`
+	Change      float64                `json:"change,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	ImpactedIDs []int                  `json:"impacted_ids,omitempty"`
+	Severity    string                 `json:"severity"` // "low", "medium", "high", "critical"
 }
 
 // EventBusListener represents a listener function for events
@@ -32,12 +32,12 @@ type EventBusListener func(event CentralEvent)
 
 // CentralEventBus manages all events in the simulation in chronological order
 type CentralEventBus struct {
-	events       []CentralEvent
-	listeners    []EventBusListener
-	maxEvents    int
-	nextID       int
-	mutex        sync.RWMutex
-	
+	events    []CentralEvent
+	listeners []EventBusListener
+	maxEvents int
+	nextID    int
+	mutex     sync.RWMutex
+
 	// Event filtering and querying
 	eventsByType     map[string][]int // Maps event type to event indices
 	eventsByCategory map[string][]int // Maps category to event indices
@@ -78,7 +78,7 @@ func (eb *CentralEventBus) EmitEvent(tick int, eventType, category, subCategory,
 		Metadata:    metadata,
 		Severity:    "medium", // Default severity
 	}
-	
+
 	eb.addEvent(event)
 }
 
@@ -97,10 +97,10 @@ func (eb *CentralEventBus) EmitEntityEvent(tick int, eventType, subCategory, sou
 	}
 
 	metadata := map[string]interface{}{
-		"species":    entity.Species,
-		"energy":     entity.Energy,
-		"age":        entity.Age,
-		"is_alive":   entity.IsAlive,
+		"species":  entity.Species,
+		"energy":   entity.Energy,
+		"age":      entity.Age,
+		"is_alive": entity.IsAlive,
 	}
 
 	event := CentralEvent{
@@ -135,11 +135,11 @@ func (eb *CentralEventBus) EmitPlantEvent(tick int, eventType, subCategory, sour
 	}
 
 	metadata := map[string]interface{}{
-		"type":      plant.Type,
-		"energy":    plant.Energy,
-		"age":       plant.Age,
-		"is_alive":  plant.IsAlive,
-		"size":      plant.Size,
+		"type":     plant.Type,
+		"energy":   plant.Energy,
+		"age":      plant.Age,
+		"is_alive": plant.IsAlive,
+		"size":     plant.Size,
 	}
 
 	event := CentralEvent{
@@ -193,13 +193,13 @@ func (eb *CentralEventBus) addEvent(event CentralEvent) {
 
 	// Update indices
 	eventIndex := len(eb.events) - 1
-	
+
 	// Index by type
 	eb.eventsByType[event.Type] = append(eb.eventsByType[event.Type], eventIndex)
-	
+
 	// Index by category
 	eb.eventsByCategory[event.Category] = append(eb.eventsByCategory[event.Category], eventIndex)
-	
+
 	// Index by tick
 	eb.eventsByTick[event.Tick] = append(eb.eventsByTick[event.Tick], eventIndex)
 
@@ -273,22 +273,22 @@ func (eb *CentralEventBus) determineSeverity(eventType, category string, change 
 	if eventType == "extinction" || eventType == "system_failure" || eventType == "critical_error" {
 		return "critical"
 	}
-	
+
 	// High severity events
 	if eventType == "death" || eventType == "birth" || eventType == "evolution" || eventType == "speciation" {
 		return "high"
 	}
-	
+
 	// Check for large changes
 	if change != 0 && (change > 100 || change < -100) {
 		return "high"
 	}
-	
+
 	// Medium severity for most other events
 	if eventType == "reproduction" || eventType == "communication" || eventType == "movement" {
 		return "medium"
 	}
-	
+
 	// Low severity for routine events
 	return "low"
 }
@@ -297,7 +297,7 @@ func (eb *CentralEventBus) determineSeverity(eventType, category string, change 
 func (eb *CentralEventBus) GetAllEvents() []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	events := make([]CentralEvent, len(eb.events))
 	copy(events, eb.events)
 	return events
@@ -307,12 +307,12 @@ func (eb *CentralEventBus) GetAllEvents() []CentralEvent {
 func (eb *CentralEventBus) GetEventsByType(eventType string) []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	indices, exists := eb.eventsByType[eventType]
 	if !exists {
 		return []CentralEvent{}
 	}
-	
+
 	events := make([]CentralEvent, len(indices))
 	for i, index := range indices {
 		events[i] = eb.events[index]
@@ -324,12 +324,12 @@ func (eb *CentralEventBus) GetEventsByType(eventType string) []CentralEvent {
 func (eb *CentralEventBus) GetEventsByCategory(category string) []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	indices, exists := eb.eventsByCategory[category]
 	if !exists {
 		return []CentralEvent{}
 	}
-	
+
 	events := make([]CentralEvent, len(indices))
 	for i, index := range indices {
 		events[i] = eb.events[index]
@@ -341,12 +341,12 @@ func (eb *CentralEventBus) GetEventsByCategory(category string) []CentralEvent {
 func (eb *CentralEventBus) GetEventsByTick(tick int) []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	indices, exists := eb.eventsByTick[tick]
 	if !exists {
 		return []CentralEvent{}
 	}
-	
+
 	events := make([]CentralEvent, len(indices))
 	for i, index := range indices {
 		events[i] = eb.events[index]
@@ -358,7 +358,7 @@ func (eb *CentralEventBus) GetEventsByTick(tick int) []CentralEvent {
 func (eb *CentralEventBus) GetEventsSince(tick int) []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	var events []CentralEvent
 	for _, event := range eb.events {
 		if event.Tick >= tick {
@@ -372,13 +372,13 @@ func (eb *CentralEventBus) GetEventsSince(tick int) []CentralEvent {
 func (eb *CentralEventBus) GetRecentEvents(count int) []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	if count >= len(eb.events) {
 		events := make([]CentralEvent, len(eb.events))
 		copy(events, eb.events)
 		return events
 	}
-	
+
 	events := make([]CentralEvent, count)
 	copy(events, eb.events[len(eb.events)-count:])
 	return events
@@ -388,7 +388,7 @@ func (eb *CentralEventBus) GetRecentEvents(count int) []CentralEvent {
 func (eb *CentralEventBus) GetEventsBySeverity(severity string) []CentralEvent {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	var events []CentralEvent
 	for _, event := range eb.events {
 		if event.Severity == severity {
@@ -402,34 +402,34 @@ func (eb *CentralEventBus) GetEventsBySeverity(severity string) []CentralEvent {
 func (eb *CentralEventBus) GetEventStats() map[string]interface{} {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	stats := map[string]interface{}{
 		"total_events": len(eb.events),
 		"max_events":   eb.maxEvents,
 		"next_id":      eb.nextID,
 	}
-	
+
 	// Count by type
 	typeStats := make(map[string]int)
 	for eventType, indices := range eb.eventsByType {
 		typeStats[eventType] = len(indices)
 	}
 	stats["events_by_type"] = typeStats
-	
+
 	// Count by category
 	categoryStats := make(map[string]int)
 	for category, indices := range eb.eventsByCategory {
 		categoryStats[category] = len(indices)
 	}
 	stats["events_by_category"] = categoryStats
-	
+
 	// Count by severity
 	severityStats := make(map[string]int)
 	for _, event := range eb.events {
 		severityStats[event.Severity]++
 	}
 	stats["events_by_severity"] = severityStats
-	
+
 	return stats
 }
 
@@ -437,13 +437,13 @@ func (eb *CentralEventBus) GetEventStats() map[string]interface{} {
 func (eb *CentralEventBus) ExportToJSON() ([]byte, error) {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
-	
+
 	exportData := map[string]interface{}{
 		"events":      eb.events,
 		"statistics":  eb.GetEventStats(),
 		"export_time": time.Now(),
 	}
-	
+
 	return json.MarshalIndent(exportData, "", "  ")
 }
 
@@ -451,7 +451,7 @@ func (eb *CentralEventBus) ExportToJSON() ([]byte, error) {
 func (eb *CentralEventBus) ClearEvents() {
 	eb.mutex.Lock()
 	defer eb.mutex.Unlock()
-	
+
 	eb.events = make([]CentralEvent, 0)
 	eb.eventsByType = make(map[string][]int)
 	eb.eventsByCategory = make(map[string][]int)

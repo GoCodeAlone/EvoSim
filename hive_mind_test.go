@@ -9,20 +9,20 @@ func TestHiveMindSystem(t *testing.T) {
 	// Create test entities
 	entities := make([]*Entity, 0)
 	traitNames := []string{"intelligence", "cooperation", "strength", "speed"}
-	
+
 	for i := 0; i < 5; i++ {
 		entity := NewEntity(i, traitNames, "test_species", Position{X: float64(i * 2), Y: 0})
-		entity.SetTrait("intelligence", 0.5 + float64(i)*0.1)
-		entity.SetTrait("cooperation", 0.6 + float64(i)*0.05)
+		entity.SetTrait("intelligence", 0.5+float64(i)*0.1)
+		entity.SetTrait("cooperation", 0.6+float64(i)*0.05)
 		entities = append(entities, entity)
 	}
 
 	// Create hive mind system
 	hms := NewHiveMindSystem()
-	
+
 	// Try to form hive mind
 	hiveMind := hms.TryFormHiveMind(entities, SimpleCollective)
-	
+
 	if hiveMind == nil {
 		t.Fatal("Failed to create hive mind from compatible entities")
 	}
@@ -44,14 +44,14 @@ func TestHiveMindSystem(t *testing.T) {
 	// Test knowledge sharing
 	testPos := Position{X: 10, Y: 5}
 	hiveMind.ShareKnowledge("food", testPos, 0.8)
-	
+
 	if len(hiveMind.CollectiveMemory.FoodSources) != 1 {
 		t.Error("Expected food source to be shared in collective memory")
 	}
 
 	// Test coordinated movement
 	hiveMind.CoordinateMovement(20, 10)
-	
+
 	// Verify members moved toward target formation
 	moved := false
 	for _, member := range hiveMind.Members {
@@ -68,7 +68,7 @@ func TestHiveMindSystem(t *testing.T) {
 
 	// Test hive mind update
 	hms.Update()
-	
+
 	if len(hms.HiveMinds) != 1 {
 		t.Errorf("Expected 1 hive mind after update, got %d", len(hms.HiveMinds))
 	}
@@ -78,16 +78,16 @@ func TestHiveMindMemoryDecay(t *testing.T) {
 	entity := NewEntity(1, []string{"intelligence", "cooperation"}, "test", Position{})
 	entity.SetTrait("intelligence", 0.8)
 	entity.SetTrait("cooperation", 0.7)
-	
+
 	hiveMind := NewHiveMind(1, entity, SimpleCollective)
-	
+
 	// Add some memories
 	testPos1 := Position{X: 5, Y: 5}
 	testPos2 := Position{X: 10, Y: 10}
-	
+
 	hiveMind.ShareKnowledge("food", testPos1, 1.0)
 	hiveMind.ShareKnowledge("threat", testPos2, 0.8)
-	
+
 	if len(hiveMind.CollectiveMemory.FoodSources) != 1 {
 		t.Error("Expected 1 food source")
 	}
@@ -119,7 +119,7 @@ func TestHiveMindCompatibility(t *testing.T) {
 	founder := NewEntity(1, []string{"intelligence", "cooperation"}, "test", Position{})
 	founder.SetTrait("intelligence", 0.8)
 	founder.SetTrait("cooperation", 0.7)
-	
+
 	hiveMind := NewHiveMind(1, founder, SimpleCollective)
 
 	// Test compatible entity
@@ -168,11 +168,11 @@ func TestHiveMindTypes(t *testing.T) {
 		entity := NewEntity(1, []string{"intelligence", "cooperation"}, "test", Position{})
 		entity.SetTrait("intelligence", 0.8)
 		entity.SetTrait("cooperation", 0.7)
-		
+
 		hiveMind := NewHiveMind(1, entity, hiveType)
-		
+
 		if hiveMind.MaxMembers != expectedMaxMembers[i] {
-			t.Errorf("Expected max members %d for type %v, got %d", 
+			t.Errorf("Expected max members %d for type %v, got %d",
 				expectedMaxMembers[i], hiveType, hiveMind.MaxMembers)
 		}
 	}
@@ -182,15 +182,15 @@ func TestCollectiveIntelligence(t *testing.T) {
 	// Create entities with varying intelligence
 	entities := make([]*Entity, 3)
 	traitNames := []string{"intelligence", "cooperation"}
-	
+
 	entities[0] = NewEntity(1, traitNames, "test", Position{})
 	entities[0].SetTrait("intelligence", 0.5)
 	entities[0].SetTrait("cooperation", 0.8)
-	
+
 	entities[1] = NewEntity(2, traitNames, "test", Position{})
 	entities[1].SetTrait("intelligence", 0.7)
 	entities[1].SetTrait("cooperation", 0.9)
-	
+
 	entities[2] = NewEntity(3, traitNames, "test", Position{})
 	entities[2].SetTrait("intelligence", 0.6)
 	entities[2].SetTrait("cooperation", 0.7)
@@ -202,8 +202,8 @@ func TestCollectiveIntelligence(t *testing.T) {
 	// Test that collective intelligence is sum of member intelligence
 	expectedIntelligence := 0.5 + 0.7 + 0.6 // 1.8 (simple addition in current implementation)
 
-	if math.Abs(hiveMind.Intelligence - expectedIntelligence) > 0.01 {
-		t.Errorf("Expected collective intelligence %.2f, got %.2f", 
+	if math.Abs(hiveMind.Intelligence-expectedIntelligence) > 0.01 {
+		t.Errorf("Expected collective intelligence %.2f, got %.2f",
 			expectedIntelligence, hiveMind.Intelligence)
 	}
 }
@@ -212,13 +212,13 @@ func TestHiveMindSafetyCheck(t *testing.T) {
 	entity := NewEntity(1, []string{"intelligence", "cooperation"}, "test", Position{})
 	entity.SetTrait("intelligence", 0.8)
 	entity.SetTrait("cooperation", 0.7)
-	
+
 	hiveMind := NewHiveMind(1, entity, SimpleCollective)
-	
+
 	// Add threat and safe zones
 	threatPos := Position{X: 5, Y: 5}
 	safePos := Position{X: 15, Y: 15}
-	
+
 	hiveMind.ShareKnowledge("threat", threatPos, 0.8)
 	hiveMind.ShareKnowledge("safe", safePos, 0.9)
 

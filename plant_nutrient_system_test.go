@@ -25,7 +25,7 @@ func TestPlantNutrientSystem(t *testing.T) {
 	gridCell := &world.Grid[gridY][gridX]
 
 	// Test initial conditions
-	if plant.NutrientNeeds == nil || len(plant.NutrientNeeds) == 0 {
+	if len(plant.NutrientNeeds) == 0 {
 		t.Error("Plant should have nutrient needs initialized")
 	}
 
@@ -33,7 +33,7 @@ func TestPlantNutrientSystem(t *testing.T) {
 		t.Error("Plant should have water dependency set")
 	}
 
-	if gridCell.SoilNutrients == nil || len(gridCell.SoilNutrients) == 0 {
+	if len(gridCell.SoilNutrients) == 0 {
 		t.Error("Grid cell should have soil nutrients initialized")
 	}
 
@@ -52,7 +52,7 @@ func TestPlantNutrientSystem(t *testing.T) {
 	// Verify that plant consumed some nutrients
 	totalInitialNutrients := 0.0
 	totalFinalNutrients := 0.0
-	
+
 	for nutrient := range plant.NutrientNeeds {
 		if nutrient != "water" {
 			if initial, exists := gridCell.SoilNutrients[nutrient]; exists {
@@ -94,7 +94,7 @@ func TestSoilNutrientDecay(t *testing.T) {
 	initialPhosphorus := gridCell.SoilNutrients["phosphorus"]
 	initialOrganicMatter := gridCell.OrganicMatter
 
-	// Add a decaying corpse to the reproduction system  
+	// Add a decaying corpse to the reproduction system
 	corpsePosition := Position{
 		X: (10.0 / float64(world.Config.GridWidth)) * world.Config.Width,
 		Y: (10.0 / float64(world.Config.GridHeight)) * world.Config.Height,
@@ -238,7 +238,7 @@ func TestSeasonalEffects(t *testing.T) {
 	for _, season := range seasons {
 		// Reset plant state
 		plant.Energy = 50.0
-		
+
 		// Ensure adequate nutrients for fair comparison
 		for nutrient := range gridCell.SoilNutrients {
 			gridCell.SoilNutrients[nutrient] = 0.5

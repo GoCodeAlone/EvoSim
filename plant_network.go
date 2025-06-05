@@ -275,29 +275,29 @@ func (pns *PlantNetworkSystem) createConnection(plantA, plantB *Plant, distance 
 	// Emit connection formation event
 	if pns.eventBus != nil {
 		metadata := map[string]interface{}{
-			"connection_id":   connection.ID,
-			"connection_type": connectionType,
-			"distance":        distance,
+			"connection_id":    connection.ID,
+			"connection_type":  connectionType,
+			"distance":         distance,
 			"initial_strength": initialStrength,
-			"initial_health":  initialHealth,
-			"efficiency":      efficiency,
-			"plant_a_id":      plantA.ID,
-			"plant_b_id":      plantB.ID,
-			"plant_a_type":    plantA.Type,
-			"plant_b_type":    plantB.Type,
+			"initial_health":   initialHealth,
+			"efficiency":       efficiency,
+			"plant_a_id":       plantA.ID,
+			"plant_b_id":       plantB.ID,
+			"plant_a_type":     plantA.Type,
+			"plant_b_type":     plantB.Type,
 		}
-		
+
 		pos := Position{
 			X: (plantA.Position.X + plantB.Position.X) / 2,
 			Y: (plantA.Position.Y + plantB.Position.Y) / 2,
 		}
-		
+
 		pns.eventBus.EmitSystemEvent(
 			currentTick,
 			"connection_formed",
 			"network",
 			"plant_network_system",
-			fmt.Sprintf("Network connection %d formed between plants %d and %d (distance: %.2f)", 
+			fmt.Sprintf("Network connection %d formed between plants %d and %d (distance: %.2f)",
 				connection.ID, plantA.ID, plantB.ID, distance),
 			&pos,
 			metadata,
@@ -383,7 +383,7 @@ func (pns *PlantNetworkSystem) transferResources(currentTick int) {
 		if donor.Energy > 25 && transferAmount > 0.5 {
 			oldDonorEnergy := donor.Energy
 			oldRecipientEnergy := recipient.Energy
-			
+
 			donor.Energy -= transferAmount
 			recipient.Energy += transferAmount * 0.9 // 10% transfer loss
 
@@ -393,30 +393,30 @@ func (pns *PlantNetworkSystem) transferResources(currentTick int) {
 			// Emit resource transfer event
 			if pns.eventBus != nil {
 				metadata := map[string]interface{}{
-					"connection_id":         conn.ID,
-					"donor_id":             donor.ID,
-					"recipient_id":         recipient.ID,
-					"transfer_amount":      transferAmount,
-					"transfer_efficiency":  transferAmount * 0.9,
-					"connection_efficiency": conn.Efficiency,
-					"connection_health":    conn.Health,
-					"donor_energy_before":  oldDonorEnergy,
-					"donor_energy_after":   donor.Energy,
+					"connection_id":           conn.ID,
+					"donor_id":                donor.ID,
+					"recipient_id":            recipient.ID,
+					"transfer_amount":         transferAmount,
+					"transfer_efficiency":     transferAmount * 0.9,
+					"connection_efficiency":   conn.Efficiency,
+					"connection_health":       conn.Health,
+					"donor_energy_before":     oldDonorEnergy,
+					"donor_energy_after":      donor.Energy,
 					"recipient_energy_before": oldRecipientEnergy,
 					"recipient_energy_after":  recipient.Energy,
 				}
-				
+
 				pos := Position{
 					X: (donor.Position.X + recipient.Position.X) / 2,
 					Y: (donor.Position.Y + recipient.Position.Y) / 2,
 				}
-				
+
 				pns.eventBus.EmitSystemEvent(
 					currentTick,
 					"resource_transfer",
 					"network",
 					"plant_network_system",
-					fmt.Sprintf("Resource transfer: %.2f energy from plant %d to plant %d via connection %d", 
+					fmt.Sprintf("Resource transfer: %.2f energy from plant %d to plant %d via connection %d",
 						transferAmount, donor.ID, recipient.ID, conn.ID),
 					&pos,
 					metadata,
@@ -474,18 +474,18 @@ func (pns *PlantNetworkSystem) sendChemicalSignal(source *Plant, signalType Chem
 			"message":       message,
 			"max_age":       signal.MaxAge,
 		}
-		
+
 		// Add signal-specific metadata
 		for key, value := range signal.Metadata {
 			metadata[key] = value
 		}
-		
+
 		pns.eventBus.EmitSystemEvent(
 			currentTick,
 			"chemical_signal_created",
 			"network",
 			"plant_network_system",
-			fmt.Sprintf("Chemical signal %d (%s) created by plant %d: %s", 
+			fmt.Sprintf("Chemical signal %d (%s) created by plant %d: %s",
 				signal.ID, getSignalTypeName(signalType), source.ID, message),
 			&source.Position,
 			metadata,
@@ -547,13 +547,13 @@ func (pns *PlantNetworkSystem) propagateChemicalSignals(currentTick int) {
 					"signal_intensity": signal.Intensity,
 					"signal_age":       signal.Age,
 				}
-				
+
 				pns.eventBus.EmitSystemEvent(
 					currentTick,
 					"chemical_signal_propagated",
 					"network",
 					"plant_network_system",
-					fmt.Sprintf("Chemical signal %d propagated to plant %d (intensity: %.2f)", 
+					fmt.Sprintf("Chemical signal %d propagated to plant %d (intensity: %.2f)",
 						signal.ID, plant.ID, signal.Intensity),
 					&plant.Position,
 					metadata,

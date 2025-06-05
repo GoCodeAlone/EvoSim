@@ -14,12 +14,12 @@ func TestValidatePlayerName(t *testing.T) {
 		{"ValidName123", "ValidName123", false},
 		{"  Valid Name  ", "Valid Name", false},
 		{"Multiple   Spaces", "Multiple Spaces", false},
-		{"", "", true},                    // Empty name
-		{"  ", "", true},                  // Only spaces
-		{"A", "", true},                   // Too short
-		{"ValidName!@#", "", true},        // Invalid characters
+		{"", "", true},                     // Empty name
+		{"  ", "", true},                   // Only spaces
+		{"A", "", true},                    // Too short
+		{"ValidName!@#", "", true},         // Invalid characters
 		{"Name_With_Underscore", "", true}, // Underscore not allowed
-		{"Name-With-Dash", "", true},      // Dash not allowed
+		{"Name-With-Dash", "", true},       // Dash not allowed
 		{"ValidName", "ValidName", false},
 		{string(make([]byte, 51)), "", true}, // Too long
 	}

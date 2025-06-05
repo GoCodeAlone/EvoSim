@@ -8,7 +8,7 @@ import (
 func TestInsectSystem(t *testing.T) {
 	// Create insect system
 	is := NewInsectSystem()
-	
+
 	if len(is.PheromoneTrails) != 0 {
 		t.Error("New insect system should have no pheromone trails")
 	}
@@ -48,8 +48,8 @@ func TestAddInsectTraitsToEntity(t *testing.T) {
 
 	// Test entity that should NOT get insect traits (large, non-cooperative)
 	nonInsectLike := NewEntity(2, []string{"size", "cooperation", "intelligence"}, "test", Position{})
-	nonInsectLike.SetTrait("size", 0.5)        // Large
-	nonInsectLike.SetTrait("cooperation", 0.2) // Non-cooperative
+	nonInsectLike.SetTrait("size", 0.5)         // Large
+	nonInsectLike.SetTrait("cooperation", 0.2)  // Non-cooperative
 	nonInsectLike.SetTrait("intelligence", 0.2) // Low intelligence
 
 	AddInsectTraitsToEntity(nonInsectLike)
@@ -62,7 +62,7 @@ func TestAddInsectTraitsToEntity(t *testing.T) {
 
 func TestPheromoneTrailCreation(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create entity with pheromone production ability
 	entity := NewEntity(1, []string{"pheromone_production"}, "test", Position{X: 0, Y: 0})
 	entity.SetTrait("pheromone_production", 0.8)
@@ -107,7 +107,7 @@ func TestPheromoneTrailCreation(t *testing.T) {
 
 func TestPheromoneTrailFollowing(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create entity with pheromone sensitivity
 	follower := NewEntity(1, []string{"pheromone_sensitivity"}, "test", Position{X: 5, Y: 5})
 	follower.SetTrait("pheromone_sensitivity", 0.8)
@@ -119,7 +119,7 @@ func TestPheromoneTrailFollowing(t *testing.T) {
 	startPos := Position{X: 0, Y: 0}
 	endPos := Position{X: 10, Y: 10}
 	trail := is.CreatePheromoneTrail(producer, FoodPheromone, startPos, endPos)
-	
+
 	if trail == nil {
 		t.Fatal("Should be able to create pheromone trail")
 	}
@@ -155,7 +155,7 @@ func TestPheromoneTrailFollowing(t *testing.T) {
 
 func TestPheromoneTrailDecay(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create entity and trail
 	entity := NewEntity(1, []string{"pheromone_production"}, "test", Position{})
 	entity.SetTrait("pheromone_production", 0.8)
@@ -197,16 +197,16 @@ func TestPheromoneTrailDecay(t *testing.T) {
 
 func TestSwarmUnitCreation(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create entities suitable for swarming
 	entities := make([]*Entity, 6)
 	traitNames := []string{"swarm_capability", "cooperation", "intelligence"}
-	
+
 	for i := 0; i < 6; i++ {
 		entities[i] = NewEntity(i+1, traitNames, "test_species", Position{X: float64(i * 2), Y: 0})
-		entities[i].SetTrait("swarm_capability", 0.5 + float64(i)*0.1)
-		entities[i].SetTrait("cooperation", 0.6 + float64(i)*0.05)
-		entities[i].SetTrait("intelligence", 0.4 + float64(i)*0.1)
+		entities[i].SetTrait("swarm_capability", 0.5+float64(i)*0.1)
+		entities[i].SetTrait("cooperation", 0.6+float64(i)*0.05)
+		entities[i].SetTrait("intelligence", 0.4+float64(i)*0.1)
 	}
 
 	// Create swarm
@@ -266,11 +266,11 @@ func TestSwarmUnitCreation(t *testing.T) {
 
 func TestSwarmMovement(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create swarm
 	entities := make([]*Entity, 5)
 	traitNames := []string{"swarm_capability", "cooperation", "speed"}
-	
+
 	for i := 0; i < 5; i++ {
 		entities[i] = NewEntity(i+1, traitNames, "test", Position{X: float64(i * 2), Y: 0})
 		entities[i].SetTrait("swarm_capability", 0.7)
@@ -326,7 +326,7 @@ func TestSwarmMovement(t *testing.T) {
 
 func TestSwarmFormations(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create test swarm
 	entities := make([]*Entity, 6) // Changed from 4 to 6 to meet minimum swarm size
 	for i := 0; i < 6; i++ {
@@ -337,7 +337,7 @@ func TestSwarmFormations(t *testing.T) {
 
 	// Test different formation types
 	purposes := []string{"foraging", "defense", "migration"}
-	
+
 	for _, purpose := range purposes {
 		swarm := is.CreateSwarmUnit(entities, purpose)
 		if swarm == nil {
@@ -362,7 +362,7 @@ func TestSwarmFormations(t *testing.T) {
 
 func TestSwarmUpdate(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create swarm with some entities
 	entities := make([]*Entity, 5)
 	for i := 0; i < 5; i++ {
@@ -416,8 +416,8 @@ func TestSwarmUpdate(t *testing.T) {
 func TestIsEntityInsectLike(t *testing.T) {
 	// Test insect-like entity
 	insectLike := NewEntity(1, []string{"size", "cooperation", "swarm_capability"}, "test", Position{})
-	insectLike.SetTrait("size", -0.3)          // Small
-	insectLike.SetTrait("cooperation", 0.6)    // Cooperative
+	insectLike.SetTrait("size", -0.3)            // Small
+	insectLike.SetTrait("cooperation", 0.6)      // Cooperative
 	insectLike.SetTrait("swarm_capability", 0.5) // Swarm capable
 
 	if !IsEntityInsectLike(insectLike) {
@@ -426,9 +426,9 @@ func TestIsEntityInsectLike(t *testing.T) {
 
 	// Test non-insect-like entity (large)
 	large := NewEntity(2, []string{"size", "cooperation", "swarm_capability"}, "test", Position{})
-	large.SetTrait("size", 0.5)               // Large
-	large.SetTrait("cooperation", 0.6)        // Cooperative
-	large.SetTrait("swarm_capability", 0.5)   // Swarm capable
+	large.SetTrait("size", 0.5)             // Large
+	large.SetTrait("cooperation", 0.6)      // Cooperative
+	large.SetTrait("swarm_capability", 0.5) // Swarm capable
 
 	if IsEntityInsectLike(large) {
 		t.Error("Large entity should not be considered insect-like")
@@ -436,8 +436,8 @@ func TestIsEntityInsectLike(t *testing.T) {
 
 	// Test non-insect-like entity (non-cooperative)
 	nonCooperative := NewEntity(3, []string{"size", "cooperation", "swarm_capability"}, "test", Position{})
-	nonCooperative.SetTrait("size", -0.3)     // Small
-	nonCooperative.SetTrait("cooperation", 0.2) // Non-cooperative
+	nonCooperative.SetTrait("size", -0.3)            // Small
+	nonCooperative.SetTrait("cooperation", 0.2)      // Non-cooperative
 	nonCooperative.SetTrait("swarm_capability", 0.5) // Swarm capable
 
 	if IsEntityInsectLike(nonCooperative) {
@@ -446,8 +446,8 @@ func TestIsEntityInsectLike(t *testing.T) {
 
 	// Test non-insect-like entity (low swarm capability)
 	lowSwarm := NewEntity(4, []string{"size", "cooperation", "swarm_capability"}, "test", Position{})
-	lowSwarm.SetTrait("size", -0.3)          // Small
-	lowSwarm.SetTrait("cooperation", 0.6)    // Cooperative
+	lowSwarm.SetTrait("size", -0.3)            // Small
+	lowSwarm.SetTrait("cooperation", 0.6)      // Cooperative
 	lowSwarm.SetTrait("swarm_capability", 0.2) // Low swarm capability
 
 	if IsEntityInsectLike(lowSwarm) {
@@ -457,7 +457,7 @@ func TestIsEntityInsectLike(t *testing.T) {
 
 func TestPheromoneStrengthAtPosition(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create entity and trail
 	entity := NewEntity(1, []string{"pheromone_production"}, "test", Position{})
 	entity.SetTrait("pheromone_production", 0.8)
@@ -473,7 +473,7 @@ func TestPheromoneStrengthAtPosition(t *testing.T) {
 	// Test position on trail
 	onTrail := Position{X: 5, Y: 5} // Middle of trail
 	strength := is.GetPheromoneStrengthAtPosition(onTrail, FoodPheromone)
-	
+
 	if strength <= 0 {
 		t.Error("Should detect pheromone strength on trail")
 	}
@@ -481,14 +481,14 @@ func TestPheromoneStrengthAtPosition(t *testing.T) {
 	// Test position far from trail
 	farAway := Position{X: 50, Y: 50}
 	strengthFar := is.GetPheromoneStrengthAtPosition(farAway, FoodPheromone)
-	
+
 	if strengthFar > 0 {
 		t.Error("Should not detect pheromone strength far from trail")
 	}
 
 	// Test wrong pheromone type
 	strengthWrong := is.GetPheromoneStrengthAtPosition(onTrail, AlarmPheromone)
-	
+
 	if strengthWrong > 0 {
 		t.Error("Should not detect wrong pheromone type")
 	}
@@ -496,7 +496,7 @@ func TestPheromoneStrengthAtPosition(t *testing.T) {
 
 func TestPheromoneTrailReinforcement(t *testing.T) {
 	is := NewInsectSystem()
-	
+
 	// Create initial trail
 	producer := NewEntity(1, []string{"pheromone_production"}, "test", Position{})
 	producer.SetTrait("pheromone_production", 0.5)

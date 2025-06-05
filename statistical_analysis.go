@@ -13,97 +13,97 @@ import (
 
 // StatisticalEvent represents a detailed event for statistical analysis
 type StatisticalEvent struct {
-	Timestamp    time.Time              `json:"timestamp"`
-	Tick         int                    `json:"tick"`
-	EventType    string                 `json:"event_type"`
-	Category     string                 `json:"category"`      // "entity", "plant", "environment", "system"
-	EntityID     int                    `json:"entity_id,omitempty"`
-	PlantID      int                    `json:"plant_id,omitempty"`
-	Position     *Position              `json:"position,omitempty"`
-	OldValue     interface{}            `json:"old_value,omitempty"`
-	NewValue     interface{}            `json:"new_value,omitempty"`
-	Change       float64                `json:"change,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	ImpactedIDs  []int                  `json:"impacted_ids,omitempty"` // IDs of other entities/plants affected
+	Timestamp   time.Time              `json:"timestamp"`
+	Tick        int                    `json:"tick"`
+	EventType   string                 `json:"event_type"`
+	Category    string                 `json:"category"` // "entity", "plant", "environment", "system"
+	EntityID    int                    `json:"entity_id,omitempty"`
+	PlantID     int                    `json:"plant_id,omitempty"`
+	Position    *Position              `json:"position,omitempty"`
+	OldValue    interface{}            `json:"old_value,omitempty"`
+	NewValue    interface{}            `json:"new_value,omitempty"`
+	Change      float64                `json:"change,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	ImpactedIDs []int                  `json:"impacted_ids,omitempty"` // IDs of other entities/plants affected
 }
 
 // StatisticalSnapshot represents a complete system state at a given tick
 type StatisticalSnapshot struct {
-	Tick                int                        `json:"tick"`
-	Timestamp           time.Time                  `json:"timestamp"`
-	TotalEntities       int                        `json:"total_entities"`
-	TotalPlants         int                        `json:"total_plants"`
-	TotalEnergy         float64                    `json:"total_energy"`
-	SpeciesCount        int                        `json:"species_count"`
-	PopulationsBySpecies map[string]int            `json:"populations_by_species"`
-	TraitDistributions  map[string][]float64       `json:"trait_distributions"`
-	BiomeDistributions  map[string]int             `json:"biome_distributions"`
-	ResourceDistribution map[string]float64        `json:"resource_distribution"`
-	PhysicsMetrics      PhysicsSnapshot            `json:"physics_metrics"`
-	CommunicationMetrics CommunicationSnapshot     `json:"communication_metrics"`
+	Tick                 int                   `json:"tick"`
+	Timestamp            time.Time             `json:"timestamp"`
+	TotalEntities        int                   `json:"total_entities"`
+	TotalPlants          int                   `json:"total_plants"`
+	TotalEnergy          float64               `json:"total_energy"`
+	SpeciesCount         int                   `json:"species_count"`
+	PopulationsBySpecies map[string]int        `json:"populations_by_species"`
+	TraitDistributions   map[string][]float64  `json:"trait_distributions"`
+	BiomeDistributions   map[string]int        `json:"biome_distributions"`
+	ResourceDistribution map[string]float64    `json:"resource_distribution"`
+	PhysicsMetrics       PhysicsSnapshot       `json:"physics_metrics"`
+	CommunicationMetrics CommunicationSnapshot `json:"communication_metrics"`
 }
 
 // PhysicsSnapshot captures physics system state
 type PhysicsSnapshot struct {
-	TotalMomentum       float64 `json:"total_momentum"`
-	TotalKineticEnergy  float64 `json:"total_kinetic_energy"`
-	CollisionCount      int     `json:"collision_count"`
-	AverageVelocity     float64 `json:"average_velocity"`
+	TotalMomentum      float64 `json:"total_momentum"`
+	TotalKineticEnergy float64 `json:"total_kinetic_energy"`
+	CollisionCount     int     `json:"collision_count"`
+	AverageVelocity    float64 `json:"average_velocity"`
 }
 
 // CommunicationSnapshot captures communication system state
 type CommunicationSnapshot struct {
-	ActiveSignals       int                `json:"active_signals"`
-	SignalsByType       map[string]int     `json:"signals_by_type"`
-	SignalEfficiency    float64            `json:"signal_efficiency"`
+	ActiveSignals    int            `json:"active_signals"`
+	SignalsByType    map[string]int `json:"signals_by_type"`
+	SignalEfficiency float64        `json:"signal_efficiency"`
 }
 
 // AnomalyType represents different types of statistical anomalies
 type AnomalyType string
 
 const (
-	AnomalyEnergyConservation    AnomalyType = "energy_conservation"
-	AnomalyUnrealisticDistribution AnomalyType = "unrealistic_distribution"
+	AnomalyEnergyConservation        AnomalyType = "energy_conservation"
+	AnomalyUnrealisticDistribution   AnomalyType = "unrealistic_distribution"
 	AnomalyMathematicalInconsistency AnomalyType = "mathematical_inconsistency"
-	AnomalyBiologicalImplausibility AnomalyType = "biological_implausibility"
-	AnomalyPopulationAnomaly       AnomalyType = "population_anomaly"
-	AnomalyPhysicsViolation        AnomalyType = "physics_violation"
+	AnomalyBiologicalImplausibility  AnomalyType = "biological_implausibility"
+	AnomalyPopulationAnomaly         AnomalyType = "population_anomaly"
+	AnomalyPhysicsViolation          AnomalyType = "physics_violation"
 )
 
 // Anomaly represents a detected statistical anomaly
 type Anomaly struct {
 	Type        AnomalyType            `json:"type"`
-	Severity    float64                `json:"severity"`    // 0-1 scale
+	Severity    float64                `json:"severity"` // 0-1 scale
 	Tick        int                    `json:"tick"`
 	Description string                 `json:"description"`
 	Data        map[string]interface{} `json:"data"`
-	Confidence  float64                `json:"confidence"`  // 0-1 scale
+	Confidence  float64                `json:"confidence"` // 0-1 scale
 }
 
 // StatisticalReporter handles comprehensive data collection and analysis
 type StatisticalReporter struct {
-	Events                []StatisticalEvent    `json:"events"`
-	Snapshots            []StatisticalSnapshot `json:"snapshots"`
-	Anomalies            []Anomaly             `json:"anomalies"`
-	MaxEvents            int                   `json:"max_events"`
-	MaxSnapshots         int                   `json:"max_snapshots"`
-	SnapshotInterval     int                   `json:"snapshot_interval"`    // Take snapshot every N ticks
-	AnalysisInterval     int                   `json:"analysis_interval"`    // Run analysis every N ticks
-	lastSnapshot         *StatisticalSnapshot
-	totalEnergyBaseline  float64               // Expected total energy
-	detectedAnomalies    map[AnomalyType]int   // Count of each anomaly type
+	Events              []StatisticalEvent    `json:"events"`
+	Snapshots           []StatisticalSnapshot `json:"snapshots"`
+	Anomalies           []Anomaly             `json:"anomalies"`
+	MaxEvents           int                   `json:"max_events"`
+	MaxSnapshots        int                   `json:"max_snapshots"`
+	SnapshotInterval    int                   `json:"snapshot_interval"` // Take snapshot every N ticks
+	AnalysisInterval    int                   `json:"analysis_interval"` // Run analysis every N ticks
+	lastSnapshot        *StatisticalSnapshot
+	totalEnergyBaseline float64             // Expected total energy
+	detectedAnomalies   map[AnomalyType]int // Count of each anomaly type
 }
 
 // NewStatisticalReporter creates a new statistical reporter
 func NewStatisticalReporter(maxEvents, maxSnapshots, snapshotInterval, analysisInterval int) *StatisticalReporter {
 	return &StatisticalReporter{
-		Events:           make([]StatisticalEvent, 0),
-		Snapshots:        make([]StatisticalSnapshot, 0),
-		Anomalies:        make([]Anomaly, 0),
-		MaxEvents:        maxEvents,
-		MaxSnapshots:     maxSnapshots,
-		SnapshotInterval: snapshotInterval,
-		AnalysisInterval: analysisInterval,
+		Events:            make([]StatisticalEvent, 0),
+		Snapshots:         make([]StatisticalSnapshot, 0),
+		Anomalies:         make([]Anomaly, 0),
+		MaxEvents:         maxEvents,
+		MaxSnapshots:      maxSnapshots,
+		SnapshotInterval:  snapshotInterval,
+		AnalysisInterval:  analysisInterval,
 		detectedAnomalies: make(map[AnomalyType]int),
 	}
 }
@@ -134,10 +134,10 @@ func (sr *StatisticalReporter) LogEntityEvent(tick int, eventType string, entity
 		Change:      change,
 		ImpactedIDs: impactedIDs,
 		Metadata: map[string]interface{}{
-			"species":       entity.Species,
-			"energy":        entity.Energy,
-			"age":          entity.Age,
-			"is_alive":     entity.IsAlive,
+			"species":  entity.Species,
+			"energy":   entity.Energy,
+			"age":      entity.Age,
+			"is_alive": entity.IsAlive,
 		},
 	}
 	sr.addEvent(event)
@@ -163,11 +163,11 @@ func (sr *StatisticalReporter) LogPlantEvent(tick int, eventType string, plant *
 		NewValue:  newValue,
 		Change:    change,
 		Metadata: map[string]interface{}{
-			"type":         plant.Type,
-			"energy":       plant.Energy,
-			"age":         plant.Age,
-			"is_alive":    plant.IsAlive,
-			"size":        plant.Size,
+			"type":     plant.Type,
+			"energy":   plant.Energy,
+			"age":      plant.Age,
+			"is_alive": plant.IsAlive,
+			"size":     plant.Size,
 		},
 	}
 	sr.addEvent(event)
@@ -188,13 +188,13 @@ func (sr *StatisticalReporter) LogSystemEvent(tick int, eventType string, descri
 // TakeSnapshot captures complete system state for analysis
 func (sr *StatisticalReporter) TakeSnapshot(world *World) {
 	snapshot := StatisticalSnapshot{
-		Tick:              world.Tick,
-		Timestamp:         time.Now(),
-		TotalEntities:     len(world.AllEntities),
-		TotalPlants:       len(world.AllPlants),
+		Tick:                 world.Tick,
+		Timestamp:            time.Now(),
+		TotalEntities:        len(world.AllEntities),
+		TotalPlants:          len(world.AllPlants),
 		PopulationsBySpecies: make(map[string]int),
-		TraitDistributions: make(map[string][]float64),
-		BiomeDistributions: make(map[string]int),
+		TraitDistributions:   make(map[string][]float64),
+		BiomeDistributions:   make(map[string]int),
 		ResourceDistribution: make(map[string]float64),
 	}
 
@@ -227,10 +227,10 @@ func (sr *StatisticalReporter) TakeSnapshot(world *World) {
 	snapshot.SpeciesCount = len(speciesSet)
 
 	// Collect trait distributions
-	traits := []string{"vision", "speed", "size", "energy_efficiency", "aggression", "cooperation", 
-					  "intelligence", "curiosity", "social", "territorial", "nocturnal", "endurance",
-					  "strength", "defense", "stealth"}
-	
+	traits := []string{"vision", "speed", "size", "energy_efficiency", "aggression", "cooperation",
+		"intelligence", "curiosity", "social", "territorial", "nocturnal", "endurance",
+		"strength", "defense", "stealth"}
+
 	for _, trait := range traits {
 		values := make([]float64, 0)
 		for _, entity := range world.AllEntities {
@@ -282,7 +282,7 @@ func (sr *StatisticalReporter) calculatePhysicsMetrics(world *World) PhysicsSnap
 			if physics, exists := world.PhysicsComponents[entity.ID]; exists {
 				velocity := math.Sqrt(physics.Velocity.X*physics.Velocity.X + physics.Velocity.Y*physics.Velocity.Y)
 				mass := entity.GetTrait("size") // Use size as mass
-				
+
 				totalMomentum += mass * velocity
 				totalKineticEnergy += 0.5 * mass * velocity * velocity
 				totalVelocity += velocity
@@ -297,10 +297,10 @@ func (sr *StatisticalReporter) calculatePhysicsMetrics(world *World) PhysicsSnap
 	}
 
 	return PhysicsSnapshot{
-		TotalMomentum:       totalMomentum,
-		TotalKineticEnergy:  totalKineticEnergy,
-		CollisionCount:      world.PhysicsSystem.CollisionsThisTick,
-		AverageVelocity:     avgVelocity,
+		TotalMomentum:      totalMomentum,
+		TotalKineticEnergy: totalKineticEnergy,
+		CollisionCount:     world.PhysicsSystem.CollisionsThisTick,
+		AverageVelocity:    avgVelocity,
 	}
 }
 
@@ -379,7 +379,7 @@ func (sr *StatisticalReporter) analyzeEnergyConservation(world *World) *Anomaly 
 	// Check for unrealistic energy changes
 	if math.Abs(energyChange) > allowedDeviation {
 		severity := math.Min(1.0, math.Abs(energyChange)/allowedDeviation)
-		
+
 		return &Anomaly{
 			Type:        AnomalyEnergyConservation,
 			Severity:    severity,
@@ -425,10 +425,10 @@ func (sr *StatisticalReporter) analyzeTraitDistributions() []Anomaly {
 				Tick:        current.Tick,
 				Description: fmt.Sprintf("Trait '%s' has unrealistically uniform distribution (stddev=%.4f)", trait, stdDev),
 				Data: map[string]interface{}{
-					"trait":     trait,
-					"mean":      mean,
-					"std_dev":   stdDev,
-					"count":     len(values),
+					"trait":   trait,
+					"mean":    mean,
+					"std_dev": stdDev,
+					"count":   len(values),
 				},
 				Confidence: 0.7,
 			})
@@ -478,7 +478,7 @@ func (sr *StatisticalReporter) analyzePopulationDynamics() *Anomaly {
 	// Check for extreme population changes (>50% in one snapshot interval)
 	if math.Abs(changeRate) > 0.5 {
 		severity := math.Min(1.0, math.Abs(changeRate))
-		
+
 		return &Anomaly{
 			Type:        AnomalyPopulationAnomaly,
 			Severity:    severity,
@@ -508,20 +508,20 @@ func (sr *StatisticalReporter) analyzePhysicsConservation() *Anomaly {
 
 	// Check momentum conservation (should be relatively stable in closed system)
 	momentumChange := math.Abs(current.PhysicsMetrics.TotalMomentum - previous.PhysicsMetrics.TotalMomentum)
-	
+
 	// Allow some deviation due to system interactions, but flag large changes
 	if momentumChange > previous.PhysicsMetrics.TotalMomentum*0.5 {
 		severity := math.Min(1.0, momentumChange/previous.PhysicsMetrics.TotalMomentum)
-		
+
 		return &Anomaly{
 			Type:        AnomalyPhysicsViolation,
 			Severity:    severity,
 			Tick:        current.Tick,
 			Description: fmt.Sprintf("Large momentum change detected: %.4f", momentumChange),
 			Data: map[string]interface{}{
-				"momentum_change":    momentumChange,
-				"previous_momentum":  previous.PhysicsMetrics.TotalMomentum,
-				"current_momentum":   current.PhysicsMetrics.TotalMomentum,
+				"momentum_change":   momentumChange,
+				"previous_momentum": previous.PhysicsMetrics.TotalMomentum,
+				"current_momentum":  current.PhysicsMetrics.TotalMomentum,
 			},
 			Confidence: 0.6,
 		}
@@ -567,8 +567,8 @@ func (sr *StatisticalReporter) ExportToCSV(filename string) error {
 	defer writer.Flush()
 
 	// Write headers
-	headers := []string{"Tick", "Timestamp", "EventType", "Category", "EntityID", "PlantID", 
-					   "OldValue", "NewValue", "Change", "Metadata"}
+	headers := []string{"Tick", "Timestamp", "EventType", "Category", "EntityID", "PlantID",
+		"OldValue", "NewValue", "Change", "Metadata"}
 	if err := writer.Write(headers); err != nil {
 		return err
 	}
@@ -623,18 +623,18 @@ func (sr *StatisticalReporter) GetAnomaliesByType(anomalyType AnomalyType) []Ano
 func (sr *StatisticalReporter) GetRecentAnomalies(ticksBack int, currentTick int) []Anomaly {
 	filtered := make([]Anomaly, 0)
 	cutoffTick := currentTick - ticksBack
-	
+
 	for _, anomaly := range sr.Anomalies {
 		if anomaly.Tick >= cutoffTick {
 			filtered = append(filtered, anomaly)
 		}
 	}
-	
+
 	// Sort by tick (most recent first)
 	sort.Slice(filtered, func(i, j int) bool {
 		return filtered[i].Tick > filtered[j].Tick
 	})
-	
+
 	return filtered
 }
 
@@ -645,18 +645,18 @@ func (sr *StatisticalReporter) GetSummaryStatistics() map[string]interface{} {
 	}
 
 	latest := sr.Snapshots[len(sr.Snapshots)-1]
-	
+
 	stats := map[string]interface{}{
-		"total_events":        len(sr.Events),
-		"total_snapshots":     len(sr.Snapshots),
-		"total_anomalies":     len(sr.Anomalies),
-		"latest_tick":         latest.Tick,
-		"total_entities":      latest.TotalEntities,
-		"total_plants":        latest.TotalPlants,
-		"total_energy":        latest.TotalEnergy,
-		"species_count":       latest.SpeciesCount,
-		"energy_baseline":     sr.totalEnergyBaseline,
-		"anomaly_breakdown":   sr.detectedAnomalies,
+		"total_events":      len(sr.Events),
+		"total_snapshots":   len(sr.Snapshots),
+		"total_anomalies":   len(sr.Anomalies),
+		"latest_tick":       latest.Tick,
+		"total_entities":    latest.TotalEntities,
+		"total_plants":      latest.TotalPlants,
+		"total_energy":      latest.TotalEnergy,
+		"species_count":     latest.SpeciesCount,
+		"energy_baseline":   sr.totalEnergyBaseline,
+		"anomaly_breakdown": sr.detectedAnomalies,
 	}
 
 	// Add trend analysis if we have enough data
@@ -675,10 +675,10 @@ func (sr *StatisticalReporter) calculateEnergyTrend() string {
 	}
 
 	recent := sr.Snapshots[len(sr.Snapshots)-5:]
-	
+
 	// Simple linear trend calculation
 	totalChange := recent[len(recent)-1].TotalEnergy - recent[0].TotalEnergy
-	
+
 	if totalChange > sr.totalEnergyBaseline*0.05 {
 		return "increasing"
 	} else if totalChange < -sr.totalEnergyBaseline*0.05 {
@@ -695,7 +695,7 @@ func (sr *StatisticalReporter) calculatePopulationTrend() string {
 	}
 
 	recent := sr.Snapshots[len(sr.Snapshots)-5:]
-	
+
 	totalChange := recent[len(recent)-1].TotalEntities - recent[0].TotalEntities
 	percentChange := float64(totalChange) / float64(recent[0].TotalEntities) * 100
 
@@ -711,7 +711,7 @@ func (sr *StatisticalReporter) calculatePopulationTrend() string {
 // Helper methods for managing collections
 func (sr *StatisticalReporter) addEvent(event StatisticalEvent) {
 	sr.Events = append(sr.Events, event)
-	
+
 	// Remove old events if we exceed max
 	if len(sr.Events) > sr.MaxEvents {
 		sr.Events = sr.Events[len(sr.Events)-sr.MaxEvents:]
@@ -720,7 +720,7 @@ func (sr *StatisticalReporter) addEvent(event StatisticalEvent) {
 
 func (sr *StatisticalReporter) addSnapshot(snapshot StatisticalSnapshot) {
 	sr.Snapshots = append(sr.Snapshots, snapshot)
-	
+
 	// Remove old snapshots if we exceed max
 	if len(sr.Snapshots) > sr.MaxSnapshots {
 		sr.Snapshots = sr.Snapshots[len(sr.Snapshots)-sr.MaxSnapshots:]

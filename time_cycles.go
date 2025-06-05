@@ -96,7 +96,7 @@ func (ats *AdvancedTimeSystem) Update() {
 	ats.DayNumber++
 	ats.SeasonDay++
 
-	// Check for season change  
+	// Check for season change
 	if ats.SeasonDay >= ats.SeasonLength {
 		ats.SeasonDay = 0
 		ats.Season = Season((int(ats.Season) + 1) % 4)
@@ -121,7 +121,7 @@ func (ats *AdvancedTimeSystem) GetTimeState() TimeState {
 func (ats *AdvancedTimeSystem) updateTimeOfDayFromIndex(index int) {
 	timeOfDays := []TimeOfDay{
 		Dawn,      // 0
-		Morning,   // 1  
+		Morning,   // 1
 		Midday,    // 2
 		Afternoon, // 3
 		Evening,   // 4
@@ -130,28 +130,6 @@ func (ats *AdvancedTimeSystem) updateTimeOfDayFromIndex(index int) {
 		LateNight, // 7
 	}
 	ats.TimeOfDay = timeOfDays[index]
-}
-
-// updateTimeOfDay determines current time period (kept for compatibility)
-func (ats *AdvancedTimeSystem) updateTimeOfDay(dayProgress float64) {
-	switch {
-	case dayProgress < 0.08:
-		ats.TimeOfDay = LateNight
-	case dayProgress < 0.15:
-		ats.TimeOfDay = Dawn
-	case dayProgress < 0.35:
-		ats.TimeOfDay = Morning
-	case dayProgress < 0.6:
-		ats.TimeOfDay = Midday
-	case dayProgress < 0.75:
-		ats.TimeOfDay = Afternoon
-	case dayProgress < 0.85:
-		ats.TimeOfDay = Evening
-	case dayProgress < 0.95:
-		ats.TimeOfDay = Night
-	default:
-		ats.TimeOfDay = Midnight
-	}
 }
 
 // updateEnvironmentalFactors calculates temperature, light, and seasonal effects
@@ -174,7 +152,7 @@ func (ats *AdvancedTimeSystem) updateEnvironmentalFactors() {
 
 	// Calculate temperature based on time of day and season
 	baseTemp := ats.getSeasonalBaseTemperature()
-	
+
 	// Daily temperature variation (warmer during day, cooler at night)
 	dailyVariation := 0.0
 	switch ats.TimeOfDay {
@@ -191,7 +169,7 @@ func (ats *AdvancedTimeSystem) updateEnvironmentalFactors() {
 	case Night, Midnight, LateNight:
 		dailyVariation = -0.3
 	}
-	
+
 	ats.Temperature = baseTemp + dailyVariation
 
 	// Calculate seasonal modifier
@@ -219,7 +197,7 @@ func (ats *AdvancedTimeSystem) getSeasonalModifier() float64 {
 	// Use config's seasonal variation to determine how much seasons affect the environment
 	baseModifier := 1.0
 	variation := ats.Config.SeasonalVariation
-	
+
 	switch ats.Season {
 	case Spring:
 		return baseModifier + (0.2 * variation) // Slightly abundant resources

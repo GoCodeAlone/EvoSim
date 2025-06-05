@@ -44,40 +44,40 @@ type Organelle struct {
 
 // Cell represents a single cell with organelles and functions
 type Cell struct {
-	ID          int                    `json:"id"`
-	Type        CellType               `json:"type"`
-	Size        float64                `json:"size"`        // Cell diameter
-	Energy      float64                `json:"energy"`      // Current energy
-	Health      float64                `json:"health"`      // Cell health (0-1)
-	Age         int                    `json:"age"`         // Cell age in ticks
-	DNA         *DNAStrand             `json:"dna"`         // Genetic material
-	Organelles  map[OrganelleType]*Organelle `json:"organelles"` // Cellular components
-	Position    Position               `json:"position"`    // Position within organism
-	Connections []int                  `json:"connections"` // Connected cell IDs
-	Activity    float64                `json:"activity"`    // Current activity level (0-1)
-	Specialized bool                   `json:"specialized"` // Whether cell is specialized
+	ID          int                          `json:"id"`
+	Type        CellType                     `json:"type"`
+	Size        float64                      `json:"size"`        // Cell diameter
+	Energy      float64                      `json:"energy"`      // Current energy
+	Health      float64                      `json:"health"`      // Cell health (0-1)
+	Age         int                          `json:"age"`         // Cell age in ticks
+	DNA         *DNAStrand                   `json:"dna"`         // Genetic material
+	Organelles  map[OrganelleType]*Organelle `json:"organelles"`  // Cellular components
+	Position    Position                     `json:"position"`    // Position within organism
+	Connections []int                        `json:"connections"` // Connected cell IDs
+	Activity    float64                      `json:"activity"`    // Current activity level (0-1)
+	Specialized bool                         `json:"specialized"` // Whether cell is specialized
 }
 
 // CellularOrganism represents a single-cell or multi-cell entity
 type CellularOrganism struct {
-	EntityID      int               `json:"entity_id"`
-	Cells         []*Cell           `json:"cells"`
-	ComplexityLevel int             `json:"complexity_level"` // 1=single-cell, 2+=multi-cell
-	TotalEnergy   float64           `json:"total_energy"`
-	CellDivisions int               `json:"cell_divisions"`   // Total divisions performed
-	Generation    int               `json:"generation"`
-	OrganSystems  map[string][]int  `json:"organ_systems"`    // System name -> cell IDs
+	EntityID        int              `json:"entity_id"`
+	Cells           []*Cell          `json:"cells"`
+	ComplexityLevel int              `json:"complexity_level"` // 1=single-cell, 2+=multi-cell
+	TotalEnergy     float64          `json:"total_energy"`
+	CellDivisions   int              `json:"cell_divisions"` // Total divisions performed
+	Generation      int              `json:"generation"`
+	OrganSystems    map[string][]int `json:"organ_systems"` // System name -> cell IDs
 }
 
 // CellularSystem manages cellular-level evolution and processes
 type CellularSystem struct {
-	NextCellID       int                          `json:"next_cell_id"`
-	OrganismMap      map[int]*CellularOrganism    `json:"organism_map"` // EntityID -> Organism
-	CellTypeNames    map[CellType]string          `json:"cell_type_names"`
-	OrganelleNames   map[OrganelleType]string     `json:"organelle_names"`
-	ComplexityThresholds map[int]int              `json:"complexity_thresholds"` // Level -> min cells
-	DNASystem        *DNASystem                   `json:"-"`
-	eventBus         *CentralEventBus             `json:"-"` // Event tracking
+	NextCellID           int                       `json:"next_cell_id"`
+	OrganismMap          map[int]*CellularOrganism `json:"organism_map"` // EntityID -> Organism
+	CellTypeNames        map[CellType]string       `json:"cell_type_names"`
+	OrganelleNames       map[OrganelleType]string  `json:"organelle_names"`
+	ComplexityThresholds map[int]int               `json:"complexity_thresholds"` // Level -> min cells
+	DNASystem            *DNASystem                `json:"-"`
+	eventBus             *CentralEventBus          `json:"-"` // Event tracking
 }
 
 // NewCellularSystem creates a new cellular management system
@@ -96,21 +96,21 @@ func NewCellularSystem(dnaSystem *DNASystem, eventBus *CentralEventBus) *Cellula
 			CellTypeStorage:        "Storage",
 		},
 		OrganelleNames: map[OrganelleType]string{
-			OrganelleNucleus:       "Nucleus",
-			OrganelleMitochondria:  "Mitochondria",
-			OrganelleChloroplast:   "Chloroplast",
-			OrganelleRibosome:      "Ribosome",
-			OrganelleVacuole:       "Vacuole",
-			OrganelleGolgi:         "Golgi Apparatus",
-			OrganelleER:            "Endoplasmic Reticulum",
-			OrganelleLysosome:      "Lysosome",
+			OrganelleNucleus:      "Nucleus",
+			OrganelleMitochondria: "Mitochondria",
+			OrganelleChloroplast:  "Chloroplast",
+			OrganelleRibosome:     "Ribosome",
+			OrganelleVacuole:      "Vacuole",
+			OrganelleGolgi:        "Golgi Apparatus",
+			OrganelleER:           "Endoplasmic Reticulum",
+			OrganelleLysosome:     "Lysosome",
 		},
 		ComplexityThresholds: map[int]int{
-			1: 1,    // Single cell
-			2: 5,    // Simple multicellular
-			3: 20,   // Complex multicellular
-			4: 100,  // Advanced multicellular
-			5: 500,  // Highly complex
+			1: 1,   // Single cell
+			2: 5,   // Simple multicellular
+			3: 20,  // Complex multicellular
+			4: 100, // Advanced multicellular
+			5: 500, // Highly complex
 		},
 		DNASystem: dnaSystem,
 		eventBus:  eventBus,
@@ -121,7 +121,7 @@ func NewCellularSystem(dnaSystem *DNASystem, eventBus *CentralEventBus) *Cellula
 func (cs *CellularSystem) CreateSingleCellOrganism(entityID int, dna *DNAStrand) *CellularOrganism {
 	// Create the primary cell
 	cell := cs.createCell(CellTypeStem, dna, Position{X: 0, Y: 0})
-	
+
 	organism := &CellularOrganism{
 		EntityID:        entityID,
 		Cells:           []*Cell{cell},
@@ -134,7 +134,7 @@ func (cs *CellularSystem) CreateSingleCellOrganism(entityID int, dna *DNAStrand)
 
 	// Initialize basic organ systems
 	organism.OrganSystems["core"] = []int{cell.ID}
-	
+
 	cs.OrganismMap[entityID] = organism
 	return organism
 }
@@ -161,7 +161,7 @@ func (cs *CellularSystem) createCell(cellType CellType, dna *DNAStrand, position
 
 	// Add organelles based on cell type and DNA
 	cs.addOrganellesToCell(cell, dna)
-	
+
 	return cell
 }
 
@@ -249,7 +249,7 @@ func (cs *CellularSystem) addOrganellesToCell(cell *Cell, dna *DNAStrand) {
 // calculateCellSize determines cell size based on DNA
 func (cs *CellularSystem) calculateCellSize(dna *DNAStrand) float64 {
 	baseSizeFromDNA := cs.DNASystem.ExpressTrait(dna, "size")
-	
+
 	// Convert to actual size (micrometers)
 	size := 5.0 + baseSizeFromDNA*15.0 // 5-20 micrometers
 	return math.Max(1.0, size)
@@ -265,28 +265,28 @@ func (cs *CellularSystem) UpdateCellularOrganisms() {
 // updateOrganism updates a single cellular organism
 func (cs *CellularSystem) updateOrganism(organism *CellularOrganism) {
 	totalEnergy := 0.0
-	
+
 	// Update each cell
 	for _, cell := range organism.Cells {
 		cs.updateCell(cell)
 		totalEnergy += cell.Energy
-		
+
 		// Check for cell division
 		if cs.shouldCellDivide(cell, organism) {
 			cs.performCellDivision(cell, organism)
 		}
-		
+
 		// Check for cell death
 		if cell.Health <= 0 || cell.Energy <= 0 {
 			cs.handleCellDeath(cell, organism)
 		}
 	}
-	
+
 	organism.TotalEnergy = totalEnergy
-	
+
 	// Update complexity level
 	organism.ComplexityLevel = cs.calculateComplexityLevel(len(organism.Cells))
-	
+
 	// Update organ systems
 	cs.updateOrganSystems(organism)
 }
@@ -294,11 +294,11 @@ func (cs *CellularSystem) updateOrganism(organism *CellularOrganism) {
 // updateCell updates a single cell's state
 func (cs *CellularSystem) updateCell(cell *Cell) {
 	cell.Age++
-	
+
 	// Calculate energy production and consumption
 	energyProduced := 0.0
 	energyConsumed := 0.0
-	
+
 	for _, organelle := range cell.Organelles {
 		switch organelle.Type {
 		case OrganelleMitochondria:
@@ -313,18 +313,18 @@ func (cs *CellularSystem) updateCell(cell *Cell) {
 			energyConsumed += float64(organelle.Count) * 0.05
 		}
 	}
-	
+
 	// Apply energy changes
 	netEnergy := energyProduced - energyConsumed
 	cell.Energy += netEnergy
-	
+
 	// Apply aging effects
 	agingFactor := 1.0 - (float64(cell.Age) * 0.0001)
 	cell.Health *= agingFactor
-	
+
 	// Update activity based on energy and health
 	cell.Activity = math.Min(1.0, (cell.Energy/100.0)*cell.Health)
-	
+
 	// Clamp values
 	cell.Energy = math.Max(0, cell.Energy)
 	cell.Health = math.Max(0, math.Min(1.0, cell.Health))
@@ -337,65 +337,65 @@ func (cs *CellularSystem) shouldCellDivide(cell *Cell, organism *CellularOrganis
 	healthThreshold := 0.8
 	ageMinimum := 50
 	maxCells := 1000 // Prevent unlimited growth
-	
+
 	return cell.Energy > energyThreshold &&
-		   cell.Health > healthThreshold &&
-		   cell.Age > ageMinimum &&
-		   len(organism.Cells) < maxCells &&
-		   rand.Float64() < 0.01 // 1% chance per tick
+		cell.Health > healthThreshold &&
+		cell.Age > ageMinimum &&
+		len(organism.Cells) < maxCells &&
+		rand.Float64() < 0.01 // 1% chance per tick
 }
 
 // performCellDivision creates a new cell through division
 func (cs *CellularSystem) performCellDivision(parentCell *Cell, organism *CellularOrganism) {
 	// Create daughter cell
 	daughterCell := cs.createCell(parentCell.Type, parentCell.DNA, parentCell.Position)
-	
+
 	originalParentEnergy := parentCell.Energy
-	
+
 	// Split energy between parent and daughter
 	parentCell.Energy *= 0.6
 	daughterCell.Energy = parentCell.Energy * 0.4
-	
+
 	// Slight positioning offset
 	daughterCell.Position.X += (rand.Float64() - 0.5) * 2.0
 	daughterCell.Position.Y += (rand.Float64() - 0.5) * 2.0
-	
+
 	// Connect cells
 	parentCell.Connections = append(parentCell.Connections, daughterCell.ID)
 	daughterCell.Connections = append(daughterCell.Connections, parentCell.ID)
-	
+
 	// Add to organism
 	organism.Cells = append(organism.Cells, daughterCell)
 	organism.CellDivisions++
-	
+
 	// Emit cell division event
 	if cs.eventBus != nil {
 		metadata := map[string]interface{}{
-			"entity_id":          organism.EntityID,
-			"parent_cell_id":     parentCell.ID,
-			"daughter_cell_id":   daughterCell.ID,
-			"cell_type":          cs.CellTypeNames[parentCell.Type],
-			"original_energy":    originalParentEnergy,
-			"parent_energy":      parentCell.Energy,
-			"daughter_energy":    daughterCell.Energy,
-			"total_divisions":    organism.CellDivisions,
+			"entity_id":           organism.EntityID,
+			"parent_cell_id":      parentCell.ID,
+			"daughter_cell_id":    daughterCell.ID,
+			"cell_type":           cs.CellTypeNames[parentCell.Type],
+			"original_energy":     originalParentEnergy,
+			"parent_energy":       parentCell.Energy,
+			"daughter_energy":     daughterCell.Energy,
+			"total_divisions":     organism.CellDivisions,
 			"organism_complexity": organism.ComplexityLevel,
-			"total_cells":        len(organism.Cells),
-			"generation":         organism.Generation,
+			"total_cells":         len(organism.Cells),
+			"generation":          organism.Generation,
 		}
-		
+
 		cs.eventBus.EmitSystemEvent(
 			-1,
 			"cell_division",
 			"cellular",
 			"cellular_system",
-			fmt.Sprintf("Cell division in entity %d: %s cell %d created daughter cell %d (%d total cells)", 
+			fmt.Sprintf("Cell division in entity %d: %s cell %d created daughter cell %d (%d total cells)",
 				organism.EntityID, cs.CellTypeNames[parentCell.Type], parentCell.ID, daughterCell.ID, len(organism.Cells)),
 			&parentCell.Position,
 			metadata,
 		)
 	}
-	
+
 	// Potential for specialization in multicellular organisms
 	if organism.ComplexityLevel >= 2 && rand.Float64() < 0.3 {
 		cs.specializeDaughterCell(daughterCell, organism)
@@ -409,33 +409,33 @@ func (cs *CellularSystem) specializeDaughterCell(cell *Cell, organism *CellularO
 		CellTypeNerve, CellTypeMuscle, CellTypeDigestive,
 		CellTypeDefensive, CellTypeStorage,
 	}
-	
+
 	oldType := cell.Type
 	newType := cellTypes[rand.Intn(len(cellTypes))]
 	cell.Type = newType
 	cell.Specialized = true
-	
+
 	// Update organelles for new specialization
 	cs.addOrganellesToCell(cell, cell.DNA)
-	
+
 	// Emit cell specialization event
 	if cs.eventBus != nil {
 		metadata := map[string]interface{}{
-			"entity_id":         organism.EntityID,
-			"cell_id":           cell.ID,
-			"old_type":          cs.CellTypeNames[oldType],
-			"new_type":          cs.CellTypeNames[newType],
-			"complexity_level":  organism.ComplexityLevel,
-			"total_cells":       len(organism.Cells),
-			"generation":        organism.Generation,
+			"entity_id":        organism.EntityID,
+			"cell_id":          cell.ID,
+			"old_type":         cs.CellTypeNames[oldType],
+			"new_type":         cs.CellTypeNames[newType],
+			"complexity_level": organism.ComplexityLevel,
+			"total_cells":      len(organism.Cells),
+			"generation":       organism.Generation,
 		}
-		
+
 		cs.eventBus.EmitSystemEvent(
 			-1,
 			"cell_specialization",
 			"cellular",
 			"cellular_system",
-			fmt.Sprintf("Cell specialization in entity %d: cell %d changed from %s to %s", 
+			fmt.Sprintf("Cell specialization in entity %d: cell %d changed from %s to %s",
 				organism.EntityID, cell.ID, cs.CellTypeNames[oldType], cs.CellTypeNames[newType]),
 			&cell.Position,
 			metadata,
@@ -452,7 +452,7 @@ func (cs *CellularSystem) handleCellDeath(deadCell *Cell, organism *CellularOrga
 			break
 		}
 	}
-	
+
 	// Remove connections to dead cell
 	for _, cell := range organism.Cells {
 		for i, connID := range cell.Connections {
@@ -478,19 +478,19 @@ func (cs *CellularSystem) calculateComplexityLevel(cellCount int) int {
 func (cs *CellularSystem) updateOrganSystems(organism *CellularOrganism) {
 	// Clear existing systems
 	organism.OrganSystems = make(map[string][]int)
-	
+
 	// Group cells by type
 	cellTypeGroups := make(map[CellType][]int)
 	for _, cell := range organism.Cells {
 		cellTypeGroups[cell.Type] = append(cellTypeGroups[cell.Type], cell.ID)
 	}
-	
+
 	// Create organ systems
 	for cellType, cellIDs := range cellTypeGroups {
 		systemName := cs.CellTypeNames[cellType]
 		organism.OrganSystems[systemName] = cellIDs
 	}
-	
+
 	// Create composite systems for complex organisms
 	if organism.ComplexityLevel >= 3 {
 		cs.createCompositeOrganSystems(organism)
@@ -503,7 +503,7 @@ func (cs *CellularSystem) createCompositeOrganSystems(organism *CellularOrganism
 	if nerveIDs, exists := organism.OrganSystems["Nerve"]; exists && len(nerveIDs) >= 3 {
 		organism.OrganSystems["Nervous System"] = nerveIDs
 	}
-	
+
 	// Digestive system
 	if digestiveIDs, exists := organism.OrganSystems["Digestive"]; exists && len(digestiveIDs) >= 2 {
 		if storageIDs, storageExists := organism.OrganSystems["Storage"]; storageExists {
@@ -511,7 +511,7 @@ func (cs *CellularSystem) createCompositeOrganSystems(organism *CellularOrganism
 			organism.OrganSystems["Digestive System"] = combined
 		}
 	}
-	
+
 	// Muscular system
 	if muscleIDs, exists := organism.OrganSystems["Muscle"]; exists && len(muscleIDs) >= 4 {
 		organism.OrganSystems["Muscular System"] = muscleIDs
@@ -524,7 +524,7 @@ func (cs *CellularSystem) GetOrganismStats(entityID int) map[string]interface{} 
 	if !exists {
 		return nil
 	}
-	
+
 	stats := make(map[string]interface{})
 	stats["entity_id"] = entityID
 	stats["cell_count"] = len(organism.Cells)
@@ -532,13 +532,13 @@ func (cs *CellularSystem) GetOrganismStats(entityID int) map[string]interface{} 
 	stats["total_energy"] = organism.TotalEnergy
 	stats["cell_divisions"] = organism.CellDivisions
 	stats["generation"] = organism.Generation
-	
+
 	// Cell type distribution
 	cellTypeCounts := make(map[string]int)
 	totalActivity := 0.0
 	avgHealth := 0.0
 	avgAge := 0.0
-	
+
 	for _, cell := range organism.Cells {
 		typeName := cs.CellTypeNames[cell.Type]
 		cellTypeCounts[typeName]++
@@ -546,16 +546,16 @@ func (cs *CellularSystem) GetOrganismStats(entityID int) map[string]interface{} 
 		avgHealth += cell.Health
 		avgAge += float64(cell.Age)
 	}
-	
+
 	if len(organism.Cells) > 0 {
 		stats["avg_activity"] = totalActivity / float64(len(organism.Cells))
 		stats["avg_health"] = avgHealth / float64(len(organism.Cells))
 		stats["avg_age"] = avgAge / float64(len(organism.Cells))
 	}
-	
+
 	stats["cell_type_distribution"] = cellTypeCounts
 	stats["organ_systems"] = len(organism.OrganSystems)
-	
+
 	return stats
 }
 
@@ -563,18 +563,18 @@ func (cs *CellularSystem) GetOrganismStats(entityID int) map[string]interface{} 
 func (cs *CellularSystem) GetCellularSystemStats() map[string]interface{} {
 	stats := make(map[string]interface{})
 	stats["total_organisms"] = len(cs.OrganismMap)
-	
+
 	totalCells := 0
 	complexityLevels := make(map[int]int)
-	
+
 	for _, organism := range cs.OrganismMap {
 		totalCells += len(organism.Cells)
 		complexityLevels[organism.ComplexityLevel]++
 	}
-	
+
 	stats["total_cells"] = totalCells
 	stats["complexity_distribution"] = complexityLevels
 	stats["next_cell_id"] = cs.NextCellID
-	
+
 	return stats
 }

@@ -8,40 +8,40 @@ import (
 
 // EnvironmentalPressure represents a long-term environmental stress
 type EnvironmentalPressure struct {
-	ID          int                    `json:"id"`
-	Type        string                 `json:"type"`        // "climate_change", "pollution", "habitat_fragmentation", etc.
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Severity    float64                `json:"severity"`    // 0.0 to 1.0, how intense the pressure is
-	StartTick   int                    `json:"start_tick"`
-	Duration    int                    `json:"duration"`    // -1 for permanent
-	AffectedArea Position              `json:"affected_area"` // Center of affected region
-	Radius      float64                `json:"radius"`      // Radius of effect
-	Effects     map[string]interface{} `json:"effects"`     // Various effects this pressure causes
-	IsActive    bool                   `json:"is_active"`
+	ID           int                    `json:"id"`
+	Type         string                 `json:"type"` // "climate_change", "pollution", "habitat_fragmentation", etc.
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Severity     float64                `json:"severity"` // 0.0 to 1.0, how intense the pressure is
+	StartTick    int                    `json:"start_tick"`
+	Duration     int                    `json:"duration"`      // -1 for permanent
+	AffectedArea Position               `json:"affected_area"` // Center of affected region
+	Radius       float64                `json:"radius"`        // Radius of effect
+	Effects      map[string]interface{} `json:"effects"`       // Various effects this pressure causes
+	IsActive     bool                   `json:"is_active"`
 }
 
 // EnvironmentalPressureSystem manages long-term environmental pressures
 type EnvironmentalPressureSystem struct {
-	ActivePressures  []*EnvironmentalPressure `json:"active_pressures"`
-	PressureHistory  []*EnvironmentalPressure `json:"pressure_history"`
-	NextPressureID   int                      `json:"next_pressure_id"`
-	
+	ActivePressures []*EnvironmentalPressure `json:"active_pressures"`
+	PressureHistory []*EnvironmentalPressure `json:"pressure_history"`
+	NextPressureID  int                      `json:"next_pressure_id"`
+
 	// Configuration
 	MaxActivePressures     int     `json:"max_active_pressures"`
-	ClimateChangeRate      float64 `json:"climate_change_rate"`      // How quickly climate changes
-	PollutionAccumulation  float64 `json:"pollution_accumulation"`   // Rate of pollution buildup
-	FragmentationThreshold float64 `json:"fragmentation_threshold"`  // Population density threshold for fragmentation
+	ClimateChangeRate      float64 `json:"climate_change_rate"`     // How quickly climate changes
+	PollutionAccumulation  float64 `json:"pollution_accumulation"`  // Rate of pollution buildup
+	FragmentationThreshold float64 `json:"fragmentation_threshold"` // Population density threshold for fragmentation
 }
 
 // PressureType constants
 const (
-	PressureClimateChange       = "climate_change"
-	PressurePollution          = "pollution"
+	PressureClimateChange        = "climate_change"
+	PressurePollution            = "pollution"
 	PressureHabitatFragmentation = "habitat_fragmentation"
-	PressureInvasiveSpecies    = "invasive_species"
-	PressureResourceDepletion  = "resource_depletion"
-	PressureExtremeWeather     = "extreme_weather"
+	PressureInvasiveSpecies      = "invasive_species"
+	PressureResourceDepletion    = "resource_depletion"
+	PressureExtremeWeather       = "extreme_weather"
 )
 
 // NewEnvironmentalPressureSystem creates a new environmental pressure system
@@ -50,8 +50,8 @@ func NewEnvironmentalPressureSystem() *EnvironmentalPressureSystem {
 		ActivePressures:        make([]*EnvironmentalPressure, 0),
 		PressureHistory:        make([]*EnvironmentalPressure, 0),
 		NextPressureID:         1,
-		MaxActivePressures:     3,  // Maximum 3 active pressures at once
-		ClimateChangeRate:      0.001, // 0.1% change per tick
+		MaxActivePressures:     3,      // Maximum 3 active pressures at once
+		ClimateChangeRate:      0.001,  // 0.1% change per tick
 		PollutionAccumulation:  0.0005, // 0.05% pollution increase per tick
 		FragmentationThreshold: 0.1,    // 10% population density threshold
 	}
@@ -61,10 +61,10 @@ func NewEnvironmentalPressureSystem() *EnvironmentalPressureSystem {
 func (eps *EnvironmentalPressureSystem) Update(world *World, tick int) {
 	// Update existing pressures
 	eps.updateActivePressures(world, tick)
-	
+
 	// Potentially trigger new pressures
 	eps.evaluateNewPressures(world, tick)
-	
+
 	// Apply pressure effects to world
 	eps.applyPressureEffects(world, tick)
 }
@@ -73,7 +73,7 @@ func (eps *EnvironmentalPressureSystem) Update(world *World, tick int) {
 func (eps *EnvironmentalPressureSystem) updateActivePressures(world *World, tick int) {
 	for i := len(eps.ActivePressures) - 1; i >= 0; i-- {
 		pressure := eps.ActivePressures[i]
-		
+
 		// Check if pressure should end
 		if pressure.Duration > 0 {
 			pressure.Duration--
@@ -84,7 +84,7 @@ func (eps *EnvironmentalPressureSystem) updateActivePressures(world *World, tick
 				continue
 			}
 		}
-		
+
 		// Update pressure intensity based on type
 		switch pressure.Type {
 		case PressureClimateChange:
@@ -102,7 +102,7 @@ func (eps *EnvironmentalPressureSystem) evaluateNewPressures(world *World, tick 
 	if len(eps.ActivePressures) >= eps.MaxActivePressures {
 		return // Already at maximum
 	}
-	
+
 	// Climate change trigger - based on population density and energy usage
 	if rand.Float64() < 0.001 && !eps.hasPressureType(PressureClimateChange) {
 		totalPopulation := len(world.AllEntities) + len(world.AllPlants)
@@ -110,21 +110,21 @@ func (eps *EnvironmentalPressureSystem) evaluateNewPressures(world *World, tick 
 			eps.triggerClimateChange(world, tick)
 		}
 	}
-	
+
 	// Pollution trigger - based on civilization development
 	if rand.Float64() < 0.002 && !eps.hasPressureType(PressurePollution) {
 		if world.CivilizationSystem != nil && len(world.CivilizationSystem.Structures) > 20 {
 			eps.triggerPollution(world, tick)
 		}
 	}
-	
+
 	// Habitat fragmentation - based on entity distribution
 	if rand.Float64() < 0.003 && !eps.hasPressureType(PressureHabitatFragmentation) {
 		if eps.isPopulationFragmented(world) {
 			eps.triggerHabitatFragmentation(world, tick)
 		}
 	}
-	
+
 	// Resource depletion - based on ecosystem health
 	if rand.Float64() < 0.001 && !eps.hasPressureType(PressureResourceDepletion) {
 		if world.EcosystemMonitor != nil {
@@ -149,24 +149,24 @@ func (eps *EnvironmentalPressureSystem) hasPressureType(pressureType string) boo
 // triggerClimateChange creates a climate change pressure
 func (eps *EnvironmentalPressureSystem) triggerClimateChange(world *World, tick int) {
 	pressure := &EnvironmentalPressure{
-		ID:          eps.NextPressureID,
-		Type:        PressureClimateChange,
-		Name:        "Global Climate Change",
-		Description: "Rising temperatures and changing weather patterns affecting all biomes",
-		Severity:    0.3 + rand.Float64()*0.4, // 30-70% severity
-		StartTick:   tick,
-		Duration:    -1, // Permanent
+		ID:           eps.NextPressureID,
+		Type:         PressureClimateChange,
+		Name:         "Global Climate Change",
+		Description:  "Rising temperatures and changing weather patterns affecting all biomes",
+		Severity:     0.3 + rand.Float64()*0.4, // 30-70% severity
+		StartTick:    tick,
+		Duration:     -1,                                                              // Permanent
 		AffectedArea: Position{X: world.Config.Width / 2, Y: world.Config.Height / 2}, // Global center
-		Radius:      math.Max(world.Config.Width, world.Config.Height), // Global effect
+		Radius:       math.Max(world.Config.Width, world.Config.Height),               // Global effect
 		Effects: map[string]interface{}{
-			"temperature_change":    (rand.Float64() - 0.5) * 4.0, // ±2°C change
-			"precipitation_change":  (rand.Float64() - 0.5) * 0.6, // ±30% precipitation change
-			"biome_shift_rate":     0.02,                          // 2% chance of biome changes per tick
-			"extreme_weather_rate": 0.005,                         // Increased extreme weather
+			"temperature_change":   (rand.Float64() - 0.5) * 4.0, // ±2°C change
+			"precipitation_change": (rand.Float64() - 0.5) * 0.6, // ±30% precipitation change
+			"biome_shift_rate":     0.02,                         // 2% chance of biome changes per tick
+			"extreme_weather_rate": 0.005,                        // Increased extreme weather
 		},
 		IsActive: true,
 	}
-	
+
 	eps.NextPressureID++
 	eps.ActivePressures = append(eps.ActivePressures, pressure)
 }
@@ -175,26 +175,26 @@ func (eps *EnvironmentalPressureSystem) triggerClimateChange(world *World, tick 
 func (eps *EnvironmentalPressureSystem) triggerPollution(world *World, tick int) {
 	// Find area with highest civilization density
 	centerX, centerY := eps.findCivilizationCenter(world)
-	
+
 	pressure := &EnvironmentalPressure{
-		ID:          eps.NextPressureID,
-		Type:        PressurePollution,
-		Name:        "Environmental Pollution",
-		Description: "Toxic contamination spreading from industrial activities",
-		Severity:    0.2 + rand.Float64()*0.5, // 20-70% severity
-		StartTick:   tick,
-		Duration:    500 + rand.Intn(1000), // 500-1500 ticks
+		ID:           eps.NextPressureID,
+		Type:         PressurePollution,
+		Name:         "Environmental Pollution",
+		Description:  "Toxic contamination spreading from industrial activities",
+		Severity:     0.2 + rand.Float64()*0.5, // 20-70% severity
+		StartTick:    tick,
+		Duration:     500 + rand.Intn(1000), // 500-1500 ticks
 		AffectedArea: Position{X: centerX, Y: centerY},
-		Radius:      10.0 + rand.Float64()*15.0, // 10-25 unit radius
+		Radius:       10.0 + rand.Float64()*15.0, // 10-25 unit radius
 		Effects: map[string]interface{}{
 			"toxicity_increase":    0.1,  // 10% toxicity increase in affected area
 			"reproduction_penalty": 0.3,  // 30% reproduction penalty
-			"health_decay":        0.02, // 2% health decay per tick
-			"mutation_rate_bonus": 0.5,  // 50% increased mutation rate (adaptation pressure)
+			"health_decay":         0.02, // 2% health decay per tick
+			"mutation_rate_bonus":  0.5,  // 50% increased mutation rate (adaptation pressure)
 		},
 		IsActive: true,
 	}
-	
+
 	eps.NextPressureID++
 	eps.ActivePressures = append(eps.ActivePressures, pressure)
 }
@@ -202,24 +202,24 @@ func (eps *EnvironmentalPressureSystem) triggerPollution(world *World, tick int)
 // triggerHabitatFragmentation creates habitat fragmentation pressure
 func (eps *EnvironmentalPressureSystem) triggerHabitatFragmentation(world *World, tick int) {
 	pressure := &EnvironmentalPressure{
-		ID:          eps.NextPressureID,
-		Type:        PressureHabitatFragmentation,
-		Name:        "Habitat Fragmentation",
-		Description: "Landscape divided into isolated patches, disrupting natural movement",
-		Severity:    0.4 + rand.Float64()*0.4, // 40-80% severity
-		StartTick:   tick,
-		Duration:    -1, // Permanent structural change
+		ID:           eps.NextPressureID,
+		Type:         PressureHabitatFragmentation,
+		Name:         "Habitat Fragmentation",
+		Description:  "Landscape divided into isolated patches, disrupting natural movement",
+		Severity:     0.4 + rand.Float64()*0.4, // 40-80% severity
+		StartTick:    tick,
+		Duration:     -1, // Permanent structural change
 		AffectedArea: Position{X: world.Config.Width / 2, Y: world.Config.Height / 2},
-		Radius:      math.Max(world.Config.Width, world.Config.Height), // Global effect
+		Radius:       math.Max(world.Config.Width, world.Config.Height), // Global effect
 		Effects: map[string]interface{}{
 			"movement_penalty":     0.5,  // 50% movement penalty between patches
 			"migration_difficulty": 0.7,  // 70% more difficult migration
 			"genetic_isolation":    true, // Isolated populations evolve separately
-			"edge_effect":         0.3,   // 30% reduced resources at edges
+			"edge_effect":          0.3,  // 30% reduced resources at edges
 		},
 		IsActive: true,
 	}
-	
+
 	eps.NextPressureID++
 	eps.ActivePressures = append(eps.ActivePressures, pressure)
 }
@@ -227,24 +227,24 @@ func (eps *EnvironmentalPressureSystem) triggerHabitatFragmentation(world *World
 // triggerResourceDepletion creates resource depletion pressure
 func (eps *EnvironmentalPressureSystem) triggerResourceDepletion(world *World, tick int) {
 	pressure := &EnvironmentalPressure{
-		ID:          eps.NextPressureID,
-		Type:        PressureResourceDepletion,
-		Name:        "Resource Depletion Crisis",
-		Description: "Overharvesting has depleted critical ecosystem resources",
-		Severity:    0.5 + rand.Float64()*0.3, // 50-80% severity
-		StartTick:   tick,
-		Duration:    200 + rand.Intn(500), // 200-700 ticks recovery time
+		ID:           eps.NextPressureID,
+		Type:         PressureResourceDepletion,
+		Name:         "Resource Depletion Crisis",
+		Description:  "Overharvesting has depleted critical ecosystem resources",
+		Severity:     0.5 + rand.Float64()*0.3, // 50-80% severity
+		StartTick:    tick,
+		Duration:     200 + rand.Intn(500), // 200-700 ticks recovery time
 		AffectedArea: Position{X: world.Config.Width / 2, Y: world.Config.Height / 2},
-		Radius:      math.Max(world.Config.Width, world.Config.Height) * 0.7, // Most of world
+		Radius:       math.Max(world.Config.Width, world.Config.Height) * 0.7, // Most of world
 		Effects: map[string]interface{}{
-			"food_availability":   0.4, // 60% reduction in food availability
-			"water_scarcity":     0.3, // 70% reduction in water
-			"soil_depletion":     0.5, // 50% reduction in soil nutrients
-			"carrying_capacity":  0.6, // 40% reduction in carrying capacity
+			"food_availability": 0.4, // 60% reduction in food availability
+			"water_scarcity":    0.3, // 70% reduction in water
+			"soil_depletion":    0.5, // 50% reduction in soil nutrients
+			"carrying_capacity": 0.6, // 40% reduction in carrying capacity
 		},
 		IsActive: true,
 	}
-	
+
 	eps.NextPressureID++
 	eps.ActivePressures = append(eps.ActivePressures, pressure)
 }
@@ -256,20 +256,20 @@ func (eps *EnvironmentalPressureSystem) findCivilizationCenter(world *World) (fl
 	if world.CivilizationSystem == nil || len(world.CivilizationSystem.Structures) == 0 {
 		return world.Config.Width / 2, world.Config.Height / 2
 	}
-	
+
 	totalX, totalY := 0.0, 0.0
 	count := 0
-	
+
 	for _, structure := range world.CivilizationSystem.Structures {
 		totalX += structure.Position.X
 		totalY += structure.Position.Y
 		count++
 	}
-	
+
 	if count == 0 {
 		return world.Config.Width / 2, world.Config.Height / 2
 	}
-	
+
 	return totalX / float64(count), totalY / float64(count)
 }
 
@@ -278,11 +278,11 @@ func (eps *EnvironmentalPressureSystem) isPopulationFragmented(world *World) boo
 	if len(world.AllEntities) < 20 {
 		return false // Too small to fragment
 	}
-	
+
 	// Simple fragmentation check: count isolated groups
 	gridSize := 5.0 // Grid cell size for grouping
 	groups := make(map[string]int)
-	
+
 	for _, entity := range world.AllEntities {
 		if entity.IsAlive {
 			gridX := int(entity.Position.X / gridSize)
@@ -291,7 +291,7 @@ func (eps *EnvironmentalPressureSystem) isPopulationFragmented(world *World) boo
 			groups[key]++
 		}
 	}
-	
+
 	// If population is spread across many small groups, it's fragmented
 	avgGroupSize := float64(len(world.AllEntities)) / float64(len(groups))
 	return len(groups) > 5 && avgGroupSize < 3.0
@@ -342,12 +342,12 @@ func (eps *EnvironmentalPressureSystem) updateFragmentationPressure(pressure *En
 // applyClimateChangeEffects applies climate change effects to the world
 func (eps *EnvironmentalPressureSystem) applyClimateChangeEffects(pressure *EnvironmentalPressure, world *World, tick int) {
 	biomeShiftRate := pressure.Effects["biome_shift_rate"].(float64) * pressure.Severity
-	
+
 	// Random biome changes due to climate shift
 	if rand.Float64() < biomeShiftRate {
 		x := rand.Intn(world.Config.GridWidth)
 		y := rand.Intn(world.Config.GridHeight)
-		
+
 		// Shift towards warmer/dryer biomes
 		currentBiome := world.Grid[y][x].Biome
 		newBiome := eps.getClimateShiftedBiome(currentBiome)
@@ -355,7 +355,7 @@ func (eps *EnvironmentalPressureSystem) applyClimateChangeEffects(pressure *Envi
 			world.Grid[y][x].Biome = newBiome
 		}
 	}
-	
+
 	// Increase extreme weather events
 	extremeWeatherRate := pressure.Effects["extreme_weather_rate"].(float64) * pressure.Severity
 	if rand.Float64() < extremeWeatherRate {
@@ -368,7 +368,7 @@ func (eps *EnvironmentalPressureSystem) applyPollutionEffects(pressure *Environm
 	healthDecay := pressure.Effects["health_decay"].(float64) * pressure.Severity
 	reproductionPenalty := pressure.Effects["reproduction_penalty"].(float64) * pressure.Severity
 	mutationBonus := pressure.Effects["mutation_rate_bonus"].(float64) * pressure.Severity
-	
+
 	// Apply effects to entities in affected area
 	for _, entity := range world.AllEntities {
 		if entity.IsAlive && eps.isInAffectedArea(entity.Position, pressure) {
@@ -377,20 +377,20 @@ func (eps *EnvironmentalPressureSystem) applyPollutionEffects(pressure *Environm
 				currentHealth := healthTrait.Value
 				entity.Traits["health"] = Trait{Value: math.Max(0, currentHealth-healthDecay)}
 			}
-			
+
 			// Reproduction penalty (temporary trait modification)
 			if fertilityTrait, exists := entity.Traits["fertility"]; exists {
 				currentFertility := fertilityTrait.Value
 				entity.Traits["fertility"] = Trait{Value: math.Max(0, currentFertility*(1.0-reproductionPenalty))}
 			}
-			
+
 			// Increased mutation rate for adaptation - use energy as proxy for mutation stress
 			if entity.Energy > 0 {
 				entity.Energy *= (1.0 - mutationBonus*0.1) // Stress reduces energy
 			}
 		}
 	}
-	
+
 	// Apply effects to plants in affected area
 	for _, plant := range world.AllPlants {
 		if plant.IsAlive && eps.isInAffectedArea(plant.Position, pressure) {
@@ -404,7 +404,7 @@ func (eps *EnvironmentalPressureSystem) applyPollutionEffects(pressure *Environm
 // applyFragmentationEffects applies habitat fragmentation effects
 func (eps *EnvironmentalPressureSystem) applyFragmentationEffects(pressure *EnvironmentalPressure, world *World, tick int) {
 	movementPenalty := pressure.Effects["movement_penalty"].(float64) * pressure.Severity
-	
+
 	// Apply movement penalties to entities crossing "boundaries"
 	for _, entity := range world.AllEntities {
 		if entity.IsAlive {
@@ -421,7 +421,7 @@ func (eps *EnvironmentalPressureSystem) applyFragmentationEffects(pressure *Envi
 func (eps *EnvironmentalPressureSystem) applyResourceDepletionEffects(pressure *EnvironmentalPressure, world *World, tick int) {
 	foodReduction := 1.0 - pressure.Effects["food_availability"].(float64)
 	waterReduction := 1.0 - pressure.Effects["water_scarcity"].(float64)
-	
+
 	// Reduce available resources in grid cells
 	for y := 0; y < world.Config.GridHeight; y++ {
 		for x := 0; x < world.Config.GridWidth; x++ {
@@ -429,7 +429,7 @@ func (eps *EnvironmentalPressureSystem) applyResourceDepletionEffects(pressure *
 			if eps.isInAffectedArea(cellPos, pressure) {
 				cell := &world.Grid[y][x]
 				cell.WaterLevel *= (1.0 - waterReduction*pressure.Severity)
-				
+
 				// Reduce soil nutrients
 				for nutrient, level := range cell.SoilNutrients {
 					cell.SoilNutrients[nutrient] = level * (1.0 - foodReduction*pressure.Severity*0.5)
@@ -474,10 +474,10 @@ func (eps *EnvironmentalPressureSystem) getClimateShiftedBiome(currentBiome Biom
 // GetPressureStats returns statistics about active pressures
 func (eps *EnvironmentalPressureSystem) GetPressureStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	stats["active_pressures"] = len(eps.ActivePressures)
 	stats["total_pressure_history"] = len(eps.PressureHistory)
-	
+
 	// Count by type
 	typeCount := make(map[string]int)
 	totalSeverity := 0.0
@@ -485,13 +485,13 @@ func (eps *EnvironmentalPressureSystem) GetPressureStats() map[string]interface{
 		typeCount[pressure.Type]++
 		totalSeverity += pressure.Severity
 	}
-	
+
 	stats["pressure_types"] = typeCount
 	if len(eps.ActivePressures) > 0 {
 		stats["average_severity"] = totalSeverity / float64(len(eps.ActivePressures))
 	} else {
 		stats["average_severity"] = 0.0
 	}
-	
+
 	return stats
 }

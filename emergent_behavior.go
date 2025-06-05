@@ -8,33 +8,33 @@ import (
 
 // EmergentBehaviorSystem manages emergent behaviors that can develop naturally
 type EmergentBehaviorSystem struct {
-	BehaviorPatterns map[int]*BehaviorPattern `json:"behavior_patterns"` // Entity ID -> Behavior Pattern
+	BehaviorPatterns map[int]*BehaviorPattern    `json:"behavior_patterns"` // Entity ID -> Behavior Pattern
 	LearnedBehaviors map[string]*LearnedBehavior `json:"learned_behaviors"` // Behavior name -> Learned Behavior
 	NextBehaviorID   int                         `json:"next_behavior_id"`
 }
 
 // BehaviorPattern represents an entity's learned behavior pattern
 type BehaviorPattern struct {
-	EntityID          int                        `json:"entity_id"`
-	KnownBehaviors    map[string]float64         `json:"known_behaviors"`     // Behavior name -> proficiency
-	PreferredActions  []string                   `json:"preferred_actions"`
-	LearningRate      float64                    `json:"learning_rate"`
-	Curiosity         float64                    `json:"curiosity"`
-	ExplorationTendency float64                  `json:"exploration_tendency"`
-	SocialLearning    bool                       `json:"social_learning"`     // Can learn from others
-	ToolPreferences   map[ToolType]float64       `json:"tool_preferences"`    // Tool type -> preference score
+	EntityID            int                  `json:"entity_id"`
+	KnownBehaviors      map[string]float64   `json:"known_behaviors"` // Behavior name -> proficiency
+	PreferredActions    []string             `json:"preferred_actions"`
+	LearningRate        float64              `json:"learning_rate"`
+	Curiosity           float64              `json:"curiosity"`
+	ExplorationTendency float64              `json:"exploration_tendency"`
+	SocialLearning      bool                 `json:"social_learning"`  // Can learn from others
+	ToolPreferences     map[ToolType]float64 `json:"tool_preferences"` // Tool type -> preference score
 }
 
 // LearnedBehavior represents a behavior that has been discovered and can spread
 type LearnedBehavior struct {
-	Name            string    `json:"name"`
-	Discoverer      *Entity   `json:"-"`
-	DiscoveredTick  int       `json:"discovered_tick"`
-	Complexity      float64   `json:"complexity"`        // How hard it is to learn
-	Effectiveness   float64   `json:"effectiveness"`     // How beneficial it is
-	Prerequisites   []string  `json:"prerequisites"`     // Required skills/behaviors
-	Spread          int       `json:"spread"`            // How many entities know it
-	Description     string    `json:"description"`
+	Name           string   `json:"name"`
+	Discoverer     *Entity  `json:"-"`
+	DiscoveredTick int      `json:"discovered_tick"`
+	Complexity     float64  `json:"complexity"`    // How hard it is to learn
+	Effectiveness  float64  `json:"effectiveness"` // How beneficial it is
+	Prerequisites  []string `json:"prerequisites"` // Required skills/behaviors
+	Spread         int      `json:"spread"`        // How many entities know it
+	Description    string   `json:"description"`
 }
 
 // NewEmergentBehaviorSystem creates a new emergent behavior system
@@ -44,10 +44,10 @@ func NewEmergentBehaviorSystem() *EmergentBehaviorSystem {
 		LearnedBehaviors: make(map[string]*LearnedBehavior),
 		NextBehaviorID:   1,
 	}
-	
+
 	// Initialize some basic discoverable behaviors
 	ebs.initializeBasicBehaviors()
-	
+
 	return ebs
 }
 
@@ -111,7 +111,7 @@ func (ebs *EmergentBehaviorSystem) initializeBasicBehaviors() {
 			Description:   "Improving existing tools for better performance",
 		},
 	}
-	
+
 	for _, behavior := range behaviors {
 		ebs.LearnedBehaviors[behavior.Name] = &behavior
 	}
@@ -124,21 +124,21 @@ func (ebs *EmergentBehaviorSystem) InitializeEntityBehavior(entity *Entity) {
 		EntityID:            entity.ID,
 		KnownBehaviors:      make(map[string]float64),
 		PreferredActions:    make([]string, 0),
-		LearningRate:        0.25 + entity.GetTrait("intelligence") * 0.5, // Improved base rate
+		LearningRate:        0.25 + entity.GetTrait("intelligence")*0.5, // Improved base rate
 		Curiosity:           entity.GetTrait("curiosity"),
-		ExplorationTendency: entity.GetTrait("curiosity") * 0.8, // Further increased exploration
+		ExplorationTendency: entity.GetTrait("curiosity") * 0.8,    // Further increased exploration
 		SocialLearning:      entity.GetTrait("cooperation") > 0.15, // Further lowered threshold
 		ToolPreferences:     make(map[ToolType]float64),
 	}
-	
+
 	// Initialize tool preferences based on traits with better scaling
-	pattern.ToolPreferences[ToolStone] = 0.3 + entity.GetTrait("strength") * 0.5
-	pattern.ToolPreferences[ToolSpear] = 0.2 + entity.GetTrait("aggression") * 0.6
-	pattern.ToolPreferences[ToolDigger] = 0.2 + entity.GetTrait("intelligence") * 0.5
-	pattern.ToolPreferences[ToolContainer] = 0.3 + entity.GetTrait("cooperation") * 0.4
-	pattern.ToolPreferences[ToolHammer] = 0.2 + entity.GetTrait("strength") * 0.4
-	pattern.ToolPreferences[ToolBlade] = 0.1 + entity.GetTrait("aggression") * 0.5
-	
+	pattern.ToolPreferences[ToolStone] = 0.3 + entity.GetTrait("strength")*0.5
+	pattern.ToolPreferences[ToolSpear] = 0.2 + entity.GetTrait("aggression")*0.6
+	pattern.ToolPreferences[ToolDigger] = 0.2 + entity.GetTrait("intelligence")*0.5
+	pattern.ToolPreferences[ToolContainer] = 0.3 + entity.GetTrait("cooperation")*0.4
+	pattern.ToolPreferences[ToolHammer] = 0.2 + entity.GetTrait("strength")*0.4
+	pattern.ToolPreferences[ToolBlade] = 0.1 + entity.GetTrait("aggression")*0.5
+
 	ebs.BehaviorPatterns[entity.ID] = pattern
 }
 
@@ -148,25 +148,25 @@ func (ebs *EmergentBehaviorSystem) UpdateEntityBehaviors(world *World) {
 		if !entity.IsAlive {
 			continue
 		}
-		
+
 		pattern, exists := ebs.BehaviorPatterns[entity.ID]
 		if !exists {
 			ebs.InitializeEntityBehavior(entity)
 			pattern = ebs.BehaviorPatterns[entity.ID]
 		}
-		
+
 		// Try to discover new behaviors - enhanced discovery rate
 		discoveryRate := pattern.Curiosity * entity.GetTrait("intelligence") * 0.03 // Increased rate
 		if rand.Float64() < discoveryRate {
 			ebs.attemptBehaviorDiscovery(entity, pattern, world)
 		}
-		
+
 		// Try to learn from nearby entities - enhanced social learning
 		socialRate := pattern.Curiosity * entity.GetTrait("cooperation") * 0.12 // Increased rate
 		if pattern.SocialLearning && rand.Float64() < socialRate {
 			ebs.attemptSocialLearning(entity, pattern, world)
 		}
-		
+
 		// Execute learned behaviors
 		ebs.executeEntityBehaviors(entity, pattern, world)
 	}
@@ -179,7 +179,7 @@ func (ebs *EmergentBehaviorSystem) attemptBehaviorDiscovery(entity *Entity, patt
 		if pattern.KnownBehaviors[behaviorName] > 0.0 {
 			continue
 		}
-		
+
 		// Check prerequisites
 		hasPrerequisites := true
 		for _, prereq := range behavior.Prerequisites {
@@ -188,23 +188,23 @@ func (ebs *EmergentBehaviorSystem) attemptBehaviorDiscovery(entity *Entity, patt
 				break
 			}
 		}
-		
+
 		if !hasPrerequisites {
 			continue
 		}
-		
+
 		// Check if entity has sufficient intelligence to discover this behavior
 		intelligence := entity.GetTrait("intelligence")
-		curiosityBonus := pattern.Curiosity * 0.6 // Increased curiosity bonus
+		curiosityBonus := pattern.Curiosity * 0.6                                       // Increased curiosity bonus
 		discoveryChance := (intelligence - behavior.Complexity + curiosityBonus) * 0.18 // Increased discovery multiplier
-		
+
 		if discoveryChance > 0 && rand.Float64() < discoveryChance {
 			// Successfully discovered behavior!
 			pattern.KnownBehaviors[behaviorName] = 0.15 // Start with higher proficiency
 			behavior.Spread++
-			
+
 			// Log the discovery
-			world.EventLogger.LogWorldEvent(world.Tick, "Behavior Discovery", 
+			world.EventLogger.LogWorldEvent(world.Tick, "Behavior Discovery",
 				fmt.Sprintf("Entity %d discovered %s", entity.ID, behaviorName))
 		}
 	}
@@ -217,41 +217,41 @@ func (ebs *EmergentBehaviorSystem) attemptSocialLearning(entity *Entity, pattern
 		if other.ID == entity.ID || !other.IsAlive {
 			continue
 		}
-		
+
 		// Check if nearby
-		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) + 
-							 math.Pow(entity.Position.Y-other.Position.Y, 2))
-		
+		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) +
+			math.Pow(entity.Position.Y-other.Position.Y, 2))
+
 		if distance > 5.0 {
 			continue
 		}
-		
+
 		// Get other entity's behavior pattern
 		otherPattern, exists := ebs.BehaviorPatterns[other.ID]
 		if !exists {
 			continue
 		}
-		
+
 		// Try to learn behaviors the other entity knows
 		for behaviorName, otherProficiency := range otherPattern.KnownBehaviors {
 			if otherProficiency <= 0.03 { // Further lowered threshold for learning
 				continue
 			}
-			
+
 			myProficiency := pattern.KnownBehaviors[behaviorName]
 			if myProficiency >= otherProficiency { // Can't learn from less skilled
 				continue
 			}
-			
+
 			// Learning chance based on cooperation and intelligence - further increased rates
 			baseChance := entity.GetTrait("cooperation") * entity.GetTrait("intelligence") * 0.12 // Increased
-			proximityBonus := math.Max(0, (5.0 - distance) / 5.0) * 0.05 // Increased proximity bonus
+			proximityBonus := math.Max(0, (5.0-distance)/5.0) * 0.05                              // Increased proximity bonus
 			learningChance := baseChance + proximityBonus
-			
+
 			if rand.Float64() < learningChance {
 				// Learn a bit of the behavior - increased learning rate
 				improvement := pattern.LearningRate * 0.2 // Increased improvement rate
-				pattern.KnownBehaviors[behaviorName] = math.Min(otherProficiency, myProficiency + improvement)
+				pattern.KnownBehaviors[behaviorName] = math.Min(otherProficiency, myProficiency+improvement)
 			}
 		}
 	}
@@ -262,21 +262,21 @@ func (ebs *EmergentBehaviorSystem) executeEntityBehaviors(entity *Entity, patter
 	// Prioritize behaviors based on current needs and proficiency
 	bestBehavior := ""
 	bestScore := 0.0
-	
+
 	for behaviorName, proficiency := range pattern.KnownBehaviors {
 		if proficiency < 0.1 {
 			continue
 		}
-		
+
 		// Calculate behavior score based on current situation
 		score := ebs.calculateBehaviorScore(entity, behaviorName, proficiency, world)
-		
+
 		if score > bestScore {
 			bestScore = score
 			bestBehavior = behaviorName
 		}
 	}
-	
+
 	// Further lowered threshold to make behaviors more likely to be executed early
 	if bestBehavior != "" && bestScore > 0.15 {
 		ebs.executeBehavior(entity, bestBehavior, pattern, world)
@@ -286,7 +286,7 @@ func (ebs *EmergentBehaviorSystem) executeEntityBehaviors(entity *Entity, patter
 // calculateBehaviorScore determines how valuable a behavior is in the current situation
 func (ebs *EmergentBehaviorSystem) calculateBehaviorScore(entity *Entity, behaviorName string, proficiency float64, world *World) float64 {
 	score := proficiency * 0.5 // Base score from proficiency
-	
+
 	switch behaviorName {
 	case "tool_making":
 		// More valuable if entity has no tools or poor tools
@@ -301,45 +301,45 @@ func (ebs *EmergentBehaviorSystem) calculateBehaviorScore(entity *Entity, behavi
 			avgEfficiency /= float64(len(tools))
 			score += (1.0 - avgEfficiency) * 0.6
 		}
-		
+
 	case "tunnel_digging":
 		// More valuable in dangerous areas or for entities with high aggression nearby
 		nearbyDanger := ebs.assessNearbyDanger(entity, world)
 		score += nearbyDanger * 0.7
-		
+
 	case "cache_hiding":
 		// More valuable when entity has excess energy
 		if entity.Energy > 80.0 {
 			score += 0.6
 		}
-		
+
 	case "trap_setting":
 		// More valuable for aggressive entities or when food is scarce
 		aggression := entity.GetTrait("aggression")
 		score += aggression * 0.5
-		
+
 		// Check if food is scarce
 		nearbyPlants := ebs.countNearbyResources(entity, world)
 		if nearbyPlants < 3 {
 			score += 0.4
 		}
-		
+
 	case "path_making":
 		// More valuable if entity travels frequently
 		score += entity.GetTrait("speed") * 0.3
-		
+
 	case "cooperative_building":
 		// More valuable if entity is in a tribe with others
 		cooperation := entity.GetTrait("cooperation")
 		nearbyAllies := ebs.countNearbyAllies(entity, world)
 		score += cooperation * float64(nearbyAllies) * 0.2
-		
+
 	case "resource_sharing":
 		// More valuable if entity has high cooperation and others nearby are low on energy
 		cooperation := entity.GetTrait("cooperation")
 		needyAllies := ebs.countNeedyAllies(entity, world)
 		score += cooperation * float64(needyAllies) * 0.3
-		
+
 	case "tool_modification":
 		// More valuable if entity has tools that could be improved
 		tools := world.ToolSystem.GetEntityTools(entity)
@@ -350,14 +350,14 @@ func (ebs *EmergentBehaviorSystem) calculateBehaviorScore(entity *Entity, behavi
 			}
 		}
 	}
-	
+
 	return math.Max(0.0, score)
 }
 
 // executeBehavior performs the chosen behavior
 func (ebs *EmergentBehaviorSystem) executeBehavior(entity *Entity, behaviorName string, pattern *BehaviorPattern, world *World) {
 	proficiency := pattern.KnownBehaviors[behaviorName]
-	
+
 	switch behaviorName {
 	case "tool_making":
 		// Try to create a tool based on preferences and situation
@@ -366,34 +366,34 @@ func (ebs *EmergentBehaviorSystem) executeBehavior(entity *Entity, behaviorName 
 			tool := world.ToolSystem.CreateTool(entity, ToolType(bestToolType), entity.Position)
 			if tool != nil {
 				// Improve proficiency through practice
-				pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency + 0.05)
+				pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency+0.05)
 			}
 		}
-		
+
 	case "tunnel_digging":
 		// Create a tunnel for protection
 		direction := rand.Float64() * 2 * math.Pi
 		length := 3.0 + proficiency*5.0
 		tunnel := world.EnvironmentalModSystem.CreateTunnel(entity, entity.Position, direction, length)
 		if tunnel != nil {
-			pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency + 0.03)
+			pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency+0.03)
 		}
-		
+
 	case "cache_hiding":
 		// Create a cache to store resources
 		cache := world.EnvironmentalModSystem.CreateCache(entity, entity.Position)
 		if cache != nil {
-			pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency + 0.04)
+			pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency+0.04)
 		}
-		
+
 	case "trap_setting":
 		// Set a trap near a resource area
 		trapPos := ebs.findGoodTrapLocation(entity, world)
 		trap := world.EnvironmentalModSystem.CreateTrap(entity, trapPos, "basic")
 		if trap != nil {
-			pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency + 0.02)
+			pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency+0.02)
 		}
-		
+
 	case "tool_modification":
 		// Try to improve an existing tool
 		tools := world.ToolSystem.GetEntityTools(entity)
@@ -402,7 +402,7 @@ func (ebs *EmergentBehaviorSystem) executeBehavior(entity *Entity, behaviorName 
 			modificationType := ModificationType(rand.Intn(6)) // Random modification type
 			success := world.ToolSystem.ModifyTool(tool, entity, modificationType)
 			if success {
-				pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency + 0.03)
+				pattern.KnownBehaviors[behaviorName] = math.Min(1.0, proficiency+0.03)
 			}
 		}
 	}
@@ -416,10 +416,10 @@ func (ebs *EmergentBehaviorSystem) assessNearbyDanger(entity *Entity, world *Wor
 		if other.ID == entity.ID || !other.IsAlive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) + 
-							 math.Pow(entity.Position.Y-other.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) +
+			math.Pow(entity.Position.Y-other.Position.Y, 2))
+
 		if distance < 10.0 {
 			otherAggression := other.GetTrait("aggression")
 			danger += otherAggression / (distance + 1.0)
@@ -434,10 +434,10 @@ func (ebs *EmergentBehaviorSystem) countNearbyResources(entity *Entity, world *W
 		if !plant.IsAlive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(entity.Position.X-plant.Position.X, 2) + 
-							 math.Pow(entity.Position.Y-plant.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(entity.Position.X-plant.Position.X, 2) +
+			math.Pow(entity.Position.Y-plant.Position.Y, 2))
+
 		if distance < 8.0 {
 			count++
 		}
@@ -448,15 +448,15 @@ func (ebs *EmergentBehaviorSystem) countNearbyResources(entity *Entity, world *W
 func (ebs *EmergentBehaviorSystem) countNearbyAllies(entity *Entity, world *World) int {
 	count := 0
 	myCooperation := entity.GetTrait("cooperation")
-	
+
 	for _, other := range world.AllEntities {
 		if other.ID == entity.ID || !other.IsAlive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) + 
-							 math.Pow(entity.Position.Y-other.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) +
+			math.Pow(entity.Position.Y-other.Position.Y, 2))
+
 		if distance < 6.0 {
 			otherCooperation := other.GetTrait("cooperation")
 			if myCooperation > 0.5 && otherCooperation > 0.5 {
@@ -470,15 +470,15 @@ func (ebs *EmergentBehaviorSystem) countNearbyAllies(entity *Entity, world *Worl
 func (ebs *EmergentBehaviorSystem) countNeedyAllies(entity *Entity, world *World) int {
 	count := 0
 	myCooperation := entity.GetTrait("cooperation")
-	
+
 	for _, other := range world.AllEntities {
 		if other.ID == entity.ID || !other.IsAlive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) + 
-							 math.Pow(entity.Position.Y-other.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(entity.Position.X-other.Position.X, 2) +
+			math.Pow(entity.Position.Y-other.Position.Y, 2))
+
 		if distance < 6.0 && other.Energy < 40.0 {
 			otherCooperation := other.GetTrait("cooperation")
 			if myCooperation > 0.5 && otherCooperation > 0.5 {
@@ -492,20 +492,20 @@ func (ebs *EmergentBehaviorSystem) countNeedyAllies(entity *Entity, world *World
 func (ebs *EmergentBehaviorSystem) chooseBestToolType(entity *Entity, pattern *BehaviorPattern, world *World) int {
 	bestScore := 0.0
 	bestType := -1
-	
+
 	for toolType, preference := range pattern.ToolPreferences {
 		// Check if entity can create this tool type
 		recipe, exists := world.ToolSystem.ToolRecipes[toolType]
 		if !exists {
 			continue
 		}
-		
+
 		if entity.GetTrait("intelligence") < recipe.RequiredSkill || entity.Energy < recipe.RequiredEnergy {
 			continue
 		}
-		
+
 		score := preference
-		
+
 		// Bonus for tools entity doesn't have
 		hasThisType := false
 		for _, tool := range world.ToolSystem.GetEntityTools(entity) {
@@ -514,17 +514,17 @@ func (ebs *EmergentBehaviorSystem) chooseBestToolType(entity *Entity, pattern *B
 				break
 			}
 		}
-		
+
 		if !hasThisType {
 			score += 0.5
 		}
-		
+
 		if score > bestScore {
 			bestScore = score
 			bestType = int(toolType)
 		}
 	}
-	
+
 	return bestType
 }
 
@@ -532,50 +532,50 @@ func (ebs *EmergentBehaviorSystem) findGoodTrapLocation(entity *Entity, world *W
 	// Find a location near resources but not too close to entity
 	bestPos := entity.Position
 	bestScore := 0.0
-	
+
 	for i := 0; i < 10; i++ {
 		angle := rand.Float64() * 2 * math.Pi
 		distance := 3.0 + rand.Float64()*5.0
-		
+
 		testPos := Position{
 			X: entity.Position.X + math.Cos(angle)*distance,
 			Y: entity.Position.Y + math.Sin(angle)*distance,
 		}
-		
+
 		// Count nearby resources
 		resourceCount := 0
 		for _, plant := range world.AllPlants {
 			if !plant.IsAlive {
 				continue
 			}
-			
-			plantDistance := math.Sqrt(math.Pow(testPos.X-plant.Position.X, 2) + 
-									  math.Pow(testPos.Y-plant.Position.Y, 2))
-			
+
+			plantDistance := math.Sqrt(math.Pow(testPos.X-plant.Position.X, 2) +
+				math.Pow(testPos.Y-plant.Position.Y, 2))
+
 			if plantDistance < 4.0 {
 				resourceCount++
 			}
 		}
-		
+
 		score := float64(resourceCount)
 		if score > bestScore {
 			bestScore = score
 			bestPos = testPos
 		}
 	}
-	
+
 	return bestPos
 }
 
 // GetBehaviorStats returns statistics about emergent behaviors
 func (ebs *EmergentBehaviorSystem) GetBehaviorStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	totalEntities := len(ebs.BehaviorPatterns)
 	avgProficiency := make(map[string]float64)
 	behaviorCounts := make(map[string]int)
 	actuallyDiscoveredCount := 0
-	
+
 	for _, pattern := range ebs.BehaviorPatterns {
 		for behaviorName, proficiency := range pattern.KnownBehaviors {
 			if proficiency > 0.0 {
@@ -584,25 +584,25 @@ func (ebs *EmergentBehaviorSystem) GetBehaviorStats() map[string]interface{} {
 			}
 		}
 	}
-	
+
 	// Count only behaviors that have actually been discovered (not pre-initialized)
 	for _, behavior := range ebs.LearnedBehaviors {
 		if behavior.DiscoveredTick > 0 {
 			actuallyDiscoveredCount++
 		}
 	}
-	
+
 	// Calculate averages
 	for behaviorName, total := range avgProficiency {
 		if behaviorCounts[behaviorName] > 0 {
 			avgProficiency[behaviorName] = total / float64(behaviorCounts[behaviorName])
 		}
 	}
-	
+
 	stats["total_entities"] = totalEntities
 	stats["behavior_spread"] = behaviorCounts
 	stats["avg_proficiency"] = avgProficiency
 	stats["discovered_behaviors"] = actuallyDiscoveredCount
-	
+
 	return stats
 }

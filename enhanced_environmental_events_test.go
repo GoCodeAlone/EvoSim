@@ -17,18 +17,18 @@ func TestEnhancedEnvironmentalEvents(t *testing.T) {
 
 	// Test triggering enhanced environmental events
 	initialEventCount := len(world.EnvironmentalEvents)
-	
+
 	// Trigger a few different types of events
 	world.triggerEnhancedEnvironmentalEvent()
 	world.triggerEnhancedEnvironmentalEvent()
 	world.triggerEnhancedEnvironmentalEvent()
-	
+
 	if len(world.EnvironmentalEvents) <= initialEventCount {
 		t.Error("Enhanced environmental events should have been created")
 	}
-	
+
 	t.Logf("Created %d enhanced environmental events", len(world.EnvironmentalEvents)-initialEventCount)
-	
+
 	// Test that events have proper properties
 	for _, event := range world.EnvironmentalEvents {
 		if event.ID == 0 {
@@ -43,8 +43,8 @@ func TestEnhancedEnvironmentalEvents(t *testing.T) {
 		if event.Position.X < 0 || event.Position.Y < 0 {
 			t.Error("Event should have valid position")
 		}
-		
-		t.Logf("Event: %s at (%.1f, %.1f), duration: %d, intensity: %.2f", 
+
+		t.Logf("Event: %s at (%.1f, %.1f), duration: %d, intensity: %.2f",
 			event.Name, event.Position.X, event.Position.Y, event.Duration, event.Intensity)
 	}
 }
@@ -90,7 +90,7 @@ func TestFireSpreadWithWind(t *testing.T) {
 	// Record initial state
 	initialAffectedCells := len(fire.AffectedCells)
 	initialPosition := fire.Position
-	
+
 	// Update fire spread several times
 	for i := 0; i < 5; i++ {
 		world.updateEnhancedEnvironmentalEvents()
@@ -103,11 +103,11 @@ func TestFireSpreadWithWind(t *testing.T) {
 
 	// Check that fire moved (should move due to wind)
 	finalPosition := fire.Position
-	distance := (finalPosition.X-initialPosition.X)*(finalPosition.X-initialPosition.X) + 
-	            (finalPosition.Y-initialPosition.Y)*(finalPosition.Y-initialPosition.Y)
-	
+	distance := (finalPosition.X-initialPosition.X)*(finalPosition.X-initialPosition.X) +
+		(finalPosition.Y-initialPosition.Y)*(finalPosition.Y-initialPosition.Y)
+
 	if distance > 0 {
-		t.Logf("Fire moved from (%.1f, %.1f) to (%.1f, %.1f)", 
+		t.Logf("Fire moved from (%.1f, %.1f) to (%.1f, %.1f)",
 			initialPosition.X, initialPosition.Y, finalPosition.X, finalPosition.Y)
 	}
 
@@ -118,7 +118,7 @@ func TestFireSpreadWithWind(t *testing.T) {
 			desertCount++
 		}
 	}
-	
+
 	if desertCount > 0 {
 		t.Logf("Fire created %d desert cells from burned forest", desertCount)
 	}
@@ -167,7 +167,7 @@ func TestFireExtinguishing(t *testing.T) {
 	world.EnvironmentalEvents = append(world.EnvironmentalEvents, fire)
 
 	initialIntensity := fire.Intensity
-	
+
 	// Update fire - it should encounter water and reduce intensity
 	for i := 0; i < 10; i++ {
 		world.updateEnhancedEnvironmentalEvents()
@@ -175,7 +175,7 @@ func TestFireExtinguishing(t *testing.T) {
 
 	// Fire intensity should have decreased when encountering water
 	if fire.Intensity < initialIntensity {
-		t.Logf("Fire intensity reduced from %.2f to %.2f when encountering water", 
+		t.Logf("Fire intensity reduced from %.2f to %.2f when encountering water",
 			initialIntensity, fire.Intensity)
 	}
 }
@@ -216,13 +216,13 @@ func TestEventEffectsOnEntities(t *testing.T) {
 	world.EnvironmentalEvents = append(world.EnvironmentalEvents, event)
 
 	initialEnergy := entity.Energy
-	
+
 	// Apply event effects
 	world.applyEventEffects(event)
 
 	// Entity should have taken damage
 	if entity.Energy < initialEnergy {
-		t.Logf("Entity energy reduced from %.1f to %.1f due to volcanic eruption", 
+		t.Logf("Entity energy reduced from %.1f to %.1f due to volcanic eruption",
 			initialEnergy, entity.Energy)
 	} else {
 		t.Error("Entity should have taken damage from environmental event")
@@ -261,20 +261,20 @@ func TestStormMovement(t *testing.T) {
 	world.EnvironmentalEvents = append(world.EnvironmentalEvents, storm)
 
 	initialPosition := storm.Position
-	
+
 	// Update storm movement
 	for i := 0; i < 5; i++ {
 		world.updateEnhancedEnvironmentalEvents()
 	}
 
 	finalPosition := storm.Position
-	
+
 	// Storm should have moved
-	distance := (finalPosition.X-initialPosition.X)*(finalPosition.X-initialPosition.X) + 
-	            (finalPosition.Y-initialPosition.Y)*(finalPosition.Y-initialPosition.Y)
-	
+	distance := (finalPosition.X-initialPosition.X)*(finalPosition.X-initialPosition.X) +
+		(finalPosition.Y-initialPosition.Y)*(finalPosition.Y-initialPosition.Y)
+
 	if distance > 0 {
-		t.Logf("Storm moved from (%.1f, %.1f) to (%.1f, %.1f)", 
+		t.Logf("Storm moved from (%.1f, %.1f) to (%.1f, %.1f)",
 			initialPosition.X, initialPosition.Y, finalPosition.X, finalPosition.Y)
 	} else {
 		t.Log("Storm position did not change significantly")

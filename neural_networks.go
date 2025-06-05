@@ -17,11 +17,11 @@ const (
 
 // Neuron represents a single neuron in the network
 type Neuron struct {
-	ID          int       `json:"id"`
-	Value       float64   `json:"value"`        // Current activation value
-	Bias        float64   `json:"bias"`         // Neuron bias
-	Layer       int       `json:"layer"`        // Which layer this neuron belongs to
-	Activation  string    `json:"activation"`   // Activation function type
+	ID          int        `json:"id"`
+	Value       float64    `json:"value"`       // Current activation value
+	Bias        float64    `json:"bias"`        // Neuron bias
+	Layer       int        `json:"layer"`       // Which layer this neuron belongs to
+	Activation  string     `json:"activation"`  // Activation function type
 	Connections []*Synapse `json:"connections"` // Outgoing connections
 }
 
@@ -30,77 +30,77 @@ type Synapse struct {
 	FromNeuronID int     `json:"from_neuron_id"`
 	ToNeuronID   int     `json:"to_neuron_id"`
 	Weight       float64 `json:"weight"`
-	Strength     float64 `json:"strength"`     // Connection strength (can change over time)
-	LastActive   int     `json:"last_active"`  // Last tick this synapse was used
+	Strength     float64 `json:"strength"`    // Connection strength (can change over time)
+	LastActive   int     `json:"last_active"` // Last tick this synapse was used
 }
 
 // EntityNeuralNetwork represents a complete neural network for an entity
 type EntityNeuralNetwork struct {
-	ID               int                     `json:"id"`
-	EntityID         int                     `json:"entity_id"`
-	Type             NeuralNetworkType       `json:"type"`
-	Neurons          map[int]*Neuron         `json:"neurons"`
-	InputNeurons     []int                   `json:"input_neurons"`   // IDs of input neurons
-	OutputNeurons    []int                   `json:"output_neurons"`  // IDs of output neurons
-	HiddenLayers     [][]int                 `json:"hidden_layers"`   // Hidden layer neuron IDs
-	LearningRate     float64                 `json:"learning_rate"`
-	Architecture     string                  `json:"architecture"`    // Description of network structure
-	Experience       float64                 `json:"experience"`      // Total learning experience
-	Adaptability     float64                 `json:"adaptability"`    // How quickly the network adapts
-	CreatedTick      int                     `json:"created_tick"`
-	LastUpdateTick   int                     `json:"last_update_tick"`
-	
+	ID             int               `json:"id"`
+	EntityID       int               `json:"entity_id"`
+	Type           NeuralNetworkType `json:"type"`
+	Neurons        map[int]*Neuron   `json:"neurons"`
+	InputNeurons   []int             `json:"input_neurons"`  // IDs of input neurons
+	OutputNeurons  []int             `json:"output_neurons"` // IDs of output neurons
+	HiddenLayers   [][]int           `json:"hidden_layers"`  // Hidden layer neuron IDs
+	LearningRate   float64           `json:"learning_rate"`
+	Architecture   string            `json:"architecture"` // Description of network structure
+	Experience     float64           `json:"experience"`   // Total learning experience
+	Adaptability   float64           `json:"adaptability"` // How quickly the network adapts
+	CreatedTick    int               `json:"created_tick"`
+	LastUpdateTick int               `json:"last_update_tick"`
+
 	// Learning and memory
-	RecentInputs     [][]float64             `json:"recent_inputs"`   // Recent input patterns
-	RecentOutputs    [][]float64             `json:"recent_outputs"`  // Recent output patterns
-	SuccessfulActions map[string]float64     `json:"successful_actions"` // Action -> success rate
-	BehaviorPatterns  map[string]int         `json:"behavior_patterns"` // Pattern -> frequency
-	
+	RecentInputs      [][]float64        `json:"recent_inputs"`      // Recent input patterns
+	RecentOutputs     [][]float64        `json:"recent_outputs"`     // Recent output patterns
+	SuccessfulActions map[string]float64 `json:"successful_actions"` // Action -> success rate
+	BehaviorPatterns  map[string]int     `json:"behavior_patterns"`  // Pattern -> frequency
+
 	// Performance metrics
-	CorrectDecisions  int                    `json:"correct_decisions"`
-	TotalDecisions    int                    `json:"total_decisions"`
-	AvgResponseTime   float64               `json:"avg_response_time"`
-	ComplexityScore   float64               `json:"complexity_score"`
+	CorrectDecisions int     `json:"correct_decisions"`
+	TotalDecisions   int     `json:"total_decisions"`
+	AvgResponseTime  float64 `json:"avg_response_time"`
+	ComplexityScore  float64 `json:"complexity_score"`
 }
 
 // NeuralBehavior represents a learned behavior pattern
 type NeuralBehavior struct {
-	ID              int       `json:"id"`
-	Name            string    `json:"name"`
-	InputPattern    []float64 `json:"input_pattern"`    // Required input conditions
-	OutputPattern   []float64 `json:"output_pattern"`   // Expected output actions
-	SuccessRate     float64   `json:"success_rate"`     // How often this behavior succeeds
-	UsageCount      int       `json:"usage_count"`      // How many times this has been used
-	LastUsed        int       `json:"last_used"`        // Last tick this behavior was used
-	Complexity      float64   `json:"complexity"`       // How complex this behavior is
-	EnergyEfficiency float64  `json:"energy_efficiency"` // Energy cost vs benefit
-	Context         string    `json:"context"`          // When this behavior is most effective
+	ID               int       `json:"id"`
+	Name             string    `json:"name"`
+	InputPattern     []float64 `json:"input_pattern"`     // Required input conditions
+	OutputPattern    []float64 `json:"output_pattern"`    // Expected output actions
+	SuccessRate      float64   `json:"success_rate"`      // How often this behavior succeeds
+	UsageCount       int       `json:"usage_count"`       // How many times this has been used
+	LastUsed         int       `json:"last_used"`         // Last tick this behavior was used
+	Complexity       float64   `json:"complexity"`        // How complex this behavior is
+	EnergyEfficiency float64   `json:"energy_efficiency"` // Energy cost vs benefit
+	Context          string    `json:"context"`           // When this behavior is most effective
 }
 
 // NeuralAISystem manages neural networks and AI behaviors for all entities
 type NeuralAISystem struct {
-	EntityNetworks      map[int]*EntityNeuralNetwork    `json:"entity_networks"`      // Entity ID -> Neural Network
-	LearnedBehaviors    map[int]*NeuralBehavior   `json:"learned_behaviors"`    // Behavior ID -> Behavior
-	NextNeuronID        int                       `json:"next_neuron_id"`
-	NextNetworkID       int                       `json:"next_network_id"`
-	NextBehaviorID      int                       `json:"next_behavior_id"`
-	
+	EntityNetworks   map[int]*EntityNeuralNetwork `json:"entity_networks"`   // Entity ID -> Neural Network
+	LearnedBehaviors map[int]*NeuralBehavior      `json:"learned_behaviors"` // Behavior ID -> Behavior
+	NextNeuronID     int                          `json:"next_neuron_id"`
+	NextNetworkID    int                          `json:"next_network_id"`
+	NextBehaviorID   int                          `json:"next_behavior_id"`
+
 	// System-wide learning
-	CollectiveBehaviors map[string]*NeuralBehavior `json:"collective_behaviors"` // Shared learned behaviors
+	CollectiveBehaviors  map[string]*NeuralBehavior `json:"collective_behaviors"`  // Shared learned behaviors
 	SuccessfulStrategies []string                   `json:"successful_strategies"` // Most effective behavior patterns
-	
+
 	// System parameters
-	BaseLearningRate    float64                   `json:"base_learning_rate"`
-	NetworkComplexity   int                       `json:"network_complexity"`    // Default network size
-	AdaptationRate      float64                   `json:"adaptation_rate"`       // How quickly networks adapt
-	ExperienceDecay     float64                   `json:"experience_decay"`      // How experience fades over time
-	
+	BaseLearningRate  float64 `json:"base_learning_rate"`
+	NetworkComplexity int     `json:"network_complexity"` // Default network size
+	AdaptationRate    float64 `json:"adaptation_rate"`    // How quickly networks adapt
+	ExperienceDecay   float64 `json:"experience_decay"`   // How experience fades over time
+
 	// Statistics
-	TotalNetworks       int                       `json:"total_networks"`
-	TotalBehaviors      int                       `json:"total_behaviors"`
-	TotalLearningEvents int                       `json:"total_learning_events"`
-	AvgNetworkComplexity float64                  `json:"avg_network_complexity"`
-	EmergentBehaviors   int                       `json:"emergent_behaviors"`    // Unprogrammed behaviors discovered
+	TotalNetworks        int     `json:"total_networks"`
+	TotalBehaviors       int     `json:"total_behaviors"`
+	TotalLearningEvents  int     `json:"total_learning_events"`
+	AvgNetworkComplexity float64 `json:"avg_network_complexity"`
+	EmergentBehaviors    int     `json:"emergent_behaviors"` // Unprogrammed behaviors discovered
 }
 
 // NewNeuralAISystem creates a new neural AI system
@@ -125,11 +125,11 @@ func (nai *NeuralAISystem) CreateNeuralNetwork(entity *Entity, tick int) *Entity
 	if nai.EntityNetworks[entity.ID] != nil {
 		return nai.EntityNetworks[entity.ID] // Already has a network
 	}
-	
+
 	// Determine network complexity based on entity intelligence
 	intelligence := entity.GetTrait("intelligence")
 	complexity := int(float64(nai.NetworkComplexity) * (0.5 + intelligence*0.5)) // 5-15 neurons
-	
+
 	network := &EntityNeuralNetwork{
 		ID:                nai.NextNetworkID,
 		EntityID:          entity.ID,
@@ -153,14 +153,14 @@ func (nai *NeuralAISystem) CreateNeuralNetwork(entity *Entity, tick int) *Entity
 		AvgResponseTime:   0.0,
 		ComplexityScore:   float64(complexity),
 	}
-	
+
 	// Create network architecture
 	nai.buildNetworkArchitecture(network, complexity)
-	
+
 	nai.EntityNetworks[entity.ID] = network
 	nai.NextNetworkID++
 	nai.TotalNetworks++
-	
+
 	return network
 }
 
@@ -181,7 +181,7 @@ func (nai *NeuralAISystem) buildNetworkArchitecture(network *EntityNeuralNetwork
 		network.InputNeurons = append(network.InputNeurons, neuron.ID)
 		nai.NextNeuronID++
 	}
-	
+
 	// Hidden layer(s)
 	hiddenSize := complexity - inputSize - 3 // Leave room for output layer
 	if hiddenSize > 0 {
@@ -201,7 +201,7 @@ func (nai *NeuralAISystem) buildNetworkArchitecture(network *EntityNeuralNetwork
 		}
 		network.HiddenLayers = append(network.HiddenLayers, hiddenLayer)
 	}
-	
+
 	// Output layer (3 neurons for movement decisions: move_x, move_y, action)
 	outputSize := 3
 	for i := 0; i < outputSize; i++ {
@@ -217,7 +217,7 @@ func (nai *NeuralAISystem) buildNetworkArchitecture(network *EntityNeuralNetwork
 		network.OutputNeurons = append(network.OutputNeurons, neuron.ID)
 		nai.NextNeuronID++
 	}
-	
+
 	// Create connections between layers
 	nai.connectLayers(network)
 }
@@ -239,7 +239,7 @@ func (nai *NeuralAISystem) connectLayers(network *EntityNeuralNetwork) {
 				network.Neurons[inputID].Connections = append(network.Neurons[inputID].Connections, synapse)
 			}
 		}
-		
+
 		// Hidden layer to output
 		for _, hiddenID := range network.HiddenLayers[0] {
 			for _, outputID := range network.OutputNeurons {
@@ -277,24 +277,24 @@ func (nai *NeuralAISystem) ProcessNeuralDecision(entity *Entity, environmentInpu
 		// Create network if it doesn't exist
 		network = nai.CreateNeuralNetwork(entity, tick)
 	}
-	
+
 	// Feed inputs through the network
 	outputs := nai.forwardPass(network, environmentInputs, tick)
-	
+
 	// Record this decision for learning
 	network.TotalDecisions++
 	network.LastUpdateTick = tick
-	
+
 	// Store recent inputs/outputs for learning
 	network.RecentInputs = append(network.RecentInputs, environmentInputs)
 	network.RecentOutputs = append(network.RecentOutputs, outputs)
-	
+
 	// Keep only recent history (last 10 decisions)
 	if len(network.RecentInputs) > 10 {
 		network.RecentInputs = network.RecentInputs[1:]
 		network.RecentOutputs = network.RecentOutputs[1:]
 	}
-	
+
 	return outputs
 }
 
@@ -304,14 +304,14 @@ func (nai *NeuralAISystem) forwardPass(network *EntityNeuralNetwork, inputs []fl
 	for _, neuron := range network.Neurons {
 		neuron.Value = 0.0
 	}
-	
+
 	// Set input values
 	for i, inputID := range network.InputNeurons {
 		if i < len(inputs) {
 			network.Neurons[inputID].Value = inputs[i]
 		}
 	}
-	
+
 	// Process hidden layers
 	for _, layer := range network.HiddenLayers {
 		for _, neuronID := range layer {
@@ -329,7 +329,7 @@ func (nai *NeuralAISystem) forwardPass(network *EntityNeuralNetwork, inputs []fl
 			neuron.Value = nai.activationFunction(sum, neuron.Activation)
 		}
 	}
-	
+
 	// Process output layer
 	outputs := make([]float64, len(network.OutputNeurons))
 	for i, outputID := range network.OutputNeurons {
@@ -346,7 +346,7 @@ func (nai *NeuralAISystem) forwardPass(network *EntityNeuralNetwork, inputs []fl
 		neuron.Value = nai.activationFunction(sum, neuron.Activation)
 		outputs[i] = neuron.Value
 	}
-	
+
 	return outputs
 }
 
@@ -372,17 +372,17 @@ func (nai *NeuralAISystem) LearnFromOutcome(entityID int, success bool, reward f
 	if network == nil {
 		return
 	}
-	
+
 	if success {
 		network.CorrectDecisions++
 	}
-	
+
 	// Simple reinforcement learning: adjust weights based on reward
 	learningFactor := network.LearningRate * reward
 	if !success {
 		learningFactor *= -0.5 // Negative learning for failures
 	}
-	
+
 	// Update connection weights for recently active synapses
 	for _, neuron := range network.Neurons {
 		for _, synapse := range neuron.Connections {
@@ -390,7 +390,7 @@ func (nai *NeuralAISystem) LearnFromOutcome(entityID int, success bool, reward f
 				synapse.Weight += learningFactor * rand.Float64() * 0.1
 				// Keep weights in reasonable range
 				synapse.Weight = math.Max(-2.0, math.Min(2.0, synapse.Weight))
-				
+
 				// Update connection strength based on usage
 				if success {
 					synapse.Strength = math.Min(2.0, synapse.Strength+0.01)
@@ -400,7 +400,7 @@ func (nai *NeuralAISystem) LearnFromOutcome(entityID int, success bool, reward f
 			}
 		}
 	}
-	
+
 	// Increase experience
 	network.Experience += reward
 	nai.TotalLearningEvents++
@@ -416,15 +416,15 @@ func (nai *NeuralAISystem) Update(entities []*Entity, tick int) {
 			}
 		}
 	}
-	
+
 	// Decay experience and clean up old data
 	if tick%100 == 0 {
 		nai.decayExperience()
 	}
-	
+
 	// Update statistics
 	nai.updateStatistics()
-	
+
 	// Clean up networks for dead entities
 	nai.cleanupDeadEntities(entities)
 }
@@ -433,7 +433,7 @@ func (nai *NeuralAISystem) Update(entities []*Entity, tick int) {
 func (nai *NeuralAISystem) decayExperience() {
 	for _, network := range nai.EntityNetworks {
 		network.Experience *= (1.0 - nai.ExperienceDecay)
-		
+
 		// Decay connection strengths slightly
 		for _, neuron := range network.Neurons {
 			for _, synapse := range neuron.Connections {
@@ -447,7 +447,7 @@ func (nai *NeuralAISystem) decayExperience() {
 func (nai *NeuralAISystem) updateStatistics() {
 	nai.TotalNetworks = len(nai.EntityNetworks)
 	nai.TotalBehaviors = len(nai.LearnedBehaviors)
-	
+
 	// Calculate average network complexity
 	totalComplexity := 0.0
 	for _, network := range nai.EntityNetworks {
@@ -466,7 +466,7 @@ func (nai *NeuralAISystem) cleanupDeadEntities(entities []*Entity) {
 			aliveEntities[entity.ID] = true
 		}
 	}
-	
+
 	for entityID := range nai.EntityNetworks {
 		if !aliveEntities[entityID] {
 			delete(nai.EntityNetworks, entityID)
@@ -477,7 +477,7 @@ func (nai *NeuralAISystem) cleanupDeadEntities(entities []*Entity) {
 // GetNeuralStats returns statistics about the neural AI system
 func (nai *NeuralAISystem) GetNeuralStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	stats["total_networks"] = nai.TotalNetworks
 	stats["total_behaviors"] = nai.TotalBehaviors
 	stats["total_learning_events"] = nai.TotalLearningEvents
@@ -485,30 +485,30 @@ func (nai *NeuralAISystem) GetNeuralStats() map[string]interface{} {
 	stats["emergent_behaviors"] = nai.EmergentBehaviors
 	stats["base_learning_rate"] = nai.BaseLearningRate
 	stats["adaptation_rate"] = nai.AdaptationRate
-	
+
 	// Calculate collective intelligence metrics
 	totalDecisions := 0
 	correctDecisions := 0
 	totalExperience := 0.0
-	
+
 	for _, network := range nai.EntityNetworks {
 		totalDecisions += network.TotalDecisions
 		correctDecisions += network.CorrectDecisions
 		totalExperience += network.Experience
 	}
-	
+
 	if totalDecisions > 0 {
 		stats["success_rate"] = float64(correctDecisions) / float64(totalDecisions)
 	} else {
 		stats["success_rate"] = 0.0
 	}
-	
+
 	stats["total_experience"] = totalExperience
 	stats["avg_experience_per_network"] = 0.0
 	if nai.TotalNetworks > 0 {
 		stats["avg_experience_per_network"] = totalExperience / float64(nai.TotalNetworks)
 	}
-	
+
 	return stats
 }
 
@@ -518,7 +518,7 @@ func (nai *NeuralAISystem) GetEntityNeuralData(entityID int) map[string]interfac
 	if network == nil {
 		return nil
 	}
-	
+
 	data := make(map[string]interface{})
 	data["network_id"] = network.ID
 	data["type"] = network.Type
@@ -529,16 +529,16 @@ func (nai *NeuralAISystem) GetEntityNeuralData(entityID int) map[string]interfac
 	data["total_decisions"] = network.TotalDecisions
 	data["correct_decisions"] = network.CorrectDecisions
 	data["success_rate"] = 0.0
-	
+
 	if network.TotalDecisions > 0 {
 		data["success_rate"] = float64(network.CorrectDecisions) / float64(network.TotalDecisions)
 	}
-	
+
 	data["complexity_score"] = network.ComplexityScore
 	data["neuron_count"] = len(network.Neurons)
 	data["input_count"] = len(network.InputNeurons)
 	data["output_count"] = len(network.OutputNeurons)
 	data["hidden_layers"] = len(network.HiddenLayers)
-	
+
 	return data
 }

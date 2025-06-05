@@ -18,10 +18,10 @@ const (
 
 // Gene represents a functional unit of heredity
 type Gene struct {
-	Name      string       `json:"name"`       // Gene name (e.g., "size", "strength")
-	Sequence  []Nucleotide `json:"sequence"`   // DNA sequence
-	Dominant  bool         `json:"dominant"`   // Whether this allele is dominant
-	Expression float64     `json:"expression"` // How strongly the gene is expressed (0-1)
+	Name       string       `json:"name"`       // Gene name (e.g., "size", "strength")
+	Sequence   []Nucleotide `json:"sequence"`   // DNA sequence
+	Dominant   bool         `json:"dominant"`   // Whether this allele is dominant
+	Expression float64      `json:"expression"` // How strongly the gene is expressed (0-1)
 }
 
 // Chromosome represents a collection of genes
@@ -32,10 +32,10 @@ type Chromosome struct {
 
 // DNAStrand represents a complete DNA strand with multiple chromosomes
 type DNAStrand struct {
-	EntityID    int          `json:"entity_id"`    // Entity this DNA belongs to
-	Chromosomes []Chromosome `json:"chromosomes"`  // All chromosomes
-	Mutations   int          `json:"mutations"`    // Total mutations accumulated
-	Generation  int          `json:"generation"`   // Generation number
+	EntityID    int          `json:"entity_id"`   // Entity this DNA belongs to
+	Chromosomes []Chromosome `json:"chromosomes"` // All chromosomes
+	Mutations   int          `json:"mutations"`   // Total mutations accumulated
+	Generation  int          `json:"generation"`  // Generation number
 }
 
 // DNASystem manages the DNA-based genetic system
@@ -52,21 +52,21 @@ func NewDNASystem(eventBus *CentralEventBus) *DNASystem {
 	return &DNASystem{
 		TraitToGene: map[string]string{
 			// Basic traits
-			"size":        "SIZE",
-			"strength":    "STR",
-			"speed":       "SPD",
-			"aggression":  "AGG",
+			"size":         "SIZE",
+			"strength":     "STR",
+			"speed":        "SPD",
+			"aggression":   "AGG",
 			"intelligence": "INT",
-			"vision":      "VIS",
-			"defense":     "DEF",
-			"energy":      "ENE",
+			"vision":       "VIS",
+			"defense":      "DEF",
+			"energy":       "ENE",
 			"reproduction": "REP",
 			"cooperation":  "COO",
-			"camouflage":  "CAM",
-			"toxicity":    "TOX",
-			"longevity":   "LON",
-			"adaptation":  "ADA",
-			"metabolism":  "MET",
+			"camouflage":   "CAM",
+			"toxicity":     "TOX",
+			"longevity":    "LON",
+			"adaptation":   "ADA",
+			"metabolism":   "MET",
 		},
 		GeneLength: map[string]int{
 			"SIZE": 12, "STR": 10, "SPD": 8, "AGG": 6,
@@ -173,7 +173,7 @@ func (ds *DNASystem) ExpressTrait(dna *DNAStrand, traitName string) float64 {
 	for _, gene := range genes {
 		// Convert DNA sequence to numeric value
 		sequenceValue := ds.sequenceToValue(gene.Sequence)
-		
+
 		// Apply dominance and expression
 		weight := gene.Expression
 		if gene.Dominant && len(genes) > 1 {
@@ -189,7 +189,7 @@ func (ds *DNASystem) ExpressTrait(dna *DNAStrand, traitName string) float64 {
 	}
 
 	// Normalize to range -1 to 1 (compatible with existing trait system)
-	normalizedValue := (totalValue / totalWeight) * 2 - 1
+	normalizedValue := (totalValue/totalWeight)*2 - 1
 	return math.Max(-1.0, math.Min(1.0, normalizedValue))
 }
 
@@ -207,8 +207,8 @@ func (ds *DNASystem) sequenceToValue(sequence []Nucleotide) float64 {
 
 	// Calculate weighted value based on nucleotide composition
 	total := float64(len(sequence))
-	value := (float64(counts[Adenine])*0.1 + float64(counts[Thymine])*0.3 + 
-		     float64(counts[Guanine])*0.7 + float64(counts[Cytosine])*0.9) / total
+	value := (float64(counts[Adenine])*0.1 + float64(counts[Thymine])*0.3 +
+		float64(counts[Guanine])*0.7 + float64(counts[Cytosine])*0.9) / total
 
 	return value
 }
@@ -216,11 +216,11 @@ func (ds *DNASystem) sequenceToValue(sequence []Nucleotide) float64 {
 // MutateDNA applies mutations to DNA based on environmental factors
 func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 	initialMutations := dna.Mutations
-	
+
 	for chromIdx := range dna.Chromosomes {
 		for geneIdx := range dna.Chromosomes[chromIdx].Genes {
 			gene := &dna.Chromosomes[chromIdx].Genes[geneIdx]
-			
+
 			// Get base mutation rate for this gene
 			baseMutationRate := ds.MutationRates[gene.Name]
 			if baseMutationRate == 0 {
@@ -232,11 +232,11 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 
 			// Track mutations for this gene
 			geneMutations := 0
-			
+
 			// Mutate individual nucleotides
 			oldSequence := make([]Nucleotide, len(gene.Sequence))
 			copy(oldSequence, gene.Sequence)
-			
+
 			for seqIdx := range gene.Sequence {
 				if rand.Float64() < effectiveMutationRate {
 					// Point mutation - change nucleotide
@@ -245,7 +245,7 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 					gene.Sequence[seqIdx] = nucleotides[rand.Intn(4)]
 					dna.Mutations++
 					geneMutations++
-					
+
 					// Emit point mutation event
 					if ds.eventBus != nil {
 						metadata := map[string]interface{}{
@@ -260,13 +260,13 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 							"mutation_pressure": mutationPressure,
 							"generation":        dna.Generation,
 						}
-						
+
 						ds.eventBus.EmitSystemEvent(
 							-1, // No specific tick for DNA operations
 							"point_mutation",
 							"dna",
 							"dna_system",
-							fmt.Sprintf("Point mutation in entity %d: %s gene position %d (%c -> %c)", 
+							fmt.Sprintf("Point mutation in entity %d: %s gene position %d (%c -> %c)",
 								dna.EntityID, gene.Name, seqIdx, oldNucleotide, gene.Sequence[seqIdx]),
 							nil,
 							metadata,
@@ -281,7 +281,7 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 				gene.Dominant = !gene.Dominant
 				dna.Mutations++
 				geneMutations++
-				
+
 				// Emit dominance shift event
 				if ds.eventBus != nil {
 					metadata := map[string]interface{}{
@@ -292,13 +292,13 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 						"new_dominant":  gene.Dominant,
 						"generation":    dna.Generation,
 					}
-					
+
 					ds.eventBus.EmitSystemEvent(
 						-1,
 						"dominance_shift",
 						"dna",
 						"dna_system",
-						fmt.Sprintf("Dominance shift in entity %d: %s gene (%t -> %t)", 
+						fmt.Sprintf("Dominance shift in entity %d: %s gene (%t -> %t)",
 							dna.EntityID, gene.Name, oldDominant, gene.Dominant),
 						nil,
 						metadata,
@@ -311,25 +311,25 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 				oldExpression := gene.Expression
 				change := (rand.Float64() - 0.5) * 0.2
 				gene.Expression = math.Max(0.1, math.Min(1.0, gene.Expression+change))
-				
+
 				// Emit expression change event
 				if ds.eventBus != nil && math.Abs(change) > 0.05 { // Only for significant changes
 					metadata := map[string]interface{}{
-						"entity_id":       dna.EntityID,
-						"chromosome_id":   chromIdx,
-						"gene_name":       gene.Name,
-						"old_expression":  oldExpression,
-						"new_expression":  gene.Expression,
+						"entity_id":         dna.EntityID,
+						"chromosome_id":     chromIdx,
+						"gene_name":         gene.Name,
+						"old_expression":    oldExpression,
+						"new_expression":    gene.Expression,
 						"expression_change": change,
-						"generation":      dna.Generation,
+						"generation":        dna.Generation,
 					}
-					
+
 					ds.eventBus.EmitSystemEvent(
 						-1,
 						"expression_change",
 						"dna",
 						"dna_system",
-						fmt.Sprintf("Expression change in entity %d: %s gene (%.3f -> %.3f)", 
+						fmt.Sprintf("Expression change in entity %d: %s gene (%.3f -> %.3f)",
 							dna.EntityID, gene.Name, oldExpression, gene.Expression),
 						nil,
 						metadata,
@@ -338,7 +338,7 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 			}
 		}
 	}
-	
+
 	// Emit overall mutation summary if any mutations occurred
 	totalNewMutations := dna.Mutations - initialMutations
 	if ds.eventBus != nil && totalNewMutations > 0 {
@@ -349,13 +349,13 @@ func (ds *DNASystem) MutateDNA(dna *DNAStrand, mutationPressure float64) {
 			"mutation_pressure": mutationPressure,
 			"generation":        dna.Generation,
 		}
-		
+
 		ds.eventBus.EmitSystemEvent(
 			-1,
 			"dna_mutation_summary",
 			"dna",
 			"dna_system",
-			fmt.Sprintf("Entity %d accumulated %d new mutations (total: %d)", 
+			fmt.Sprintf("Entity %d accumulated %d new mutations (total: %d)",
 				dna.EntityID, totalNewMutations, dna.Mutations),
 			nil,
 			metadata,
@@ -385,10 +385,10 @@ func (ds *DNASystem) CrossoverDNA(parent1, parent2 *DNAStrand, childID int) *DNA
 
 		// Combine genes from both parents
 		maxGenes := int(math.Max(float64(len(parent1Genes)), float64(len(parent2Genes))))
-		
+
 		for geneIdx := 0; geneIdx < maxGenes; geneIdx++ {
 			var selectedGene Gene
-			
+
 			if geneIdx < len(parent1Genes) && geneIdx < len(parent2Genes) {
 				// Both parents have this gene - choose randomly or recombine
 				if rand.Float64() < 0.5 {
@@ -416,23 +416,23 @@ func (ds *DNASystem) CrossoverDNA(parent1, parent2 *DNAStrand, childID int) *DNA
 	// Emit crossover event
 	if ds.eventBus != nil {
 		metadata := map[string]interface{}{
-			"child_id":            childID,
-			"parent1_id":          parent1.EntityID,
-			"parent2_id":          parent2.EntityID,
-			"child_generation":    child.Generation,
-			"parent1_generation":  parent1.Generation,
-			"parent2_generation":  parent2.Generation,
-			"parent1_mutations":   parent1.Mutations,
-			"parent2_mutations":   parent2.Mutations,
-			"chromosome_count":    len(child.Chromosomes),
+			"child_id":           childID,
+			"parent1_id":         parent1.EntityID,
+			"parent2_id":         parent2.EntityID,
+			"child_generation":   child.Generation,
+			"parent1_generation": parent1.Generation,
+			"parent2_generation": parent2.Generation,
+			"parent1_mutations":  parent1.Mutations,
+			"parent2_mutations":  parent2.Mutations,
+			"chromosome_count":   len(child.Chromosomes),
 		}
-		
+
 		ds.eventBus.EmitSystemEvent(
 			-1,
 			"dna_crossover",
 			"dna",
 			"dna_system",
-			fmt.Sprintf("DNA crossover: entity %d created from parents %d and %d (generation %d)", 
+			fmt.Sprintf("DNA crossover: entity %d created from parents %d and %d (generation %d)",
 				childID, parent1.EntityID, parent2.EntityID, child.Generation),
 			nil,
 			metadata,
@@ -452,12 +452,12 @@ func (ds *DNASystem) recombineGenes(gene1, gene2 Gene) Gene {
 
 	// Random crossover point
 	crossoverPoint := rand.Intn(minLength)
-	
+
 	newSequence := make([]Nucleotide, minLength)
-	
+
 	// Copy from gene1 up to crossover point
 	copy(newSequence[:crossoverPoint], gene1.Sequence[:crossoverPoint])
-	
+
 	// Copy from gene2 after crossover point
 	if crossoverPoint < minLength {
 		copy(newSequence[crossoverPoint:], gene2.Sequence[crossoverPoint:minLength])
@@ -475,17 +475,17 @@ func (ds *DNASystem) recombineGenes(gene1, gene2 Gene) Gene {
 // AnalyzeDNA provides detailed analysis of a DNA strand
 func (ds *DNASystem) AnalyzeDNA(dna *DNAStrand) map[string]interface{} {
 	analysis := make(map[string]interface{})
-	
+
 	analysis["entity_id"] = dna.EntityID
 	analysis["generation"] = dna.Generation
 	analysis["total_mutations"] = dna.Mutations
 	analysis["chromosome_count"] = len(dna.Chromosomes)
-	
+
 	// Gene analysis
 	geneCount := 0
 	dominantGenes := 0
 	avgExpression := 0.0
-	
+
 	for _, chromosome := range dna.Chromosomes {
 		geneCount += len(chromosome.Genes)
 		for _, gene := range chromosome.Genes {
@@ -495,19 +495,19 @@ func (ds *DNASystem) AnalyzeDNA(dna *DNAStrand) map[string]interface{} {
 			avgExpression += gene.Expression
 		}
 	}
-	
+
 	if geneCount > 0 {
 		avgExpression /= float64(geneCount)
 	}
-	
+
 	analysis["total_genes"] = geneCount
 	analysis["dominant_genes"] = dominantGenes
 	analysis["avg_expression"] = avgExpression
-	
+
 	// Nucleotide composition
 	totalNucleotides := map[Nucleotide]int{Adenine: 0, Thymine: 0, Guanine: 0, Cytosine: 0}
 	totalLength := 0
-	
+
 	for _, chromosome := range dna.Chromosomes {
 		for _, gene := range chromosome.Genes {
 			for _, nucleotide := range gene.Sequence {
@@ -516,7 +516,7 @@ func (ds *DNASystem) AnalyzeDNA(dna *DNAStrand) map[string]interface{} {
 			}
 		}
 	}
-	
+
 	if totalLength > 0 {
 		analysis["nucleotide_composition"] = map[string]float64{
 			"A": float64(totalNucleotides[Adenine]) / float64(totalLength),
@@ -525,7 +525,7 @@ func (ds *DNASystem) AnalyzeDNA(dna *DNAStrand) map[string]interface{} {
 			"C": float64(totalNucleotides[Cytosine]) / float64(totalLength),
 		}
 	}
-	
+
 	return analysis
 }
 
@@ -533,18 +533,18 @@ func (ds *DNASystem) AnalyzeDNA(dna *DNAStrand) map[string]interface{} {
 func (ds *DNASystem) GetDNAString(dna *DNAStrand, maxLength int) string {
 	var result string
 	totalLength := 0
-	
+
 	for chromIdx, chromosome := range dna.Chromosomes {
 		if chromIdx > 0 {
 			result += " | "
 		}
 		result += fmt.Sprintf("Chr%d: ", chromIdx+1)
-		
+
 		for geneIdx, gene := range chromosome.Genes {
 			if geneIdx > 0 {
 				result += "-"
 			}
-			
+
 			geneStr := ""
 			for _, nucleotide := range gene.Sequence {
 				geneStr += string(nucleotide)
@@ -556,6 +556,6 @@ func (ds *DNASystem) GetDNAString(dna *DNAStrand, maxLength int) string {
 			result += geneStr
 		}
 	}
-	
+
 	return result
 }

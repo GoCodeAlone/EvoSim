@@ -1,6 +1,6 @@
 run:
   timeout: 5m
-  go: "1.24"
+  go: "1.23"
 
 linters-settings:
   govet:
@@ -47,13 +47,14 @@ linters:
     - goimports
     - misspell
     - unconvert
-    - stylecheck
     - gosec
     - goconst
     - gocyclo
     - dupl
     - funlen
     - whitespace
+  disable:
+    - stylecheck  # temporarily disabled due to goanalysis_metalinter issues
 
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source

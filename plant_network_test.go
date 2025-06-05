@@ -2,7 +2,6 @@ package main
 
 import (
 	"math"
-	"math/rand"
 	"testing"
 )
 
@@ -78,9 +77,9 @@ func TestNetworkFormation(t *testing.T) {
 }
 
 func TestChemicalSignalPropagation(t *testing.T) {
-	// Set deterministic seed for reliable testing
-	rand.Seed(42)
-	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
+	// Note: Removed deprecated rand.Seed call
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	// Create test plants
 	source := &Plant{
@@ -110,7 +109,7 @@ func TestChemicalSignalPropagation(t *testing.T) {
 
 	// Count signals created during connection formation
 	initialSignalCount := len(network.ChemicalSignals)
-	
+
 	// Add a chemical signal manually for testing
 	signal := &ChemicalSignal{
 		ID:        network.NextSignalID,
@@ -154,7 +153,8 @@ func TestChemicalSignalPropagation(t *testing.T) {
 }
 
 func TestResourceSharing(t *testing.T) {
-	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	// Create plants with different energy levels
 	richPlant := &Plant{
@@ -198,7 +198,8 @@ func TestResourceSharing(t *testing.T) {
 }
 
 func TestNetworkStats(t *testing.T) {
-	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	// Get stats from empty network
 	stats := network.GetNetworkStats()
@@ -273,7 +274,8 @@ func TestNetworkStats(t *testing.T) {
 }
 
 func TestConnectionTypes(t *testing.T) {
-	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	// Test different connection types
 	plant1 := &Plant{
@@ -365,7 +367,8 @@ func TestSignalTypes(t *testing.T) {
 		IsAlive:  true,
 	}
 
-	eventBus := NewCentralEventBus(1000); network := NewPlantNetworkSystem(eventBus)
+	eventBus := NewCentralEventBus(1000)
+	network := NewPlantNetworkSystem(eventBus)
 
 	// Create signals of each type
 	for i, signalType := range signalTypes {

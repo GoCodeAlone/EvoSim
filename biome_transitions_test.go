@@ -20,11 +20,11 @@ func TestBiomeStateTransitions(t *testing.T) {
 	world.Grid[5][5].Biome = BiomeIce
 	world.Grid[5][6].Biome = BiomeHotSpring
 	world.Grid[6][5].Biome = BiomeIce
-	
+
 	// Place forest next to radiation zones to test fire effects
 	world.Grid[10][10].Biome = BiomeForest
 	world.Grid[10][11].Biome = BiomeRadiation
-	
+
 	// Count initial biome types
 	initialIceCount := 0
 	initialForestCount := 0
@@ -66,7 +66,7 @@ func TestBiomeStateTransitions(t *testing.T) {
 		}
 	}
 
-	t.Logf("Final state: Ice=%d, Forest=%d, Water=%d, Desert=%d", 
+	t.Logf("Final state: Ice=%d, Forest=%d, Water=%d, Desert=%d",
 		finalIceCount, finalForestCount, finalWaterCount, finalDesertCount)
 
 	// Verify that some transitions occurred
@@ -77,7 +77,7 @@ func TestBiomeStateTransitions(t *testing.T) {
 
 	// Check that the system doesn't crash and maintains grid integrity
 	totalCells := config.GridWidth * config.GridHeight
-	
+
 	// Count all biomes to ensure grid integrity
 	allBiomesCount := 0
 	for y := 0; y < config.GridHeight; y++ {
@@ -85,7 +85,7 @@ func TestBiomeStateTransitions(t *testing.T) {
 			allBiomesCount++
 		}
 	}
-	
+
 	if allBiomesCount != totalCells {
 		t.Errorf("Grid integrity check failed: expected %d cells, got %d", totalCells, allBiomesCount)
 	}
@@ -112,38 +112,38 @@ func TestTransitionTriggerDetection(t *testing.T) {
 	// Set up controlled test conditions
 	world.Grid[5][5].Biome = BiomeHotSpring
 	world.Grid[5][6].Biome = BiomeIce
-	
+
 	// Test trigger detection
 	triggers := world.detectTransitionTriggers(5, 6) // Check ice cell next to hot spring
-	
+
 	if triggers["heat"] == 0 && triggers["hotspring"] == 0 {
 		t.Errorf("Expected heat/hotspring triggers near hot spring, got none")
 	}
-	
+
 	t.Logf("Detected triggers near hot spring: %+v", triggers)
-	
+
 	// Test that intensity decreases with distance - create isolated hot spring
 	for y := 0; y < config.GridHeight; y++ {
 		for x := 0; x < config.GridWidth; x++ {
 			world.Grid[y][x].Biome = BiomePlains // Reset to plains
 		}
 	}
-	
-	world.Grid[3][3].Biome = BiomeHotSpring // Isolated hot spring
+
+	world.Grid[3][3].Biome = BiomeHotSpring              // Isolated hot spring
 	nearTriggers := world.detectTransitionTriggers(3, 4) // Adjacent to hot spring
 	farTriggers := world.detectTransitionTriggers(3, 6)  // Further from hot spring
-	
+
 	t.Logf("Near triggers: %+v", nearTriggers)
 	t.Logf("Far triggers: %+v", farTriggers)
-	
+
 	// Check that heat/hotspring triggers exist near the hot spring
 	if nearTriggers["heat"] == 0 && nearTriggers["hotspring"] == 0 {
 		t.Errorf("Expected heat/hotspring triggers near hot spring")
 	}
-	
+
 	// Far triggers should have no heat/hotspring effects from our isolated source
 	if farTriggers["heat"] > 0 || farTriggers["hotspring"] > 0 {
-		t.Logf("Note: Far triggers detected heat/hotspring - this could be from fire events: heat=%.3f, hotspring=%.3f", 
+		t.Logf("Note: Far triggers detected heat/hotspring - this could be from fire events: heat=%.3f, hotspring=%.3f",
 			farTriggers["heat"], farTriggers["hotspring"])
 	}
 }

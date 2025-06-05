@@ -40,9 +40,9 @@ func TestSpeciesTrackingIssue(t *testing.T) {
 	speciesData := viewData.Species
 	evolutionData := viewData.Evolution
 
-	t.Logf("Species Data: Active=%d, Extinct=%d, Details=%d", 
+	t.Logf("Species Data: Active=%d, Extinct=%d, Details=%d",
 		speciesData.ActiveSpecies, speciesData.ExtinctSpecies, len(speciesData.SpeciesDetails))
-	t.Logf("Evolution Data: Speciation=%d, Extinction=%d, Diversity=%.3f", 
+	t.Logf("Evolution Data: Speciation=%d, Extinction=%d, Diversity=%.3f",
 		evolutionData.SpeciationEvents, evolutionData.ExtinctionEvents, evolutionData.GeneticDiversity)
 
 	// Check plant count
@@ -57,7 +57,7 @@ func TestSpeciesTrackingIssue(t *testing.T) {
 
 		// Log details of each active species
 		for id, species := range world.SpeciationSystem.ActiveSpecies {
-			t.Logf("Species %d: Name=%s, Members=%d, Type=%d", 
+			t.Logf("Species %d: Name=%s, Members=%d, Type=%d",
 				id, species.Name, len(species.Members), species.OriginPlantType)
 		}
 	} else {
@@ -67,7 +67,7 @@ func TestSpeciesTrackingIssue(t *testing.T) {
 	// The issue seems to be that SpeciationSystem shows 0 active species but there are plants
 	// This suggests the initial species assignment isn't happening
 	if len(world.AllPlants) > 0 && speciesData.ActiveSpecies == 0 {
-		t.Errorf("Expected active species when plants exist. Plants: %d, Active Species: %d", 
+		t.Errorf("Expected active species when plants exist. Plants: %d, Active Species: %d",
 			len(world.AllPlants), speciesData.ActiveSpecies)
 	}
 }
@@ -116,7 +116,7 @@ func TestSpeciationSystemInitialization(t *testing.T) {
 	// There should be species now if plants exist
 	if len(world.AllPlants) > 0 {
 		if len(world.SpeciationSystem.ActiveSpecies) == 0 {
-			t.Errorf("Expected active species after manual update. Plants: %d, Active Species: %d", 
+			t.Errorf("Expected active species after manual update. Plants: %d, Active Species: %d",
 				len(world.AllPlants), len(world.SpeciationSystem.ActiveSpecies))
 		}
 	}

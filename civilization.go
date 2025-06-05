@@ -309,7 +309,7 @@ func (t *Tribe) BuildStructure(structureType StructureType, position Position, b
 // Update maintains the tribe
 func (t *Tribe) Update(eventBus *CentralEventBus, tick int) {
 	originalMemberCount := len(t.Members)
-	
+
 	// Remove dead members
 	aliveMembers := make([]*Entity, 0)
 	for _, member := range t.Members {
@@ -323,11 +323,11 @@ func (t *Tribe) Update(eventBus *CentralEventBus, tick int) {
 	if len(t.Members) == 0 {
 		if eventBus != nil {
 			metadata := map[string]interface{}{
-				"tribe_id":           t.ID,
-				"tribe_name":         t.Name,
-				"original_members":   originalMemberCount,
-				"tech_level":         t.TechLevel,
-				"structure_count":    len(t.Structures),
+				"tribe_id":         t.ID,
+				"tribe_name":       t.Name,
+				"original_members": originalMemberCount,
+				"tech_level":       t.TechLevel,
+				"structure_count":  len(t.Structures),
 			}
 
 			eventBus.EmitSystemEvent(tick, "tribe_disbanded", "civilization", "civilization_system",
@@ -342,18 +342,18 @@ func (t *Tribe) Update(eventBus *CentralEventBus, tick int) {
 	if t.Leader != nil {
 		oldLeaderID = t.Leader.ID
 	}
-	
+
 	if t.Leader == nil || !t.Leader.IsAlive {
 		oldLeader := t.Leader
 		t.electNewLeader()
-		
+
 		if eventBus != nil && t.Leader != nil && (oldLeader == nil || t.Leader.ID != oldLeaderID) {
 			metadata := map[string]interface{}{
-				"tribe_id":       t.ID,
-				"tribe_name":     t.Name,
-				"old_leader_id":  oldLeaderID,
-				"new_leader_id":  t.Leader.ID,
-				"member_count":   len(t.Members),
+				"tribe_id":      t.ID,
+				"tribe_name":    t.Name,
+				"old_leader_id": oldLeaderID,
+				"new_leader_id": t.Leader.ID,
+				"member_count":  len(t.Members),
 			}
 
 			eventBus.EmitSystemEvent(tick, "tribe_leader_changed", "civilization", "civilization_system",
@@ -368,7 +368,7 @@ func (t *Tribe) Update(eventBus *CentralEventBus, tick int) {
 	// Research and development
 	oldTechLevel := t.TechLevel
 	t.advanceTechnology()
-	
+
 	if eventBus != nil && t.TechLevel > oldTechLevel {
 		metadata := map[string]interface{}{
 			"tribe_id":       t.ID,
@@ -692,7 +692,7 @@ func (cs *CivilizationSystem) Update(tick int) {
 	for _, structure := range cs.Structures {
 		wasActive := structure.IsActive
 		structure.Update()
-		
+
 		// Emit event for structure destruction
 		if wasActive && !structure.IsActive && cs.EventBus != nil {
 			structureTypeNames := []string{"nest", "cache", "barrier", "trap", "farm", "well", "tower", "market"}
@@ -716,7 +716,7 @@ func (cs *CivilizationSystem) Update(tick int) {
 				fmt.Sprintf("Structure %s destroyed at (%.1f, %.1f)", structureTypeName, structure.Position.X, structure.Position.Y),
 				&structure.Position, metadata)
 		}
-		
+
 		if structure.IsActive || structure.Health > 0 {
 			activeStructures = append(activeStructures, structure)
 		}
@@ -806,13 +806,13 @@ func (cs *CivilizationSystem) FormTribe(entities []*Entity, name string, tick in
 	// Emit event for tribe formation
 	if cs.EventBus != nil {
 		metadata := map[string]interface{}{
-			"tribe_id":       tribe.ID,
-			"tribe_name":     name,
-			"leader_id":      leader.ID,
-			"member_count":   len(entities),
-			"member_ids":     memberIDs,
-			"tech_level":     tribe.TechLevel,
-			"avg_cooperation": tribe.Culture["cooperation"],
+			"tribe_id":         tribe.ID,
+			"tribe_name":       name,
+			"leader_id":        leader.ID,
+			"member_count":     len(entities),
+			"member_ids":       memberIDs,
+			"tech_level":       tribe.TechLevel,
+			"avg_cooperation":  tribe.Culture["cooperation"],
 			"avg_intelligence": tribe.Culture["innovation"],
 		}
 

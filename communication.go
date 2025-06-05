@@ -76,11 +76,11 @@ func (cs *CommunicationSystem) SendSignal(entity *Entity, signalType SignalType,
 		}
 
 		metadata := map[string]interface{}{
-			"signal_type":    signalTypeName,
+			"signal_type":     signalTypeName,
 			"signal_strength": signal.Strength,
-			"signal_range":   signal.Range,
-			"intelligence":   intelligence,
-			"cooperation":    cooperation,
+			"signal_range":    signal.Range,
+			"intelligence":    intelligence,
+			"cooperation":     cooperation,
 		}
 		if len(data) > 0 {
 			metadata["signal_data"] = data
@@ -232,13 +232,13 @@ func (gbs *GroupBehaviorSystem) FormGroup(entities []*Entity, purpose string, ti
 		}
 
 		metadata := map[string]interface{}{
-			"group_id":         group.ID,
-			"purpose":          purpose,
-			"member_count":     len(entities),
-			"member_ids":       memberIDs,
-			"leader_id":        leader.ID,
-			"avg_cooperation":  avgCooperation,
-			"cohesion":         group.Cohesion,
+			"group_id":        group.ID,
+			"purpose":         purpose,
+			"member_count":    len(entities),
+			"member_ids":      memberIDs,
+			"leader_id":       leader.ID,
+			"avg_cooperation": avgCooperation,
+			"cohesion":        group.Cohesion,
 		}
 
 		gbs.EventBus.EmitSystemEvent(tick, "group_formed", "communication", "group_behavior_system",
@@ -255,7 +255,7 @@ func (gbs *GroupBehaviorSystem) UpdateGroups(tick int) {
 
 	for _, group := range gbs.Groups {
 		originalMemberCount := len(group.Members)
-		
+
 		// Remove dead members
 		aliveMembers := make([]*Entity, 0)
 		for _, member := range group.Members {
@@ -270,7 +270,7 @@ func (gbs *GroupBehaviorSystem) UpdateGroups(tick int) {
 		if group.Leader != nil {
 			oldLeaderID = group.Leader.ID
 		}
-		
+
 		if group.Leader == nil || !group.Leader.IsAlive {
 			if len(aliveMembers) > 0 {
 				// Find new leader with highest intelligence
@@ -292,10 +292,10 @@ func (gbs *GroupBehaviorSystem) UpdateGroups(tick int) {
 		// Emit event for leader change
 		if leaderChanged && gbs.EventBus != nil && group.Leader != nil {
 			metadata := map[string]interface{}{
-				"group_id":     group.ID,
+				"group_id":      group.ID,
 				"old_leader_id": oldLeaderID,
 				"new_leader_id": group.Leader.ID,
-				"purpose":      group.Purpose,
+				"purpose":       group.Purpose,
 			}
 
 			gbs.EventBus.EmitSystemEvent(tick, "group_leader_changed", "communication", "group_behavior_system",
@@ -312,7 +312,7 @@ func (gbs *GroupBehaviorSystem) UpdateGroups(tick int) {
 					"purpose":           group.Purpose,
 					"original_members":  originalMemberCount,
 					"remaining_members": len(aliveMembers),
-					"reason":           "insufficient_members_or_no_leader",
+					"reason":            "insufficient_members_or_no_leader",
 				}
 
 				position := &Position{X: 0, Y: 0}
@@ -364,10 +364,10 @@ func (gbs *GroupBehaviorSystem) coordinateHunting(group *Group, tick int) {
 	// Emit event for coordinated hunting
 	if gbs.EventBus != nil {
 		metadata := map[string]interface{}{
-			"group_id":      group.ID,
-			"member_count":  len(group.Members),
-			"leader_id":     group.Leader.ID,
-			"cohesion":      group.Cohesion,
+			"group_id":     group.ID,
+			"member_count": len(group.Members),
+			"leader_id":    group.Leader.ID,
+			"cohesion":     group.Cohesion,
 		}
 
 		gbs.EventBus.EmitSystemEvent(tick, "group_hunting", "communication", "group_behavior_system",

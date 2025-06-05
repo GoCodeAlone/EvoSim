@@ -9,16 +9,16 @@ import (
 type OrganismClassification int
 
 const (
-	ClassificationProkaryotic OrganismClassification = iota // Simple single-celled
-	ClassificationEukaryotic                                 // Complex single-celled
-	ClassificationSimpleMulticellular                        // Simple multicellular
-	ClassificationComplexMulticellular                       // Complex multicellular
-	ClassificationAdvancedMulticellular                      // Advanced multicellular
+	ClassificationProkaryotic           OrganismClassification = iota // Simple single-celled
+	ClassificationEukaryotic                                          // Complex single-celled
+	ClassificationSimpleMulticellular                                 // Simple multicellular
+	ClassificationComplexMulticellular                                // Complex multicellular
+	ClassificationAdvancedMulticellular                               // Advanced multicellular
 )
 
 // OrganismLifespanData contains lifespan and aging information for each classification
 type OrganismLifespanData struct {
-	Classification      OrganismClassification
+	Classification     OrganismClassification
 	Name               string
 	BaseLifespanTicks  int     // Base lifespan in ticks
 	LifespanVariance   float64 // Variance factor (0.0-1.0)
@@ -42,10 +42,10 @@ func NewOrganismClassifier(timeSystem *AdvancedTimeSystem) *OrganismClassifier {
 		LifespanData: make(map[OrganismClassification]*OrganismLifespanData),
 		TimeSystem:   timeSystem,
 	}
-	
+
 	// Initialize realistic lifespan data based on biological principles
 	classifier.initializeLifespanData()
-	
+
 	return classifier
 }
 
@@ -53,82 +53,82 @@ func NewOrganismClassifier(timeSystem *AdvancedTimeSystem) *OrganismClassifier {
 func (oc *OrganismClassifier) initializeLifespanData() {
 	// Convert days to ticks for easier understanding
 	ticksPerDay := float64(oc.TimeSystem.DayLength)
-	
+
 	// Adjust for the new time scale: if we have 1 tick per day, we need to scale appropriately
 	// The old system had 480 ticks/day, so we need to scale lifespans to maintain the same relative timing
 	timeScaleFactor := 1.0
 	if ticksPerDay < 10 { // If we're using the new time scale (few ticks per day)
 		timeScaleFactor = 7.0 // Scale up lifespans to be reasonable for the new time scale
 	}
-	
-	// Prokaryotic organisms (bacteria-like): Hours to days  
+
+	// Prokaryotic organisms (bacteria-like): Hours to days
 	oc.LifespanData[ClassificationProkaryotic] = &OrganismLifespanData{
-		Classification:      ClassificationProkaryotic,
+		Classification:     ClassificationProkaryotic,
 		Name:               "Prokaryotic",
 		BaseLifespanTicks:  int(ticksPerDay * 2 * timeScaleFactor),   // 2 days base lifespan (scaled)
-		LifespanVariance:   0.8,                    // High variance
-		AgingRate:          2.0,                    // Age twice as fast
+		LifespanVariance:   0.8,                                      // High variance
+		AgingRate:          2.0,                                      // Age twice as fast
 		MaturationAge:      int(ticksPerDay * 0.1 * timeScaleFactor), // 0.1 days (scaled)
-		PeakAge:           int(ticksPerDay * 0.5 * timeScaleFactor),  // 0.5 days (scaled)
-		SenescenceAge:     int(ticksPerDay * 1.2 * timeScaleFactor),  // 1.2 days (scaled)
-		MetabolicRate:     2.0,                     // High metabolism
-		CellularMainenance: 0.1,                    // Low maintenance cost
+		PeakAge:            int(ticksPerDay * 0.5 * timeScaleFactor), // 0.5 days (scaled)
+		SenescenceAge:      int(ticksPerDay * 1.2 * timeScaleFactor), // 1.2 days (scaled)
+		MetabolicRate:      2.0,                                      // High metabolism
+		CellularMainenance: 0.1,                                      // Low maintenance cost
 	}
-	
+
 	// Eukaryotic organisms (protozoa-like): Days to weeks
 	oc.LifespanData[ClassificationEukaryotic] = &OrganismLifespanData{
-		Classification:      ClassificationEukaryotic,
+		Classification:     ClassificationEukaryotic,
 		Name:               "Eukaryotic",
-		BaseLifespanTicks:  int(ticksPerDay * 30 * timeScaleFactor),   // 30 days base lifespan (scaled up)
-		LifespanVariance:   0.6,                    // Moderate variance
-		AgingRate:          1.5,                    // Age 1.5x as fast
-		MaturationAge:      int(ticksPerDay * 2 * timeScaleFactor), // 2 days (scaled)
-		PeakAge:           int(ticksPerDay * 10 * timeScaleFactor),    // 10 days (scaled)
-		SenescenceAge:     int(ticksPerDay * 20 * timeScaleFactor),    // 20 days (scaled)
-		MetabolicRate:     1.5,                     // High metabolism
-		CellularMainenance: 0.2,                    // Low maintenance cost
+		BaseLifespanTicks:  int(ticksPerDay * 30 * timeScaleFactor), // 30 days base lifespan (scaled up)
+		LifespanVariance:   0.6,                                     // Moderate variance
+		AgingRate:          1.5,                                     // Age 1.5x as fast
+		MaturationAge:      int(ticksPerDay * 2 * timeScaleFactor),  // 2 days (scaled)
+		PeakAge:            int(ticksPerDay * 10 * timeScaleFactor), // 10 days (scaled)
+		SenescenceAge:      int(ticksPerDay * 20 * timeScaleFactor), // 20 days (scaled)
+		MetabolicRate:      1.5,                                     // High metabolism
+		CellularMainenance: 0.2,                                     // Low maintenance cost
 	}
-	
+
 	// Simple Multicellular organisms: Weeks to months
 	oc.LifespanData[ClassificationSimpleMulticellular] = &OrganismLifespanData{
-		Classification:      ClassificationSimpleMulticellular,
+		Classification:     ClassificationSimpleMulticellular,
 		Name:               "Simple Multicellular",
-		BaseLifespanTicks:  int(ticksPerDay * 90 * timeScaleFactor),  // 90 days base lifespan (scaled)
-		LifespanVariance:   0.5,                    // Moderate variance
-		AgingRate:          1.0,                    // Normal aging rate
-		MaturationAge:      int(ticksPerDay * 10 * timeScaleFactor),   // 10 days (scaled)
-		PeakAge:           int(ticksPerDay * 30 * timeScaleFactor),   // 30 days (scaled)
-		SenescenceAge:     int(ticksPerDay * 60 * timeScaleFactor),   // 60 days (scaled)
-		MetabolicRate:     1.2,                     // Moderate metabolism
-		CellularMainenance: 0.5,                    // Moderate maintenance cost
+		BaseLifespanTicks:  int(ticksPerDay * 90 * timeScaleFactor), // 90 days base lifespan (scaled)
+		LifespanVariance:   0.5,                                     // Moderate variance
+		AgingRate:          1.0,                                     // Normal aging rate
+		MaturationAge:      int(ticksPerDay * 10 * timeScaleFactor), // 10 days (scaled)
+		PeakAge:            int(ticksPerDay * 30 * timeScaleFactor), // 30 days (scaled)
+		SenescenceAge:      int(ticksPerDay * 60 * timeScaleFactor), // 60 days (scaled)
+		MetabolicRate:      1.2,                                     // Moderate metabolism
+		CellularMainenance: 0.5,                                     // Moderate maintenance cost
 	}
-	
+
 	// Complex Multicellular organisms: Months to years
 	oc.LifespanData[ClassificationComplexMulticellular] = &OrganismLifespanData{
-		Classification:      ClassificationComplexMulticellular,
+		Classification:     ClassificationComplexMulticellular,
 		Name:               "Complex Multicellular",
 		BaseLifespanTicks:  int(ticksPerDay * 365 * timeScaleFactor), // 1 year base lifespan (scaled)
-		LifespanVariance:   0.4,                    // Lower variance
-		AgingRate:          0.8,                    // Slower aging
+		LifespanVariance:   0.4,                                      // Lower variance
+		AgingRate:          0.8,                                      // Slower aging
 		MaturationAge:      int(ticksPerDay * 30 * timeScaleFactor),  // 30 days (scaled)
-		PeakAge:           int(ticksPerDay * 120 * timeScaleFactor),   // 120 days (scaled)
-		SenescenceAge:     int(ticksPerDay * 240 * timeScaleFactor),   // 240 days (scaled)
-		MetabolicRate:     1.0,                     // Normal metabolism
-		CellularMainenance: 1.0,                    // Higher maintenance cost
+		PeakAge:            int(ticksPerDay * 120 * timeScaleFactor), // 120 days (scaled)
+		SenescenceAge:      int(ticksPerDay * 240 * timeScaleFactor), // 240 days (scaled)
+		MetabolicRate:      1.0,                                      // Normal metabolism
+		CellularMainenance: 1.0,                                      // Higher maintenance cost
 	}
-	
+
 	// Advanced Multicellular organisms: Years to decades
 	oc.LifespanData[ClassificationAdvancedMulticellular] = &OrganismLifespanData{
-		Classification:      ClassificationAdvancedMulticellular,
+		Classification:     ClassificationAdvancedMulticellular,
 		Name:               "Advanced Multicellular",
 		BaseLifespanTicks:  int(ticksPerDay * 1095 * timeScaleFactor), // 3 years base lifespan (scaled)
-		LifespanVariance:   0.3,                    // Low variance
-		AgingRate:          0.5,                    // Much slower aging
-		MaturationAge:      int(ticksPerDay * 90 * timeScaleFactor),  // 90 days (scaled)
-		PeakAge:           int(ticksPerDay * 365 * timeScaleFactor),  // 1 year (scaled)
-		SenescenceAge:     int(ticksPerDay * 730 * timeScaleFactor),  // 2 years (scaled)
-		MetabolicRate:     0.8,                     // Lower metabolism
-		CellularMainenance: 1.5,                    // High maintenance cost
+		LifespanVariance:   0.3,                                       // Low variance
+		AgingRate:          0.5,                                       // Much slower aging
+		MaturationAge:      int(ticksPerDay * 90 * timeScaleFactor),   // 90 days (scaled)
+		PeakAge:            int(ticksPerDay * 365 * timeScaleFactor),  // 1 year (scaled)
+		SenescenceAge:      int(ticksPerDay * 730 * timeScaleFactor),  // 2 years (scaled)
+		MetabolicRate:      0.8,                                       // Lower metabolism
+		CellularMainenance: 1.5,                                       // High maintenance cost
 	}
 }
 
@@ -140,7 +140,7 @@ func (oc *OrganismClassifier) ClassifyEntity(entity *Entity, cellularSystem *Cel
 			return oc.classifyByCellularComplexity(organism.ComplexityLevel, entity)
 		}
 	}
-	
+
 	// Fallback classification based on entity traits
 	return oc.classifyByTraits(entity)
 }
@@ -155,16 +155,16 @@ func (oc *OrganismClassifier) classifyByCellularComplexity(complexityLevel int, 
 			return ClassificationProkaryotic
 		}
 		return ClassificationEukaryotic
-		
+
 	case 2:
 		return ClassificationSimpleMulticellular
-		
+
 	case 3:
 		return ClassificationComplexMulticellular
-		
+
 	case 4, 5:
 		return ClassificationAdvancedMulticellular
-		
+
 	default:
 		return ClassificationEukaryotic
 	}
@@ -175,10 +175,10 @@ func (oc *OrganismClassifier) classifyByTraits(entity *Entity) OrganismClassific
 	intelligence := entity.GetTrait("intelligence")
 	size := entity.GetTrait("size")
 	cooperation := entity.GetTrait("cooperation")
-	
+
 	// Calculate a complexity score from traits
 	complexityScore := (intelligence + size + cooperation) / 3.0
-	
+
 	switch {
 	case complexityScore < -0.5:
 		return ClassificationProkaryotic
@@ -196,69 +196,69 @@ func (oc *OrganismClassifier) classifyByTraits(entity *Entity) OrganismClassific
 // CalculateLifespan determines the actual lifespan for a specific entity
 func (oc *OrganismClassifier) CalculateLifespan(entity *Entity, classification OrganismClassification) int {
 	data := oc.LifespanData[classification]
-	
+
 	// Apply trait-based modifiers
 	endurance := entity.GetTrait("endurance")
 	size := entity.GetTrait("size")
-	
+
 	// Base lifespan with variance
 	variance := (rand.Float64() - 0.5) * 2 * data.LifespanVariance
 	baseLifespan := float64(data.BaseLifespanTicks) * (1.0 + variance)
-	
+
 	// Trait modifiers
 	enduranceModifier := 1.0 + endurance*0.3 // ±30% based on endurance
-	sizeModifier := 1.0 + size*0.2            // ±20% based on size
-	
+	sizeModifier := 1.0 + size*0.2           // ±20% based on size
+
 	// Calculate final lifespan
 	finalLifespan := baseLifespan * enduranceModifier * sizeModifier
-	
+
 	// Ensure lifespan stays within reasonable bounds (30% to 200% of base)
 	minLifespan := float64(data.BaseLifespanTicks) * 0.3
 	maxLifespan := float64(data.BaseLifespanTicks) * 2.0
 	finalLifespan = math.Max(minLifespan, math.Min(maxLifespan, finalLifespan))
-	
+
 	return int(finalLifespan)
 }
 
 // CalculateAgingRate determines how fast an entity ages based on its classification
 func (oc *OrganismClassifier) CalculateAgingRate(entity *Entity, classification OrganismClassification) float64 {
 	data := oc.LifespanData[classification]
-	
+
 	// Base aging rate from classification
 	agingRate := data.AgingRate
-	
+
 	// Metabolic modifiers
 	metabolism := entity.GetTrait("metabolism")
 	size := entity.GetTrait("size")
-	
+
 	// Higher metabolism = faster aging, larger size = slower aging
-	metabolismModifier := 1.0 + metabolism*0.2  // ±20% from metabolism
-	sizeModifier := 1.0 - size*0.1              // Larger = slower aging
-	
+	metabolismModifier := 1.0 + metabolism*0.2 // ±20% from metabolism
+	sizeModifier := 1.0 - size*0.1             // Larger = slower aging
+
 	return agingRate * metabolismModifier * sizeModifier
 }
 
 // CalculateEnergyMaintenance calculates energy cost for maintaining the organism
 func (oc *OrganismClassifier) CalculateEnergyMaintenance(entity *Entity, classification OrganismClassification) float64 {
 	data := oc.LifespanData[classification]
-	
+
 	// Base maintenance cost
 	baseCost := data.CellularMainenance
-	
+
 	// Size and complexity affect maintenance
 	size := entity.GetTrait("size")
 	intelligence := entity.GetTrait("intelligence")
-	
-	sizeModifier := 1.0 + size*0.5           // Larger organisms cost more
+
+	sizeModifier := 1.0 + size*0.5               // Larger organisms cost more
 	complexityModifier := 1.0 + intelligence*0.3 // Smarter organisms cost more
-	
+
 	return baseCost * sizeModifier * complexityModifier
 }
 
 // ShouldAge determines if an entity should age this tick based on its classification
 func (oc *OrganismClassifier) ShouldAge(entity *Entity, classification OrganismClassification) bool {
 	agingRate := oc.CalculateAgingRate(entity, classification)
-	
+
 	// Use probabilistic aging for fractional rates
 	if agingRate >= 1.0 {
 		// Fast aging - might age multiple times per tick
@@ -272,19 +272,19 @@ func (oc *OrganismClassifier) ShouldAge(entity *Entity, classification OrganismC
 // IsDeathByOldAge determines if an entity should die from old age
 func (oc *OrganismClassifier) IsDeathByOldAge(entity *Entity, classification OrganismClassification, maxLifespan int) bool {
 	data := oc.LifespanData[classification]
-	
+
 	// Calculate death probability based on age
 	if entity.Age >= maxLifespan {
 		return true
 	}
-	
+
 	// Increased death probability in senescence
 	if entity.Age >= data.SenescenceAge {
 		senescenceProgress := float64(entity.Age-data.SenescenceAge) / float64(maxLifespan-data.SenescenceAge)
 		deathProbability := senescenceProgress * 0.01 // Up to 1% chance per tick in late senescence
 		return rand.Float64() < deathProbability
 	}
-	
+
 	return false
 }
 
@@ -316,11 +316,11 @@ func (oc *OrganismClassifier) GetOptimalReproductiveAge(classification OrganismC
 // CalculateReproductiveVigor calculates how effectively an entity can reproduce based on age
 func (oc *OrganismClassifier) CalculateReproductiveVigor(entity *Entity, classification OrganismClassification) float64 {
 	data := oc.LifespanData[classification]
-	
+
 	if entity.Age < data.MaturationAge {
 		return 0.0 // Too young to reproduce
 	}
-	
+
 	if entity.Age >= data.SenescenceAge {
 		// Declining reproductive capability in old age
 		senescenceSpan := entity.MaxLifespan - data.SenescenceAge
@@ -328,21 +328,21 @@ func (oc *OrganismClassifier) CalculateReproductiveVigor(entity *Entity, classif
 			// Edge case: senescence age is at or beyond max lifespan
 			return 0.2 // Minimal reproductive vigor
 		}
-		senescenceProgress := float64(entity.Age - data.SenescenceAge) / float64(senescenceSpan)
-		vigor := 1.0 - senescenceProgress*0.8 // Up to 80% reduction in old age
+		senescenceProgress := float64(entity.Age-data.SenescenceAge) / float64(senescenceSpan)
+		vigor := 1.0 - senescenceProgress*0.8      // Up to 80% reduction in old age
 		return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 	}
-	
+
 	// Peak vigor at optimal age
 	if entity.Age <= data.PeakAge {
 		// Increasing vigor from maturation to peak
-		progress := float64(entity.Age - data.MaturationAge) / float64(data.PeakAge - data.MaturationAge)
-		vigor := 0.5 + progress*0.5 // 50% to 100% vigor
+		progress := float64(entity.Age-data.MaturationAge) / float64(data.PeakAge-data.MaturationAge)
+		vigor := 0.5 + progress*0.5                // 50% to 100% vigor
 		return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 	}
-	
+
 	// Stable vigor from peak to senescence - but slightly declining
-	ageProgress := float64(entity.Age - data.PeakAge) / float64(data.SenescenceAge - data.PeakAge)
-	vigor := 1.0 - ageProgress*0.1 // Slight decline before senescence
+	ageProgress := float64(entity.Age-data.PeakAge) / float64(data.SenescenceAge-data.PeakAge)
+	vigor := 1.0 - ageProgress*0.1             // Slight decline before senescence
 	return math.Max(0.0, math.Min(1.0, vigor)) // Ensure between 0 and 1
 }

@@ -17,9 +17,9 @@ const (
 	PlantAlgae
 	PlantCactus
 	// Aquatic plant types for water dispersal system
-	PlantLily     // Water lilies - floating surface plants
-	PlantReed     // Marsh reeds - wetland plants
-	PlantKelp     // Kelp - deep water plants
+	PlantLily // Water lilies - floating surface plants
+	PlantReed // Marsh reeds - wetland plants
+	PlantKelp // Kelp - deep water plants
 )
 
 // Plant represents a plant entity in the ecosystem
@@ -36,18 +36,18 @@ type Plant struct {
 	NutritionVal float64          `json:"nutrition_value"`
 	Toxicity     float64          `json:"toxicity"`
 	GrowthRate   float64          `json:"growth_rate"`
-	
+
 	// Molecular system
 	MolecularProfile *MolecularProfile `json:"molecular_profile"`
-	
+
 	// Enhanced nutrient system
-	SoilNutrients    map[string]float64 `json:"soil_nutrients"`    // Available nutrients in soil
-	WaterLevel       float64            `json:"water_level"`       // Available water
-	SunlightLevel    float64            `json:"sunlight_level"`    // Available sunlight
-	NutrientNeeds    map[string]float64 `json:"nutrient_needs"`    // Required nutrients for growth
-	WaterDependency  float64            `json:"water_dependency"`  // How much water this plant needs
-	SoilPH           float64            `json:"soil_ph"`           // Soil acidity level (6-8 optimal)
-	RootDepth        float64            `json:"root_depth"`        // How deep roots go for nutrients
+	SoilNutrients   map[string]float64 `json:"soil_nutrients"`   // Available nutrients in soil
+	WaterLevel      float64            `json:"water_level"`      // Available water
+	SunlightLevel   float64            `json:"sunlight_level"`   // Available sunlight
+	NutrientNeeds   map[string]float64 `json:"nutrient_needs"`   // Required nutrients for growth
+	WaterDependency float64            `json:"water_dependency"` // How much water this plant needs
+	SoilPH          float64            `json:"soil_ph"`          // Soil acidity level (6-8 optimal)
+	RootDepth       float64            `json:"root_depth"`       // How deep roots go for nutrients
 }
 
 // PlantConfig defines the characteristics of different plant types
@@ -223,10 +223,10 @@ func NewPlant(id int, plantType PlantType, position Position) *Plant {
 
 	// Initialize molecular profile
 	plant.MolecularProfile = CreatePlantMolecularProfile(plant)
-	
+
 	// Initialize enhanced nutrient system
 	plant.SoilNutrients = make(map[string]float64)
-	plant.WaterLevel = 0.5 // Start with moderate water
+	plant.WaterLevel = 0.5    // Start with moderate water
 	plant.SunlightLevel = 1.0 // Full sunlight available initially
 	plant.NutrientNeeds = initializePlantNutrientNeeds(plantType)
 	plant.WaterDependency = getPlantWaterDependency(plantType)
@@ -436,7 +436,7 @@ func (p *Plant) SetEnergyWithTracking(newEnergy float64, world *World, reason st
 	if world.StatisticalReporter != nil {
 		oldEnergy := p.Energy
 		world.StatisticalReporter.LogPlantEvent(world.Tick, "energy_change", p, oldEnergy, newEnergy)
-		
+
 		// Add detailed metadata about the change
 		metadata := map[string]interface{}{
 			"reason":     reason,
@@ -459,7 +459,7 @@ func (p *Plant) SetSizeWithTracking(newSize float64, world *World, reason string
 	if world.StatisticalReporter != nil {
 		oldSize := p.Size
 		world.StatisticalReporter.LogPlantEvent(world.Tick, "size_change", p, oldSize, newSize)
-		
+
 		metadata := map[string]interface{}{
 			"reason":     reason,
 			"magnitude":  newSize - oldSize,
@@ -484,7 +484,7 @@ func (p *Plant) LogPlantDeath(world *World, cause string, contributingFactors ma
 	// Log to central event bus
 	if world.CentralEventBus != nil {
 		plantTypeName := GetPlantConfigs()[p.Type].Name
-		world.CentralEventBus.EmitPlantEvent(world.Tick, "death", "death", "plant_lifecycle", 
+		world.CentralEventBus.EmitPlantEvent(world.Tick, "death", "death", "plant_lifecycle",
 			fmt.Sprintf("Plant %d (%s) died: %s", p.ID, plantTypeName, cause), p, true, false)
 	}
 
@@ -507,10 +507,10 @@ func (p *Plant) LogPlantBirth(world *World, parent *Plant, reproductionType stri
 	// Log to central event bus
 	if world.CentralEventBus != nil {
 		plantTypeName := GetPlantConfigs()[p.Type].Name
-		world.CentralEventBus.EmitPlantEvent(world.Tick, "birth", "birth", "plant_lifecycle", 
+		world.CentralEventBus.EmitPlantEvent(world.Tick, "birth", "birth", "plant_lifecycle",
 			fmt.Sprintf("Plant %d (%s) born from parent %d via %s", p.ID, plantTypeName, parent.ID, reproductionType), p, false, true)
 	}
-	
+
 	// Legacy statistical reporter logging
 	if world.StatisticalReporter != nil {
 		world.StatisticalReporter.LogPlantEvent(world.Tick, "plant_birth", p, false, true)
@@ -523,22 +523,22 @@ func (p *Plant) LogPlantBirth(world *World, parent *Plant, reproductionType stri
 // initializeSoilNutrients creates initial soil nutrient levels
 func initializeSoilNutrients() map[string]float64 {
 	nutrients := make(map[string]float64)
-	
+
 	// Primary nutrients
 	nutrients["nitrogen"] = 0.3 + rand.Float64()*0.4   // 0.3-0.7
 	nutrients["phosphorus"] = 0.2 + rand.Float64()*0.3 // 0.2-0.5
 	nutrients["potassium"] = 0.2 + rand.Float64()*0.3  // 0.2-0.5
-	
+
 	// Secondary nutrients
-	nutrients["calcium"] = 0.1 + rand.Float64()*0.2    // 0.1-0.3
-	nutrients["magnesium"] = 0.1 + rand.Float64()*0.2  // 0.1-0.3
-	nutrients["sulfur"] = 0.1 + rand.Float64()*0.1     // 0.1-0.2
-	
+	nutrients["calcium"] = 0.1 + rand.Float64()*0.2   // 0.1-0.3
+	nutrients["magnesium"] = 0.1 + rand.Float64()*0.2 // 0.1-0.3
+	nutrients["sulfur"] = 0.1 + rand.Float64()*0.1    // 0.1-0.2
+
 	// Micronutrients
-	nutrients["iron"] = 0.05 + rand.Float64()*0.05     // 0.05-0.1
+	nutrients["iron"] = 0.05 + rand.Float64()*0.05      // 0.05-0.1
 	nutrients["manganese"] = 0.02 + rand.Float64()*0.03 // 0.02-0.05
-	nutrients["zinc"] = 0.01 + rand.Float64()*0.02     // 0.01-0.03
-	
+	nutrients["zinc"] = 0.01 + rand.Float64()*0.02      // 0.01-0.03
+
 	return nutrients
 }
 
@@ -567,7 +567,7 @@ func initializeWaterLevel(biome BiomeType) float64 {
 // initializePlantNutrientNeeds sets nutrient requirements based on plant type
 func initializePlantNutrientNeeds(plantType PlantType) map[string]float64 {
 	needs := make(map[string]float64)
-	
+
 	switch plantType {
 	case PlantGrass:
 		// Grass needs moderate nutrients, grows fast
@@ -575,14 +575,14 @@ func initializePlantNutrientNeeds(plantType PlantType) map[string]float64 {
 		needs["phosphorus"] = 0.2
 		needs["potassium"] = 0.2
 		needs["water"] = 0.4
-		
+
 	case PlantBush:
 		// Bushes need balanced nutrients
 		needs["nitrogen"] = 0.4
 		needs["phosphorus"] = 0.3
 		needs["potassium"] = 0.3
 		needs["water"] = 0.5
-		
+
 	case PlantTree:
 		// Trees need lots of nutrients and water
 		needs["nitrogen"] = 0.6
@@ -590,41 +590,41 @@ func initializePlantNutrientNeeds(plantType PlantType) map[string]float64 {
 		needs["potassium"] = 0.5
 		needs["calcium"] = 0.3
 		needs["water"] = 0.7
-		
+
 	case PlantMushroom:
 		// Mushrooms thrive on organic matter, less sunlight
 		needs["nitrogen"] = 0.5
 		needs["phosphorus"] = 0.3
 		needs["organic_matter"] = 0.6
 		needs["water"] = 0.6
-		
+
 	case PlantAlgae:
 		// Algae needs lots of water and some nutrients
 		needs["nitrogen"] = 0.4
 		needs["phosphorus"] = 0.4
 		needs["water"] = 0.9
-		
+
 	case PlantCactus:
 		// Cacti need minimal water, store nutrients
 		needs["nitrogen"] = 0.2
 		needs["phosphorus"] = 0.2
 		needs["potassium"] = 0.3
 		needs["water"] = 0.2
-		
+
 	case PlantLily:
 		// Water lilies thrive in water, need aquatic nutrients
 		needs["nitrogen"] = 0.3
 		needs["phosphorus"] = 0.3
 		needs["potassium"] = 0.2
 		needs["water"] = 0.95
-		
+
 	case PlantReed:
 		// Reeds grow in wetlands, filter water
 		needs["nitrogen"] = 0.4
 		needs["phosphorus"] = 0.2
 		needs["potassium"] = 0.2
 		needs["water"] = 0.8
-		
+
 	case PlantKelp:
 		// Kelp grows in deep water, needs minerals
 		needs["nitrogen"] = 0.5
@@ -632,7 +632,7 @@ func initializePlantNutrientNeeds(plantType PlantType) map[string]float64 {
 		needs["magnesium"] = 0.3
 		needs["water"] = 1.0
 	}
-	
+
 	return needs
 }
 
@@ -652,11 +652,11 @@ func getPlantWaterDependency(plantType PlantType) float64 {
 	case PlantCactus:
 		return 0.2
 	case PlantLily:
-		return 0.95  // Very high water dependency
+		return 0.95 // Very high water dependency
 	case PlantReed:
-		return 0.8   // High water dependency
+		return 0.8 // High water dependency
 	case PlantKelp:
-		return 1.0   // Maximum water dependency
+		return 1.0 // Maximum water dependency
 	default:
 		return 0.5
 	}
@@ -693,14 +693,14 @@ func (p *Plant) updatePlantNutrients(gridCell *GridCell, season string) float64 
 	if !p.IsAlive {
 		return 0.0
 	}
-	
+
 	nutritionalHealth := 1.0
-	
+
 	// Check water availability vs needs
 	waterAvailable := gridCell.WaterLevel
 	waterNeeded := p.NutrientNeeds["water"]
 	waterRatio := waterAvailable / math.Max(waterNeeded, 0.1)
-	
+
 	if waterRatio < 0.5 {
 		// Water stress
 		nutritionalHealth *= 0.5 + waterRatio
@@ -709,41 +709,41 @@ func (p *Plant) updatePlantNutrients(gridCell *GridCell, season string) float64 
 		// Too much water (flooding)
 		nutritionalHealth *= 0.8
 	}
-	
+
 	// Check soil nutrients vs needs
 	for nutrient, needed := range p.NutrientNeeds {
 		if nutrient == "water" {
 			continue // Already handled above
 		}
-		
+
 		available := gridCell.SoilNutrients[nutrient]
 		if available < needed {
 			// Nutrient deficiency
 			deficiencyRatio := available / needed
 			nutritionalHealth *= 0.7 + deficiencyRatio*0.3
-			
+
 			// Consume available nutrients
-			gridCell.SoilNutrients[nutrient] = math.Max(0, available - needed*0.1)
+			gridCell.SoilNutrients[nutrient] = math.Max(0, available-needed*0.1)
 		} else {
 			// Adequate nutrients, consume some
-			gridCell.SoilNutrients[nutrient] = math.Max(0, available - needed*0.05)
+			gridCell.SoilNutrients[nutrient] = math.Max(0, available-needed*0.05)
 		}
 	}
-	
+
 	// pH effects
 	pHDifference := math.Abs(gridCell.SoilPH - 7.0) // Most plants prefer neutral pH
 	if pHDifference > 1.0 {
 		nutritionalHealth *= 1.0 - (pHDifference-1.0)*0.2
 	}
-	
+
 	// Soil compaction effects
 	compactionPenalty := gridCell.SoilCompaction * 0.3
 	nutritionalHealth *= 1.0 - compactionPenalty
-	
+
 	// Organic matter bonus
 	organicBonus := gridCell.OrganicMatter * 0.5
 	nutritionalHealth += organicBonus
-	
+
 	// Seasonal effects
 	seasonalMultiplier := 1.0
 	switch season {
@@ -756,9 +756,9 @@ func (p *Plant) updatePlantNutrients(gridCell *GridCell, season string) float64 
 	case "winter":
 		seasonalMultiplier = 0.6 // Dormant season
 	}
-	
+
 	nutritionalHealth *= seasonalMultiplier
-	
+
 	// Apply nutritional health to plant growth
 	if nutritionalHealth > 1.0 {
 		// Optimal conditions - bonus growth
@@ -768,7 +768,7 @@ func (p *Plant) updatePlantNutrients(gridCell *GridCell, season string) float64 
 		// Poor conditions - stress
 		p.Energy -= (0.7 - nutritionalHealth) * 3.0
 	}
-	
+
 	// Update plant's recorded nutrient levels for decision making
 	p.SoilNutrients = make(map[string]float64)
 	for k, v := range gridCell.SoilNutrients {
@@ -776,7 +776,7 @@ func (p *Plant) updatePlantNutrients(gridCell *GridCell, season string) float64 
 	}
 	p.WaterLevel = gridCell.WaterLevel
 	p.SoilPH = gridCell.SoilPH
-	
+
 	return nutritionalHealth
 }
 
@@ -785,10 +785,10 @@ func addDecayNutrientsToSoil(gridCell *GridCell, decayItem *DecayableItem) {
 	if gridCell.SoilNutrients == nil {
 		gridCell.SoilNutrients = initializeSoilNutrients()
 	}
-	
+
 	// Different decay sources provide different nutrients
 	nutrientContribution := decayItem.NutrientValue * 0.01 // Convert to soil nutrient levels
-	
+
 	switch decayItem.ItemType {
 	case "corpse":
 		// Animal corpses provide lots of nitrogen and phosphorus
@@ -796,7 +796,7 @@ func addDecayNutrientsToSoil(gridCell *GridCell, decayItem *DecayableItem) {
 		gridCell.SoilNutrients["phosphorus"] += nutrientContribution * 1.5
 		gridCell.SoilNutrients["potassium"] += nutrientContribution * 0.5
 		gridCell.OrganicMatter += nutrientContribution * 0.5
-		
+
 	case "plant_matter":
 		// Dead plants provide balanced nutrients
 		gridCell.SoilNutrients["nitrogen"] += nutrientContribution * 1.0
@@ -804,7 +804,7 @@ func addDecayNutrientsToSoil(gridCell *GridCell, decayItem *DecayableItem) {
 		gridCell.SoilNutrients["potassium"] += nutrientContribution * 1.0
 		gridCell.SoilNutrients["calcium"] += nutrientContribution * 0.3
 		gridCell.OrganicMatter += nutrientContribution * 0.8
-		
+
 	case "organic_matter":
 		// General organic matter
 		gridCell.SoilNutrients["nitrogen"] += nutrientContribution * 1.0
@@ -812,14 +812,14 @@ func addDecayNutrientsToSoil(gridCell *GridCell, decayItem *DecayableItem) {
 		gridCell.SoilNutrients["potassium"] += nutrientContribution * 0.8
 		gridCell.OrganicMatter += nutrientContribution * 0.6
 	}
-	
+
 	// Decay also affects soil pH towards neutral
 	if gridCell.SoilPH < 7.0 {
 		gridCell.SoilPH += 0.02 // Slight alkalizing effect
 	} else if gridCell.SoilPH > 7.0 {
 		gridCell.SoilPH -= 0.02 // Slight acidifying effect
 	}
-	
+
 	// Organic matter helps reduce soil compaction
 	gridCell.SoilCompaction *= 0.98
 }
@@ -827,16 +827,16 @@ func addDecayNutrientsToSoil(gridCell *GridCell, decayItem *DecayableItem) {
 // processRainfall adds water and nutrients from precipitation
 func processRainfall(gridCell *GridCell, intensity float64) {
 	// Rain adds water
-	gridCell.WaterLevel = math.Min(1.0, gridCell.WaterLevel + intensity * 0.3)
-	
+	gridCell.WaterLevel = math.Min(1.0, gridCell.WaterLevel+intensity*0.3)
+
 	// Rain brings some nutrients (nitrogen from atmosphere)
 	if gridCell.SoilNutrients == nil {
 		gridCell.SoilNutrients = initializeSoilNutrients()
 	}
-	
+
 	// Nitrogen fixation from rain
 	gridCell.SoilNutrients["nitrogen"] += intensity * 0.01
-	
+
 	// Heavy rain can wash away nutrients (leaching)
 	if intensity > 0.7 {
 		leachingRate := (intensity - 0.7) * 0.1
@@ -844,7 +844,7 @@ func processRainfall(gridCell *GridCell, intensity float64) {
 			gridCell.SoilNutrients[nutrient] *= (1.0 - leachingRate)
 		}
 	}
-	
+
 	// Rain slightly reduces soil compaction
-	gridCell.SoilCompaction *= (1.0 - intensity * 0.05)
+	gridCell.SoilCompaction *= (1.0 - intensity*0.05)
 }
