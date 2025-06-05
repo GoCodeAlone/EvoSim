@@ -1145,8 +1145,8 @@ func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime f
 		// Check starvation-driven evolution
 		entity.CheckStarvation(w)
 
-		// Update basic entity properties using classification system
-		entity.UpdateWithClassification(w.OrganismClassifier, w.CellularSystem)
+		// Update basic entity properties using classification system and configuration
+		entity.UpdateWithClassificationAndConfig(w.OrganismClassifier, w.CellularSystem, w.SimConfig)
 		
 		// Update metamorphosis and life stage development
 		if entity.MetamorphosisStatus == nil {
@@ -1250,8 +1250,8 @@ func (w *World) updateSingleEntity(entity *Entity, currentTimeState TimeState, d
 	// Check starvation-driven evolution
 	entity.CheckStarvation(w)
 
-	// Update basic entity properties using classification system
-	entity.UpdateWithClassification(w.OrganismClassifier, w.CellularSystem)
+	// Update basic entity properties using classification system and configuration
+	entity.UpdateWithClassificationAndConfig(w.OrganismClassifier, w.CellularSystem, w.SimConfig)
 
 	// Note: Physics force calculations and interactions are handled separately
 	// to avoid race conditions between entities

@@ -285,6 +285,30 @@ func (e *Entity) MoveTo(targetX, targetY float64, speed float64) {
 	}
 }
 
+// MoveToWithConfig moves the entity to a target position using configuration for energy costs
+func (e *Entity) MoveToWithConfig(targetX, targetY float64, speed float64, config *SimulationConfig) {
+	if !e.IsAlive {
+		return
+	}
+
+	dx := targetX - e.Position.X
+	dy := targetY - e.Position.Y
+	distance := math.Sqrt(dx*dx + dy*dy)
+
+	if distance > 0 {
+		// Normalize direction and apply speed
+		dx = (dx / distance) * speed
+		dy = (dy / distance) * speed
+
+		e.Position.X += dx
+		e.Position.Y += dy
+
+		// Moving costs energy using configuration
+		energyCost := speed * config.Energy.MovementEnergyCost
+		e.Energy -= energyCost
+	}
+}
+
 // MoveToWithEnvironment moves the entity with environment-specific adaptations
 func (e *Entity) MoveToWithEnvironment(targetX, targetY float64, speed float64, biome BiomeType) {
 	if !e.IsAlive {
@@ -687,12 +711,11 @@ func init() {
 }
 
 // Update handles entity aging, energy decay, and natural death
+// Deprecated: Use UpdateWithConfig instead for configuration-aware updates
 func (e *Entity) Update() {
 	if !e.IsAlive {
 		return
 	}
-
-
 
 	// Update molecular needs (deficiencies increase over time)
 	if e.MolecularNeeds != nil {
@@ -718,8 +741,53 @@ func (e *Entity) Update() {
 		e.IsAlive = false
 		e.Energy = 0
 	}
+}
 
+// UpdateWithConfig handles entity aging, energy decay, and natural death using configuration
+func (e *Entity) UpdateWithConfig(config *SimulationConfig) {
+	if !e.IsAlive {
+		return
+	}
 
+	// Age the entity
+	e.Age++
+
+	// Update molecular needs (deficiencies increase over time)
+	if e.MolecularNeeds != nil {
+		e.MolecularNeeds.UpdateDeficiencies(1.0) // 1 time step
+	}
+
+	// Natural energy decay using configuration values
+	baseDecay := config.Energy.BaseEnergyDrain + float64(e.Age)*0.0001 // Age-based decay factor
+	
+	// Add daily energy base requirement
+	baseDecay += config.Time.DailyEnergyBase
+	
+	// Molecular nutritional status affects energy decay
+	if e.MolecularNeeds != nil {
+		nutritionalStatus := e.MolecularNeeds.GetOverallNutritionalStatus()
+		// Poor nutrition increases energy decay
+		nutritionalMultiplier := 1.0 + (1.0-nutritionalStatus)*0.5
+		baseDecay *= nutritionalMultiplier
+	}
+	
+	// Apply energy regeneration (natural recovery)
+	energyRegeneration := config.Energy.EnergyRegenerationRate
+	
+	// Net energy change (regeneration - decay)
+	netEnergyChange := energyRegeneration - baseDecay
+	e.Energy += netEnergyChange
+
+	// Die if energy is too low (using configured survival threshold)
+	if e.Energy <= config.Energy.SurvivalThreshold {
+		e.IsAlive = false
+		e.Energy = 0
+	}
+
+	// Apply maximum energy limit
+	if e.Energy > config.Energy.MaxEnergyLevel {
+		e.Energy = config.Energy.MaxEnergyLevel
+	}
 }
 
 // UpdateWithClassification handles entity aging using the organism classification system
@@ -771,6 +839,75 @@ func (e *Entity) UpdateWithClassification(classifier *OrganismClassifier, cellul
 		e.IsAlive = false
 		e.Energy = 0
 		return
+	}
+
+	// Check for death by old age using classification system
+	if classifier.IsDeathByOldAge(e, e.Classification, e.MaxLifespan) {
+		e.IsAlive = false
+	}
+}
+
+// UpdateWithClassificationAndConfig handles entity aging using the organism classification system and config
+func (e *Entity) UpdateWithClassificationAndConfig(classifier *OrganismClassifier, cellularSystem *CellularSystem, config *SimulationConfig) {
+	if !e.IsAlive {
+		return
+	}
+
+	// Classify the entity if not already classified
+	if e.Classification == ClassificationEukaryotic && e.MaxLifespan == 3360 {
+		// This is a newly created entity with default values - classify it
+		e.Classification = classifier.ClassifyEntity(e, cellularSystem)
+		e.MaxLifespan = classifier.CalculateLifespan(e, e.Classification)
+	}
+
+	// Handle aging based on classification
+	agingRate := classifier.CalculateAgingRate(e, e.Classification)
+	e.AgingAccumulator += agingRate
+	
+	// Age when accumulator reaches 1.0
+	if e.AgingAccumulator >= 1.0 {
+		e.Age++
+		e.AgingAccumulator -= 1.0
+	}
+
+	// Calculate energy maintenance cost based on classification (scale with config)
+	classificationMaintenanceCost := classifier.CalculateEnergyMaintenance(e, e.Classification)
+	
+	// Update molecular needs (deficiencies increase over time)
+	if e.MolecularNeeds != nil {
+		e.MolecularNeeds.UpdateDeficiencies(1.0) // 1 time step
+	}
+
+	// Natural energy decay using configuration values combined with classification
+	baseDecay := config.Energy.BaseEnergyDrain + classificationMaintenanceCost*0.5 // Scale classification cost
+	baseDecay += config.Time.DailyEnergyBase
+	baseDecay += float64(e.Age)*0.0001 // Reduced age penalty
+	
+	// Molecular nutritional status affects energy decay
+	if e.MolecularNeeds != nil {
+		nutritionalStatus := e.MolecularNeeds.GetOverallNutritionalStatus()
+		// Poor nutrition increases energy decay
+		nutritionalMultiplier := 1.0 + (1.0-nutritionalStatus)*0.5
+		baseDecay *= nutritionalMultiplier
+	}
+	
+	// Apply energy regeneration (natural recovery)
+	energyRegeneration := config.Energy.EnergyRegenerationRate
+	
+	// Net energy change (regeneration - decay)
+	netEnergyChange := energyRegeneration - baseDecay
+	e.Energy += netEnergyChange
+
+	// Die if energy is too low (using configured survival threshold)
+	if e.Energy <= config.Energy.SurvivalThreshold {
+		e.IsAlive = false
+		e.Energy = 0
+		return
+	}
+
+	// Apply maximum energy limit
+	if e.Energy > config.Energy.MaxEnergyLevel {
+		e.Energy = config.Energy.MaxEnergyLevel
 	}
 
 	// Check for death by old age using classification system
