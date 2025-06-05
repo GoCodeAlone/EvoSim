@@ -11,6 +11,7 @@ func TestNeuralAISystemCreation(t *testing.T) {
 
 	if system == nil {
 		t.Error("Failed to create neural AI system")
+		return
 	}
 
 	if system.BaseLearningRate != 0.01 {
@@ -41,6 +42,7 @@ func TestNeuralNetworkCreation(t *testing.T) {
 
 	if network == nil {
 		t.Error("Failed to create neural network")
+		return
 	}
 
 	if network.EntityID != entity.ID {
@@ -94,6 +96,7 @@ func TestNeuralDecisionProcessing(t *testing.T) {
 	network := system.EntityNetworks[entity.ID]
 	if network == nil {
 		t.Error("Network should be created during decision processing")
+		return
 	}
 
 	// Check that decision was recorded

@@ -21,6 +21,7 @@ func TestToolSystem(t *testing.T) {
 	tool := toolSystem.CreateTool(entity, ToolStone, entity.Position)
 	if tool == nil {
 		t.Error("Failed to create stone tool")
+		return
 	}
 
 	if tool.Type != ToolStone {
@@ -59,6 +60,7 @@ func TestEnvironmentalModificationSystem(t *testing.T) {
 	burrow := modSystem.CreateBurrow(entity, entity.Position)
 	if burrow == nil {
 		t.Error("Failed to create burrow")
+		return
 	}
 
 	if burrow.Type != EnvModBurrow {
@@ -79,6 +81,7 @@ func TestEnvironmentalModificationSystem(t *testing.T) {
 	cache := modSystem.CreateCache(entity, Position{X: 6, Y: 6})
 	if cache == nil {
 		t.Error("Failed to create cache")
+		return
 	}
 
 	if cache.Type != EnvModCache {

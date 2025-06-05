@@ -13,6 +13,12 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+// Web interface constants
+const (
+	HTTPMethodGET    = "GET"
+	EventSpeciesExtinct = "species_extinct"
+)
+
 // WebInterface manages the web-based interface for the simulation
 type WebInterface struct {
 	world              *World
@@ -4027,7 +4033,7 @@ func (wi *WebInterface) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleExportEvents exports all events from the central event bus
 func (wi *WebInterface) handleExportEvents(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != HTTPMethodGET {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -4074,7 +4080,7 @@ func (wi *WebInterface) handleExportEvents(w http.ResponseWriter, r *http.Reques
 
 // handleExportAnalysis exports statistical analysis data
 func (wi *WebInterface) handleExportAnalysis(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != HTTPMethodGET {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -4111,7 +4117,7 @@ func (wi *WebInterface) handleExportAnalysis(w http.ResponseWriter, r *http.Requ
 
 // handleExportAnomalies exports anomaly detection data
 func (wi *WebInterface) handleExportAnomalies(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != HTTPMethodGET {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -4944,7 +4950,7 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 
 	// Handle different event types
 	switch eventType {
-	case "species_extinct":
+	case EventSpeciesExtinct:
 		wi.playerManager.MarkSpeciesExtinct(speciesName)
 
 		notification := map[string]interface{}{

@@ -134,6 +134,7 @@ func TestAllianceFormationAndBenefits(t *testing.T) {
 
 	if alliance == nil {
 		t.Error("Alliance should be created")
+		return
 	}
 
 	if !alliance.IsActive {

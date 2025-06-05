@@ -51,6 +51,7 @@ func TestCulturalKnowledgeSystemBasics(t *testing.T) {
 	memory1 := system.EntityMemories[entity1.ID]
 	if memory1 == nil {
 		t.Error("Entity 1 should have cultural memory")
+		return
 	}
 
 	memory2 := system.EntityMemories[entity2.ID]

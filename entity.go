@@ -6,6 +6,12 @@ import (
 	"math/rand"
 )
 
+// Species constants
+const (
+	SpeciesMicrobe    = "microbe"
+	SpeciesPredator   = "predator"
+)
+
 // Trait represents a dynamic trait with a name and value
 type Trait struct {
 	Name  string  `json:"name"`
@@ -1014,7 +1020,7 @@ func (e *Entity) CanEatPlant(plant *Plant) bool {
 		return true
 	case "omnivore":
 		return true
-	case "predator":
+	case SpeciesPredator:
 		// Predators can only eat plants when desperate (very low energy)
 		return e.Energy < 20
 	default:
@@ -1196,11 +1202,11 @@ func (e *Entity) checkEvolutionaryPressure(world *World) {
 
 	// Different evolutionary pressures based on current species and conditions
 	switch e.Species {
-	case "microbe":
+	case SpeciesMicrobe:
 		e.handleMicrobeEvolution(world, biome)
 	case "simple":
 		e.handleSimpleOrganismEvolution(world, biome)
-	case "predator":
+	case SpeciesPredator:
 		e.handlePredatorEvolution(world, biome)
 	case "herbivore":
 		e.handleHerbivoreEvolution(world, biome)

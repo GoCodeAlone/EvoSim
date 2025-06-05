@@ -34,6 +34,7 @@ func TestNewEvaluationEngine(t *testing.T) {
 
 	if engine == nil {
 		t.Error("Expected non-nil evaluation engine")
+		return
 	}
 
 	if len(engine.Rules) != 0 {

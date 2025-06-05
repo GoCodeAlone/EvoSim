@@ -134,6 +134,7 @@ func TestBorderCalculation(t *testing.T) {
 
 	if border == nil {
 		t.Errorf("Expected to find border between colonies 1 and 2")
+		return
 	}
 
 	if len(border.BorderPoints) == 0 {

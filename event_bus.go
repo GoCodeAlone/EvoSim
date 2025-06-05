@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+// Event type constants
+const (
+	EventTypeBirth      = "birth"
+	EventTypeDeath      = "death" 
+	EventTypeEvolution  = "evolution"
+	EventTypeSpeciation = "speciation"
+)
+
 // CentralEvent represents a unified event in the simulation
 type CentralEvent struct {
 	ID          int                    `json:"id"`
@@ -275,7 +283,7 @@ func (eb *CentralEventBus) determineSeverity(eventType, category string, change 
 	}
 
 	// High severity events
-	if eventType == "death" || eventType == "birth" || eventType == "evolution" || eventType == "speciation" {
+	if eventType == EventTypeDeath || eventType == EventTypeBirth || eventType == EventTypeEvolution || eventType == EventTypeSpeciation {
 		return "high"
 	}
 
