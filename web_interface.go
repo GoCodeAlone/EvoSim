@@ -9,25 +9,25 @@ import (
 	"net/http"
 	"sync"
 	"time"
-	
+
 	"golang.org/x/net/websocket"
 )
 
 // WebInterface manages the web-based interface for the simulation
 type WebInterface struct {
-	world           *World
-	viewManager     *ViewManager
-	clients         map[*websocket.Conn]bool
-	clientsMutex    sync.RWMutex
-	broadcastChan   chan *ViewData
-	stopChan        chan bool
-	updateInterval  time.Duration
-	playerManager   *PlayerManager
-	clientPlayers   map[*websocket.Conn]string // maps websocket connections to player IDs
-	accumulatedUpdates float64 // For fractional speed calculations
+	world              *World
+	viewManager        *ViewManager
+	clients            map[*websocket.Conn]bool
+	clientsMutex       sync.RWMutex
+	broadcastChan      chan *ViewData
+	stopChan           chan bool
+	updateInterval     time.Duration
+	playerManager      *PlayerManager
+	clientPlayers      map[*websocket.Conn]string // maps websocket connections to player IDs
+	accumulatedUpdates float64                    // For fractional speed calculations
 	// Viewport controls for web interface
 	viewportX int     // Pan X offset
-	viewportY int     // Pan Y offset  
+	viewportY int     // Pan Y offset
 	zoomLevel float64 // Zoom level (1.0 = normal, 2.0 = 2x zoom, etc.)
 }
 
@@ -46,23 +46,23 @@ func NewWebInterface(world *World) *WebInterface {
 		viewportY:      0,
 		zoomLevel:      1.0,
 	}
-	
+
 	// Set up player events callback
 	world.PlayerEventsCallback = webInterface.handlePlayerEvent
-	
+
 	return webInterface
 }
 
 // RunWebInterface starts the web interface server
 func RunWebInterface(world *World, port int) error {
 	webInterface := NewWebInterface(world)
-	
+
 	// Start the simulation update loop
 	go webInterface.simulationLoop()
-	
+
 	// Start the broadcast loop
 	go webInterface.broadcastLoop()
-	
+
 	// Set up HTTP routes
 	http.HandleFunc("/", webInterface.serveHome)
 	http.HandleFunc("/api/status", webInterface.handleStatus)
@@ -70,14 +70,14 @@ func RunWebInterface(world *World, port int) error {
 	http.HandleFunc("/api/export/analysis", webInterface.handleExportAnalysis)
 	http.HandleFunc("/api/export/anomalies", webInterface.handleExportAnomalies)
 	http.Handle("/ws", websocket.Handler(webInterface.handleWebSocket))
-	
+
 	// Serve static files (CSS, JS)
 	http.HandleFunc("/static/", webInterface.serveStatic)
-	
+
 	address := fmt.Sprintf(":%d", port)
 	fmt.Printf("Starting web interface on http://localhost%s\n", address)
 	fmt.Println("Press Ctrl+C to stop the server")
-	
+
 	return http.ListenAndServe(address, nil)
 }
 
@@ -87,7 +87,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	html := `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4002,36 +4002,10 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             
             return html;
         }
-                    if (count < 5) { // Show max 5 entities
-                        html += '<div class="entity-network-item">';
-                        html += '<div class="entity-id">Entity #' + entityId + '</div>';
-                        
-                        if (networkData.type) {
-                            html += '<div class="network-type">Type: ' + networkData.type + '</div>';
-                        }
-                        if (networkData.complexity !== undefined) {
-                            html += '<div class="network-complexity">Complexity: ' + networkData.complexity.toFixed(2) + '</div>';
-                        }
-                        if (networkData.experience !== undefined) {
-                            html += '<div class="network-experience">Experience: ' + networkData.experience.toFixed(1) + '</div>';
-                        }
-                        if (networkData.success_rate !== undefined) {
-                            html += '<div class="network-success">Success Rate: ' + (networkData.success_rate * 100).toFixed(1) + '%</div>';
-                        }
-                        
-                        html += '</div>';
-                        count++;
-                    }
-                });
-                html += '</div>';
-            }
-            
-            return html;
-        }
     </script>
 </body>
 </html>`
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(html))
@@ -4040,13 +4014,13 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
 // handleStatus provides a simple status endpoint
 func (wi *WebInterface) handleStatus(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
-		"tick":         wi.world.Tick,
-		"entities":     len(wi.world.AllEntities),
-		"plants":       len(wi.world.AllPlants),
-		"populations":  len(wi.world.Populations),
-		"status":       "running",
+		"tick":        wi.world.Tick,
+		"entities":    len(wi.world.AllEntities),
+		"plants":      len(wi.world.AllPlants),
+		"populations": len(wi.world.Populations),
+		"status":      "running",
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
 }
@@ -4067,7 +4041,7 @@ func (wi *WebInterface) handleExportEvents(w http.ResponseWriter, r *http.Reques
 	}
 
 	var events []CentralEvent
-	
+
 	if wi.world.CentralEventBus != nil {
 		if eventType != "" {
 			events = wi.world.CentralEventBus.GetEventsByType(eventType)
@@ -4111,7 +4085,7 @@ func (wi *WebInterface) handleExportAnalysis(w http.ResponseWriter, r *http.Requ
 	}
 
 	var analysisData map[string]interface{}
-	
+
 	if wi.world.StatisticalReporter != nil {
 		analysisData = map[string]interface{}{
 			"summary_statistics": wi.world.StatisticalReporter.GetSummaryStatistics(),
@@ -4148,13 +4122,13 @@ func (wi *WebInterface) handleExportAnomalies(w http.ResponseWriter, r *http.Req
 	}
 
 	var anomaliesData map[string]interface{}
-	
+
 	if wi.world.StatisticalReporter != nil {
 		anomaliesData = map[string]interface{}{
-			"anomalies":      wi.world.StatisticalReporter.Anomalies,
-			"total_count":    len(wi.world.StatisticalReporter.Anomalies),
-			"anomaly_types":  wi.world.StatisticalReporter.detectedAnomalies,
-			"export_time":    time.Now(),
+			"anomalies":     wi.world.StatisticalReporter.Anomalies,
+			"total_count":   len(wi.world.StatisticalReporter.Anomalies),
+			"anomaly_types": wi.world.StatisticalReporter.detectedAnomalies,
+			"export_time":   time.Now(),
 		}
 	} else {
 		anomaliesData = map[string]interface{}{
@@ -4178,13 +4152,13 @@ func (wi *WebInterface) exportEventsAsCSV(w http.ResponseWriter, events []Centra
 	w.Header().Set("Content-Disposition", "attachment; filename=events_export.csv")
 
 	w.Write([]byte("ID,Timestamp,Tick,Type,Category,SubCategory,Source,Description,EntityID,PlantID,Position,Severity\n"))
-	
+
 	for _, event := range events {
 		position := ""
 		if event.Position != nil {
 			position = fmt.Sprintf("%.2f;%.2f", event.Position.X, event.Position.Y)
 		}
-		
+
 		line := fmt.Sprintf("%d,%s,%d,%s,%s,%s,%s,\"%s\",%d,%d,%s,%s\n",
 			event.ID,
 			event.Timestamp.Format("2006-01-02 15:04:05"),
@@ -4210,7 +4184,7 @@ func (wi *WebInterface) exportAnalysisAsCSV(w http.ResponseWriter, data map[stri
 
 	// Simple CSV with key-value pairs for analysis data
 	w.Write([]byte("Key,Value\n"))
-	
+
 	if stats, ok := data["summary_statistics"].(map[string]interface{}); ok {
 		for key, value := range stats {
 			w.Write([]byte(fmt.Sprintf("%s,%v\n", key, value)))
@@ -4224,7 +4198,7 @@ func (wi *WebInterface) exportAnomaliesAsCSV(w http.ResponseWriter, data map[str
 	w.Header().Set("Content-Disposition", "attachment; filename=anomalies_export.csv")
 
 	w.Write([]byte("Type,Severity,Tick,Description,Confidence\n"))
-	
+
 	if anomalies, ok := data["anomalies"].([]Anomaly); ok {
 		for _, anomaly := range anomalies {
 			line := fmt.Sprintf("%s,%.3f,%d,\"%s\",%.3f\n",
@@ -4242,18 +4216,18 @@ func (wi *WebInterface) exportAnomaliesAsCSV(w http.ResponseWriter, data map[str
 // handleWebSocket handles WebSocket connections
 func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 	defer ws.Close()
-	
+
 	// Add client to the list
 	wi.clientsMutex.Lock()
 	wi.clients[ws] = true
 	wi.clientsMutex.Unlock()
-	
+
 	log.Printf("Client connected. Total clients: %d", len(wi.clients))
-	
+
 	// Send initial data
 	viewData := wi.viewManager.GetCurrentViewData()
 	wi.sendToClient(ws, viewData)
-	
+
 	// Listen for client messages
 	for {
 		var msg map[string]interface{}
@@ -4261,7 +4235,7 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 		if err != nil {
 			break
 		}
-		
+
 		// Handle client commands
 		if action, ok := msg["action"].(string); ok {
 			var data interface{}
@@ -4271,7 +4245,7 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 			wi.handleClientAction(ws, action, data)
 		}
 	}
-	
+
 	// Clean up client connection
 	wi.clientsMutex.Lock()
 	delete(wi.clients, ws)
@@ -4280,7 +4254,7 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 		delete(wi.clientPlayers, ws)
 	}
 	wi.clientsMutex.Unlock()
-	
+
 	log.Printf("Client disconnected. Total clients: %d", len(wi.clients))
 }
 
@@ -4289,23 +4263,23 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 	switch action {
 	case "join_as_player":
 		wi.handlePlayerJoin(ws, data)
-		
+
 	case "create_species":
 		wi.handleCreateSpecies(ws, data)
-		
+
 	case "control_species":
 		wi.handleControlSpecies(ws, data)
-		
+
 	case "toggle_pause":
 		wi.world.TogglePause()
 		log.Printf("Client requested pause toggle - now paused: %v", wi.world.IsPaused())
-		
+
 	case "reset":
 		log.Printf("Client requested reset")
 		wi.world.Reset()
 		// Reinitialize with default populations after reset
 		wi.reinitializeWorld()
-		
+
 	case "save_state":
 		log.Printf("Client requested state save")
 		// Create state manager and save to default file
@@ -4317,7 +4291,7 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 		} else {
 			log.Printf("State saved to %s", filename)
 		}
-	
+
 	case "load_state":
 		log.Printf("Client requested state load")
 		if stateData, ok := data.(map[string]interface{}); ok {
@@ -4332,15 +4306,15 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 		} else {
 			log.Printf("Invalid state data format")
 		}
-		
+
 	case "increase_speed":
 		wi.world.IncreaseSpeed()
 		log.Printf("Client requested speed increase to %fx", wi.world.GetSpeedMultiplier())
-		
+
 	case "decrease_speed":
 		wi.world.DecreaseSpeed()
 		log.Printf("Client requested speed decrease to %fx", wi.world.GetSpeedMultiplier())
-		
+
 	case "set_speed":
 		if speedData, ok := data.(map[string]interface{}); ok {
 			if speedValue, exists := speedData["speed"]; exists {
@@ -4350,7 +4324,7 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 				}
 			}
 		}
-		
+
 	case "pan":
 		if panData, ok := data.(map[string]interface{}); ok {
 			if deltaX, ok := panData["deltaX"].(float64); ok {
@@ -4363,7 +4337,7 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 			wi.clampViewport()
 			log.Printf("Client panned to (%d, %d)", wi.viewportX, wi.viewportY)
 		}
-		
+
 	case "zoom":
 		if zoomData, ok := data.(map[string]interface{}); ok {
 			if zoomValue, exists := zoomData["zoom"]; exists {
@@ -4373,15 +4347,15 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 				}
 			}
 		}
-		
+
 	case "zoom_in":
 		wi.zoomIn()
 		log.Printf("Client zoomed in to %fx", wi.zoomLevel)
-		
+
 	case "zoom_out":
 		wi.zoomOut()
 		log.Printf("Client zoomed out to %fx", wi.zoomLevel)
-		
+
 	case "reset_viewport":
 		wi.resetViewport()
 		log.Printf("Client reset viewport")
@@ -4398,35 +4372,35 @@ func (wi *WebInterface) serveStatic(w http.ResponseWriter, r *http.Request) {
 func (wi *WebInterface) simulationLoop() {
 	ticker := time.NewTicker(wi.updateInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
 			// Run multiple simulation updates based on speed multiplier
 			speedMultiplier := wi.world.GetSpeedMultiplier()
-			
+
 			// Calculate how many updates to run this tick
 			// For fractional speeds, we accumulate and run when threshold is met
 			wi.accumulatedUpdates += speedMultiplier
-			
+
 			updatesToRun := int(wi.accumulatedUpdates)
 			wi.accumulatedUpdates -= float64(updatesToRun)
-			
+
 			// Run the calculated number of updates
 			for i := 0; i < updatesToRun; i++ {
 				wi.world.Update()
 			}
-			
+
 			// Get current view data with viewport
 			viewData := wi.viewManager.GetViewDataWithViewport(wi.viewportX, wi.viewportY, wi.zoomLevel)
-			
+
 			// Send to broadcast channel (non-blocking)
 			select {
 			case wi.broadcastChan <- viewData:
 			default:
 				// Channel is full, skip this update
 			}
-			
+
 		case <-wi.stopChan:
 			return
 		}
@@ -4439,7 +4413,7 @@ func (wi *WebInterface) broadcastLoop() {
 		select {
 		case viewData := <-wi.broadcastChan:
 			wi.broadcastToClients(viewData)
-			
+
 		case <-wi.stopChan:
 			return
 		}
@@ -4454,7 +4428,7 @@ func (wi *WebInterface) broadcastToClients(data *ViewData) {
 		clients = append(clients, client)
 	}
 	wi.clientsMutex.RUnlock()
-	
+
 	// Send to each client
 	for _, client := range clients {
 		wi.sendToClient(client, data)
@@ -4573,35 +4547,35 @@ func (wi *WebInterface) reinitializeWorld() {
 func (wi *WebInterface) handlePlayerJoin(ws *websocket.Conn, data interface{}) {
 	wi.clientsMutex.Lock()
 	defer wi.clientsMutex.Unlock()
-	
+
 	// Parse player data
 	playerData, ok := data.(map[string]interface{})
 	if !ok {
 		wi.sendErrorToClient(ws, "Invalid player data format")
 		return
 	}
-	
+
 	playerName, ok := playerData["name"].(string)
 	if !ok {
 		wi.sendErrorToClient(ws, "Player name is required")
 		return
 	}
-	
+
 	// Generate player ID (simple approach using connection address + timestamp)
 	playerID := fmt.Sprintf("player_%d_%p", time.Now().UnixNano(), ws)
-	
+
 	// Add player
 	player, err := wi.playerManager.AddPlayer(playerID, playerName)
 	if err != nil {
 		wi.sendErrorToClient(ws, fmt.Sprintf("Failed to add player: %v", err))
 		return
 	}
-	
+
 	// Map connection to player
 	wi.clientPlayers[ws] = playerID
-	
+
 	log.Printf("Player '%s' joined with ID %s", player.Name, playerID)
-	
+
 	// Send success response
 	response := map[string]interface{}{
 		"type":      "player_joined",
@@ -4616,40 +4590,40 @@ func (wi *WebInterface) handlePlayerJoin(ws *websocket.Conn, data interface{}) {
 func (wi *WebInterface) handleCreateSpecies(ws *websocket.Conn, data interface{}) {
 	wi.clientsMutex.Lock()
 	defer wi.clientsMutex.Unlock()
-	
+
 	// Get player ID for this connection
 	playerID, exists := wi.clientPlayers[ws]
 	if !exists {
 		wi.sendErrorToClient(ws, "You must join as a player first")
 		return
 	}
-	
+
 	// Parse species data
 	speciesData, ok := data.(map[string]interface{})
 	if !ok {
 		wi.sendErrorToClient(ws, "Invalid species data format")
 		return
 	}
-	
+
 	speciesName, ok := speciesData["name"].(string)
 	if !ok {
 		wi.sendErrorToClient(ws, "Species name is required")
 		return
 	}
-	
+
 	// Validate and clean species name
 	cleanSpeciesName, err := ValidatePlayerName(speciesName)
 	if err != nil {
 		wi.sendErrorToClient(ws, fmt.Sprintf("Invalid species name: %v", err))
 		return
 	}
-	
+
 	// Check if species name already exists in the world
 	if _, exists := wi.world.Populations[cleanSpeciesName]; exists {
 		wi.sendErrorToClient(ws, "A species with this name already exists")
 		return
 	}
-	
+
 	// Create basic traits for the new species (limited control)
 	baseTraits := map[string]float64{
 		"size":               0.0,  // Neutral
@@ -4666,7 +4640,7 @@ func (wi *WebInterface) handleCreateSpecies(ws *websocket.Conn, data interface{}
 		"flying_ability":     -0.8, // Cannot fly initially
 		"altitude_tolerance": -0.6, // Poor altitude tolerance initially
 	}
-	
+
 	// Allow players to make minor adjustments to some traits
 	if adjustments, ok := speciesData["traits"].(map[string]interface{}); ok {
 		// Only allow adjustment of certain traits within limits
@@ -4683,11 +4657,11 @@ func (wi *WebInterface) handleCreateSpecies(ws *websocket.Conn, data interface{}
 			}
 		}
 	}
-	
+
 	// Generate random starting position
 	startX := rand.Float64() * wi.world.Config.Width
 	startY := rand.Float64() * wi.world.Config.Height
-	
+
 	// Create population config
 	popConfig := PopulationConfig{
 		Name:             cleanSpeciesName,
@@ -4698,22 +4672,22 @@ func (wi *WebInterface) handleCreateSpecies(ws *websocket.Conn, data interface{}
 		Color:            "purple", // Player species get purple color
 		BaseMutationRate: 0.08,     // Moderate mutation rate
 	}
-	
+
 	// Add population to world
 	wi.world.AddPopulation(popConfig)
-	
+
 	// Add species to player
 	err = wi.playerManager.AddPlayerSpecies(playerID, cleanSpeciesName)
 	if err != nil {
 		wi.sendErrorToClient(ws, fmt.Sprintf("Failed to assign species to player: %v", err))
 		return
 	}
-	
+
 	// Update player activity
 	wi.playerManager.UpdatePlayerActivity(playerID)
-	
+
 	log.Printf("Player %s created species '%s'", playerID, cleanSpeciesName)
-	
+
 	// Send success response
 	response := map[string]interface{}{
 		"type":         "species_created",
@@ -4728,50 +4702,50 @@ func (wi *WebInterface) handleCreateSpecies(ws *websocket.Conn, data interface{}
 func (wi *WebInterface) handleControlSpecies(ws *websocket.Conn, data interface{}) {
 	wi.clientsMutex.Lock()
 	defer wi.clientsMutex.Unlock()
-	
+
 	// Get player ID for this connection
 	playerID, exists := wi.clientPlayers[ws]
 	if !exists {
 		wi.sendErrorToClient(ws, "You must join as a player first")
 		return
 	}
-	
+
 	// Parse control data
 	controlData, ok := data.(map[string]interface{})
 	if !ok {
 		wi.sendErrorToClient(ws, "Invalid control data format")
 		return
 	}
-	
+
 	speciesName, ok := controlData["species"].(string)
 	if !ok {
 		wi.sendErrorToClient(ws, "Species name is required")
 		return
 	}
-	
+
 	// Check if player can control this species
 	if !wi.playerManager.CanPlayerControlSpecies(playerID, speciesName) {
 		wi.sendErrorToClient(ws, "You can only control your own species")
 		return
 	}
-	
+
 	// Get the population
 	population, exists := wi.world.Populations[speciesName]
 	if !exists {
 		wi.sendErrorToClient(ws, "Species not found")
 		return
 	}
-	
+
 	// Parse control command
 	command, ok := controlData["command"].(string)
 	if !ok {
 		wi.sendErrorToClient(ws, "Command is required")
 		return
 	}
-	
+
 	// Update player activity
 	wi.playerManager.UpdatePlayerActivity(playerID)
-	
+
 	// Handle different control commands
 	switch command {
 	case "move":
@@ -4790,16 +4764,16 @@ func (wi *WebInterface) handleMoveCommand(ws *websocket.Conn, playerID string, p
 	// Parse movement parameters
 	targetX, xOk := controlData["x"].(float64)
 	targetY, yOk := controlData["y"].(float64)
-	
+
 	if !xOk || !yOk {
 		wi.sendErrorToClient(ws, "Target coordinates (x, y) are required for movement")
 		return
 	}
-	
+
 	// Ensure coordinates are within world bounds
 	targetX = math.Max(0, math.Min(wi.world.Config.Width, targetX))
 	targetY = math.Max(0, math.Min(wi.world.Config.Height, targetY))
-	
+
 	// Apply movement tendency to all entities in the population
 	moveCount := 0
 	for _, entity := range population.Entities {
@@ -4808,32 +4782,32 @@ func (wi *WebInterface) handleMoveCommand(ws *websocket.Conn, playerID string, p
 			dx := targetX - entity.Position.X
 			dy := targetY - entity.Position.Y
 			distance := math.Sqrt(dx*dx + dy*dy)
-			
+
 			if distance > 1.0 { // Only move if not already close
 				// Normalize direction and apply movement based on speed trait
 				speed := entity.Traits["speed"].Value
 				moveDistance := (0.5 + speed*0.5) * 2.0 // Base movement + speed modifier
-				
+
 				entity.Position.X += (dx / distance) * moveDistance
 				entity.Position.Y += (dy / distance) * moveDistance
-				
+
 				// Ensure entity stays within bounds
 				entity.Position.X = math.Max(0, math.Min(wi.world.Config.Width, entity.Position.X))
 				entity.Position.Y = math.Max(0, math.Min(wi.world.Config.Height, entity.Position.Y))
-				
+
 				moveCount++
 			}
 		}
 	}
-	
+
 	log.Printf("Player %s moved %d entities towards (%f, %f)", playerID, moveCount, targetX, targetY)
-	
+
 	// Send response
 	response := map[string]interface{}{
-		"type":        "command_executed",
-		"command":     "move",
+		"type":              "command_executed",
+		"command":           "move",
 		"entities_affected": moveCount,
-		"message":     fmt.Sprintf("Moved %d entities towards target location", moveCount),
+		"message":           fmt.Sprintf("Moved %d entities towards target location", moveCount),
 	}
 	wi.sendJSONToClient(ws, response)
 }
@@ -4841,7 +4815,7 @@ func (wi *WebInterface) handleMoveCommand(ws *websocket.Conn, playerID string, p
 // handleGatherCommand handles gathering commands for player species
 func (wi *WebInterface) handleGatherCommand(ws *websocket.Conn, playerID string, population *Population, controlData map[string]interface{}) {
 	gatherCount := 0
-	
+
 	// Apply gathering behavior to all entities in the population
 	for _, entity := range population.Entities {
 		if entity.IsAlive && entity.Energy < 80 { // Only gather if not at high energy
@@ -4852,17 +4826,17 @@ func (wi *WebInterface) handleGatherCommand(ws *websocket.Conn, playerID string,
 					dx := plant.Position.X - entity.Position.X
 					dy := plant.Position.Y - entity.Position.Y
 					distance := math.Sqrt(dx*dx + dy*dy)
-					
+
 					if distance <= 5.0 { // Within gathering range
 						// Entity gains energy, plant loses energy
 						energyGained := math.Min(10.0, plant.Energy)
 						entity.Energy += energyGained
 						plant.Energy -= energyGained
-						
+
 						if plant.Energy <= 0 {
 							plant.IsAlive = false
 						}
-						
+
 						gatherCount++
 						break // Only gather from one plant per entity
 					}
@@ -4870,15 +4844,15 @@ func (wi *WebInterface) handleGatherCommand(ws *websocket.Conn, playerID string,
 			}
 		}
 	}
-	
+
 	log.Printf("Player %s performed gathering with %d entities", playerID, gatherCount)
-	
+
 	// Send response
 	response := map[string]interface{}{
-		"type":             "command_executed",
-		"command":          "gather",
+		"type":              "command_executed",
+		"command":           "gather",
 		"entities_affected": gatherCount,
-		"message":          fmt.Sprintf("%d entities performed gathering actions", gatherCount),
+		"message":           fmt.Sprintf("%d entities performed gathering actions", gatherCount),
 	}
 	wi.sendJSONToClient(ws, response)
 }
@@ -4886,7 +4860,7 @@ func (wi *WebInterface) handleGatherCommand(ws *websocket.Conn, playerID string,
 // handleReproduceCommand handles reproduction commands for player species
 func (wi *WebInterface) handleReproduceCommand(ws *websocket.Conn, playerID string, population *Population, controlData map[string]interface{}) {
 	reproductionCount := 0
-	
+
 	// Find entities with sufficient energy for reproduction
 	for _, entity := range population.Entities {
 		if entity.IsAlive && entity.Energy > 70 { // High energy threshold for reproduction
@@ -4897,7 +4871,7 @@ func (wi *WebInterface) handleReproduceCommand(ws *websocket.Conn, playerID stri
 					dx := mate.Position.X - entity.Position.X
 					dy := mate.Position.Y - entity.Position.Y
 					distance := math.Sqrt(dx*dx + dy*dy)
-					
+
 					if distance <= 3.0 { // Within mating range
 						// Create offspring through the existing reproduction system
 						offspring := wi.world.CreateOffspring(entity, mate)
@@ -4905,11 +4879,11 @@ func (wi *WebInterface) handleReproduceCommand(ws *websocket.Conn, playerID stri
 							// Add offspring to population
 							population.Entities = append(population.Entities, offspring)
 							wi.world.AllEntities = append(wi.world.AllEntities, offspring)
-							
+
 							// Reduce parent energy
 							entity.Energy -= 30
 							mate.Energy -= 30
-							
+
 							reproductionCount++
 						}
 						break // Only one reproduction per entity per command
@@ -4918,9 +4892,9 @@ func (wi *WebInterface) handleReproduceCommand(ws *websocket.Conn, playerID stri
 			}
 		}
 	}
-	
+
 	log.Printf("Player %s triggered reproduction resulting in %d new entities", playerID, reproductionCount)
-	
+
 	// Send response
 	response := map[string]interface{}{
 		"type":      "command_executed",
@@ -4946,13 +4920,13 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 	if !ok {
 		return
 	}
-	
+
 	// Find the player who owns this species
 	playerID, exists := wi.playerManager.GetSpeciesOwner(speciesName)
 	if !exists {
 		return // Species not owned by a player
 	}
-	
+
 	// Find the WebSocket connection for this player
 	var playerWS *websocket.Conn
 	wi.clientsMutex.RLock()
@@ -4963,16 +4937,16 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 		}
 	}
 	wi.clientsMutex.RUnlock()
-	
+
 	if playerWS == nil {
 		return // Player not currently connected
 	}
-	
+
 	// Handle different event types
 	switch eventType {
 	case "species_extinct":
 		wi.playerManager.MarkSpeciesExtinct(speciesName)
-		
+
 		notification := map[string]interface{}{
 			"type":         "species_extinct",
 			"species_name": speciesName,
@@ -4981,12 +4955,12 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 			"tick":         data["tick"],
 		}
 		wi.sendJSONToClient(playerWS, notification)
-		
+
 		log.Printf("Player %s notified of species extinction: %s", playerID, speciesName)
-		
+
 	case "subspecies_formed":
 		parentSpecies := data["parent_species"].(string)
-		
+
 		// Check if the player owns the parent species
 		if wi.playerManager.CanPlayerControlSpecies(playerID, parentSpecies) {
 			// Add the subspecies to the player
@@ -4995,7 +4969,7 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 				log.Printf("Error adding subspecies %s to player %s: %v", speciesName, playerID, err)
 				return
 			}
-			
+
 			notification := map[string]interface{}{
 				"type":           "subspecies_formed",
 				"species_name":   speciesName,
@@ -5005,10 +4979,10 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 				"tick":           data["tick"],
 			}
 			wi.sendJSONToClient(playerWS, notification)
-			
+
 			log.Printf("Player %s notified of subspecies formation: %s from %s", playerID, speciesName, parentSpecies)
 		}
-		
+
 	case "new_species_detected":
 		// This is a new species that appeared but doesn't seem related to player species
 		// We can notify for informational purposes but don't give control
@@ -5029,10 +5003,10 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 func (wi *WebInterface) clampViewport() {
 	visibleWidth := int(float64(wi.world.Config.GridWidth) / wi.zoomLevel)
 	visibleHeight := int(float64(wi.world.Config.GridHeight) / wi.zoomLevel)
-	
+
 	maxViewportX := wi.world.Config.GridWidth - visibleWidth
 	maxViewportY := wi.world.Config.GridHeight - visibleHeight
-	
+
 	if wi.viewportX < 0 {
 		wi.viewportX = 0
 	}
