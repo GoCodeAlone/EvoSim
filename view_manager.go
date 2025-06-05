@@ -1442,33 +1442,41 @@ func (vm *ViewManager) GetViewModes() []string {
 	}
 }
 
+// extractIntStat safely extracts an integer statistic from a stats map
+func extractIntStat(stats map[string]interface{}, key string) int {
+	if value, ok := stats[key].(int); ok {
+		return value
+	}
+	return 0
+}
+
+// extractFloatStat safely extracts a float64 statistic from a stats map
+func extractFloatStat(stats map[string]interface{}, key string) float64 {
+	if value, ok := stats[key].(float64); ok {
+		return value
+	}
+	return 0.0
+}
+
 func (vm *ViewManager) getToolData() ToolData {
-	data := ToolData{}
+	data := ToolData{
+		ToolTypes: make(map[string]int),
+	}
 	
-	if vm.world.ToolSystem != nil {
-		stats := vm.world.ToolSystem.GetToolStats()
-		
-		if totalTools, ok := stats["total_tools"].(int); ok {
-			data.TotalTools = totalTools
-		}
-		if ownedTools, ok := stats["owned_tools"].(int); ok {
-			data.OwnedTools = ownedTools
-		}
-		if droppedTools, ok := stats["dropped_tools"].(int); ok {
-			data.DroppedTools = droppedTools
-		}
-		if avgDurability, ok := stats["avg_durability"].(float64); ok {
-			data.AvgDurability = avgDurability
-		}
-		if avgEfficiency, ok := stats["avg_efficiency"].(float64); ok {
-			data.AvgEfficiency = avgEfficiency
-		}
-		
-		data.ToolTypes = make(map[string]int)
-		if toolTypes, ok := stats["tool_types"].(map[ToolType]int); ok {
-			for toolType, count := range toolTypes {
-				data.ToolTypes[GetToolTypeName(toolType)] = count
-			}
+	if vm.world.ToolSystem == nil {
+		return data
+	}
+	
+	stats := vm.world.ToolSystem.GetToolStats()
+	data.TotalTools = extractIntStat(stats, "total_tools")
+	data.OwnedTools = extractIntStat(stats, "owned_tools")
+	data.DroppedTools = extractIntStat(stats, "dropped_tools")
+	data.AvgDurability = extractFloatStat(stats, "avg_durability")
+	data.AvgEfficiency = extractFloatStat(stats, "avg_efficiency")
+	
+	if toolTypes, ok := stats["tool_types"].(map[ToolType]int); ok {
+		for toolType, count := range toolTypes {
+			data.ToolTypes[GetToolTypeName(toolType)] = count
 		}
 	}
 	
@@ -1476,32 +1484,24 @@ func (vm *ViewManager) getToolData() ToolData {
 }
 
 func (vm *ViewManager) getEnvironmentalModData() EnvironmentalModData {
-	data := EnvironmentalModData{}
+	data := EnvironmentalModData{
+		ModificationTypes: make(map[string]int),
+	}
 	
-	if vm.world.EnvironmentalModSystem != nil {
-		stats := vm.world.EnvironmentalModSystem.GetModificationStats()
-		
-		if totalMods, ok := stats["total_modifications"].(int); ok {
-			data.TotalModifications = totalMods
-		}
-		if activeMods, ok := stats["active_modifications"].(int); ok {
-			data.ActiveModifications = activeMods
-		}
-		if inactiveMods, ok := stats["inactive_modifications"].(int); ok {
-			data.InactiveModifications = inactiveMods
-		}
-		if avgDurability, ok := stats["avg_durability"].(float64); ok {
-			data.AvgDurability = avgDurability
-		}
-		if tunnelNetworks, ok := stats["tunnel_networks"].(int); ok {
-			data.TunnelNetworks = tunnelNetworks
-		}
-		
-		data.ModificationTypes = make(map[string]int)
-		if modTypes, ok := stats["modification_types"].(map[EnvironmentalModType]int); ok {
-			for modType, count := range modTypes {
-				data.ModificationTypes[GetEnvironmentalModTypeName(modType)] = count
-			}
+	if vm.world.EnvironmentalModSystem == nil {
+		return data
+	}
+	
+	stats := vm.world.EnvironmentalModSystem.GetModificationStats()
+	data.TotalModifications = extractIntStat(stats, "total_modifications")
+	data.ActiveModifications = extractIntStat(stats, "active_modifications")
+	data.InactiveModifications = extractIntStat(stats, "inactive_modifications")
+	data.AvgDurability = extractFloatStat(stats, "avg_durability")
+	data.TunnelNetworks = extractIntStat(stats, "tunnel_networks")
+	
+	if modTypes, ok := stats["modification_types"].(map[EnvironmentalModType]int); ok {
+		for modType, count := range modTypes {
+			data.ModificationTypes[GetEnvironmentalModTypeName(modType)] = count
 		}
 	}
 	

@@ -6,8 +6,33 @@ import (
 	"testing"
 )
 
-// TestMeteorShowerEvent tests meteor shower events can modify the world map
-func TestMeteorShowerEvent(t *testing.T) {
+// countBiomeInGrid counts the number of cells with a specific biome type
+func countBiomeInGrid(world *World, biomeType BiomeType) int {
+	count := 0
+	for y := 0; y < world.Config.GridHeight; y++ {
+		for x := 0; x < world.Config.GridWidth; x++ {
+			if world.Grid[y][x].Biome == biomeType {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+// applyBiomeChanges applies biome changes to the world grid
+func applyBiomeChanges(world *World, changes map[Position]BiomeType) {
+	for pos, biomeType := range changes {
+		gridX, gridY := int(pos.X), int(pos.Y)
+		if gridX >= 0 && gridX < world.Config.GridWidth && gridY >= 0 && gridY < world.Config.GridHeight {
+			world.Grid[gridY][gridX].Biome = biomeType
+		}
+	}
+}
+
+// testEnvironmentalEvent is a helper function to test environmental events
+func testEnvironmentalEvent(t *testing.T, eventName string, biomeType BiomeType, minIncrease, maxIncrease int,
+	generateChanges func(*World) map[Position]BiomeType) {
+	
 	// Use fixed seed for reproducible results
 	rand.Seed(12345)
 	
@@ -21,122 +46,51 @@ func TestMeteorShowerEvent(t *testing.T) {
 	world := NewWorld(config)
 	
 	// Record initial biome state
-	initialRadiationCount := 0
-	for y := 0; y < config.GridHeight; y++ {
-		for x := 0; x < config.GridWidth; x++ {
-			if world.Grid[y][x].Biome == BiomeRadiation {
-				initialRadiationCount++
-			}
-		}
+	initialCount := countBiomeInGrid(world, biomeType)
+	
+	// Generate changes
+	changes := generateChanges(world)
+	
+	// Verify changes were generated
+	if len(changes) == 0 {
+		t.Fatalf("%s should generate at least one change", eventName)
 	}
 	
-	// Generate meteor craters
-	craters := world.generateMeteorCraters()
+	// Apply the changes
+	applyBiomeChanges(world, changes)
 	
-	// Verify meteor craters were generated
-	if len(craters) == 0 {
-		t.Fatal("Meteor shower should generate at least one crater")
+	// Count final biome state
+	finalCount := countBiomeInGrid(world, biomeType)
+	
+	// Verify biome increased
+	if finalCount <= initialCount {
+		t.Errorf("%s should increase biome zones: initial=%d, final=%d", 
+			eventName, initialCount, finalCount)
 	}
 	
-	// Apply the changes to verify they have expected effects
-	for pos, biomeType := range craters {
-		gridX, gridY := int(pos.X), int(pos.Y)
-		if gridX >= 0 && gridX < config.GridWidth && gridY >= 0 && gridY < config.GridHeight {
-			world.Grid[gridY][gridX].Biome = biomeType
-		}
+	// Verify reasonable number of changes
+	increase := finalCount - initialCount
+	if increase < minIncrease || increase > maxIncrease {
+		t.Errorf("%s biome zones out of expected range: got %d, expected %d-%d",
+			eventName, increase, minIncrease, maxIncrease)
 	}
-	
-	// Count radiation zones after meteor impact
-	finalRadiationCount := 0
-	for y := 0; y < config.GridHeight; y++ {
-		for x := 0; x < config.GridWidth; x++ {
-			if world.Grid[y][x].Biome == BiomeRadiation {
-				finalRadiationCount++
-			}
-		}
-	}
-	
-	// Verify radiation zones increased
-	if finalRadiationCount <= initialRadiationCount {
-		t.Errorf("Meteor shower should increase radiation zones: initial=%d, final=%d", 
-			initialRadiationCount, finalRadiationCount)
-	}
-	
-	// Verify reasonable number of radiation zones (should be 3-8 craters with surrounding areas)
-	expectedMin := 3  // At least 3 craters
-	expectedMax := 50 // At most 8 craters * ~6 surrounding cells each
-	radiationIncrease := finalRadiationCount - initialRadiationCount
-	
-	if radiationIncrease < expectedMin || radiationIncrease > expectedMax {
-		t.Errorf("Meteor impact radiation zones out of expected range: got %d, expected %d-%d",
-			radiationIncrease, expectedMin, expectedMax)
-	}
+}
+
+// TestMeteorShowerEvent tests meteor shower events can modify the world map
+func TestMeteorShowerEvent(t *testing.T) {
+	testEnvironmentalEvent(t, "Meteor shower", BiomeRadiation, 3, 50, func(world *World) map[Position]BiomeType {
+		return world.generateMeteorCraters()
+	})
 }
 
 // TestEarthquakeEvent tests earthquake events can create mountain ranges
 func TestEarthquakeEvent(t *testing.T) {
+	// Set different seed for different test behavior
 	rand.Seed(23456)
 	
-	config := WorldConfig{
-		Width:      100,
-		Height:     100,
-		GridWidth:  30,
-		GridHeight: 30,
-	}
-	
-	world := NewWorld(config)
-	
-	// Record initial mountain count
-	initialMountainCount := 0
-	for y := 0; y < config.GridHeight; y++ {
-		for x := 0; x < config.GridWidth; x++ {
-			if world.Grid[y][x].Biome == BiomeMountain {
-				initialMountainCount++
-			}
-		}
-	}
-	
-	// Generate seismic changes
-	seismicChanges := world.generateSeismicChanges()
-	
-	// Verify seismic changes were generated
-	if len(seismicChanges) == 0 {
-		t.Fatal("Earthquake should generate seismic changes")
-	}
-	
-	// Apply the changes
-	for pos, biomeType := range seismicChanges {
-		gridX, gridY := int(pos.X), int(pos.Y)
-		if gridX >= 0 && gridX < config.GridWidth && gridY >= 0 && gridY < config.GridHeight {
-			world.Grid[gridY][gridX].Biome = biomeType
-		}
-	}
-	
-	// Count mountains after earthquake
-	finalMountainCount := 0
-	for y := 0; y < config.GridHeight; y++ {
-		for x := 0; x < config.GridWidth; x++ {
-			if world.Grid[y][x].Biome == BiomeMountain {
-				finalMountainCount++
-			}
-		}
-	}
-	
-	// Verify mountain ranges were created
-	if finalMountainCount <= initialMountainCount {
-		t.Errorf("Earthquake should increase mountain count: initial=%d, final=%d",
-			initialMountainCount, finalMountainCount)
-	}
-	
-	// Verify reasonable number of new mountains (1-2 fault lines with surrounding areas)
-	expectedMin := 1
-	expectedMax := 150 // 2 fault lines * ~75 cells each max
-	mountainIncrease := finalMountainCount - initialMountainCount
-	
-	if mountainIncrease < expectedMin || mountainIncrease > expectedMax {
-		t.Errorf("Earthquake mountain creation out of expected range: got %d, expected %d-%d",
-			mountainIncrease, expectedMin, expectedMax)
-	}
+	testEnvironmentalEvent(t, "Earthquake", BiomeMountain, 1, 150, func(world *World) map[Position]BiomeType {
+		return world.generateSeismicChanges()
+	})
 }
 
 // TestWildfireEvent tests wildfire events can create desert zones
@@ -207,68 +161,12 @@ func TestWildfireEvent(t *testing.T) {
 
 // TestFloodEvent tests flood events can create water zones
 func TestFloodEvent(t *testing.T) {
+	// Set different seed for different test behavior
 	rand.Seed(45678)
 	
-	config := WorldConfig{
-		Width:      100,
-		Height:     100,
-		GridWidth:  30,
-		GridHeight: 30,
-	}
-	
-	world := NewWorld(config)
-	
-	// Record initial water count  
-	initialWaterCount := 0
-	for y := 0; y < config.GridHeight; y++ {
-		for x := 0; x < config.GridWidth; x++ {
-			if world.Grid[y][x].Biome == BiomeWater {
-				initialWaterCount++
-			}
-		}
-	}
-	
-	// Generate flood zones
-	floodChanges := world.generateFloodZones()
-	
-	// Verify flood zones were generated
-	if len(floodChanges) == 0 {
-		t.Fatal("Flood should generate flood zones")
-	}
-	
-	// Apply the changes
-	for pos, biomeType := range floodChanges {
-		gridX, gridY := int(pos.X), int(pos.Y)
-		if gridX >= 0 && gridX < config.GridWidth && gridY >= 0 && gridY < config.GridHeight {
-			world.Grid[gridY][gridX].Biome = biomeType
-		}
-	}
-	
-	// Count water zones after flood
-	finalWaterCount := 0
-	for y := 0; y < config.GridHeight; y++ {
-		for x := 0; x < config.GridWidth; x++ {
-			if world.Grid[y][x].Biome == BiomeWater {
-				finalWaterCount++
-			}
-		}
-	}
-	
-	// Verify water zones increased from flooding
-	if finalWaterCount <= initialWaterCount {
-		t.Errorf("Flood should increase water zones: initial=%d, final=%d",
-			initialWaterCount, finalWaterCount)
-	}
-	
-	// Verify reasonable number of flooded areas (1-2 flood sources with spread)
-	expectedMin := 1
-	expectedMax := 80 // 2 flood sources * ~40 cells each max
-	waterIncrease := finalWaterCount - initialWaterCount
-	
-	if waterIncrease < expectedMin || waterIncrease > expectedMax {
-		t.Errorf("Flood water creation out of expected range: got %d, expected %d-%d",
-			waterIncrease, expectedMin, expectedMax)
-	}
+	testEnvironmentalEvent(t, "Flood", BiomeWater, 1, 80, func(world *World) map[Position]BiomeType {
+		return world.generateFloodZones()
+	})
 }
 
 // TestEnvironmentalEventTriggering tests that events can be triggered and applied

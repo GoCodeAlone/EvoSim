@@ -6,6 +6,62 @@ import (
 	"testing"
 )
 
+// maintainOptimalCellConditions maintains optimal conditions for cellular organisms during evolution testing
+func maintainOptimalCellConditions(organism *CellularOrganism) {
+	for _, cell := range organism.Cells {
+		if cell.Energy < 150 {
+			cell.Energy = 200.0
+		}
+		if cell.Health < 0.8 {
+			cell.Health = 1.0
+		}
+		if cell.Age < 50 {
+			cell.Age = 100
+		}
+	}
+}
+
+// runEvolutionSimulation runs a simulation loop to test cellular evolution with target requirements
+func runEvolutionSimulation(t *testing.T, world *World, organism *CellularOrganism, targetCells, targetComplexity, maxTicks int, logInterval int) bool {
+	for tick := 0; tick < maxTicks; tick++ {
+		maintainOptimalCellConditions(organism)
+		world.CellularSystem.UpdateCellularOrganisms()
+		
+		// Check if we've reached the target
+		if len(organism.Cells) >= targetCells && organism.ComplexityLevel >= targetComplexity {
+			t.Logf("Evolution successful at tick %d: complexity=%d, cells=%d", 
+				tick, organism.ComplexityLevel, len(organism.Cells))
+			return true
+		}
+		
+		if tick%logInterval == 0 {
+			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
+		}
+	}
+	return false
+}
+
+// runEvolutionSimulationWithName runs evolution simulation with named stage for logging
+func runEvolutionSimulationWithName(t *testing.T, world *World, organism *CellularOrganism, targetCells, targetComplexity, maxTicks int, stageName string, startingCells int) bool {
+	for tick := 0; tick < maxTicks; tick++ {
+		maintainOptimalCellConditions(organism)
+		world.CellularSystem.UpdateCellularOrganisms()
+		
+		// Check if we've reached the target
+		if len(organism.Cells) >= targetCells && organism.ComplexityLevel >= targetComplexity {
+			t.Logf("%s successful at tick %d: %d cells, complexity level %d", 
+				stageName, tick, len(organism.Cells), organism.ComplexityLevel)
+			return true
+		}
+		
+		if tick%100 == 0 {
+			t.Logf("%s tick %d: %d cells (started with %d), complexity level %d", 
+				stageName, tick, len(organism.Cells), startingCells, organism.ComplexityLevel)
+		}
+	}
+	return false
+}
+
 // TestCellularEvolutionStage1To2 tests single-cell to simple multicellular transition
 func TestCellularEvolutionStage1To2(t *testing.T) {
 	world := createTestWorld(t)
@@ -31,38 +87,7 @@ func TestCellularEvolutionStage1To2(t *testing.T) {
 	
 	// Run simulation until cell division occurs (complexity level 2 requires 5+ cells)
 	maxTicks := 1000
-	evolutionOccurred := false
-	
-	for tick := 0; tick < maxTicks; tick++ {
-		// Keep the organism in optimal conditions
-		for _, c := range organism.Cells {
-			if c.Energy < 150 {
-				c.Energy = 200.0
-			}
-			if c.Health < 0.8 {
-				c.Health = 1.0
-			}
-			if c.Age < 50 {
-				c.Age = 100
-			}
-		}
-		
-		world.CellularSystem.UpdateCellularOrganisms()
-		
-		// Check if we've reached stage 2 (5+ cells)
-		if len(organism.Cells) >= 5 {
-			if organism.ComplexityLevel >= 2 {
-				t.Logf("Evolution to stage 2 successful at tick %d: complexity=%d, cells=%d", 
-					tick, organism.ComplexityLevel, len(organism.Cells))
-				evolutionOccurred = true
-				break
-			}
-		}
-		
-		if tick%100 == 0 {
-			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
-		}
-	}
+	evolutionOccurred := runEvolutionSimulation(t, world, organism, 5, 2, maxTicks, 100)
 	
 	if !evolutionOccurred {
 		t.Errorf("Failed to evolve from stage 1 to stage 2 in %d ticks. Final: complexity=%d, cells=%d", 
@@ -99,38 +124,7 @@ func TestCellularEvolutionStage2To3(t *testing.T) {
 	
 	// Run simulation until we reach stage 3 (20+ cells)
 	maxTicks := 1000
-	evolutionOccurred := false
-	
-	for tick := 0; tick < maxTicks; tick++ {
-		// Maintain optimal conditions for cell division
-		for _, cell := range organism.Cells {
-			if cell.Energy < 150 {
-				cell.Energy = 200.0
-			}
-			if cell.Health < 0.8 {
-				cell.Health = 1.0
-			}
-			if cell.Age < 50 {
-				cell.Age = 100
-			}
-		}
-		
-		world.CellularSystem.UpdateCellularOrganisms()
-		
-		// Check if we've reached stage 3 (20+ cells)
-		if len(organism.Cells) >= 20 {
-			if organism.ComplexityLevel >= 3 {
-				t.Logf("Evolution to stage 3 successful at tick %d: complexity=%d, cells=%d", 
-					tick, organism.ComplexityLevel, len(organism.Cells))
-				evolutionOccurred = true
-				break
-			}
-		}
-		
-		if tick%100 == 0 {
-			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
-		}
-	}
+	evolutionOccurred := runEvolutionSimulation(t, world, organism, 20, 3, maxTicks, 100)
 	
 	if !evolutionOccurred {
 		t.Errorf("Failed to evolve from stage 2 to stage 3 in %d ticks. Final: complexity=%d, cells=%d", 
@@ -174,38 +168,7 @@ func TestCellularEvolutionStage3To4(t *testing.T) {
 	
 	// Run simulation until we reach stage 4 (100+ cells)
 	maxTicks := 1000
-	evolutionOccurred := false
-	
-	for tick := 0; tick < maxTicks; tick++ {
-		// Maintain optimal conditions for cell division
-		for _, cell := range organism.Cells {
-			if cell.Energy < 150 {
-				cell.Energy = 200.0
-			}
-			if cell.Health < 0.8 {
-				cell.Health = 1.0
-			}
-			if cell.Age < 50 {
-				cell.Age = 100
-			}
-		}
-		
-		world.CellularSystem.UpdateCellularOrganisms()
-		
-		// Check if we've reached stage 4 (100+ cells)
-		if len(organism.Cells) >= 100 {
-			if organism.ComplexityLevel >= 4 {
-				t.Logf("Evolution to stage 4 successful at tick %d: complexity=%d, cells=%d", 
-					tick, organism.ComplexityLevel, len(organism.Cells))
-				evolutionOccurred = true
-				break
-			}
-		}
-		
-		if tick%100 == 0 {
-			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
-		}
-	}
+	evolutionOccurred := runEvolutionSimulation(t, world, organism, 100, 4, maxTicks, 100)
 	
 	if !evolutionOccurred {
 		t.Errorf("Failed to evolve from stage 3 to stage 4 in %d ticks. Final: complexity=%d, cells=%d", 
@@ -244,38 +207,7 @@ func TestCellularEvolutionStage4To5(t *testing.T) {
 	
 	// Run simulation until we reach stage 5 (500+ cells)
 	maxTicks := 2000  // More ticks needed for this large transition
-	evolutionOccurred := false
-	
-	for tick := 0; tick < maxTicks; tick++ {
-		// Maintain optimal conditions for cell division
-		for _, cell := range organism.Cells {
-			if cell.Energy < 150 {
-				cell.Energy = 200.0
-			}
-			if cell.Health < 0.8 {
-				cell.Health = 1.0
-			}
-			if cell.Age < 50 {
-				cell.Age = 100
-			}
-		}
-		
-		world.CellularSystem.UpdateCellularOrganisms()
-		
-		// Check if we've reached stage 5 (500+ cells)
-		if len(organism.Cells) >= 500 {
-			if organism.ComplexityLevel >= 5 {
-				t.Logf("Evolution to stage 5 successful at tick %d: complexity=%d, cells=%d", 
-					tick, organism.ComplexityLevel, len(organism.Cells))
-				evolutionOccurred = true
-				break
-			}
-		}
-		
-		if tick%200 == 0 {
-			t.Logf("Tick %d: complexity=%d, cells=%d", tick, organism.ComplexityLevel, len(organism.Cells))
-		}
-	}
+	evolutionOccurred := runEvolutionSimulation(t, world, organism, 500, 5, maxTicks, 200)
 	
 	if !evolutionOccurred {
 		t.Errorf("Failed to evolve from stage 4 to stage 5 in %d ticks. Final: complexity=%d, cells=%d", 
@@ -314,38 +246,8 @@ func TestCompleteCellularEvolution(t *testing.T) {
 	for _, stage := range stages {
 		t.Logf("Starting %s evolution...", stage.name)
 		
-		evolutionOccurred := false
 		startingCells := len(organism.Cells)
-		
-		for tick := 0; tick < stage.maxTicks; tick++ {
-			// Maintain optimal conditions for all cells
-			for _, cell := range organism.Cells {
-				if cell.Energy < 150 {
-					cell.Energy = 200.0
-				}
-				if cell.Health < 0.8 {
-					cell.Health = 1.0
-				}
-				if cell.Age < 50 {
-					cell.Age = 100
-				}
-			}
-			
-			world.CellularSystem.UpdateCellularOrganisms()
-			
-			// Check if we've reached the target
-			if len(organism.Cells) >= stage.targetCells && organism.ComplexityLevel >= stage.targetComplexity {
-				t.Logf("%s successful at tick %d: %d cells, complexity level %d", 
-					stage.name, tick, len(organism.Cells), organism.ComplexityLevel)
-				evolutionOccurred = true
-				break
-			}
-			
-			if tick%100 == 0 {
-				t.Logf("%s tick %d: %d cells (started with %d), complexity level %d", 
-					stage.name, tick, len(organism.Cells), startingCells, organism.ComplexityLevel)
-			}
-		}
+		evolutionOccurred := runEvolutionSimulationWithName(t, world, organism, stage.targetCells, stage.targetComplexity, stage.maxTicks, stage.name, startingCells)
 		
 		if !evolutionOccurred {
 			t.Fatalf("%s failed in %d ticks. Final: %d cells, complexity level %d", 

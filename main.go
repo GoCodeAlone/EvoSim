@@ -9,6 +9,55 @@ import (
 	"time"
 )
 
+// createPrimitiveTraits creates a base trait map for primitive organisms with variations
+func createPrimitiveTraits(sizeModifier, intelligenceModifier, cooperationModifier float64) map[string]float64 {
+	traits := map[string]float64{
+		"size":               -1.5 + sizeModifier,
+		"speed":              -0.5,
+		"aggression":         -0.9,
+		"defense":            -0.5,
+		"cooperation":        cooperationModifier,
+		"intelligence":       -1.0 + intelligenceModifier,
+		"endurance":          0.8,
+		"strength":           -1.0,
+		"aquatic_adaptation": 0.5,
+		"digging_ability":    -0.8,
+		"underground_nav":    -0.9,
+		"flying_ability":     -1.0,
+		"altitude_tolerance": -1.0,
+		// Biorhythm traits
+		"circadian_preference": 0.2,
+		"sleep_need":         0.3,
+		"hunger_need":        0.5,
+		"thirst_need":        0.4,
+		"play_drive":         -0.8,
+		"exploration_drive":  0.1,
+		"scavenging_behavior": 0.6,
+	}
+	
+	// Apply some variation for "Simple Organisms"
+	if intelligenceModifier > 0 {
+		traits["speed"] = -0.2
+		traits["aggression"] = -0.6
+		traits["defense"] = -0.3
+		traits["strength"] = -0.8
+		traits["aquatic_adaptation"] = 0.2
+		traits["digging_ability"] = -0.5
+		traits["underground_nav"] = -0.7
+		traits["flying_ability"] = -0.9
+		traits["altitude_tolerance"] = -0.8
+		traits["circadian_preference"] = 0.0
+		traits["sleep_need"] = 0.4
+		traits["hunger_need"] = 0.4
+		traits["thirst_need"] = 0.3
+		traits["play_drive"] = -0.5
+		traits["exploration_drive"] = 0.3
+		traits["scavenging_behavior"] = 0.4
+	}
+	
+	return traits
+}
+
 func main() {
 	// Define command-line flags
 	var (
@@ -135,62 +184,18 @@ func main() {
 			// Start with primitive life forms that can evolve into complex species
 			populations = []PopulationConfig{
 				{
-					Name:    "Primitive Microbes",
-					Species: "microbe",
-					BaseTraits: map[string]float64{
-						"size":               -1.5, // Very small
-						"speed":              -0.5, // Slow
-						"aggression":         -0.9, // Very peaceful
-						"defense":            -0.5, // Poor defense
-						"cooperation":        0.0,  // Neutral cooperation
-						"intelligence":       -1.0, // Very low intelligence
-						"endurance":          0.8,  // High endurance to survive
-						"strength":           -1.0, // Very weak
-						"aquatic_adaptation": 0.5,  // Good in water (primitive origins)
-						"digging_ability":    -0.8, // Cannot dig
-						"underground_nav":    -0.9, // No underground navigation
-						"flying_ability":     -1.0, // Cannot fly
-						"altitude_tolerance": -1.0, // Cannot survive altitude
-						// Biorhythm traits
-						"circadian_preference": 0.2,  // Slightly diurnal
-						"sleep_need":         0.3,   // Moderate sleep requirement
-						"hunger_need":        0.5,   // Higher hunger due to growth
-						"thirst_need":        0.4,   // Moderate thirst
-						"play_drive":         -0.8,  // Minimal play behavior
-						"exploration_drive":  0.1,   // Slight exploration
-						"scavenging_behavior": 0.6,  // Strong scavenging for survival
-					},
+					Name:             "Primitive Microbes",
+					Species:          "microbe",
+					BaseTraits:       createPrimitiveTraits(0.0, 0.0, 0.0),
 					StartPos:         Position{X: 30, Y: 30},
 					Spread:           25.0, // Widely spread
 					Color:            "gray",
 					BaseMutationRate: 0.25, // Very high mutation rate for rapid evolution
 				},
 				{
-					Name:    "Simple Organisms",
-					Species: "simple",
-					BaseTraits: map[string]float64{
-						"size":               -1.0, // Small
-						"speed":              -0.2, // Slow
-						"aggression":         -0.6, // Peaceful
-						"defense":            -0.3, // Weak defense
-						"cooperation":        0.1,  // Slight cooperation
-						"intelligence":       -0.7, // Low intelligence
-						"endurance":          0.6,  // Good endurance
-						"strength":           -0.8, // Weak
-						"aquatic_adaptation": 0.2,  // Some water adaptation
-						"digging_ability":    -0.5, // Poor digging
-						"underground_nav":    -0.7, // Poor underground navigation
-						"flying_ability":     -0.9, // Cannot fly
-						"altitude_tolerance": -0.8, // Poor altitude tolerance
-						// Biorhythm traits
-						"circadian_preference": 0.0,  // Neutral day/night preference
-						"sleep_need":         0.4,   // Moderate sleep requirement
-						"hunger_need":        0.4,   // Moderate hunger
-						"thirst_need":        0.3,   // Lower thirst needs
-						"play_drive":         -0.5,  // Low play behavior
-						"exploration_drive":  0.3,   // Some exploration tendency
-						"scavenging_behavior": 0.4,  // Moderate scavenging
-					},
+					Name:             "Simple Organisms",
+					Species:          "simple",
+					BaseTraits:       createPrimitiveTraits(0.5, 0.3, 0.1), // Slightly larger, smarter, more cooperative
 					StartPos:         Position{X: 70, Y: 40},
 					Spread:           20.0,
 					Color:            "yellow",

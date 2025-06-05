@@ -1474,15 +1474,7 @@ func (w *World) updateGrid() {
 		if !entity.IsAlive {
 			continue
 		}
-
-		// Convert world coordinates to grid coordinates
-		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
-		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
-
-		// Clamp to grid bounds
-		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
-		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-
+		gridX, gridY := w.worldToGridCoords(entity.Position.X, entity.Position.Y)
 		w.Grid[gridY][gridX].Entities = append(w.Grid[gridY][gridX].Entities, entity)
 	}
 
@@ -1491,17 +1483,22 @@ func (w *World) updateGrid() {
 		if !plant.IsAlive {
 			continue
 		}
-
-		// Convert world coordinates to grid coordinates
-		gridX := int((plant.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
-		gridY := int((plant.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
-
-		// Clamp to grid bounds
-		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
-		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-
+		gridX, gridY := w.worldToGridCoords(plant.Position.X, plant.Position.Y)
 		w.Grid[gridY][gridX].Plants = append(w.Grid[gridY][gridX].Plants, plant)
 	}
+}
+
+// worldToGridCoords converts world coordinates to grid coordinates with bounds clamping
+func (w *World) worldToGridCoords(worldX, worldY float64) (int, int) {
+	// Convert world coordinates to grid coordinates
+	gridX := int((worldX / w.Config.Width) * float64(w.Config.GridWidth))
+	gridY := int((worldY / w.Config.Height) * float64(w.Config.GridHeight))
+
+	// Clamp to grid bounds
+	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+	return gridX, gridY
 }
 
 // updateEntityWithBiome applies biome effects to an entity
@@ -1787,6 +1784,26 @@ func (w *World) generateVolcanicFields() map[Position]BiomeType {
 	return changes
 }
 
+// spreadAreaEffect creates area-of-effect changes around a center point
+func (w *World) spreadAreaEffect(centerX, centerY, maxRadius int, baseChance, decayFactor float64, biomeType BiomeType, changes map[Position]BiomeType) {
+	for radius := 0; radius <= maxRadius; radius++ {
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				x := centerX + dx
+				y := centerY + dy
+
+				if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
+					distance := math.Sqrt(float64(dx*dx + dy*dy))
+					chance := baseChance * math.Exp(-distance/decayFactor)
+					if rand.Float64() < chance {
+						changes[Position{X: float64(x), Y: float64(y)}] = biomeType
+					}
+				}
+			}
+		}
+	}
+}
+
 // generateFireZones creates desert zones from wildfires
 func (w *World) generateFireZones() map[Position]BiomeType {
 	changes := make(map[Position]BiomeType)
@@ -1797,23 +1814,7 @@ func (w *World) generateFireZones() map[Position]BiomeType {
 		centerY := rand.Intn(w.Config.GridHeight)
 
 		// Fire spreads in irregular patterns
-		for radius := 0; radius <= 4; radius++ {
-			for dy := -radius; dy <= radius; dy++ {
-				for dx := -radius; dx <= radius; dx++ {
-					x := centerX + dx
-					y := centerY + dy
-
-					if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
-						distance := math.Sqrt(float64(dx*dx + dy*dy))
-						// Fire probability decreases with distance
-						fireChance := 0.8 * math.Exp(-distance/2.0)
-						if rand.Float64() < fireChance {
-							changes[Position{X: float64(x), Y: float64(y)}] = BiomeDesert
-						}
-					}
-				}
-			}
-		}
+		w.spreadAreaEffect(centerX, centerY, 4, 0.8, 2.0, BiomeDesert, changes)
 	}
 
 	return changes
@@ -1844,23 +1845,7 @@ func (w *World) generateFloodZones() map[Position]BiomeType {
 		}
 
 		// Flood spreads inward
-		for radius := 0; radius <= 6; radius++ {
-			for dy := -radius; dy <= radius; dy++ {
-				for dx := -radius; dx <= radius; dx++ {
-					x := centerX + dx
-					y := centerY + dy
-
-					if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
-						distance := math.Sqrt(float64(dx*dx + dy*dy))
-						// Flood probability decreases with distance
-						floodChance := 0.7 * math.Exp(-distance/3.0)
-						if rand.Float64() < floodChance {
-							changes[Position{X: float64(x), Y: float64(y)}] = BiomeWater
-						}
-					}
-				}
-			}
-		}
+		w.spreadAreaEffect(centerX, centerY, 6, 0.7, 3.0, BiomeWater, changes)
 	}
 
 	return changes
