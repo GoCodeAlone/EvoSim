@@ -219,16 +219,17 @@ func TestRealisticLifespanRanges(t *testing.T) {
 	ticksPerDay := float64(timeSystem.DayLength)
 	
 	// Test that lifespans are biologically realistic
+	// Updated for new time scale with variance and trait modifiers
 	testCases := []struct {
 		classification OrganismClassification
 		minDays       float64
 		maxDays       float64
 	}{
-		{ClassificationProkaryotic, 0.5, 5},        // Hours to days
-		{ClassificationEukaryotic, 3, 14},          // Days to 2 weeks  
-		{ClassificationSimpleMulticellular, 14, 60}, // 2 weeks to 2 months
-		{ClassificationComplexMulticellular, 60, 240}, // 2-8 months
-		{ClassificationAdvancedMulticellular, 200, 600}, // 6+ months to 1.5+ years
+		{ClassificationProkaryotic, 2, 30},           // Hours to days (scaled with variance)
+		{ClassificationEukaryotic, 15, 80},           // Days to weeks (scaled with variance)
+		{ClassificationSimpleMulticellular, 40, 200}, // Weeks to months (scaled with variance)
+		{ClassificationComplexMulticellular, 150, 800}, // Months to year (scaled with variance)
+		{ClassificationAdvancedMulticellular, 500, 2500}, // Year+ (scaled with variance)
 	}
 	
 	entity := NewEntity(1, []string{"endurance", "size"}, "test", Position{})

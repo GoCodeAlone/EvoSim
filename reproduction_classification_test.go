@@ -14,13 +14,16 @@ func TestReproductiveMaturityWithClassification(t *testing.T) {
 	young.SetTrait("intelligence", -0.8) // Prokaryotic-like
 	young.Classification = ClassificationProkaryotic
 	young.MaxLifespan = classifier.CalculateLifespan(young, young.Classification)
-	young.Age = 10 // Young age (maturation age is 48)
+	young.Age = 1 // Young age (maturation age is ~7 for prokaryotic)
 	
 	mature := NewEntity(2, []string{"intelligence", "endurance"}, "test", Position{})
 	mature.SetTrait("intelligence", -0.3) // Eukaryotic (more reasonable for testing)
 	mature.Classification = ClassificationEukaryotic
 	mature.MaxLifespan = classifier.CalculateLifespan(mature, mature.Classification)
-	mature.Age = 500 // Mature age (maturation age is 240)
+	
+	// Get actual maturation age for this classification
+	maturationAge := classifier.LifespanData[ClassificationEukaryotic].MaturationAge
+	mature.Age = maturationAge + 5 // Mature age (well beyond maturation)
 	
 	// Test maturity checks
 	if classifier.IsReproductivelyMature(young, young.Classification) {
@@ -28,7 +31,8 @@ func TestReproductiveMaturityWithClassification(t *testing.T) {
 	}
 	
 	if !classifier.IsReproductivelyMature(mature, mature.Classification) {
-		t.Error("Mature eukaryotic entity should be mature")
+		t.Errorf("Mature eukaryotic entity should be mature (age: %d, maturation: %d)", 
+			mature.Age, maturationAge)
 	}
 	
 	// Test mating compatibility

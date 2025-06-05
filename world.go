@@ -5393,9 +5393,11 @@ func (w *World) SetSpeedMultiplier(multiplier float64) {
 	w.SpeedMultiplier = multiplier
 	
 	// Update the simulation configuration to reflect the new speed
-	if w.SimConfig != nil {
-		w.SimConfig = w.SimConfig.ApplySpeedMultiplier(multiplier)
-	}
+	// Always apply to the default config to avoid cumulative effects
+	baseConfig := DefaultSimulationConfig()
+	// Preserve world-specific settings
+	baseConfig.World = w.SimConfig.World
+	w.SimConfig = baseConfig.ApplySpeedMultiplier(multiplier)
 }
 
 // GetSpeedMultiplier returns the current simulation speed multiplier
