@@ -122,6 +122,8 @@ func TestWorldUpdate(t *testing.T) {
 	// Use custom simulation config that ensures energy decreases
 	simConfig := DefaultSimulationConfig()
 	simConfig.Energy.EnergyRegenerationRate = 0.0 // No regeneration for predictable testing
+	simConfig.Energy.BaseEnergyDrain = 0.05        // Increase drain to make test more robust
+	simConfig.Time.DailyEnergyBase = 0.05          // Increase daily energy requirement
 
 	world := NewWorldWithConfig(config, simConfig)
 
@@ -155,8 +157,17 @@ func TestWorldUpdate(t *testing.T) {
 			t.Errorf("Expected entity age to be 1, got %d", entity.Age)
 		}
 
-		if entity.Energy >= 100.0 {
-			t.Errorf("Expected entity energy to decrease from 100.0, got %f", entity.Energy)
+		// With BaseEnergyDrain=0.05 + DailyEnergyBase=0.05 + classification costs,
+		// energy should decrease by at least 0.08 from 100.0
+		expectedMaxEnergy := 99.9  // Allow some tolerance for classification costs
+		if entity.Energy >= expectedMaxEnergy {
+			t.Errorf("Expected entity energy to decrease below %f from 100.0, got %f", expectedMaxEnergy, entity.Energy)
+		}
+		
+		// Also ensure the energy decrease is reasonable (not too much)
+		expectedMinEnergy := 99.0
+		if entity.Energy < expectedMinEnergy {
+			t.Errorf("Entity energy decreased too much: expected above %f, got %f", expectedMinEnergy, entity.Energy)
 		}
 	}
 
