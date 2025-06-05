@@ -68,6 +68,8 @@ var keys = struct {
 	structures key.Binding
 	physics    key.Binding
 	export     key.Binding
+	speedUp    key.Binding
+	speedDown  key.Binding
 }{
 	up: key.NewBinding(
 		key.WithKeys("up", "k"),
@@ -132,6 +134,14 @@ var keys = struct {
 	export: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "export data"),
+	),
+	speedUp: key.NewBinding(
+		key.WithKeys("+", "="),
+		key.WithHelp("+", "speed up"),
+	),
+	speedDown: key.NewBinding(
+		key.WithKeys("-", "_"),
+		key.WithHelp("-", "slow down"),
 	),
 }
 
@@ -295,11 +305,34 @@ func (m CLIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.export):
 			// Export statistical data
 			m.exportStatisticalData()
+			
+		case key.Matches(msg, keys.speedUp):
+			m.world.IncreaseSpeed()
+			
+		case key.Matches(msg, keys.speedDown):
+			m.world.DecreaseSpeed()
 		}
 
 	case tickMsg:
 		if m.autoAdvance && !m.paused {
-			m.world.Update()
+			// Run multiple simulation updates based on speed multiplier
+			speedMultiplier := m.world.GetSpeedMultiplier()
+			
+			// For CLI, we'll use simple integer rounding for simplicity
+			updatesToRun := int(speedMultiplier + 0.5)
+			if updatesToRun < 1 {
+				// For very slow speeds, only update every few ticks
+				if m.tick % int(1.0/speedMultiplier + 0.5) == 0 {
+					updatesToRun = 1
+				} else {
+					updatesToRun = 0
+				}
+			}
+			
+			// Run the calculated number of updates
+			for i := 0; i < updatesToRun; i++ {
+				m.world.Update()
+			}
 			m.tick++
 		}
 		cmd = doTick()
@@ -427,8 +460,9 @@ func (m CLIModel) headerView() string {
 	}
 
 	title := titleStyle.Render(fmt.Sprintf("🌍 Genetic Ecosystem - Tick %d", m.world.Tick))
-	infoText := fmt.Sprintf("%s | %s %s | Entities: %d | Pops: %d | Events: %d | View: %s",
-		status, timeIcon, worldTime, entities, populations, activeEvents, strings.ToUpper(m.selectedView))
+	speedText := fmt.Sprintf("%.2fx", m.world.GetSpeedMultiplier())
+	infoText := fmt.Sprintf("%s | %s %s | Speed: %s | Entities: %d | Pops: %d | Events: %d | View: %s",
+		status, timeIcon, worldTime, speedText, entities, populations, activeEvents, strings.ToUpper(m.selectedView))
 
 	if len(indicators) > 0 {
 		infoText += " | " + strings.Join(indicators, " ")

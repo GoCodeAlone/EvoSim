@@ -44,9 +44,10 @@ func (ts TimeState) IsNight() bool {
 
 // AdvancedTimeSystem manages complex time cycles
 type AdvancedTimeSystem struct {
+	Config       *TimeConfig // Configuration for time system
 	WorldTick    int
-	DayLength    int // Ticks per day
-	SeasonLength int // Days per season
+	DayLength    int // Ticks per day (from config)
+	SeasonLength int // Days per season (from config)
 	TimeOfDay    TimeOfDay
 	Season       Season
 	DayNumber    int
@@ -56,11 +57,12 @@ type AdvancedTimeSystem struct {
 	SeasonalMod  float64 // Seasonal modifier for resources/difficulty
 }
 
-// NewAdvancedTimeSystem creates a new time system
-func NewAdvancedTimeSystem(dayLength, seasonLength int) *AdvancedTimeSystem {
+// NewAdvancedTimeSystem creates a new time system with configuration
+func NewAdvancedTimeSystem(config *TimeConfig) *AdvancedTimeSystem {
 	return &AdvancedTimeSystem{
-		DayLength:    dayLength,
-		SeasonLength: seasonLength,
+		Config:       config,
+		DayLength:    config.TicksPerDay,
+		SeasonLength: config.DaysPerSeason,
 		TimeOfDay:    Dawn,
 		Season:       Spring,
 		Temperature:  0.5, // Moderate starting temperature
@@ -69,27 +71,39 @@ func NewAdvancedTimeSystem(dayLength, seasonLength int) *AdvancedTimeSystem {
 	}
 }
 
+// NewAdvancedTimeSystemLegacy creates a time system with legacy parameters (for compatibility)
+func NewAdvancedTimeSystemLegacy(dayLength, seasonLength int) *AdvancedTimeSystem {
+	config := &TimeConfig{
+		TicksPerDay:       dayLength,
+		DaysPerSeason:     seasonLength,
+		DailyEnergyBase:   0.02,
+		NightPenalty:      0.01,
+		SeasonalVariation: 0.3,
+	}
+	return NewAdvancedTimeSystem(config)
+}
+
 // Update advances the time system and calculates environmental effects
 func (ats *AdvancedTimeSystem) Update() {
 	ats.WorldTick++
 
-	// Update time of day
-	dayProgress := float64(ats.WorldTick%ats.DayLength) / float64(ats.DayLength)
-	ats.updateTimeOfDay(dayProgress)
+	// With daily time scale, cycle through time of day within each day
+	// Use a simple 8-period day cycle for environmental variation
+	timeOfDayIndex := ats.WorldTick % 8
+	ats.updateTimeOfDayFromIndex(timeOfDayIndex)
 
-	// Update day number
-	if ats.WorldTick%ats.DayLength == 0 {
-		ats.DayNumber++
-		ats.SeasonDay++
+	// Update day number (since each tick = 1 day, increment every tick)
+	ats.DayNumber++
+	ats.SeasonDay++
 
-		// Check for season change
-		if ats.SeasonDay >= ats.SeasonLength {
-			ats.SeasonDay = 0
-			ats.Season = Season((int(ats.Season) + 1) % 4)
-		}
+	// Check for season change  
+	if ats.SeasonDay >= ats.SeasonLength {
+		ats.SeasonDay = 0
+		ats.Season = Season((int(ats.Season) + 1) % 4)
 	}
-	// Update environmental factors
-	ats.updateEnvironmentalFactors(dayProgress)
+
+	// Update environmental factors based on season and time of day
+	ats.updateEnvironmentalFactors()
 }
 
 // GetTimeState returns the current time state
@@ -103,7 +117,22 @@ func (ats *AdvancedTimeSystem) GetTimeState() TimeState {
 	}
 }
 
-// updateTimeOfDay determines current time period
+// updateTimeOfDayFromIndex sets time of day based on daily cycle
+func (ats *AdvancedTimeSystem) updateTimeOfDayFromIndex(index int) {
+	timeOfDays := []TimeOfDay{
+		Dawn,      // 0
+		Morning,   // 1  
+		Midday,    // 2
+		Afternoon, // 3
+		Evening,   // 4
+		Night,     // 5
+		Midnight,  // 6
+		LateNight, // 7
+	}
+	ats.TimeOfDay = timeOfDays[index]
+}
+
+// updateTimeOfDay determines current time period (kept for compatibility)
 func (ats *AdvancedTimeSystem) updateTimeOfDay(dayProgress float64) {
 	switch {
 	case dayProgress < 0.08:
@@ -126,26 +155,43 @@ func (ats *AdvancedTimeSystem) updateTimeOfDay(dayProgress float64) {
 }
 
 // updateEnvironmentalFactors calculates temperature, light, and seasonal effects
-func (ats *AdvancedTimeSystem) updateEnvironmentalFactors(dayProgress float64) {
-	// Calculate illumination based on time of day
+func (ats *AdvancedTimeSystem) updateEnvironmentalFactors() {
+	// Calculate illumination based on time of day (simplified for daily cycle)
 	switch ats.TimeOfDay {
 	case Dawn:
-		ats.Illumination = 0.3 + 0.3*math.Sin(dayProgress*math.Pi*2)
+		ats.Illumination = 0.4
 	case Morning:
-		ats.Illumination = 0.7 + 0.2*math.Sin(dayProgress*math.Pi*2)
+		ats.Illumination = 0.8
 	case Midday:
 		ats.Illumination = 1.0
 	case Afternoon:
-		ats.Illumination = 0.8 + 0.1*math.Sin(dayProgress*math.Pi*2)
+		ats.Illumination = 0.8
 	case Evening:
-		ats.Illumination = 0.5 - 0.2*math.Sin(dayProgress*math.Pi*2)
+		ats.Illumination = 0.5
 	case Night, Midnight, LateNight:
 		ats.Illumination = 0.1
 	}
 
 	// Calculate temperature based on time of day and season
 	baseTemp := ats.getSeasonalBaseTemperature()
-	dailyVariation := 0.3 * math.Sin(dayProgress*math.Pi*2-math.Pi/2) // Coldest before dawn
+	
+	// Daily temperature variation (warmer during day, cooler at night)
+	dailyVariation := 0.0
+	switch ats.TimeOfDay {
+	case Dawn:
+		dailyVariation = -0.2
+	case Morning:
+		dailyVariation = 0.1
+	case Midday:
+		dailyVariation = 0.3
+	case Afternoon:
+		dailyVariation = 0.2
+	case Evening:
+		dailyVariation = 0.0
+	case Night, Midnight, LateNight:
+		dailyVariation = -0.3
+	}
+	
 	ats.Temperature = baseTemp + dailyVariation
 
 	// Calculate seasonal modifier
@@ -170,17 +216,21 @@ func (ats *AdvancedTimeSystem) getSeasonalBaseTemperature() float64 {
 
 // getSeasonalModifier returns resource/difficulty modifier for current season
 func (ats *AdvancedTimeSystem) getSeasonalModifier() float64 {
+	// Use config's seasonal variation to determine how much seasons affect the environment
+	baseModifier := 1.0
+	variation := ats.Config.SeasonalVariation
+	
 	switch ats.Season {
 	case Spring:
-		return 1.2 // Abundant resources
+		return baseModifier + (0.2 * variation) // Slightly abundant resources
 	case Summer:
-		return 1.0 // Normal resources
+		return baseModifier // Normal resources
 	case Autumn:
-		return 0.9 // Declining resources
+		return baseModifier - (0.1 * variation) // Slightly declining resources
 	case Winter:
-		return 0.6 // Scarce resources
+		return baseModifier - (0.4 * variation) // Scarce resources
 	default:
-		return 1.0
+		return baseModifier
 	}
 }
 

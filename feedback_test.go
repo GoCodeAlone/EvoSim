@@ -96,6 +96,9 @@ func TestDietaryMemoryUpdatesFromConsumption(t *testing.T) {
 	pos := Position{X: 0, Y: 0}
 	entity := NewEntity(1, []string{"strength"}, "herbivore", pos)
 	
+	// Make entity hungry so it will want to eat
+	entity.Energy = 20 // Low energy to trigger eating
+	
 	// Create a test plant
 	plant := NewPlant(1, PlantGrass, Position{X: 1, Y: 1})
 	

@@ -24,6 +24,11 @@ type WebInterface struct {
 	updateInterval  time.Duration
 	playerManager   *PlayerManager
 	clientPlayers   map[*websocket.Conn]string // maps websocket connections to player IDs
+	accumulatedUpdates float64 // For fractional speed calculations
+	// Viewport controls for web interface
+	viewportX int     // Pan X offset
+	viewportY int     // Pan Y offset  
+	zoomLevel float64 // Zoom level (1.0 = normal, 2.0 = 2x zoom, etc.)
 }
 
 // NewWebInterface creates a new web interface
@@ -37,6 +42,9 @@ func NewWebInterface(world *World) *WebInterface {
 		updateInterval: 100 * time.Millisecond, // 10 FPS
 		playerManager:  NewPlayerManager(),
 		clientPlayers:  make(map[*websocket.Conn]string),
+		viewportX:      0,
+		viewportY:      0,
+		zoomLevel:      1.0,
 	}
 	
 	// Set up player events callback
@@ -160,6 +168,62 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         
         .controls button.active {
             background-color: #6a6a6a;
+        }
+        
+        .speed-controls {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 20px;
+            padding: 5px 10px;
+            background-color: #3a3a3a;
+            border-radius: 5px;
+        }
+        
+        .speed-controls label {
+            margin-right: 10px;
+            color: #cccccc;
+        }
+        
+        .speed-controls button {
+            padding: 4px 8px;
+            margin: 0 5px;
+            font-size: 12px;
+        }
+        
+        #speed-display {
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 0 10px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .viewport-controls {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 20px;
+            padding: 5px 10px;
+            background-color: #3a3a3a;
+            border-radius: 5px;
+        }
+        
+        .viewport-controls label {
+            margin-right: 10px;
+            color: #cccccc;
+        }
+        
+        .viewport-controls button {
+            padding: 4px 8px;
+            margin: 0 5px;
+            font-size: 12px;
+        }
+        
+        #zoom-display {
+            color: #2196F3;
+            font-weight: bold;
+            margin: 0 10px;
+            min-width: 50px;
+            text-align: center;
         }
         
         .stats-section {
@@ -683,6 +747,19 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
                 <button onclick="saveState()">💾 Save</button>
                 <button onclick="loadState()">📁 Load</button>
                 <input type="file" id="load-file" accept=".json" style="display: none;" onchange="handleFileLoad(event)">
+                <div class="speed-controls" style="margin-left: 20px; display: inline-block;">
+                    <label>Speed: </label>
+                    <button onclick="decreaseSpeed()">⏪</button>
+                    <span id="speed-display">1.0x</span>
+                    <button onclick="increaseSpeed()">⏩</button>
+                </div>
+                <div class="viewport-controls" style="margin-left: 20px; display: inline-block;">
+                    <label>View: </label>
+                    <button onclick="zoomOut()">🔍-</button>
+                    <span id="zoom-display">1.0x</span>
+                    <button onclick="zoomIn()">🔍+</button>
+                    <button onclick="resetViewport()" title="Reset view">🎯</button>
+                </div>
             </div>
             
             <div class="view-tabs" id="view-tabs">
@@ -979,6 +1056,23 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             document.getElementById('entities').textContent = 'Entities: ' + data.entity_count;
             document.getElementById('plants').textContent = 'Plants: ' + data.plant_count;
             document.getElementById('populations').textContent = 'Populations: ' + data.population_count;
+            
+            // Update speed display
+            if (data.speed_multiplier !== undefined) {
+                document.getElementById('speed-display').textContent = data.speed_multiplier.toFixed(2) + 'x';
+            }
+            
+            // Update zoom display
+            if (data.zoom_level !== undefined) {
+                document.getElementById('zoom-display').textContent = data.zoom_level.toFixed(2) + 'x';
+            }
+            
+            // Update pause button based on paused state
+            if (data.paused !== undefined) {
+                const btn = document.getElementById('pause-btn');
+                btn.textContent = data.paused ? '▶ Resume' : '⏸ Pause';
+                isPaused = data.paused;
+            }
             
             // Update stats
             if (data.stats.avg_fitness !== undefined) {
@@ -2549,6 +2643,134 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
             }
         }
         
+        function increaseSpeed() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'increase_speed'}));
+            }
+        }
+        
+        function decreaseSpeed() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'decrease_speed'}));
+            }
+        }
+        
+        function zoomIn() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'zoom_in'}));
+            }
+        }
+        
+        function zoomOut() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'zoom_out'}));
+            }
+        }
+        
+        // Initialize viewport controls
+        function initViewportControls() {
+            // Keyboard controls for panning
+            document.addEventListener('keydown', function(event) {
+                // Only handle pan controls if no input is focused
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                const panStep = 3;
+                switch(event.key) {
+                    case 'ArrowUp':
+                        event.preventDefault();
+                        panViewport(0, -panStep);
+                        break;
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        panViewport(0, panStep);
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        panViewport(-panStep, 0);
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        panViewport(panStep, 0);
+                        break;
+                    case '+':
+                    case '=':
+                        event.preventDefault();
+                        zoomIn();
+                        break;
+                    case '-':
+                    case '_':
+                        event.preventDefault();
+                        zoomOut();
+                        break;
+                    case '0':
+                        event.preventDefault();
+                        resetViewport();
+                        break;
+                }
+            });
+            
+            // Mouse wheel zoom
+            document.getElementById('grid-view').addEventListener('wheel', function(event) {
+                event.preventDefault();
+                if (event.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            });
+            
+            // Mouse drag to pan
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            
+            document.getElementById('grid-view').addEventListener('mousedown', function(event) {
+                event.preventDefault();
+                isDragging = true;
+                dragStartX = event.clientX;
+                dragStartY = event.clientY;
+                document.body.style.userSelect = 'none'; // Prevent text selection
+            });
+            
+            document.addEventListener('mousemove', function(event) {
+                if (!isDragging) return;
+                
+                const deltaX = Math.floor((event.clientX - dragStartX) / 10); // Scale down the movement
+                const deltaY = Math.floor((event.clientY - dragStartY) / 10);
+                
+                if (Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) {
+                    panViewport(-deltaX, -deltaY); // Inverted because dragging right should pan left
+                    dragStartX = event.clientX;
+                    dragStartY = event.clientY;
+                }
+            });
+            
+            document.addEventListener('mouseup', function(event) {
+                isDragging = false;
+                document.body.style.userSelect = ''; // Re-enable text selection
+            });
+        }
+        
+        function panViewport(deltaX, deltaY) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'pan',
+                    data: {
+                        deltaX: deltaX,
+                        deltaY: deltaY
+                    }
+                }));
+            }
+        }
+        
+        function resetViewport() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'reset_viewport'}));
+            }
+        }
+        
         function resetSimulation() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({action: 'reset'}));
@@ -2590,6 +2812,7 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
         window.onload = function() {
             initViewTabs();
             initTraitSliders();
+            initViewportControls();
             connect();
             
             // Initialize species modal functionality
@@ -4109,6 +4332,59 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 		} else {
 			log.Printf("Invalid state data format")
 		}
+		
+	case "increase_speed":
+		wi.world.IncreaseSpeed()
+		log.Printf("Client requested speed increase to %fx", wi.world.GetSpeedMultiplier())
+		
+	case "decrease_speed":
+		wi.world.DecreaseSpeed()
+		log.Printf("Client requested speed decrease to %fx", wi.world.GetSpeedMultiplier())
+		
+	case "set_speed":
+		if speedData, ok := data.(map[string]interface{}); ok {
+			if speedValue, exists := speedData["speed"]; exists {
+				if speed, ok := speedValue.(float64); ok {
+					wi.world.SetSpeedMultiplier(speed)
+					log.Printf("Client set speed to %fx", speed)
+				}
+			}
+		}
+		
+	case "pan":
+		if panData, ok := data.(map[string]interface{}); ok {
+			if deltaX, ok := panData["deltaX"].(float64); ok {
+				wi.viewportX += int(deltaX)
+			}
+			if deltaY, ok := panData["deltaY"].(float64); ok {
+				wi.viewportY += int(deltaY)
+			}
+			// Clamp viewport to valid bounds
+			wi.clampViewport()
+			log.Printf("Client panned to (%d, %d)", wi.viewportX, wi.viewportY)
+		}
+		
+	case "zoom":
+		if zoomData, ok := data.(map[string]interface{}); ok {
+			if zoomValue, exists := zoomData["zoom"]; exists {
+				if zoom, ok := zoomValue.(float64); ok {
+					wi.setZoomLevel(zoom)
+					log.Printf("Client zoomed to %fx", wi.zoomLevel)
+				}
+			}
+		}
+		
+	case "zoom_in":
+		wi.zoomIn()
+		log.Printf("Client zoomed in to %fx", wi.zoomLevel)
+		
+	case "zoom_out":
+		wi.zoomOut()
+		log.Printf("Client zoomed out to %fx", wi.zoomLevel)
+		
+	case "reset_viewport":
+		wi.resetViewport()
+		log.Printf("Client reset viewport")
 	}
 }
 
@@ -4126,11 +4402,23 @@ func (wi *WebInterface) simulationLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			// Update the simulation
-			wi.world.Update()
+			// Run multiple simulation updates based on speed multiplier
+			speedMultiplier := wi.world.GetSpeedMultiplier()
 			
-			// Get current view data
-			viewData := wi.viewManager.GetCurrentViewData()
+			// Calculate how many updates to run this tick
+			// For fractional speeds, we accumulate and run when threshold is met
+			wi.accumulatedUpdates += speedMultiplier
+			
+			updatesToRun := int(wi.accumulatedUpdates)
+			wi.accumulatedUpdates -= float64(updatesToRun)
+			
+			// Run the calculated number of updates
+			for i := 0; i < updatesToRun; i++ {
+				wi.world.Update()
+			}
+			
+			// Get current view data with viewport
+			viewData := wi.viewManager.GetViewDataWithViewport(wi.viewportX, wi.viewportY, wi.zoomLevel)
 			
 			// Send to broadcast channel (non-blocking)
 			select {
@@ -4733,4 +5021,70 @@ func (wi *WebInterface) handlePlayerEvent(eventType string, data map[string]inte
 		}
 		wi.sendJSONToClient(playerWS, notification)
 	}
+}
+
+// Viewport helper methods
+
+// clampViewport ensures viewport coordinates are within valid bounds
+func (wi *WebInterface) clampViewport() {
+	visibleWidth := int(float64(wi.world.Config.GridWidth) / wi.zoomLevel)
+	visibleHeight := int(float64(wi.world.Config.GridHeight) / wi.zoomLevel)
+	
+	maxViewportX := wi.world.Config.GridWidth - visibleWidth
+	maxViewportY := wi.world.Config.GridHeight - visibleHeight
+	
+	if wi.viewportX < 0 {
+		wi.viewportX = 0
+	}
+	if wi.viewportY < 0 {
+		wi.viewportY = 0
+	}
+	if wi.viewportX > maxViewportX {
+		wi.viewportX = maxViewportX
+	}
+	if wi.viewportY > maxViewportY {
+		wi.viewportY = maxViewportY
+	}
+}
+
+// setZoomLevel sets the zoom level with bounds checking
+func (wi *WebInterface) setZoomLevel(zoom float64) {
+	if zoom < 0.5 {
+		zoom = 0.5 // Minimum zoom (zoom out)
+	}
+	if zoom > 8.0 {
+		zoom = 8.0 // Maximum zoom (zoom in)
+	}
+	wi.zoomLevel = zoom
+	wi.clampViewport() // Ensure viewport is still valid after zoom change
+}
+
+// zoomIn increases zoom level
+func (wi *WebInterface) zoomIn() {
+	zoomLevels := []float64{0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0}
+	for _, level := range zoomLevels {
+		if level > wi.zoomLevel {
+			wi.setZoomLevel(level)
+			return
+		}
+	}
+}
+
+// zoomOut decreases zoom level
+func (wi *WebInterface) zoomOut() {
+	zoomLevels := []float64{8.0, 6.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.75, 0.5}
+	for _, level := range zoomLevels {
+		if level < wi.zoomLevel {
+			wi.setZoomLevel(level)
+			return
+		}
+	}
+}
+
+// resetViewport resets viewport to center of world at 1x zoom
+func (wi *WebInterface) resetViewport() {
+	wi.zoomLevel = 1.0
+	wi.viewportX = wi.world.Config.GridWidth / 4
+	wi.viewportY = wi.world.Config.GridHeight / 4
+	wi.clampViewport()
 }
