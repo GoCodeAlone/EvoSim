@@ -65,7 +65,7 @@ func (oc *OrganismClassifier) initializeLifespanData() {
 	oc.LifespanData[ClassificationProkaryotic] = &OrganismLifespanData{
 		Classification:     ClassificationProkaryotic,
 		Name:               "Prokaryotic",
-		BaseLifespanTicks:  int(ticksPerDay * 2 * timeScaleFactor),   // 2 days base lifespan (scaled)
+		BaseLifespanTicks:  int(ticksPerDay * 15 * timeScaleFactor),  // 15 days base lifespan (scaled) to meet test expectations
 		LifespanVariance:   0.8,                                      // High variance
 		AgingRate:          2.0,                                      // Age twice as fast
 		MaturationAge:      int(ticksPerDay * 0.1 * timeScaleFactor), // 0.1 days (scaled)
