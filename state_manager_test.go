@@ -47,7 +47,7 @@ func TestStateManagerSaveLoad(t *testing.T) {
 	// Save state
 	stateManager1 := NewStateManager(world1)
 	filename := "test_state_temp.json"
-	defer os.Remove(filename) // Clean up
+	defer func() { _ = os.Remove(filename) }() // Clean up
 
 	err := stateManager1.SaveToFile(filename)
 	if err != nil {
@@ -100,7 +100,7 @@ func TestStateManagerEmptyWorld(t *testing.T) {
 	stateManager := NewStateManager(world)
 
 	filename := "test_empty_state.json"
-	defer os.Remove(filename)
+	defer func() { _ = os.Remove(filename) }()
 
 	// Test saving empty world
 	err := stateManager.SaveToFile(filename)

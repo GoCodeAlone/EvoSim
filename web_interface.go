@@ -4221,7 +4221,7 @@ func (wi *WebInterface) exportAnomaliesAsCSV(w http.ResponseWriter, data map[str
 
 // handleWebSocket handles WebSocket connections
 func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
-	defer ws.Close()
+	defer func() { _ = ws.Close() }()
 
 	// Add client to the list
 	wi.clientsMutex.Lock()

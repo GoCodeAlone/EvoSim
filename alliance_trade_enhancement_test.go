@@ -75,6 +75,7 @@ func TestTradeAgreementExecution(t *testing.T) {
 
 	if agreement == nil {
 		t.Error("Trade agreement should be created")
+		return
 	}
 
 	if !agreement.IsActive {

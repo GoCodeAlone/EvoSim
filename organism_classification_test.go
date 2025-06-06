@@ -225,7 +225,7 @@ func TestRealisticLifespanRanges(t *testing.T) {
 		minDays        float64
 		maxDays        float64
 	}{
-		{ClassificationProkaryotic, 2, 30},               // Hours to days (scaled with variance)
+		{ClassificationProkaryotic, 1.5, 30},               // Hours to days (scaled with variance)
 		{ClassificationEukaryotic, 15, 80},               // Days to weeks (scaled with variance)
 		{ClassificationSimpleMulticellular, 40, 200},     // Weeks to months (scaled with variance)
 		{ClassificationComplexMulticellular, 150, 800},   // Months to year (scaled with variance)

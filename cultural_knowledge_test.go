@@ -196,8 +196,10 @@ func TestCulturalKnowledgeStats(t *testing.T) {
 
 	entities := []*Entity{entity}
 
-	// Update system
-	system.Update(entities, 0)
+	// Update system multiple times to give entity chance to acquire knowledge
+	for i := 0; i < 10; i++ {
+		system.Update(entities, i)
+	}
 
 	// Get statistics
 	stats := system.GetCulturalStats()
