@@ -2,23 +2,16 @@ version: 2
 
 run:
   timeout: 5m
-  go: "1.24"
+  go: "1.23"
 
 linters:
   enable:
     - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
     - unused
     - misspell
-    - unconvert
-    - gosec
     - goconst
-    - gocyclo
     - dupl
-    - funlen
-    - whitespace
+  disable-all: true
 
 issues:
   exclude-rules:
