@@ -189,8 +189,9 @@ func (pns *PlantNetworkSystem) formNewConnections(allPlants []*Plant, currentTic
 			}
 
 			// Calculate distance
-			distance := math.Sqrt(math.Pow(plantA.Position.X-plantB.Position.X, 2) +
-				math.Pow(plantA.Position.Y-plantB.Position.Y, 2))
+			dx := plantA.Position.X - plantB.Position.X
+			dy := plantA.Position.Y - plantB.Position.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
 
 			// Too far apart
 			if distance > pns.MaxConnectionDistance {
@@ -1028,8 +1029,9 @@ func (pns *PlantNetworkSystem) DetectNetworkThreats(allEntities []*Entity, curre
 				}
 
 				// Calculate distance to plant
-				distance := math.Sqrt(math.Pow(entity.Position.X-plant.Position.X, 2) +
-					math.Pow(entity.Position.Y-plant.Position.Y, 2))
+				dx := entity.Position.X - plant.Position.X
+				dy := entity.Position.Y - plant.Position.Y
+				distance := math.Sqrt(dx*dx + dy*dy)
 
 				// Check if entity is a threat (predator or omnivore near plants)
 				if distance < threatRadius && (entity.Species == "Predator" || entity.Species == "Omnivore") {

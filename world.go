@@ -681,8 +681,10 @@ func (w *World) generateBiome(x, y int) BiomeType {
 
 	// Calculate distance from center and edges for zonal distribution
 	centerX, centerY := float64(w.Config.GridWidth)/2, float64(w.Config.GridHeight)/2
-	distFromCenter := math.Sqrt(math.Pow(float64(x)-centerX, 2) + math.Pow(float64(y)-centerY, 2))
-	maxDist := math.Sqrt(math.Pow(centerX, 2) + math.Pow(centerY, 2))
+	dx := float64(x) - centerX
+	dy := float64(y) - centerY
+	distFromCenter := math.Sqrt(dx*dx + dy*dy)
+	maxDist := math.Sqrt(centerX*centerX + centerY*centerY)
 
 	// Distance from edges (for polar caps)
 	distFromEdge := math.Min(math.Min(float64(x), float64(w.Config.GridWidth-x)),
@@ -1120,7 +1122,9 @@ func (w *World) getEntitiesNearPosition(pos Position, radius float64) []*Entity 
 
 	for _, entity := range w.AllEntities {
 		if entity.IsAlive {
-			distance := math.Sqrt(math.Pow(entity.Position.X-pos.X, 2) + math.Pow(entity.Position.Y-pos.Y, 2))
+			dx := entity.Position.X - pos.X
+			dy := entity.Position.Y - pos.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
 			if distance <= radius {
 				nearby = append(nearby, entity)
 			}
@@ -2551,7 +2555,9 @@ func (w *World) respondToSignal(entity *Entity, signal Signal) {
 		// Cooperative entities might help
 		if entity.GetTrait("cooperation") > 0.5 && entity.Energy > 50 {
 			// Move toward distress signal
-			distance := math.Sqrt(math.Pow(entity.Position.X-signal.Position.X, 2) + math.Pow(entity.Position.Y-signal.Position.Y, 2))
+			dx := entity.Position.X - signal.Position.X
+			dy := entity.Position.Y - signal.Position.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
 			if distance > 1 {
 				speed := entity.GetTrait("speed") * 0.5
 				entity.MoveTo(signal.Position.X, signal.Position.Y, speed)

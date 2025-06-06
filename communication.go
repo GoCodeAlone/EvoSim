@@ -104,8 +104,9 @@ func (cs *CommunicationSystem) ReceiveSignals(entity *Entity, tick int) []Signal
 	}
 
 	for _, signal := range cs.Signals {
-		distance := math.Sqrt(math.Pow(entity.Position.X-signal.Position.X, 2) +
-			math.Pow(entity.Position.Y-signal.Position.Y, 2))
+		dx := entity.Position.X - signal.Position.X
+		dy := entity.Position.Y - signal.Position.Y
+		distance := math.Sqrt(dx*dx + dy*dy)
 
 		// Check if entity is in range and can understand the signal
 		if distance <= signal.Range && signal.Strength > 0.1 {
