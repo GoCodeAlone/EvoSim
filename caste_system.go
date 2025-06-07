@@ -5,18 +5,23 @@ import (
 	"math/rand"
 )
 
+// Resource type constants
+const (
+	ResourceEnergy = "energy"
+)
+
 // CasteRole represents different roles entities can specialize into
 type CasteRole int
 
 const (
-	Worker CasteRole = iota // Basic labor and foraging
-	Soldier                 // Defense and combat
-	Queen                   // Reproduction and leadership
-	Drone                   // Male reproductive role
-	Scout                   // Exploration and intelligence gathering
-	Nurse                   // Care for young and weak
-	Builder                 // Construction and maintenance
-	Specialist              // Technical roles (varies by environment)
+	Worker     CasteRole = iota // Basic labor and foraging
+	Soldier                     // Defense and combat
+	Queen                       // Reproduction and leadership
+	Drone                       // Male reproductive role
+	Scout                       // Exploration and intelligence gathering
+	Nurse                       // Care for young and weak
+	Builder                     // Construction and maintenance
+	Specialist                  // Technical roles (varies by environment)
 )
 
 // String returns the string representation of CasteRole
@@ -45,13 +50,13 @@ func (cr CasteRole) String() string {
 
 // CasteStatus tracks an entity's role within a caste system
 type CasteStatus struct {
-	Role                CasteRole `json:"role"`
-	RoleSpecialization  float64   `json:"role_specialization"`  // How specialized the entity is (0.0-1.0)
-	CasteLoyalty        float64   `json:"caste_loyalty"`        // Loyalty to the caste system
-	RoleEfficiency      float64   `json:"role_efficiency"`      // How efficiently they perform their role
-	CanChangeRole       bool      `json:"can_change_role"`      // Whether role can change
-	RoleAssignmentTick  int       `json:"role_assignment_tick"` // When role was assigned
-	ReproductiveCapability float64 `json:"reproductive_capability"` // Reproductive ability (varies by caste)
+	Role                   CasteRole `json:"role"`
+	RoleSpecialization     float64   `json:"role_specialization"`     // How specialized the entity is (0.0-1.0)
+	CasteLoyalty           float64   `json:"caste_loyalty"`           // Loyalty to the caste system
+	RoleEfficiency         float64   `json:"role_efficiency"`         // How efficiently they perform their role
+	CanChangeRole          bool      `json:"can_change_role"`         // Whether role can change
+	RoleAssignmentTick     int       `json:"role_assignment_tick"`    // When role was assigned
+	ReproductiveCapability float64   `json:"reproductive_capability"` // Reproductive ability (varies by caste)
 }
 
 // NewCasteStatus creates a new caste status for an entity
@@ -99,16 +104,16 @@ func NewCasteStatus(role CasteRole) *CasteStatus {
 
 // TradeRoute represents an active trade route between colonies
 type TradeRoute struct {
-	ID               int                `json:"id"`
-	OriginColonyID   int                `json:"origin_colony_id"`
-	DestinationColonyID int             `json:"destination_colony_id"`
-	ResourceType     string             `json:"resource_type"`
-	TradeVolume      float64            `json:"trade_volume"`      // Resources per tick
-	RouteEfficiency  float64            `json:"route_efficiency"`  // 0.0-1.0 efficiency
-	Security         float64            `json:"security"`          // 0.0-1.0 security level
-	Distance         float64            `json:"distance"`          // Route distance
-	IsActive         bool               `json:"is_active"`
-	LastTradeTime    int                `json:"last_trade_time"`
+	ID                  int     `json:"id"`
+	OriginColonyID      int     `json:"origin_colony_id"`
+	DestinationColonyID int     `json:"destination_colony_id"`
+	ResourceType        string  `json:"resource_type"`
+	TradeVolume         float64 `json:"trade_volume"`     // Resources per tick
+	RouteEfficiency     float64 `json:"route_efficiency"` // 0.0-1.0 efficiency
+	Security            float64 `json:"security"`         // 0.0-1.0 security level
+	Distance            float64 `json:"distance"`         // Route distance
+	IsActive            bool    `json:"is_active"`
+	LastTradeTime       int     `json:"last_trade_time"`
 }
 
 // CasteColony represents a colony with a caste-based social structure
@@ -127,12 +132,12 @@ type CasteColony struct {
 	MaxColonySize     int               `json:"max_colony_size"`
 	ReproductionRate  float64           `json:"reproduction_rate"`
 	CreationTick      int               `json:"creation_tick"`
-	
+
 	// Resource management for trading
-	Resources         map[string]float64 `json:"resources"`          // Colony resource stockpiles
-	ResourceGeneration map[string]float64 `json:"resource_generation"` // Resource production per tick
+	Resources           map[string]float64 `json:"resources"`            // Colony resource stockpiles
+	ResourceGeneration  map[string]float64 `json:"resource_generation"`  // Resource production per tick
 	ResourceConsumption map[string]float64 `json:"resource_consumption"` // Resource consumption per tick
-	TradeRoutes       []*TradeRoute      `json:"trade_routes"`       // Active trade routes
+	TradeRoutes         []*TradeRoute      `json:"trade_routes"`         // Active trade routes
 }
 
 // NewCasteColony creates a new caste-based colony
@@ -148,8 +153,8 @@ func NewCasteColony(id int, queen *Entity, nestLocation Position) *CasteColony {
 
 	// Modify queen traits for her role
 	queen.SetTrait("reproductive_capability", 3.0)
-	queen.SetTrait("leadership", queen.GetTrait("leadership") + 0.5)
-	queen.SetTrait("intelligence", queen.GetTrait("intelligence") + 0.3)
+	queen.SetTrait("leadership", queen.GetTrait("leadership")+0.5)
+	queen.SetTrait("intelligence", queen.GetTrait("intelligence")+0.3)
 
 	colony := &CasteColony{
 		ID:                id,
@@ -166,20 +171,20 @@ func NewCasteColony(id int, queen *Entity, nestLocation Position) *CasteColony {
 		MaxColonySize:     100 + rand.Intn(400), // 100-500 members
 		ReproductionRate:  0.1,
 		Resources: map[string]float64{
-			"food":     25.0 + rand.Float64()*25.0, // 25-50 starting food
-			"biomass":  10.0 + rand.Float64()*15.0, // 10-25 starting biomass
-			"energy":   15.0 + rand.Float64()*20.0, // 15-35 starting energy
-			"materials": 5.0 + rand.Float64()*10.0, // 5-15 starting materials
+			"food":      25.0 + rand.Float64()*25.0, // 25-50 starting food
+			"biomass":   10.0 + rand.Float64()*15.0, // 10-25 starting biomass
+			"energy":    15.0 + rand.Float64()*20.0, // 15-35 starting energy
+			"materials": 5.0 + rand.Float64()*10.0,  // 5-15 starting materials
 		},
 		ResourceGeneration: map[string]float64{
-			"food":     0.5, // Base food generation per tick
-			"biomass":  0.2, // Base biomass generation per tick
-			"energy":   0.3, // Base energy generation per tick
+			"food":      0.5, // Base food generation per tick
+			"biomass":   0.2, // Base biomass generation per tick
+			"energy":    0.3, // Base energy generation per tick
 			"materials": 0.1, // Base materials generation per tick
 		},
 		ResourceConsumption: map[string]float64{
-			"food":     0.3, // Base food consumption per tick
-			"energy":   0.2, // Base energy consumption per tick
+			"food":   0.3, // Base food consumption per tick
+			"energy": 0.2, // Base energy consumption per tick
 		},
 		TradeRoutes: make([]*TradeRoute, 0),
 	}
@@ -458,7 +463,7 @@ func (cc *CasteColony) performWorkerActions(worker *Entity, world *World, tick i
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Workers focus on foraging and basic labor
 	if worker.Energy < 50 {
 		// Seek food sources
@@ -468,7 +473,7 @@ func (cc *CasteColony) performWorkerActions(worker *Entity, world *World, tick i
 		}
 	} else {
 		// Return to nest area when well-fed
-		distance := math.Sqrt(math.Pow(worker.Position.X-cc.NestLocation.X, 2) + 
+		distance := math.Sqrt(math.Pow(worker.Position.X-cc.NestLocation.X, 2) +
 			math.Pow(worker.Position.Y-cc.NestLocation.Y, 2))
 		if distance > 15.0 {
 			speed := worker.GetTrait("speed") * 0.8
@@ -487,15 +492,15 @@ func (cc *CasteColony) performSoldierActions(soldier *Entity, world *World, tick
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Soldiers defend territory and hunt threats
 	nearbyThreats := cc.findNearbyThreats(soldier, world.AllEntities, 25.0)
-	
+
 	if len(nearbyThreats) > 0 {
 		// Engage closest threat
 		closest := nearbyThreats[0]
 		minDistance := soldier.DistanceTo(closest)
-		
+
 		for _, threat := range nearbyThreats[1:] {
 			distance := soldier.DistanceTo(threat)
 			if distance < minDistance {
@@ -523,7 +528,7 @@ func (cc *CasteColony) performQueenActions(queen *Entity, world *World, tick int
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Queens focus on reproduction and colony management
 	if queen.Energy > 60 && cc.ColonySize < cc.MaxColonySize {
 		// Look for reproduction opportunities
@@ -547,29 +552,29 @@ func (cc *CasteColony) performQueenActions(queen *Entity, world *World, tick int
 	}
 
 	// Stay near nest
-	distance := math.Sqrt(math.Pow(queen.Position.X-cc.NestLocation.X, 2) + 
+	distance := math.Sqrt(math.Pow(queen.Position.X-cc.NestLocation.X, 2) +
 		math.Pow(queen.Position.Y-cc.NestLocation.Y, 2))
 	if distance > 10.0 {
 		queen.MoveTo(cc.NestLocation.X, cc.NestLocation.Y, queen.GetTrait("speed")*0.3)
 	}
 }
 
-// performScoutActions defines scout-specific behaviors  
+// performScoutActions defines scout-specific behaviors
 func (cc *CasteColony) performScoutActions(scout *Entity, world *World, tick int) {
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Scouts explore and gather information
 	explorationRadius := 50.0 + scout.GetTrait("exploration_drive")*30.0
-	
+
 	// Move to unexplored areas
 	angle := rand.Float64() * 2 * math.Pi
 	distance := 20.0 + rand.Float64()*explorationRadius
-	
+
 	targetX := scout.Position.X + math.Cos(angle)*distance
 	targetY := scout.Position.Y + math.Sin(angle)*distance
-	
+
 	speed := scout.GetTrait("speed") * 1.3 // Scouts are fast
 	scout.MoveTo(targetX, targetY, speed)
 
@@ -577,8 +582,8 @@ func (cc *CasteColony) performScoutActions(scout *Entity, world *World, tick int
 	if targetX, targetY, found := scout.SeekNutrition(world.AllPlants, world.AllEntities, 30.0); found {
 		// Send food signal to colony
 		world.CommunicationSystem.SendSignal(scout, SignalFood, map[string]interface{}{
-			"x": targetX,
-			"y": targetY,
+			"x":       targetX,
+			"y":       targetY,
 			"quality": 0.8,
 		}, world.Tick)
 	}
@@ -589,15 +594,15 @@ func (cc *CasteColony) performNurseActions(nurse *Entity, world *World, tick int
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Nurses care for young and weak colony members
 	weakMembers := cc.findWeakMembers(nurse, 15.0)
-	
+
 	if len(weakMembers) > 0 {
 		// Help closest weak member
 		closest := weakMembers[0]
 		minDistance := nurse.DistanceTo(closest)
-		
+
 		for _, weak := range weakMembers[1:] {
 			distance := nurse.DistanceTo(weak)
 			if distance < minDistance {
@@ -619,7 +624,7 @@ func (cc *CasteColony) performNurseActions(nurse *Entity, world *World, tick int
 		}
 	} else {
 		// Stay near nest when no one needs care
-		distance := math.Sqrt(math.Pow(nurse.Position.X-cc.NestLocation.X, 2) + 
+		distance := math.Sqrt(math.Pow(nurse.Position.X-cc.NestLocation.X, 2) +
 			math.Pow(nurse.Position.Y-cc.NestLocation.Y, 2))
 		if distance > 12.0 {
 			nurse.MoveTo(cc.NestLocation.X, cc.NestLocation.Y, nurse.GetTrait("speed")*0.6)
@@ -632,7 +637,7 @@ func (cc *CasteColony) performBuilderActions(builder *Entity, world *World, tick
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Builders construct and maintain colony structures
 	if world.CivilizationSystem != nil {
 		// Look for structures that need repair
@@ -640,9 +645,9 @@ func (cc *CasteColony) performBuilderActions(builder *Entity, world *World, tick
 			if structure.Tribe != nil && structure.Tribe.ID == cc.ID {
 				if structure.Health < structure.MaxHealth*0.7 {
 					// Repair structure
-					distance := math.Sqrt(math.Pow(builder.Position.X-structure.Position.X, 2) + 
+					distance := math.Sqrt(math.Pow(builder.Position.X-structure.Position.X, 2) +
 						math.Pow(builder.Position.Y-structure.Position.Y, 2))
-					
+
 					if distance < 5.0 {
 						structure.Repair(builder, 10.0)
 					} else {
@@ -661,15 +666,15 @@ func (cc *CasteColony) performBuilderActions(builder *Entity, world *World, tick
 				X: cc.NestLocation.X + (rand.Float64()-0.5)*20.0,
 				Y: cc.NestLocation.Y + (rand.Float64()-0.5)*20.0,
 			}
-			
-			distance := math.Sqrt(math.Pow(builder.Position.X-buildPos.X, 2) + 
+
+			distance := math.Sqrt(math.Pow(builder.Position.X-buildPos.X, 2) +
 				math.Pow(builder.Position.Y-buildPos.Y, 2))
-			
+
 			if distance < 3.0 {
 				// Attempt to build
 				tribe := cc.findColonyTribe(world)
 				if tribe != nil && tribe.CanBuild(StructureCache) {
-					tribe.BuildStructure(StructureCache, buildPos, builder, 
+					tribe.BuildStructure(StructureCache, buildPos, builder,
 						world.CivilizationSystem.NextStructureID, world.CentralEventBus, world.Tick)
 					world.CivilizationSystem.NextStructureID++
 				}
@@ -686,10 +691,10 @@ func (cc *CasteColony) performSpecialistActions(specialist *Entity, world *World
 	if world == nil {
 		return // Skip if world is nil (testing scenario)
 	}
-	
+
 	// Specialists perform advanced tasks based on colony needs
 	intelligence := specialist.GetTrait("intelligence")
-	
+
 	if intelligence > 0.8 {
 		// High intelligence specialists can coordinate other castes
 		cc.coordinateColonyActions(specialist, world, tick)
@@ -706,12 +711,12 @@ func (cc *CasteColony) performSpecialistActions(specialist *Entity, world *World
 
 func (cc *CasteColony) findNearbyThreats(soldier *Entity, allEntities []*Entity, radius float64) []*Entity {
 	threats := make([]*Entity, 0)
-	
+
 	for _, entity := range allEntities {
 		if !entity.IsAlive || entity.TribeID == cc.ID {
 			continue
 		}
-		
+
 		distance := soldier.DistanceTo(entity)
 		if distance <= radius {
 			// Consider aggressive entities as threats
@@ -720,18 +725,18 @@ func (cc *CasteColony) findNearbyThreats(soldier *Entity, allEntities []*Entity,
 			}
 		}
 	}
-	
+
 	return threats
 }
 
 func (cc *CasteColony) findNearbyDrones(queen *Entity, radius float64) []*Entity {
 	drones := make([]*Entity, 0)
-	
+
 	for _, member := range cc.Members {
 		if !member.IsAlive || member.CasteStatus == nil {
 			continue
 		}
-		
+
 		if member.CasteStatus.Role == Drone {
 			distance := queen.DistanceTo(member)
 			if distance <= radius {
@@ -739,7 +744,7 @@ func (cc *CasteColony) findNearbyDrones(queen *Entity, radius float64) []*Entity
 			}
 		}
 	}
-	
+
 	return drones
 }
 
@@ -747,10 +752,10 @@ func (cc *CasteColony) selectBestMate(queen *Entity, drones []*Entity) *Entity {
 	if len(drones) == 0 {
 		return nil
 	}
-	
+
 	bestDrone := drones[0]
 	bestScore := cc.calculateMateScore(queen, bestDrone)
-	
+
 	for _, drone := range drones[1:] {
 		score := cc.calculateMateScore(queen, drone)
 		if score > bestScore {
@@ -758,7 +763,7 @@ func (cc *CasteColony) selectBestMate(queen *Entity, drones []*Entity) *Entity {
 			bestDrone = drone
 		}
 	}
-	
+
 	return bestDrone
 }
 
@@ -767,24 +772,24 @@ func (cc *CasteColony) calculateMateScore(queen *Entity, drone *Entity) float64 
 	intelligenceScore := (queen.GetTrait("intelligence") + drone.GetTrait("intelligence")) / 2.0
 	fitnessScore := (queen.Fitness + drone.Fitness) / 2.0
 	reproductiveScore := drone.GetTrait("reproductive_capability")
-	
+
 	return intelligenceScore*0.4 + fitnessScore*0.4 + reproductiveScore*0.2
 }
 
 func (cc *CasteColony) findWeakMembers(nurse *Entity, radius float64) []*Entity {
 	weakMembers := make([]*Entity, 0)
-	
+
 	for _, member := range cc.Members {
 		if !member.IsAlive || member == nurse {
 			continue
 		}
-		
+
 		distance := nurse.DistanceTo(member)
 		if distance <= radius && member.Energy < 25.0 {
 			weakMembers = append(weakMembers, member)
 		}
 	}
-	
+
 	return weakMembers
 }
 
@@ -792,10 +797,10 @@ func (cc *CasteColony) patrolTerritory(soldier *Entity) {
 	// Simple patrol pattern around nest
 	angle := rand.Float64() * 2 * math.Pi
 	patrolRadius := 20.0 + rand.Float64()*15.0
-	
+
 	targetX := cc.NestLocation.X + math.Cos(angle)*patrolRadius
 	targetY := cc.NestLocation.Y + math.Sin(angle)*patrolRadius
-	
+
 	soldier.MoveTo(targetX, targetY, soldier.GetTrait("speed")*0.8)
 }
 
@@ -803,13 +808,13 @@ func (cc *CasteColony) findColonyTribe(world *World) *Tribe {
 	if world.CivilizationSystem == nil {
 		return nil
 	}
-	
+
 	for _, tribe := range world.CivilizationSystem.Tribes {
 		if tribe.ID == cc.ID {
 			return tribe
 		}
 	}
-	
+
 	return nil
 }
 
@@ -821,7 +826,7 @@ func (cc *CasteColony) coordinateColonyActions(specialist *Entity, world *World,
 		if float64(workerCount)/float64(cc.ColonySize) < 0.4 {
 			// Need more workers - signal for role changes
 			world.CommunicationSystem.SendSignal(specialist, SignalHelp, map[string]interface{}{
-				"action": "recruit_workers",
+				"action":  "recruit_workers",
 				"urgency": 0.7,
 			}, world.Tick)
 		}
@@ -858,10 +863,10 @@ func (cc *CasteColony) Update(world *World, tick int) {
 		if member.IsAlive {
 			aliveMembers = append(aliveMembers, member)
 			aliveMemberIDs = append(aliveMemberIDs, cc.MemberIDs[i])
-			
+
 			if member.CasteStatus != nil {
 				cc.CasteDistribution[member.CasteStatus.Role]++
-				
+
 				if member.CasteStatus.Role == Queen {
 					aliveQueens = append(aliveQueens, member)
 					for _, queenID := range cc.QueenIDs {
@@ -887,7 +892,7 @@ func (cc *CasteColony) Update(world *World, tick int) {
 	// Update colony age and fitness
 	cc.ColonyAge++
 	cc.updateColonyFitness()
-	
+
 	// Update resource management
 	cc.UpdateResources(tick)
 
@@ -910,10 +915,10 @@ func (cc *CasteColony) updateColonyFitness() {
 	}
 
 	avgFitness := totalFitness / float64(len(cc.Members))
-	
+
 	// Bonus for good caste distribution
 	distributionBonus := cc.calculateDistributionBonus()
-	
+
 	cc.ColonyFitness = avgFitness * (1.0 + distributionBonus)
 }
 
@@ -924,7 +929,7 @@ func (cc *CasteColony) calculateDistributionBonus() float64 {
 	}
 
 	bonus := 0.0
-	
+
 	// Optimal ratios (can be adjusted)
 	optimalRatios := map[CasteRole]float64{
 		Worker:     0.50, // 50% workers
@@ -939,9 +944,9 @@ func (cc *CasteColony) calculateDistributionBonus() float64 {
 	for role, optimalRatio := range optimalRatios {
 		currentRatio := float64(cc.CasteDistribution[role]) / float64(cc.ColonySize)
 		diff := math.Abs(currentRatio - optimalRatio)
-		
+
 		// Bonus decreases as we deviate from optimal ratio
-		roleBonus := math.Max(0, 0.1 - diff)
+		roleBonus := math.Max(0, 0.1-diff)
 		bonus += roleBonus
 	}
 
@@ -959,7 +964,7 @@ func (cc *CasteColony) reassignRoles() {
 		if optimalRole != member.CasteStatus.Role {
 			// Check if role change is beneficial
 			currentEfficiency := member.CasteStatus.RoleEfficiency
-			
+
 			// Assume new role starts with lower efficiency
 			if currentEfficiency < 0.6 || rand.Float64() < 0.1 { // 10% chance to change
 				// Change role
@@ -976,8 +981,8 @@ func (cc *CasteColony) reassignRoles() {
 
 // CasteSystem manages all caste-based colonies in the simulation
 type CasteSystem struct {
-	Colonies       []*CasteColony `json:"colonies"`
-	NextColonyID   int            `json:"next_colony_id"`
+	Colonies     []*CasteColony `json:"colonies"`
+	NextColonyID int            `json:"next_colony_id"`
 }
 
 // NewCasteSystem creates a new caste management system
@@ -1073,7 +1078,7 @@ func AddCasteStatusToEntity(entity *Entity) {
 	if entity.CasteStatus == nil {
 		// Determine role based on traits
 		role := Worker // Default role
-		
+
 		if entity.GetTrait("intelligence") > 0.7 && entity.GetTrait("leadership") > 0.5 {
 			role = Queen
 		} else if entity.GetTrait("aggression") > 0.6 && entity.GetTrait("strength") > 0.5 {
@@ -1081,7 +1086,7 @@ func AddCasteStatusToEntity(entity *Entity) {
 		} else if entity.GetTrait("speed") > 0.6 && entity.GetTrait("intelligence") > 0.4 {
 			role = Scout
 		}
-		
+
 		entity.CasteStatus = NewCasteStatus(role)
 	}
 }
@@ -1102,34 +1107,34 @@ func (cc *CasteColony) UpdateResources(tick int) {
 	// Generate resources
 	for resourceType, baseGeneration := range cc.ResourceGeneration {
 		production := baseGeneration
-		
+
 		switch resourceType {
 		case "food":
 			production *= (1.0 + workerEfficiency*0.1) // Workers boost food production
 		case "biomass":
 			production *= (1.0 + builderEfficiency*0.1) // Builders boost biomass production
-		case "energy":
+		case ResourceEnergy:
 			production *= (1.0 + specialistEfficiency*0.05) // Specialists boost energy production
 		case "materials":
 			production *= (1.0 + builderEfficiency*0.15) // Builders significantly boost materials
 		}
-		
+
 		// Apply colony size scaling
 		production *= math.Sqrt(float64(cc.ColonySize)) * 0.1
-		
+
 		cc.Resources[resourceType] += production
 	}
 
 	// Consume resources
 	for resourceType, baseConsumption := range cc.ResourceConsumption {
 		consumption := baseConsumption * float64(cc.ColonySize) * 0.1
-		
+
 		if cc.Resources[resourceType] >= consumption {
 			cc.Resources[resourceType] -= consumption
 		} else {
 			// Resource shortage affects colony fitness
 			shortage := consumption - cc.Resources[resourceType]
-			cc.ColonyFitness *= math.Max(0.1, 1.0 - shortage*0.1)
+			cc.ColonyFitness *= math.Max(0.1, 1.0-shortage*0.1)
 			cc.Resources[resourceType] = 0
 		}
 	}
@@ -1156,31 +1161,31 @@ func (cc *CasteColony) CanAffordResourceForTrade(resourceType string, amount flo
 	if !exists {
 		return false
 	}
-	
+
 	// Calculate strategic reserve requirements
 	strategicReserve := cc.calculateStrategicReserve(resourceType)
-	
+
 	// Can only trade if we have more than strategic reserve + requested amount
-	return current >= strategicReserve + amount
+	return current >= strategicReserve+amount
 }
 
 // calculateStrategicReserve determines how much of a resource to keep in reserve
 func (cc *CasteColony) calculateStrategicReserve(resourceType string) float64 {
 	// Strategic reserves based on colony size and consumption patterns
 	baseReserve := float64(cc.ColonySize) * 0.5 // 0.5 per colony member
-	
+
 	// Additional reserves based on resource type
 	switch resourceType {
 	case "food":
 		// Keep 15 ticks worth of food consumption in reserve
 		if consumption, exists := cc.ResourceConsumption["food"]; exists {
-			return math.Max(baseReserve, consumption * 15.0 * float64(cc.ColonySize) * 0.1)
+			return math.Max(baseReserve, consumption*15.0*float64(cc.ColonySize)*0.1)
 		}
 		return baseReserve * 2.0 // Double reserve for food if no consumption data
 	case "energy":
 		// Keep 10 ticks worth of energy consumption in reserve
 		if consumption, exists := cc.ResourceConsumption["energy"]; exists {
-			return math.Max(baseReserve, consumption * 10.0 * float64(cc.ColonySize) * 0.1)
+			return math.Max(baseReserve, consumption*10.0*float64(cc.ColonySize)*0.1)
 		}
 		return baseReserve * 1.5
 	case "materials":
@@ -1221,7 +1226,7 @@ func (cc *CasteColony) GetResourceSurplus(resourceType string) float64 {
 		return math.Max(0, surplus)
 	}
 	// If no consumption defined, consider anything above 50 as surplus
-	return math.Max(0, current - 50.0)
+	return math.Max(0, current-50.0)
 }
 
 // GetResourceNeed calculates how much the colony needs of a resource
@@ -1234,5 +1239,5 @@ func (cc *CasteColony) GetResourceNeed(resourceType string) float64 {
 		return math.Max(0, need)
 	}
 	// If no consumption defined, want at least 100 as stockpile
-	return math.Max(0, 100.0 - current)
+	return math.Max(0, 100.0-current)
 }

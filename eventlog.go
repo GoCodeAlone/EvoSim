@@ -29,10 +29,9 @@ const (
 
 // EventLogger manages the ecosystem event log
 type EventLogger struct {
-	Events         []LogEvent
-	MaxEvents      int
-	lastPopCounts  map[string]int
-	lastPlantCount int
+	Events        []LogEvent
+	MaxEvents     int
+	lastPopCounts map[string]int
 }
 
 // NewEventLogger creates a new event logger

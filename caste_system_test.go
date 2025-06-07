@@ -8,7 +8,7 @@ func TestCasteSystem(t *testing.T) {
 	// Create test entities suitable for caste system
 	entities := make([]*Entity, 0)
 	traitNames := []string{"intelligence", "cooperation", "strength", "aggression", "leadership", "reproductive_capability"}
-	
+
 	// Create a queen candidate
 	queen := NewEntity(1, traitNames, "test_species", Position{X: 0, Y: 0})
 	queen.SetTrait("intelligence", 0.8)
@@ -39,10 +39,10 @@ func TestCasteSystem(t *testing.T) {
 	// Create caste system
 	cs := NewCasteSystem()
 	nestLocation := Position{X: 0, Y: 0}
-	
+
 	// Try to form colony
 	colony := cs.TryFormCasteColony(entities, nestLocation)
-	
+
 	if colony == nil {
 		t.Fatal("Failed to create caste colony from suitable entities")
 	}
@@ -74,7 +74,7 @@ func TestCasteSystem(t *testing.T) {
 
 	// Test colony update
 	cs.Update(nil, 100) // Mock world parameter
-	
+
 	if len(cs.Colonies) != 1 {
 		t.Errorf("Expected 1 colony after update, got %d", len(cs.Colonies))
 	}
@@ -86,14 +86,14 @@ func TestCasteRoleAssignment(t *testing.T) {
 	queen.SetTrait("intelligence", 0.8)
 	queen.SetTrait("leadership", 0.7)
 	queen.SetTrait("reproductive_capability", 0.9)
-	
+
 	colony := NewCasteColony(1, queen, Position{X: 0, Y: 0})
 
 	// Test role assignment for different entity types
 	testCases := []struct {
-		traits           map[string]float64
-		expectedRole     CasteRole
-		description      string
+		traits       map[string]float64
+		expectedRole CasteRole
+		description  string
 	}{
 		{
 			traits:       map[string]float64{"aggression": 0.8, "strength": 0.7},
@@ -135,7 +135,7 @@ func TestCasteRoleAssignment(t *testing.T) {
 
 		role := colony.DetermineOptimalRole(entity)
 		if role != tc.expectedRole {
-			t.Errorf("Test case %d (%s): expected role %s, got %s", 
+			t.Errorf("Test case %d (%s): expected role %s, got %s",
 				i, tc.description, tc.expectedRole.String(), role.String())
 		}
 	}
@@ -144,10 +144,10 @@ func TestCasteRoleAssignment(t *testing.T) {
 func TestCasteStatusCreation(t *testing.T) {
 	// Test caste status creation for different roles
 	roles := []CasteRole{Queen, Worker, Soldier, Drone, Scout, Nurse, Builder, Specialist}
-	
+
 	for _, role := range roles {
 		status := NewCasteStatus(role)
-		
+
 		if status.Role != role {
 			t.Errorf("Expected role %s, got %s", role.String(), status.Role.String())
 		}
@@ -189,7 +189,7 @@ func TestCasteTraitModification(t *testing.T) {
 	queen := NewEntity(1, []string{"intelligence", "leadership"}, "test", Position{})
 	queen.SetTrait("intelligence", 0.5)
 	queen.SetTrait("leadership", 0.5)
-	
+
 	colony := NewCasteColony(1, queen, Position{})
 
 	// Test trait modification for worker
@@ -197,7 +197,7 @@ func TestCasteTraitModification(t *testing.T) {
 	worker.SetTrait("foraging_efficiency", 0.3)
 	worker.SetTrait("endurance", 0.3)
 	worker.SetTrait("cooperation", 0.3)
-	
+
 	originalForaging := worker.GetTrait("foraging_efficiency")
 	originalEndurance := worker.GetTrait("endurance")
 	originalCooperation := worker.GetTrait("cooperation")
@@ -220,7 +220,7 @@ func TestCasteTraitModification(t *testing.T) {
 	soldier.SetTrait("aggression", 0.3)
 	soldier.SetTrait("strength", 0.3)
 	soldier.SetTrait("defense", 0.3)
-	
+
 	originalAggression := soldier.GetTrait("aggression")
 	originalStrength := soldier.GetTrait("strength")
 	originalDefense := soldier.GetTrait("defense")
@@ -266,7 +266,7 @@ func TestColonyMemberManagement(t *testing.T) {
 
 	// Test removing member
 	colony.RemoveMember(worker1)
-	
+
 	if colony.ColonySize != 2 {
 		t.Errorf("Expected colony size 2 after removal, got %d", colony.ColonySize)
 	}
@@ -363,10 +363,10 @@ func TestColonyFitnessCalculation(t *testing.T) {
 	colony.updateColonyFitness()
 
 	expectedAvgFitness := (0.8 + 0.6 + 0.7) / 3.0 // 0.7
-	
+
 	// Colony fitness should be at least the average (may be higher due to distribution bonus)
 	if colony.ColonyFitness < expectedAvgFitness {
-		t.Errorf("Expected colony fitness at least %.2f, got %.2f", 
+		t.Errorf("Expected colony fitness at least %.2f, got %.2f",
 			expectedAvgFitness, colony.ColonyFitness)
 	}
 }
@@ -379,13 +379,13 @@ func TestCasteRoleReassignment(t *testing.T) {
 	// Add entity as worker but with soldier traits
 	entity := NewEntity(2, []string{"aggression", "strength", "cooperation", "intelligence"}, "test", Position{})
 	entity.SetTrait("aggression", 0.9) // High aggression
-	entity.SetTrait("strength", 0.8)   // High strength  
+	entity.SetTrait("strength", 0.8)   // High strength
 	entity.SetTrait("cooperation", 0.5)
 	entity.SetTrait("intelligence", 0.4)
-	
+
 	// Force assignment as worker (suboptimal)
 	colony.AddMember(entity, Worker)
-	
+
 	if entity.CasteStatus.Role != Worker {
 		t.Error("Entity should initially be assigned as worker")
 	}
@@ -404,19 +404,19 @@ func TestCasteRoleReassignment(t *testing.T) {
 
 func TestAddCasteStatusToEntity(t *testing.T) {
 	// Test automatic caste assignment based on traits
-	
+
 	// Queen candidate
 	queenCandidate := NewEntity(1, []string{"intelligence", "leadership"}, "test", Position{})
 	queenCandidate.SetTrait("intelligence", 0.8)
 	queenCandidate.SetTrait("leadership", 0.6)
-	
+
 	AddCasteStatusToEntity(queenCandidate)
-	
+
 	if queenCandidate.CasteStatus == nil {
 		t.Error("Caste status should be added to entity")
 	}
 	if queenCandidate.CasteStatus.Role != Queen {
-		t.Errorf("Entity with high intelligence and leadership should be assigned Queen role, got %s", 
+		t.Errorf("Entity with high intelligence and leadership should be assigned Queen role, got %s",
 			queenCandidate.CasteStatus.Role.String())
 	}
 
@@ -424,11 +424,11 @@ func TestAddCasteStatusToEntity(t *testing.T) {
 	soldierCandidate := NewEntity(2, []string{"aggression", "strength"}, "test", Position{})
 	soldierCandidate.SetTrait("aggression", 0.7)
 	soldierCandidate.SetTrait("strength", 0.6)
-	
+
 	AddCasteStatusToEntity(soldierCandidate)
-	
+
 	if soldierCandidate.CasteStatus.Role != Soldier {
-		t.Errorf("Entity with high aggression and strength should be assigned Soldier role, got %s", 
+		t.Errorf("Entity with high aggression and strength should be assigned Soldier role, got %s",
 			soldierCandidate.CasteStatus.Role.String())
 	}
 
@@ -436,22 +436,22 @@ func TestAddCasteStatusToEntity(t *testing.T) {
 	scoutCandidate := NewEntity(3, []string{"speed", "intelligence"}, "test", Position{})
 	scoutCandidate.SetTrait("speed", 0.7)
 	scoutCandidate.SetTrait("intelligence", 0.5)
-	
+
 	AddCasteStatusToEntity(scoutCandidate)
-	
+
 	if scoutCandidate.CasteStatus.Role != Scout {
-		t.Errorf("Entity with high speed and intelligence should be assigned Scout role, got %s", 
+		t.Errorf("Entity with high speed and intelligence should be assigned Scout role, got %s",
 			scoutCandidate.CasteStatus.Role.String())
 	}
 
 	// Worker (default)
 	workerCandidate := NewEntity(4, []string{"cooperation"}, "test", Position{})
 	workerCandidate.SetTrait("cooperation", 0.5)
-	
+
 	AddCasteStatusToEntity(workerCandidate)
-	
+
 	if workerCandidate.CasteStatus.Role != Worker {
-		t.Errorf("Entity with average traits should be assigned Worker role, got %s", 
+		t.Errorf("Entity with average traits should be assigned Worker role, got %s",
 			workerCandidate.CasteStatus.Role.String())
 	}
 }

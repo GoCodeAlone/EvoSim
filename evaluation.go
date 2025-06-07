@@ -88,7 +88,7 @@ func (e *EvaluationEngine) calculateMolecularFitness(entity *Entity) float64 {
 
 	// Base fitness from nutritional status
 	nutritionalStatus := entity.MolecularNeeds.GetOverallNutritionalStatus()
-	
+
 	// Bonus for having good molecular metabolism efficiency
 	metabolismBonus := 0.0
 	if entity.MolecularMetabolism != nil {
@@ -107,10 +107,10 @@ func (e *EvaluationEngine) calculateMolecularFitness(entity *Entity) float64 {
 	// Penalty for having high deficiencies in critical nutrients
 	criticalDeficiencyPenalty := 0.0
 	criticalNutrients := []MolecularType{
-		ProteinStructural, ProteinEnzymatic, AminoEssential, 
+		ProteinStructural, ProteinEnzymatic, AminoEssential,
 		CarboSimple, NucleicATP, VitaminWater,
 	}
-	
+
 	for _, nutrient := range criticalNutrients {
 		if deficiency, exists := entity.MolecularNeeds.Deficiencies[nutrient]; exists {
 			if requirement, reqExists := entity.MolecularNeeds.Requirements[nutrient]; reqExists && requirement > 0 {
@@ -140,13 +140,13 @@ func (e *EvaluationEngine) calculateFeedbackLoopFitness(entity *Entity) float64 
 
 	// Dietary adaptation fitness (how well entity is adapted to its feeding patterns)
 	dietaryFitness := entity.DietaryMemory.DietaryFitness
-	
+
 	// Environmental adaptation fitness (how well entity is adapted to its environment)
 	environmentalFitness := entity.EnvironmentalMemory.AdaptationFitness
-	
+
 	// Specialization bonus: entities that have developed strong preferences get bonus
 	specializationBonus := 0.0
-	
+
 	// Count strong plant preferences
 	strongPlantPrefs := 0
 	for _, pref := range entity.DietaryMemory.PlantTypePreferences {
@@ -154,7 +154,7 @@ func (e *EvaluationEngine) calculateFeedbackLoopFitness(entity *Entity) float64 
 			strongPlantPrefs++
 		}
 	}
-	
+
 	// Count strong prey preferences
 	strongPreyPrefs := 0
 	for _, pref := range entity.DietaryMemory.PreySpeciesPreferences {
@@ -162,7 +162,7 @@ func (e *EvaluationEngine) calculateFeedbackLoopFitness(entity *Entity) float64 
 			strongPreyPrefs++
 		}
 	}
-	
+
 	// Reward specialization but not over-specialization
 	totalSpecialization := strongPlantPrefs + strongPreyPrefs
 	if totalSpecialization > 0 && totalSpecialization <= 3 {
@@ -170,16 +170,16 @@ func (e *EvaluationEngine) calculateFeedbackLoopFitness(entity *Entity) float64 
 	} else if totalSpecialization > 3 {
 		specializationBonus = 0.3 - float64(totalSpecialization-3)*0.05 // Penalty for over-specialization
 	}
-	
+
 	// Environmental exposure diversity bonus (adaptable entities do better)
 	exposureDiversity := float64(len(entity.EnvironmentalMemory.BiomeExposure)) * 0.05
 	if exposureDiversity > 0.25 {
 		exposureDiversity = 0.25 // Cap at reasonable level
 	}
-	
+
 	// Calculate overall feedback fitness
 	feedbackFitness := (dietaryFitness*0.4 + environmentalFitness*0.4 + specializationBonus + exposureDiversity)
-	
+
 	return math.Max(0.0, math.Min(1.0, feedbackFitness))
 }
 

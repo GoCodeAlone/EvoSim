@@ -29,12 +29,12 @@ func TestBiomeSymbolsFix(t *testing.T) {
 	for i, biomeType := range biomeTypes {
 		name, symbol, color := viewManager.getBiomeInfo(biomeType)
 		t.Logf("Biome %d (%s): symbol='%s', color='%s'", i, name, symbol, color)
-		
+
 		// Verify no question marks
 		if symbol == "?" {
 			t.Errorf("ERROR: Biome type %d (%s) still shows '?' symbol!", int(biomeType), name)
 		}
-		
+
 		// Verify name is not "Unknown"
 		if name == "Unknown" {
 			t.Errorf("ERROR: Biome type %d shows 'Unknown' name!", int(biomeType))

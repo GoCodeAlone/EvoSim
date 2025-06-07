@@ -46,7 +46,7 @@ func TestSpeciesExtinctionBehavior(t *testing.T) {
 
 	// Update again after extinction threshold (100 ticks)
 	world.SpeciationSystem.Update(world.AllPlants, 103) // 103 > 2 + 100
-	t.Logf("After extinction threshold - Active Species: %d, All Species: %d", 
+	t.Logf("After extinction threshold - Active Species: %d, All Species: %d",
 		len(world.SpeciationSystem.ActiveSpecies), len(world.SpeciationSystem.AllSpecies))
 	t.Logf("Extinction Events: %d", len(world.SpeciationSystem.ExtinctionEvents))
 

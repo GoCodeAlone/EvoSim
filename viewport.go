@@ -5,7 +5,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -195,7 +194,7 @@ func (vs *ViewportSystem) renderWorldView(world *World) string {
 			worldY := (float64(y) + 0.5) * (world.Config.Height / float64(world.Config.GridHeight))
 
 			if math.Abs(worldX-vs.CenterX) < 2 && math.Abs(worldY-vs.CenterY) < 2 {
-				style = style.Copy().Background(lipgloss.Color("240"))
+				style = style.Background(lipgloss.Color("240"))
 			}
 
 			builder.WriteString(style.Render(string(symbol)))
@@ -526,49 +525,4 @@ func (vs *ViewportSystem) getDetailedCellStyles(cell GridCell, world *World) []l
 	}
 
 	return styles
-}
-
-// Update key bindings for viewport controls
-var viewportKeys = struct {
-	zoomIn   key.Binding
-	zoomOut  key.Binding
-	panUp    key.Binding
-	panDown  key.Binding
-	panLeft  key.Binding
-	panRight key.Binding
-	select_  key.Binding
-	details  key.Binding
-}{
-	zoomIn: key.NewBinding(
-		key.WithKeys("+", "="),
-		key.WithHelp("+", "zoom in"),
-	),
-	zoomOut: key.NewBinding(
-		key.WithKeys("-", "_"),
-		key.WithHelp("-", "zoom out"),
-	),
-	panUp: key.NewBinding(
-		key.WithKeys("w", "up"),
-		key.WithHelp("w/↑", "pan up"),
-	),
-	panDown: key.NewBinding(
-		key.WithKeys("s", "down"),
-		key.WithHelp("s/↓", "pan down"),
-	),
-	panLeft: key.NewBinding(
-		key.WithKeys("a", "left"),
-		key.WithHelp("a/←", "pan left"),
-	),
-	panRight: key.NewBinding(
-		key.WithKeys("d", "right"),
-		key.WithHelp("d/→", "pan right"),
-	),
-	select_: key.NewBinding(
-		key.WithKeys("e"),
-		key.WithHelp("e", "select entity"),
-	),
-	details: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "toggle details"),
-	),
 }

@@ -32,14 +32,14 @@ const (
 	BiomeSoil // Underground/soil environment
 	BiomeAir  // Aerial environment (high altitude)
 	// New biome expansions
-	BiomeIce        // Polar caps, frozen areas
-	BiomeRainforest // Dense tropical forests
-	BiomeDeepWater  // Ocean trenches, deep water
+	BiomeIce          // Polar caps, frozen areas
+	BiomeRainforest   // Dense tropical forests
+	BiomeDeepWater    // Ocean trenches, deep water
 	BiomeHighAltitude // Very high mountains, low oxygen
 	BiomeHotSpring    // Geysers, hot springs
-	BiomeTundra      // Cold, sparse vegetation
-	BiomeSwamp       // Wetlands, marshes
-	BiomeCanyon      // Deep rocky canyons
+	BiomeTundra       // Cold, sparse vegetation
+	BiomeSwamp        // Wetlands, marshes
+	BiomeCanyon       // Deep rocky canyons
 )
 
 // Biome represents an environmental zone with specific effects
@@ -52,13 +52,13 @@ type Biome struct {
 	EnergyDrain    float64            // Energy drain per tick
 	Symbol         rune               // Display symbol
 	// Environmental properties for biome expansions
-	Temperature    float64            // Temperature modifier (-1 to 1, 0 = normal)
-	Pressure       float64            // Pressure level (0 to 2, 1 = normal)
-	OxygenLevel    float64            // Oxygen availability (0 to 1, 1 = normal)
-	Humidity       float64            // Humidity level (0 to 1)
-	IsAquatic      bool               // Whether this is a water-based biome
-	IsUnderground  bool               // Whether this is below ground
-	IsAerial       bool               // Whether this is high altitude/aerial
+	Temperature   float64 // Temperature modifier (-1 to 1, 0 = normal)
+	Pressure      float64 // Pressure level (0 to 2, 1 = normal)
+	OxygenLevel   float64 // Oxygen availability (0 to 1, 1 = normal)
+	Humidity      float64 // Humidity level (0 to 1)
+	IsAquatic     bool    // Whether this is a water-based biome
+	IsUnderground bool    // Whether this is below ground
+	IsAerial      bool    // Whether this is high altitude/aerial
 }
 
 // WorldEvent represents temporary world-wide effects
@@ -70,34 +70,34 @@ type WorldEvent struct {
 	GlobalDamage   float64
 	BiomeChanges   map[Position]BiomeType
 	// Enhanced properties for realistic behavior
-	Position       Position                   // Event center/origin
-	Radius         float64                   // Affected area radius
-	Intensity      float64                   // Event strength (0-1)
-	MovementVector Vector2D                  // For moving events like storms/fires
-	WindInfluenced bool                      // Whether wind affects this event
-	EventType      string                    // "fire", "storm", "volcanic", etc.
-	VisualEffect   map[string]interface{}    // Visual representation data
+	Position       Position               // Event center/origin
+	Radius         float64                // Affected area radius
+	Intensity      float64                // Event strength (0-1)
+	MovementVector Vector2D               // For moving events like storms/fires
+	WindInfluenced bool                   // Whether wind affects this event
+	EventType      string                 // "fire", "storm", "volcanic", etc.
+	VisualEffect   map[string]interface{} // Visual representation data
 }
 
 // EnhancedEnvironmentalEvent represents more sophisticated environmental events
 type EnhancedEnvironmentalEvent struct {
-	ID             int
-	Type           string                    // "wildfire", "storm", "volcanic_eruption", etc.
-	Name           string
-	Description    string
-	StartTick      int
-	Duration       int
-	Position       Position                  // Event center
-	Radius         float64                   // Current affected radius
-	MaxRadius      float64                   // Maximum spread radius
-	Intensity      float64                   // Current strength (0-1)
-	Direction      float64                   // Movement direction (radians)
-	Speed          float64                   // Movement speed
-	WindSensitive  bool                      // Whether wind affects movement/spread
-	AffectedCells  map[Position]BiomeType    // Cells affected and their new types
-	SpreadPattern  string                    // "circular", "directional", "wind_driven"
-	ExtinguishOn   []BiomeType               // Biomes that stop the event (water stops fire)
-	Effects        map[string]float64        // Various effects (mutation, damage, etc.)
+	ID            int
+	Type          string // "wildfire", "storm", "volcanic_eruption", etc.
+	Name          string
+	Description   string
+	StartTick     int
+	Duration      int
+	Position      Position               // Event center
+	Radius        float64                // Current affected radius
+	MaxRadius     float64                // Maximum spread radius
+	Intensity     float64                // Current strength (0-1)
+	Direction     float64                // Movement direction (radians)
+	Speed         float64                // Movement speed
+	WindSensitive bool                   // Whether wind affects movement/spread
+	AffectedCells map[Position]BiomeType // Cells affected and their new types
+	SpreadPattern string                 // "circular", "directional", "wind_driven"
+	ExtinguishOn  []BiomeType            // Biomes that stop the event (water stops fire)
+	Effects       map[string]float64     // Various effects (mutation, damage, etc.)
 }
 
 // GridCell represents a cell in the world grid
@@ -107,11 +107,11 @@ type GridCell struct {
 	Plants   []*Plant    // Plants in this cell
 	Event    *WorldEvent // Current event affecting this cell
 	// Enhanced soil system
-	SoilNutrients   map[string]float64 `json:"soil_nutrients"`   // Available nutrients in soil
-	WaterLevel      float64            `json:"water_level"`      // Available water in cell
-	SoilPH          float64            `json:"soil_ph"`          // Soil acidity (6-8 optimal)
-	SoilCompaction  float64            `json:"soil_compaction"`  // How compacted soil is (0-1)
-	OrganicMatter   float64            `json:"organic_matter"`   // Decomposed organic material
+	SoilNutrients  map[string]float64 `json:"soil_nutrients"`  // Available nutrients in soil
+	WaterLevel     float64            `json:"water_level"`     // Available water in cell
+	SoilPH         float64            `json:"soil_ph"`         // Soil acidity (6-8 optimal)
+	SoilCompaction float64            `json:"soil_compaction"` // How compacted soil is (0-1)
+	OrganicMatter  float64            `json:"organic_matter"`  // Decomposed organic material
 }
 
 // PopulationConfig defines traits and behavior for a population
@@ -127,38 +127,38 @@ type PopulationConfig struct {
 
 // World represents the environment containing multiple populations
 type World struct {
-	Config      WorldConfig
-	SimConfig   *SimulationConfig // Centralized configuration system
-	Populations map[string]*Population
-	AllEntities []*Entity
-	AllPlants   []*Plant // All plants in the world
-	Grid        [][]GridCell
-	Biomes      map[BiomeType]Biome
-	Events      []*WorldEvent
-	EventLogger *EventLogger // Event logging system (legacy)
+	Config          WorldConfig
+	SimConfig       *SimulationConfig // Centralized configuration system
+	Populations     map[string]*Population
+	AllEntities     []*Entity
+	AllPlants       []*Plant // All plants in the world
+	Grid            [][]GridCell
+	Biomes          map[BiomeType]Biome
+	Events          []*WorldEvent
+	EventLogger     *EventLogger     // Event logging system (legacy)
 	CentralEventBus *CentralEventBus // Unified event system
-	NextID      int
-	NextPlantID int // ID counter for plants
-	Tick        int
-	Clock       time.Time
-	LastUpdate  time.Time
-	Paused      bool // Whether the simulation is paused
+	NextID          int
+	NextPlantID     int // ID counter for plants
+	Tick            int
+	Clock           time.Time
+	LastUpdate      time.Time
+	Paused          bool    // Whether the simulation is paused
 	SpeedMultiplier float64 // Speed multiplier for simulation (1.0 = normal, 2.0 = 2x speed, etc.)
 	// Advanced feature systems
-	CommunicationSystem *CommunicationSystem
-	GroupBehaviorSystem *GroupBehaviorSystem
-	PhysicsSystem       *PhysicsSystem
-	CollisionSystem     *CollisionSystem
-	PhysicsComponents   map[int]*PhysicsComponent // Entity ID -> Physics
-	AdvancedTimeSystem  *AdvancedTimeSystem
-	CivilizationSystem  *CivilizationSystem
-	ViewportSystem      *ViewportSystem
-	WindSystem          *WindSystem         // Wind and pollen dispersal system
-	SeedDispersalSystem *SeedDispersalSystem // Advanced seed dispersal and germination
+	CommunicationSystem   *CommunicationSystem
+	GroupBehaviorSystem   *GroupBehaviorSystem
+	PhysicsSystem         *PhysicsSystem
+	CollisionSystem       *CollisionSystem
+	PhysicsComponents     map[int]*PhysicsComponent // Entity ID -> Physics
+	AdvancedTimeSystem    *AdvancedTimeSystem
+	CivilizationSystem    *CivilizationSystem
+	ViewportSystem        *ViewportSystem
+	WindSystem            *WindSystem            // Wind and pollen dispersal system
+	SeedDispersalSystem   *SeedDispersalSystem   // Advanced seed dispersal and germination
 	ChemicalEcologySystem *ChemicalEcologySystem // Chemical communication and ecology
-	SpeciationSystem    *SpeciationSystem   // Species evolution and tracking
-	PlantNetworkSystem  *PlantNetworkSystem // Underground plant networks and communication
-	SpeciesNaming       *SpeciesNaming      // Species naming and evolutionary relationships
+	SpeciationSystem      *SpeciationSystem      // Species evolution and tracking
+	PlantNetworkSystem    *PlantNetworkSystem    // Underground plant networks and communication
+	SpeciesNaming         *SpeciesNaming         // Species naming and evolutionary relationships
 
 	// Micro and Macro Evolution Systems
 	DNASystem            *DNASystem            // DNA-based genetic system
@@ -168,49 +168,49 @@ type World struct {
 	FluidRegions         []FluidRegion
 
 	// Tool and Environmental Modification Systems
-	ToolSystem              *ToolSystem                          // Tool creation and usage system
-	EnvironmentalModSystem  *EnvironmentalModificationSystem     // Environmental modifications system
-	EmergentBehaviorSystem  *EmergentBehaviorSystem              // Emergent behavior and learning system
-	
+	ToolSystem             *ToolSystem                      // Tool creation and usage system
+	EnvironmentalModSystem *EnvironmentalModificationSystem // Environmental modifications system
+	EmergentBehaviorSystem *EmergentBehaviorSystem          // Emergent behavior and learning system
+
 	// Reproduction and Decay System
-	ReproductionSystem      *ReproductionSystem                  // Reproduction, gestation, and decay management
-	FungalNetwork           *FungalNetwork                       // Fungal decomposer and nutrient cycling system
-	
+	ReproductionSystem *ReproductionSystem // Reproduction, gestation, and decay management
+	FungalNetwork      *FungalNetwork      // Fungal decomposer and nutrient cycling system
+
 	// Cultural Knowledge System
-	CulturalKnowledgeSystem *CulturalKnowledgeSystem             // Multi-generational knowledge transfer and cultural evolution
-	
+	CulturalKnowledgeSystem *CulturalKnowledgeSystem // Multi-generational knowledge transfer and cultural evolution
+
 	// Statistical Analysis System
-	StatisticalReporter     *StatisticalReporter                 // Comprehensive statistical analysis and reporting
-	EcosystemMonitor        *EcosystemMonitor                    // Advanced ecosystem metrics and health monitoring
-	EnvironmentalPressures  *EnvironmentalPressureSystem         // Long-term environmental pressures and stresses
-	SymbioticRelationships  *SymbioticRelationshipSystem         // Parasitic and symbiotic relationships between entities
-	
+	StatisticalReporter    *StatisticalReporter         // Comprehensive statistical analysis and reporting
+	EcosystemMonitor       *EcosystemMonitor            // Advanced ecosystem metrics and health monitoring
+	EnvironmentalPressures *EnvironmentalPressureSystem // Long-term environmental pressures and stresses
+	SymbioticRelationships *SymbioticRelationshipSystem // Parasitic and symbiotic relationships between entities
+
 	// Hive Mind, Caste, and Insect Systems
-	HiveMindSystem          *HiveMindSystem                      // Collective intelligence system
-	CasteSystem             *CasteSystem                         // Caste-based social organization
-	InsectSystem            *InsectSystem                        // Insect-specific behaviors and capabilities
-	InsectPollinationSystem *InsectPollinationSystem             // Insect pollination and plant-insect mutualism
-	
+	HiveMindSystem          *HiveMindSystem          // Collective intelligence system
+	CasteSystem             *CasteSystem             // Caste-based social organization
+	InsectSystem            *InsectSystem            // Insect-specific behaviors and capabilities
+	InsectPollinationSystem *InsectPollinationSystem // Insect pollination and plant-insect mutualism
+
 	// Advanced AI and Neural Networks
-	NeuralAISystem          *NeuralAISystem                      // Neural networks and AI-driven behaviors
-	ColonyWarfareSystem     *ColonyWarfareSystem                 // Inter-colony warfare and diplomacy
-	
+	NeuralAISystem      *NeuralAISystem      // Neural networks and AI-driven behaviors
+	ColonyWarfareSystem *ColonyWarfareSystem // Inter-colony warfare and diplomacy
+
 	// Advanced Biome Interaction System
-	BiomeBoundarySystem     *BiomeBoundarySystem                 // Biome boundary effects and ecotone interactions
-	
+	BiomeBoundarySystem *BiomeBoundarySystem // Biome boundary effects and ecotone interactions
+
 	// Organism classification and lifespan system
-	OrganismClassifier      *OrganismClassifier                  // Organism classification and aging system
-	
+	OrganismClassifier *OrganismClassifier // Organism classification and aging system
+
 	// Metamorphosis and life stage system
-	MetamorphosisSystem     *MetamorphosisSystem                 // Life stage transitions and development
-	
+	MetamorphosisSystem *MetamorphosisSystem // Life stage transitions and development
+
 	// Player event callback for gamification features
-	PlayerEventsCallback    func(eventType string, data map[string]interface{}) // Callback for player-related events
-	PreviousPopulationCounts map[string]int                                     // Track population counts for extinction detection
-	
+	PlayerEventsCallback     func(eventType string, data map[string]interface{}) // Callback for player-related events
+	PreviousPopulationCounts map[string]int                                      // Track population counts for extinction detection
+
 	// Enhanced Environmental Event System
-	EnvironmentalEvents     []*EnhancedEnvironmentalEvent                      // Active enhanced environmental events
-	NextEnvironmentalEventID int                                                // ID counter for environmental events
+	EnvironmentalEvents      []*EnhancedEnvironmentalEvent // Active enhanced environmental events
+	NextEnvironmentalEventID int                           // ID counter for environmental events
 }
 
 // NewWorld creates a new world with multiple populations
@@ -221,28 +221,28 @@ func NewWorld(config WorldConfig) *World {
 	simConfig.World.Height = config.Height
 	simConfig.World.GridWidth = config.GridWidth
 	simConfig.World.GridHeight = config.GridHeight
-	
+
 	return NewWorldWithConfig(config, simConfig)
 }
 
 func NewWorldWithConfig(config WorldConfig, simConfig *SimulationConfig) *World {
 	world := &World{
-		Config:      config,
-		SimConfig:   simConfig,
-		Populations: make(map[string]*Population),
-		AllEntities: make([]*Entity, 0),
-		AllPlants:   make([]*Plant, 0),
-		Grid:        make([][]GridCell, config.GridHeight),
-		Biomes:      initializeBiomesWithConfig(simConfig),
-		Events:      make([]*WorldEvent, 0),
-		EventLogger: NewEventLogger(1000), // Keep up to 1000 events
-		CentralEventBus: NewCentralEventBus(50000), // Central event bus with 50k events
-		NextID:      0,
-		NextPlantID: 0,
-		Tick:        0,
-		Clock:       time.Now(),
-		LastUpdate:  time.Now(),
-		SpeedMultiplier: 1.0, // Default normal speed
+		Config:                   config,
+		SimConfig:                simConfig,
+		Populations:              make(map[string]*Population),
+		AllEntities:              make([]*Entity, 0),
+		AllPlants:                make([]*Plant, 0),
+		Grid:                     make([][]GridCell, config.GridHeight),
+		Biomes:                   initializeBiomesWithConfig(simConfig),
+		Events:                   make([]*WorldEvent, 0),
+		EventLogger:              NewEventLogger(1000),      // Keep up to 1000 events
+		CentralEventBus:          NewCentralEventBus(50000), // Central event bus with 50k events
+		NextID:                   0,
+		NextPlantID:              0,
+		Tick:                     0,
+		Clock:                    time.Now(),
+		LastUpdate:               time.Now(),
+		SpeedMultiplier:          1.0, // Default normal speed
 		PreviousPopulationCounts: make(map[string]int),
 	}
 
@@ -259,8 +259,8 @@ func NewWorldWithConfig(config WorldConfig, simConfig *SimulationConfig) *World 
 				SoilNutrients:  initializeSoilNutrients(),
 				WaterLevel:     initializeWaterLevel(world.generateBiome(x, y)),
 				SoilPH:         7.0 + (rand.Float64()-0.5)*2.0, // pH 6-8
-				SoilCompaction: rand.Float64() * 0.3, // 0-30% compaction
-				OrganicMatter:  rand.Float64() * 0.2, // 0-20% organic matter
+				SoilCompaction: rand.Float64() * 0.3,           // 0-30% compaction
+				OrganicMatter:  rand.Float64() * 0.2,           // 0-20% organic matter
 			}
 		}
 	} // Initialize advanced systems
@@ -289,20 +289,20 @@ func NewWorldWithConfig(config WorldConfig, simConfig *SimulationConfig) *World 
 	world.ToolSystem = NewToolSystem(world.CentralEventBus)
 	world.EnvironmentalModSystem = NewEnvironmentalModificationSystem(world.CentralEventBus)
 	world.EmergentBehaviorSystem = NewEmergentBehaviorSystem()
-	
+
 	// Initialize reproduction and decay system
 	world.ReproductionSystem = NewReproductionSystem(world.CentralEventBus)
 	world.FungalNetwork = NewFungalNetwork()
-	
+
 	// Initialize cultural knowledge system
 	world.CulturalKnowledgeSystem = NewCulturalKnowledgeSystem()
-	
+
 	// Initialize statistical analysis system
 	world.StatisticalReporter = NewStatisticalReporter(10000, 1000, 10, 50) // 10k events, 1k snapshots, snapshot every 10 ticks, analyze every 50 ticks
-	world.EcosystemMonitor = NewEcosystemMonitor(100) // Keep 100 historical snapshots
-	world.EnvironmentalPressures = NewEnvironmentalPressureSystem() // Environmental pressure monitoring
-	world.SymbioticRelationships = NewSymbioticRelationshipSystem() // Parasitic and symbiotic relationships
-	
+	world.EcosystemMonitor = NewEcosystemMonitor(100)                       // Keep 100 historical snapshots
+	world.EnvironmentalPressures = NewEnvironmentalPressureSystem()         // Environmental pressure monitoring
+	world.SymbioticRelationships = NewSymbioticRelationshipSystem()         // Parasitic and symbiotic relationships
+
 	// Connect StatisticalReporter to CentralEventBus
 	world.CentralEventBus.AddListener(func(event CentralEvent) {
 		// Convert CentralEvent to StatisticalEvent format
@@ -322,7 +322,7 @@ func NewWorldWithConfig(config WorldConfig, simConfig *SimulationConfig) *World 
 		}
 		world.StatisticalReporter.addEvent(statEvent)
 	})
-	
+
 	// Connect EventLogger to CentralEventBus for legacy event types
 	world.CentralEventBus.AddListener(func(event CentralEvent) {
 		// Convert certain events to legacy LogEvent format
@@ -337,31 +337,31 @@ func NewWorldWithConfig(config WorldConfig, simConfig *SimulationConfig) *World 
 			world.EventLogger.addEvent(logEvent)
 		}
 	})
-	
+
 	// Initialize hive mind, caste, and insect systems
 	world.HiveMindSystem = NewHiveMindSystem()
 	world.CasteSystem = NewCasteSystem()
 	world.InsectSystem = NewInsectSystem()
 	world.InsectPollinationSystem = NewInsectPollinationSystem()
 	world.ColonyWarfareSystem = NewColonyWarfareSystem()
-	
+
 	// Initialize advanced AI and neural networks system
 	world.NeuralAISystem = NewNeuralAISystem()
-	
+
 	// Initialize biome boundary interaction system
 	world.BiomeBoundarySystem = NewBiomeBoundarySystem()
-	
+
 	// Initialize organism classification and lifespan system
 	world.OrganismClassifier = NewOrganismClassifier(world.AdvancedTimeSystem)
-	
+
 	// Initialize metamorphosis system
 	world.MetamorphosisSystem = NewMetamorphosisSystem()
-	
+
 	// Initialize enhanced environmental event system
 	world.EnvironmentalEvents = make([]*EnhancedEnvironmentalEvent, 0)
 	world.NextEnvironmentalEventID = 1
 
-  // Generate initial world terrain
+	// Generate initial world terrain
 	world.TopologySystem.GenerateInitialTerrain()
 
 	world.FluidRegions = make([]FluidRegion, 0)
@@ -681,23 +681,29 @@ func (w *World) generateBiome(x, y int) BiomeType {
 
 	// Calculate distance from center and edges for zonal distribution
 	centerX, centerY := float64(w.Config.GridWidth)/2, float64(w.Config.GridHeight)/2
-	distFromCenter := math.Sqrt(math.Pow(float64(x)-centerX, 2) + math.Pow(float64(y)-centerY, 2))
-	maxDist := math.Sqrt(math.Pow(centerX, 2) + math.Pow(centerY, 2))
-	
+	dx := float64(x) - centerX
+	dy := float64(y) - centerY
+	distFromCenter := math.Sqrt(dx*dx + dy*dy)
+	maxDist := math.Sqrt(centerX*centerX + centerY*centerY)
+
 	// Distance from edges (for polar caps)
-	distFromEdge := math.Min(math.Min(float64(x), float64(w.Config.GridWidth-x)), 
+	distFromEdge := math.Min(math.Min(float64(x), float64(w.Config.GridWidth-x)),
 		math.Min(float64(y), float64(w.Config.GridHeight-y)))
-	
+
 	// Enhanced noise generation for contiguous features
 	baseNoise := rand.Float64()
-	
+
 	// Create multiple noise layers for more realistic patterns
-	microNoise := (rand.Float64() - 0.5) * 0.1  // Small local variations
+	microNoise := (rand.Float64() - 0.5) * 0.1                   // Small local variations
 	regionalNoise := perlinNoise(float64(x)*0.1, float64(y)*0.1) // Larger regional patterns
-	
+
 	combinedNoise := baseNoise + microNoise + regionalNoise*0.3
-	if combinedNoise < 0 { combinedNoise = 0 }
-	if combinedNoise > 1 { combinedNoise = 1 }
+	if combinedNoise < 0 {
+		combinedNoise = 0
+	}
+	if combinedNoise > 1 {
+		combinedNoise = 1
+	}
 
 	// Polar regions (extreme edges) - Ice and Tundra
 	if distFromEdge < 3 {
@@ -874,7 +880,7 @@ func (w *World) Update() {
 
 	// 2a. Update seed dispersal system (handles seed movement and germination)
 	w.SeedDispersalSystem.Update(w)
-	
+
 	// 2b. Update chemical ecology system (plant and entity chemical communication)
 	w.ChemicalEcologySystem.Update(w)
 
@@ -882,12 +888,12 @@ func (w *World) Update() {
 	w.CellularSystem.UpdateCellularOrganisms()
 	w.MacroEvolutionSystem.UpdateMacroEvolution(w)
 	w.TopologySystem.UpdateTopology(w.Tick)
-	
+
 	// Update biomes based on topology changes (less frequently to avoid constant map resets)
 	if w.Tick%10 == 0 { // Only update every 10 ticks instead of every tick
 		w.updateBiomesFromTopology()
 	}
-	
+
 	// Process biome transitions (hot spots melting ice, fires spreading, etc.)
 	if w.Tick%20 == 0 { // Process transitions every 20 ticks for stability
 		w.processBiomeTransitions()
@@ -900,7 +906,7 @@ func (w *World) Update() {
 	w.updateEvents()
 	// Update enhanced environmental events
 	w.updateEnhancedEnvironmentalEvents()
-	
+
 	// Maybe trigger new events (less frequent during night)
 	eventChance := 0.01
 	if currentTimeState.IsNight() {
@@ -909,7 +915,7 @@ func (w *World) Update() {
 	if rand.Float64() < eventChance {
 		w.triggerRandomEvent()
 	}
-	
+
 	// Maybe trigger enhanced environmental events (lower chance)
 	enhancedEventChance := 0.005 // 0.5% chance per tick
 	if rand.Float64() < enhancedEventChance {
@@ -960,10 +966,10 @@ func (w *World) Update() {
 
 	// Handle interactions between entities and with plants
 	w.handleInteractions()
-	
+
 	// Apply biome environmental effects
 	w.applyBiomeEffects()
-	
+
 	// 7. Update civilization system
 	w.CivilizationSystem.Update(w.Tick)
 
@@ -972,12 +978,12 @@ func (w *World) Update() {
 
 	// Update reproduction system (gestation, egg hatching, decay)
 	w.updateReproductionSystem()
-	
+
 	// Update fungal network (decomposition and nutrient cycling)
 	if w.FungalNetwork != nil {
 		w.FungalNetwork.Update(w, w.Tick)
 	}
-	
+
 	// Update cultural knowledge system (multi-generational knowledge transfer)
 	if w.CulturalKnowledgeSystem != nil {
 		w.CulturalKnowledgeSystem.Update(w.AllEntities, w.Tick)
@@ -1034,61 +1040,61 @@ func (w *World) Update() {
 
 	// Update event logger with population changes
 	w.EventLogger.UpdatePopulationCounts(w.Tick, w.Populations)
-	
+
 	// Check for player species extinction and splitting (if web interface is active)
 	if w.PlayerEventsCallback != nil {
 		w.checkPlayerSpeciesEvents()
 	}
-	
+
 	// Update statistical analysis system
 	if w.StatisticalReporter != nil {
 		// Take snapshot at regular intervals
 		if w.Tick%w.StatisticalReporter.SnapshotInterval == 0 {
 			w.StatisticalReporter.TakeSnapshot(w)
 		}
-		
+
 		// Perform analysis at regular intervals
 		if w.Tick%w.StatisticalReporter.AnalysisInterval == 0 {
 			w.StatisticalReporter.PerformAnalysis(w)
 		}
 	}
-	
+
 	// Update ecosystem monitoring and metrics (every 20 ticks to avoid overhead)
 	if w.EcosystemMonitor != nil && w.Tick%20 == 0 {
 		w.EcosystemMonitor.UpdateMetrics(w)
 	}
-	
+
 	// Update environmental pressures (every 10 ticks)
 	if w.EnvironmentalPressures != nil && w.Tick%10 == 0 {
 		w.EnvironmentalPressures.Update(w, w.Tick)
 	}
-	
+
 	// Update symbiotic relationships (every 5 ticks)
 	if w.SymbioticRelationships != nil && w.Tick%5 == 0 {
 		w.SymbioticRelationships.Update(w, w.Tick)
 	}
-	
+
 	// Update hive mind, caste, and insect systems
 	w.HiveMindSystem.Update()
 	w.CasteSystem.Update(w, w.Tick)
 	w.InsectSystem.Update(w.Tick)
-	
+
 	// Update insect pollination system
 	currentSeason := w.AdvancedTimeSystem.GetTimeState().Season
 	w.InsectPollinationSystem.Update(w.AllEntities, w.AllPlants, currentSeason, w.Tick)
-	
+
 	// Update colony warfare and diplomacy system
 	w.ColonyWarfareSystem.Update(w.CasteSystem.Colonies, w.Tick)
-	
+
 	// Update neural AI system
 	w.NeuralAISystem.Update(w.AllEntities, w.Tick)
-	
+
 	// Process neural decision making for intelligent entities
 	w.processNeuralDecisions()
-	
+
 	// Update biome boundary system (ecotones, barriers, migration effects)
 	w.BiomeBoundarySystem.Update(w, w.Tick)
-	
+
 	// Try to form new collective intelligence systems
 	if w.Tick%100 == 0 { // Every 100 ticks
 		w.attemptHiveMindFormation()
@@ -1116,7 +1122,9 @@ func (w *World) getEntitiesNearPosition(pos Position, radius float64) []*Entity 
 
 	for _, entity := range w.AllEntities {
 		if entity.IsAlive {
-			distance := math.Sqrt(math.Pow(entity.Position.X-pos.X, 2) + math.Pow(entity.Position.Y-pos.Y, 2))
+			dx := entity.Position.X - pos.X
+			dy := entity.Position.Y - pos.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
 			if distance <= radius {
 				nearby = append(nearby, entity)
 			}
@@ -1147,29 +1155,29 @@ func (w *World) updateEntitiesSequential(currentTimeState TimeState, deltaTime f
 
 		// Update basic entity properties using classification system and configuration
 		entity.UpdateWithClassificationAndConfig(w.OrganismClassifier, w.CellularSystem, w.SimConfig)
-		
+
 		// Update metamorphosis and life stage development
 		if entity.MetamorphosisStatus == nil {
 			// Initialize metamorphosis status for new entities
 			entity.MetamorphosisStatus = NewMetamorphosisStatus(entity, w.MetamorphosisSystem)
 		}
-		
+
 		// Get environmental factors for metamorphosis
 		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
 		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
 		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-		
+
 		environment := w.calculateEnvironmentalFactors(entity, gridX, gridY)
 		stageChanged := w.MetamorphosisSystem.Update(entity, w.Tick, environment)
-		
+
 		if stageChanged {
 			// Log metamorphosis events
 			w.CentralEventBus.EmitSystemEvent(w.Tick, "metamorphosis", "life_stage", "metamorphosis_system",
 				fmt.Sprintf("Entity %d advanced to %s stage", entity.ID, entity.MetamorphosisStatus.CurrentStage.String()),
 				&entity.Position, map[string]interface{}{
-					"entity_id": entity.ID,
-					"new_stage": entity.MetamorphosisStatus.CurrentStage.String(),
+					"entity_id":          entity.ID,
+					"new_stage":          entity.MetamorphosisStatus.CurrentStage.String(),
 					"metamorphosis_type": entity.MetamorphosisStatus.Type.String(),
 				})
 		}
@@ -1305,15 +1313,15 @@ func (w *World) updatePlants() {
 	// Get current season for plant nutrient calculations
 	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
 	season := getSeasonName(currentTimeState.Season)
-	
+
 	// Process decay items and add nutrients to soil
 	if len(w.ReproductionSystem.DecayingItems) > 0 {
 		w.processDecayNutrientsToSoil()
 	}
-	
+
 	// Process rainfall effects on soil
 	w.processWeatherEffectsOnSoil()
-	
+
 	for _, plant := range w.AllPlants {
 		if !plant.IsAlive {
 			continue
@@ -1329,13 +1337,13 @@ func (w *World) updatePlants() {
 
 		gridCell := &w.Grid[gridY][gridX]
 		biome := w.Biomes[gridCell.Biome]
-		
+
 		// Update plant with enhanced nutrient system
 		nutritionalHealth := plant.updatePlantNutrients(gridCell, season)
-		
+
 		// Traditional plant update with nutritional influence
 		plant.Update(biome)
-		
+
 		// Apply nutritional health effects
 		if nutritionalHealth < 0.5 {
 			// Severe malnutrition - chance of death
@@ -1373,11 +1381,11 @@ func (w *World) reproducePlants() {
 				// Log seed creation
 				if w.CentralEventBus != nil {
 					plantTypeName := GetPlantConfigs()[plant.Type].Name
-					w.CentralEventBus.EmitPlantEvent(w.Tick, "seed_creation", "seed_production", "plant_lifecycle", 
+					w.CentralEventBus.EmitPlantEvent(w.Tick, "seed_creation", "seed_production", "plant_lifecycle",
 						fmt.Sprintf("Plant %d (%s) produced seed %d", plant.ID, plantTypeName, seed.ID), plant, false, true)
 				}
 			}
-			
+
 			// Reproduction costs energy
 			config := GetPlantConfigs()[plant.Type]
 			plant.Energy -= config.BaseEnergy * 0.3 // Reduced cost since seeds may not all germinate
@@ -1474,15 +1482,7 @@ func (w *World) updateGrid() {
 		if !entity.IsAlive {
 			continue
 		}
-
-		// Convert world coordinates to grid coordinates
-		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
-		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
-
-		// Clamp to grid bounds
-		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
-		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-
+		gridX, gridY := w.worldToGridCoords(entity.Position.X, entity.Position.Y)
 		w.Grid[gridY][gridX].Entities = append(w.Grid[gridY][gridX].Entities, entity)
 	}
 
@@ -1491,17 +1491,22 @@ func (w *World) updateGrid() {
 		if !plant.IsAlive {
 			continue
 		}
-
-		// Convert world coordinates to grid coordinates
-		gridX := int((plant.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
-		gridY := int((plant.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
-
-		// Clamp to grid bounds
-		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
-		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-
+		gridX, gridY := w.worldToGridCoords(plant.Position.X, plant.Position.Y)
 		w.Grid[gridY][gridX].Plants = append(w.Grid[gridY][gridX].Plants, plant)
 	}
+}
+
+// worldToGridCoords converts world coordinates to grid coordinates with bounds clamping
+func (w *World) worldToGridCoords(worldX, worldY float64) (int, int) {
+	// Convert world coordinates to grid coordinates
+	gridX := int((worldX / w.Config.Width) * float64(w.Config.GridWidth))
+	gridY := int((worldY / w.Config.Height) * float64(w.Config.GridHeight))
+
+	// Clamp to grid bounds
+	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
+	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
+
+	return gridX, gridY
 }
 
 // updateEntityWithBiome applies biome effects to an entity
@@ -1787,6 +1792,26 @@ func (w *World) generateVolcanicFields() map[Position]BiomeType {
 	return changes
 }
 
+// spreadAreaEffect creates area-of-effect changes around a center point
+func (w *World) spreadAreaEffect(centerX, centerY, maxRadius int, baseChance, decayFactor float64, biomeType BiomeType, changes map[Position]BiomeType) {
+	for radius := 0; radius <= maxRadius; radius++ {
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				x := centerX + dx
+				y := centerY + dy
+
+				if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
+					distance := math.Sqrt(float64(dx*dx + dy*dy))
+					chance := baseChance * math.Exp(-distance/decayFactor)
+					if rand.Float64() < chance {
+						changes[Position{X: float64(x), Y: float64(y)}] = biomeType
+					}
+				}
+			}
+		}
+	}
+}
+
 // generateFireZones creates desert zones from wildfires
 func (w *World) generateFireZones() map[Position]BiomeType {
 	changes := make(map[Position]BiomeType)
@@ -1797,23 +1822,7 @@ func (w *World) generateFireZones() map[Position]BiomeType {
 		centerY := rand.Intn(w.Config.GridHeight)
 
 		// Fire spreads in irregular patterns
-		for radius := 0; radius <= 4; radius++ {
-			for dy := -radius; dy <= radius; dy++ {
-				for dx := -radius; dx <= radius; dx++ {
-					x := centerX + dx
-					y := centerY + dy
-
-					if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
-						distance := math.Sqrt(float64(dx*dx + dy*dy))
-						// Fire probability decreases with distance
-						fireChance := 0.8 * math.Exp(-distance/2.0)
-						if rand.Float64() < fireChance {
-							changes[Position{X: float64(x), Y: float64(y)}] = BiomeDesert
-						}
-					}
-				}
-			}
-		}
+		w.spreadAreaEffect(centerX, centerY, 4, 0.8, 2.0, BiomeDesert, changes)
 	}
 
 	return changes
@@ -1844,23 +1853,7 @@ func (w *World) generateFloodZones() map[Position]BiomeType {
 		}
 
 		// Flood spreads inward
-		for radius := 0; radius <= 6; radius++ {
-			for dy := -radius; dy <= radius; dy++ {
-				for dx := -radius; dx <= radius; dx++ {
-					x := centerX + dx
-					y := centerY + dy
-
-					if x >= 0 && x < w.Config.GridWidth && y >= 0 && y < w.Config.GridHeight {
-						distance := math.Sqrt(float64(dx*dx + dy*dy))
-						// Flood probability decreases with distance
-						floodChance := 0.7 * math.Exp(-distance/3.0)
-						if rand.Float64() < floodChance {
-							changes[Position{X: float64(x), Y: float64(y)}] = BiomeWater
-						}
-					}
-				}
-			}
-		}
+		w.spreadAreaEffect(centerX, centerY, 6, 0.7, 3.0, BiomeWater, changes)
 	}
 
 	return changes
@@ -1917,14 +1910,14 @@ type BiomeTransition struct {
 // processBiomeTransitions handles realistic biome state changes
 func (w *World) processBiomeTransitions() {
 	transitions := make(map[Position]BiomeType)
-	
+
 	// Define transition rules
 	transitionRules := []BiomeTransition{
 		// Hot spots melt ice - very rare natural transitions
 		{BiomeIce, BiomeWater, "heat", 0.02},
 		{BiomeIce, BiomePlains, "heat", 0.01}, // Ice melts to plains in some cases
 		// Hot springs create effects - more likely near hot springs
-		{BiomeIce, BiomeWater, "hotspring", 0.15}, // Near hot springs, ice melts more rapidly
+		{BiomeIce, BiomeWater, "hotspring", 0.15},        // Near hot springs, ice melts more rapidly
 		{BiomeWater, BiomeRainforest, "hotspring", 0.05}, // Hot springs create humid environments
 		// Fire effects - moderate probability
 		{BiomeForest, BiomeDesert, "fire", 0.1},
@@ -1942,15 +1935,15 @@ func (w *World) processBiomeTransitions() {
 		{BiomePlains, BiomeMountain, "volcanic", 0.12},
 		{BiomeForest, BiomeRadiation, "volcanic", 0.08}, // Lava burns forest to radiation zones
 	}
-	
+
 	// Check each grid cell for potential transitions
 	for y := 0; y < w.Config.GridHeight; y++ {
 		for x := 0; x < w.Config.GridWidth; x++ {
 			currentBiome := w.Grid[y][x].Biome
-			
+
 			// Check for transition triggers in nearby cells
 			triggers := w.detectTransitionTriggers(x, y)
-			
+
 			for trigger, intensity := range triggers {
 				for _, rule := range transitionRules {
 					if rule.From == currentBiome && rule.Trigger == trigger {
@@ -1958,21 +1951,21 @@ func (w *World) processBiomeTransitions() {
 						actualProbability := rule.Probability * intensity
 						if rand.Float64() < actualProbability {
 							transitions[Position{X: float64(x), Y: float64(y)}] = rule.To
-							
+
 							// Log the transition for events
 							if w.EventLogger != nil {
 								event := LogEvent{
-									Timestamp:   time.Now(),
-									Tick:        w.Tick,
-									Type:        fmt.Sprintf("biome_transition_%s_to_%s", 
+									Timestamp: time.Now(),
+									Tick:      w.Tick,
+									Type: fmt.Sprintf("biome_transition_%s_to_%s",
 										w.getBiomeName(rule.From), w.getBiomeName(rule.To)),
-									Description: fmt.Sprintf("Biome transition from %s to %s triggered by %s", 
+									Description: fmt.Sprintf("Biome transition from %s to %s triggered by %s",
 										w.getBiomeName(rule.From), w.getBiomeName(rule.To), trigger),
 									Data: map[string]interface{}{
-										"trigger": trigger,
-										"intensity": intensity,
+										"trigger":    trigger,
+										"intensity":  intensity,
 										"from_biome": w.getBiomeName(rule.From),
-										"to_biome": w.getBiomeName(rule.To),
+										"to_biome":   w.getBiomeName(rule.To),
 										"position_x": float64(x),
 										"position_y": float64(y),
 									},
@@ -1986,7 +1979,7 @@ func (w *World) processBiomeTransitions() {
 			}
 		}
 	}
-	
+
 	// Apply transitions
 	for pos, newBiome := range transitions {
 		gridX, gridY := int(pos.X), int(pos.Y)
@@ -1999,7 +1992,7 @@ func (w *World) processBiomeTransitions() {
 // detectTransitionTriggers identifies environmental conditions that can cause biome transitions
 func (w *World) detectTransitionTriggers(x, y int) map[string]float64 {
 	triggers := make(map[string]float64)
-	
+
 	// Check in a 3x3 neighborhood around the cell
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
@@ -2008,24 +2001,24 @@ func (w *World) detectTransitionTriggers(x, y int) map[string]float64 {
 				neighborBiome := w.Grid[ny][nx].Biome
 				distance := math.Sqrt(float64(dx*dx + dy*dy))
 				intensity := 1.0 / (1.0 + distance) // Closer = stronger effect
-				
+
 				switch neighborBiome {
 				case BiomeHotSpring:
-					triggers["heat"] = math.Max(triggers["heat"], intensity * 0.8)
+					triggers["heat"] = math.Max(triggers["heat"], intensity*0.8)
 					triggers["hotspring"] = math.Max(triggers["hotspring"], intensity)
 				case BiomeRadiation:
-					triggers["heat"] = math.Max(triggers["heat"], intensity * 0.6)
-					triggers["volcanic"] = math.Max(triggers["volcanic"], intensity * 0.7)
+					triggers["heat"] = math.Max(triggers["heat"], intensity*0.6)
+					triggers["volcanic"] = math.Max(triggers["volcanic"], intensity*0.7)
 				case BiomeWater, BiomeDeepWater, BiomeSwamp:
-					triggers["water"] = math.Max(triggers["water"], intensity * 0.5)
-					triggers["flood"] = math.Max(triggers["flood"], intensity * 0.3)
+					triggers["water"] = math.Max(triggers["water"], intensity*0.5)
+					triggers["flood"] = math.Max(triggers["flood"], intensity*0.3)
 				case BiomeIce, BiomeTundra:
-					triggers["cold"] = math.Max(triggers["cold"], intensity * 0.4)
+					triggers["cold"] = math.Max(triggers["cold"], intensity*0.4)
 				}
 			}
 		}
 	}
-	
+
 	// Check for fire events - simplified fire detection
 	// In a real implementation, this would check for active fire events
 	if rand.Float64() < 0.01 { // 1% chance of fire starting in flammable biomes
@@ -2034,29 +2027,29 @@ func (w *World) detectTransitionTriggers(x, y int) map[string]float64 {
 			triggers["fire"] = 0.8
 		}
 	}
-	
+
 	return triggers
 }
 
 // getBiomeName returns human-readable biome name
 func (w *World) getBiomeName(biome BiomeType) string {
 	biomeNames := map[BiomeType]string{
-		BiomePlains:      "plains",
-		BiomeForest:      "forest", 
-		BiomeDesert:      "desert",
-		BiomeMountain:    "mountain",
-		BiomeWater:       "water",
-		BiomeRadiation:   "radiation",
-		BiomeSoil:        "soil",
-		BiomeAir:         "air",
-		BiomeIce:         "ice",
-		BiomeRainforest:  "rainforest",
-		BiomeDeepWater:   "deep_water",
+		BiomePlains:       "plains",
+		BiomeForest:       "forest",
+		BiomeDesert:       "desert",
+		BiomeMountain:     "mountain",
+		BiomeWater:        "water",
+		BiomeRadiation:    "radiation",
+		BiomeSoil:         "soil",
+		BiomeAir:          "air",
+		BiomeIce:          "ice",
+		BiomeRainforest:   "rainforest",
+		BiomeDeepWater:    "deep_water",
 		BiomeHighAltitude: "high_altitude",
-		BiomeHotSpring:   "hot_spring",
-		BiomeTundra:      "tundra",
-		BiomeSwamp:       "swamp",
-		BiomeCanyon:      "canyon",
+		BiomeHotSpring:    "hot_spring",
+		BiomeTundra:       "tundra",
+		BiomeSwamp:        "swamp",
+		BiomeCanyon:       "canyon",
 	}
 	if name, exists := biomeNames[biome]; exists {
 		return name
@@ -2130,7 +2123,7 @@ func (w *World) handleEntityPlantInteractions() {
 				}
 			}
 		}
-		
+
 		// Attempt to drink water if thirsty
 		if rand.Float64() < 0.6 { // 60% chance to attempt drinking each tick
 			if entity.DrinkWater(w, w.Tick) {
@@ -2141,7 +2134,7 @@ func (w *World) handleEntityPlantInteractions() {
 						map[string]interface{}{
 							"entity_species": entity.Species,
 							"entity_energy":  entity.Energy,
-							"biome": int(w.getBiomeAtPosition(entity.Position.X, entity.Position.Y)),
+							"biome":          int(w.getBiomeAtPosition(entity.Position.X, entity.Position.Y)),
 						})
 				}
 			}
@@ -2417,21 +2410,21 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 	if entity.BioRhythm == nil {
 		entity.BioRhythm = NewBioRhythm(entity.ID, entity)
 	}
-	
+
 	// Update biorhythm system
 	entity.BioRhythm.Update(w.Tick, entity, timeState)
-	
+
 	// Apply activity-based energy effects
 	activityModifier := entity.BioRhythm.GetActivityModifier(entity, timeState)
 	currentActivity := entity.BioRhythm.GetCurrentActivity()
-	
+
 	// Enhanced circadian effects based on activity and preferences
 	circadianPref := entity.GetTrait("circadian_preference") // -1 to 1, negative = nocturnal
-	
+
 	// Base energy effects from circadian rhythm
 	circadianBoost := w.SimConfig.Time.DailyEnergyBase * 0.4
 	circadianPenalty := w.SimConfig.Energy.BaseEnergyDrain * 1.5
-	
+
 	if timeState.IsNight() && circadianPref < 0 {
 		// Nocturnal entities get energy boost at night
 		entity.Energy += math.Abs(circadianPref) * circadianBoost * activityModifier
@@ -2442,7 +2435,7 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 		// Entities active at "wrong" time lose extra energy
 		entity.Energy -= circadianPenalty * (2.0 - activityModifier)
 	}
-	
+
 	// Activity-specific energy costs/benefits
 	switch currentActivity {
 	case ActivitySleep:
@@ -2468,7 +2461,7 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 		// Socializing has small energy cost
 		entity.Energy -= w.SimConfig.Energy.MovementEnergyCost * 0.8
 	}
-	
+
 	// Seasonal effects on biorhythm and energy
 	switch timeState.Season {
 	case Spring:
@@ -2513,7 +2506,7 @@ func (w *World) applyTimeEffects(entity *Entity, timeState TimeState) {
 			entity.BioRhythm.Activities[ActivityExplore].NeedLevel *= 0.8
 		}
 	}
-	
+
 	// Ensure energy doesn't go negative from time effects
 	if entity.Energy < 0 {
 		entity.Energy = 0
@@ -2562,7 +2555,9 @@ func (w *World) respondToSignal(entity *Entity, signal Signal) {
 		// Cooperative entities might help
 		if entity.GetTrait("cooperation") > 0.5 && entity.Energy > 50 {
 			// Move toward distress signal
-			distance := math.Sqrt(math.Pow(entity.Position.X-signal.Position.X, 2) + math.Pow(entity.Position.Y-signal.Position.Y, 2))
+			dx := entity.Position.X - signal.Position.X
+			dy := entity.Position.Y - signal.Position.Y
+			distance := math.Sqrt(dx*dx + dy*dy)
 			if distance > 1 {
 				speed := entity.GetTrait("speed") * 0.5
 				entity.MoveTo(signal.Position.X, signal.Position.Y, speed)
@@ -2845,49 +2840,49 @@ func (w *World) updateReproductionSystem() {
 	// Update mating seasons based on current time
 	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
 	w.ReproductionSystem.UpdateMatingSeasons(w.AllEntities, seasonToString(currentTimeState.Season))
-	
+
 	// Enhanced seasonal mating behaviors
 	w.ReproductionSystem.UpdateSeasonalMatingBehaviors(w.AllEntities, currentTimeState.Season, w.Tick)
-	
+
 	// Implement territorial mating if civilization system is available
 	if w.CivilizationSystem != nil {
 		territories := w.generateTerritories()
 		w.ReproductionSystem.ImplementTerritorialMating(w.AllEntities, territories)
 	}
-	
+
 	// Check for births from gestation
 	newborns := w.ReproductionSystem.CheckGestation(w.AllEntities, w.Tick)
 	for _, newborn := range newborns {
 		newborn.ID = w.NextID
 		w.NextID++
 		w.AllEntities = append(w.AllEntities, newborn)
-		
+
 		// Log birth event
 		w.EventLogger.LogWorldEvent(w.Tick, "birth", fmt.Sprintf("Entity %d gave birth to entity %d", newborn.Generation-1, newborn.ID))
 	}
-	
+
 	// Process egg hatching and decay
 	newHatchlings, fertilizers := w.ReproductionSystem.Update(w.Tick)
 	for _, hatchling := range newHatchlings {
 		hatchling.ID = w.NextID
 		w.NextID++
 		w.AllEntities = append(w.AllEntities, hatchling)
-		
+
 		// Log hatching event
 		w.EventLogger.LogWorldEvent(w.Tick, "hatching", fmt.Sprintf("Egg hatched into entity %d", hatchling.ID))
 	}
-	
+
 	// Process decay fertilizers to enhance nearby plants
 	for _, fertilizer := range fertilizers {
 		w.applyDecayFertilizer(fertilizer)
 	}
-	
+
 	// Handle mating attempts
 	w.processMatingAttempts()
-	
+
 	// Handle mating migration behaviors
 	w.processMatingMigration()
-	
+
 	// Handle entity deaths and create decaying items
 	w.processEntityDeaths()
 }
@@ -2898,38 +2893,38 @@ func (w *World) processMatingMigration() {
 		if !entity.IsAlive || entity.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		// Only migrate during mating season and if entity requires migration
 		if !entity.ReproductionStatus.MatingSeason || !entity.ReproductionStatus.RequiresMigration {
 			continue
 		}
-		
+
 		// Skip if already at preferred location (within tolerance)
 		dx := entity.Position.X - entity.ReproductionStatus.PreferredMatingLocation.X
 		dy := entity.Position.Y - entity.ReproductionStatus.PreferredMatingLocation.Y
 		distance := math.Sqrt(dx*dx + dy*dy)
-		
+
 		if distance <= 5.0 { // Close enough to preferred location
 			continue
 		}
-		
+
 		// Move towards preferred mating location
 		moveSpeed := entity.GetTrait("speed") * 0.5 // Slower migration movement
 		if moveSpeed <= 0 {
 			moveSpeed = 1.0
 		}
-		
+
 		// Calculate movement direction
 		directionX := dx / distance
 		directionY := dy / distance
-		
+
 		// Move towards the target
 		entity.Position.X += directionX * moveSpeed
 		entity.Position.Y += directionY * moveSpeed
-		
+
 		// Migration costs energy (reduced for daily time scale)
 		entity.Energy -= moveSpeed * 0.02 // Reduced from 0.2
-		
+
 		// Log migration behavior occasionally
 		if w.Tick%50 == 0 && distance > entity.ReproductionStatus.MigrationDistance*0.5 {
 			w.EventLogger.LogWorldEvent(w.Tick, "migration", fmt.Sprintf("Entity %d migrating to mating grounds (%.1f units away)", entity.ID, distance))
@@ -2946,51 +2941,51 @@ func (w *World) processMatingAttempts() {
 			entityMap[entity.ID] = entity
 		}
 	}
-	
+
 	for i, entity1 := range w.AllEntities {
 		if !entity1.IsAlive || entity1.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		// Skip if not ready to mate
 		if !entity1.ReproductionStatus.ReadyToMate || !entity1.ReproductionStatus.MatingSeason {
 			continue
 		}
-		
+
 		// Don't reproduce in the first few ticks to avoid interfering with tests
 		if w.Tick < 10 {
 			continue
 		}
-		
+
 		// Don't reproduce if entity is too young using classification system
 		if !w.OrganismClassifier.IsReproductivelyMature(entity1, entity1.Classification) {
 			continue
 		}
-		
+
 		// Don't reproduce if entity has low energy (adjusted for classification)
 		energyThreshold := 30.0
 		maintenanceCost := w.OrganismClassifier.CalculateEnergyMaintenance(entity1, entity1.Classification)
-		if entity1.Energy < energyThreshold + maintenanceCost*5 { // Need 5x maintenance cost as buffer
+		if entity1.Energy < energyThreshold+maintenanceCost*5 { // Need 5x maintenance cost as buffer
 			continue
 		}
-		
+
 		// Check reproduction cooldown (entities can't reproduce too frequently)
 		if entity1.ReproductionStatus.LastMatingTick > 0 && w.Tick-entity1.ReproductionStatus.LastMatingTick < 25 {
 			continue
 		}
-		
+
 		// Low probability of reproduction to avoid test interference
 		if rand.Float64() > 0.1 { // Only 10% chance per tick per entity
 			continue
 		}
-		
+
 		// Find nearby potential mates
 		for j := i + 1; j < len(w.AllEntities); j++ {
 			entity2 := w.AllEntities[j]
 			if !entity2.IsAlive || entity2.ReproductionStatus == nil {
 				continue
 			}
-			
+
 			// Check compatibility (same species or cross-species compatibility)
 			canMate := false
 			if entity1.Species == entity2.Species {
@@ -2999,28 +2994,28 @@ func (w *World) processMatingAttempts() {
 				// Check cross-species compatibility
 				canMate = w.ReproductionSystem.ImplementCrossSpeciesCompatibility(entity1, entity2)
 			}
-			
+
 			if !canMate {
 				continue
 			}
-			
+
 			// Check distance (entities need to be close to mate)
 			distance := entity1.DistanceTo(entity2)
 			if distance > 5.0 { // Mating range
 				continue
 			}
-			
+
 			// Check for competition - see if there are other potential mates nearby
 			competition := w.checkMatingCompetition(entity1, entity2)
 			if competition && rand.Float64() < 0.7 { // 70% chance competition prevents mating
 				continue
 			}
-			
+
 			// Attempt mating using classification system
 			if w.ReproductionSystem.StartMatingWithClassification(entity1, entity2, w.OrganismClassifier, w.Tick) {
 				// Log mating event
 				w.EventLogger.LogWorldEvent(w.Tick, "mating", fmt.Sprintf("Entities %d and %d mated", entity1.ID, entity2.ID))
-				
+
 				// Handle different reproduction modes
 				switch entity1.ReproductionStatus.Mode {
 				case DirectCoupling:
@@ -3030,7 +3025,7 @@ func (w *World) processMatingAttempts() {
 					w.NextID++
 					w.AllEntities = append(w.AllEntities, offspring)
 					w.EventLogger.LogWorldEvent(w.Tick, "birth", fmt.Sprintf("Direct coupling produced entity %d", offspring.ID))
-				
+
 				case Budding:
 					// Asexual reproduction - create clone with mutation
 					if entity1.Energy >= 50.0 {
@@ -3043,7 +3038,7 @@ func (w *World) processMatingAttempts() {
 						w.AllEntities = append(w.AllEntities, clone)
 						w.EventLogger.LogWorldEvent(w.Tick, "budding", fmt.Sprintf("Entity %d reproduced by budding, created entity %d", entity1.ID, clone.ID))
 					}
-				
+
 				case Fission:
 					// Split into multiple offspring
 					if entity1.Energy >= 80.0 {
@@ -3052,7 +3047,7 @@ func (w *World) processMatingAttempts() {
 							clone := entity1.Clone()
 							clone.ID = w.NextID
 							clone.Energy = entity1.Energy / float64(numOffspring+1) // Distribute energy
-							clone.Mutate(0.2, 0.4) // Higher mutation for fission
+							clone.Mutate(0.2, 0.4)                                  // Higher mutation for fission
 							clone.Position.X += (rand.Float64() - 0.5) * 6.0
 							clone.Position.Y += (rand.Float64() - 0.5) * 6.0
 							w.NextID++
@@ -3062,7 +3057,7 @@ func (w *World) processMatingAttempts() {
 						w.EventLogger.LogWorldEvent(w.Tick, "fission", fmt.Sprintf("Entity %d split into %d offspring", entity1.ID, numOffspring))
 					}
 				}
-				
+
 				// Only allow one mating per tick per entity
 				break
 			}
@@ -3074,43 +3069,43 @@ func (w *World) processMatingAttempts() {
 func (w *World) processEntityDeaths() {
 	deathsThisTick := make(map[string]int) // Track deaths by species
 	totalDeaths := 0
-	
+
 	for _, entity := range w.AllEntities {
 		// Check if entity needs to be processed for death
 		shouldProcessDeath := false
 		cause := ""
-		
+
 		// Check for death by energy depletion (handled by UpdateWithClassification but might not be processed yet)
 		if entity.IsAlive && entity.Energy <= 0 {
 			shouldProcessDeath = true
 			cause = "energy_depletion"
 			entity.IsAlive = false
 		}
-		
+
 		// Check for death by old age using new classification system
 		if entity.IsAlive && w.OrganismClassifier.IsDeathByOldAge(entity, entity.Classification, entity.MaxLifespan) {
 			shouldProcessDeath = true
 			cause = "old_age"
 			entity.IsAlive = false
 		}
-		
+
 		// Fallback: Check for death by old age using old system (for entities not yet classified)
 		if entity.IsAlive && entity.Age > 1000 {
 			shouldProcessDeath = true
 			cause = "old_age_legacy"
 			entity.IsAlive = false
 		}
-		
+
 		// Check if entity just died this tick (was alive but now marked as dead)
 		if !entity.IsAlive && shouldProcessDeath {
 			// Track death by species
 			deathsThisTick[entity.Species]++
 			totalDeaths++
-			
+
 			// Create decaying corpse
 			corpseNutrientValue := entity.Energy*0.5 + float64(entity.Age)*0.1
 			w.ReproductionSystem.AddDecayingItem("corpse", entity.Position, corpseNutrientValue, entity.Species, entity.GetTrait("size"), w.Tick)
-			
+
 			// Enhanced death logging with cause tracking
 			contributingFactors := make(map[string]interface{})
 			contributingFactors["energy"] = entity.Energy
@@ -3121,7 +3116,7 @@ func (w *World) processEntityDeaths() {
 			entity.LogEntityDeath(w, cause, contributingFactors)
 		}
 	}
-	
+
 	// Check for mass die-off events and their environmental impacts
 	w.processMassDieOffImpacts(deathsThisTick, totalDeaths)
 }
@@ -3129,41 +3124,41 @@ func (w *World) processEntityDeaths() {
 // generateTerritories creates territories based on civilization system tribes
 func (w *World) generateTerritories() map[int]*Territory {
 	territories := make(map[int]*Territory)
-	
+
 	if w.CivilizationSystem == nil {
 		return territories
 	}
-	
+
 	territoryID := 1
 	for _, tribe := range w.CivilizationSystem.Tribes {
 		if len(tribe.Members) == 0 {
 			continue
 		}
-		
+
 		// Find tribe center based on member positions
 		centerX := 0.0
 		centerY := 0.0
 		strongestEntity := tribe.Members[0]
 		maxStrength := 0.0
-		
+
 		for _, member := range tribe.Members {
 			centerX += member.Position.X
 			centerY += member.Position.Y
-			
+
 			strength := member.GetTrait("strength") + member.GetTrait("intelligence")
 			if strength > maxStrength {
 				maxStrength = strength
 				strongestEntity = member
 			}
 		}
-		
+
 		centerX /= float64(len(tribe.Members))
 		centerY /= float64(len(tribe.Members))
-		
+
 		// Territory size based on tribe size and leader strength
 		radius := 5.0 + float64(len(tribe.Members))*2.0 + maxStrength*3.0
 		quality := (tribe.Resources["food"] + tribe.Resources["materials"]) / 200.0 // 0-1 scale
-		
+
 		territory := &Territory{
 			ID:      territoryID,
 			OwnerID: strongestEntity.ID,
@@ -3174,11 +3169,11 @@ func (w *World) generateTerritories() map[int]*Territory {
 			Radius:  radius,
 			Quality: quality,
 		}
-		
+
 		territories[territoryID] = territory
 		territoryID++
 	}
-	
+
 	return territories
 }
 
@@ -3189,18 +3184,18 @@ func (w *World) applyDecayFertilizer(fertilizer *DecayableItem) {
 		dx := plant.Position.X - fertilizer.Position.X
 		dy := plant.Position.Y - fertilizer.Position.Y
 		distance := math.Sqrt(dx*dx + dy*dy)
-		
+
 		if distance <= 10.0 { // Fertilizer effect range
 			// Boost plant energy and growth
 			energyBoost := fertilizer.NutrientValue * 0.3 * (10.0 - distance) / 10.0 // Closer = more effect
 			plant.Energy += energyBoost
-			
+
 			// Boost plant traits temporarily
 			plant.SetTrait("growth_efficiency", plant.GetTrait("growth_efficiency")+0.1)
 			plant.SetTrait("reproduction_rate", plant.GetTrait("reproduction_rate")+0.05)
 		}
 	}
-	
+
 	// Log fertilization event
 	w.EventLogger.LogWorldEvent(w.Tick, "fertilization", fmt.Sprintf("Decayed %s provided nutrients to nearby plants", fertilizer.ItemType))
 }
@@ -3209,42 +3204,42 @@ func (w *World) applyDecayFertilizer(fertilizer *DecayableItem) {
 func (w *World) checkMatingCompetition(entity1, entity2 *Entity) bool {
 	// Look for other entities nearby that could compete
 	competitorCount := 0
-	
+
 	for _, potential := range w.AllEntities {
 		if !potential.IsAlive || potential.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		// Skip the entities trying to mate
 		if potential.ID == entity1.ID || potential.ID == entity2.ID {
 			continue
 		}
-		
+
 		// Skip if not same species
 		if potential.Species != entity1.Species {
 			continue
 		}
-		
+
 		// Skip if not in mating condition
 		if !potential.ReproductionStatus.ReadyToMate || !potential.ReproductionStatus.MatingSeason {
 			continue
 		}
-		
+
 		// Check if competitor is close enough to interfere
 		distance1 := entity1.DistanceTo(potential)
 		distance2 := entity2.DistanceTo(potential)
-		
+
 		if distance1 <= 8.0 || distance2 <= 8.0 { // Competition range larger than mating range
 			// Check if competitor is stronger/more attractive
 			entity1Attractiveness := entity1.GetTrait("strength") + entity1.GetTrait("intelligence") + entity1.Energy/100.0
 			potentialAttractiveness := potential.GetTrait("strength") + potential.GetTrait("intelligence") + potential.Energy/100.0
-			
+
 			if potentialAttractiveness > entity1Attractiveness {
 				competitorCount++
 			}
 		}
 	}
-	
+
 	// Competition exists if there are stronger competitors nearby
 	return competitorCount > 0
 }
@@ -3287,7 +3282,7 @@ func (w *World) applyBiomeEffects() {
 func (w *World) applyEnvironmentalPressure(entity *Entity, biome Biome) {
 	// Calculate environmental stress factors
 	temperatureStress := math.Abs(biome.Temperature) * 0.1
-	pressureStress := math.Abs(biome.Pressure - 1.0) * 0.15
+	pressureStress := math.Abs(biome.Pressure-1.0) * 0.15
 	oxygenStress := (1.0 - biome.OxygenLevel) * 0.2
 
 	totalStress := temperatureStress + pressureStress + oxygenStress
@@ -3309,7 +3304,7 @@ func (w *World) applyEnvironmentalPressure(entity *Entity, biome Biome) {
 	energyCost := totalStress - adaptationBonus
 	if energyCost > 0 {
 		entity.Energy -= energyCost
-		
+
 		// Prevent energy from going too negative
 		if entity.Energy < -10 {
 			entity.Energy = -10
@@ -3424,7 +3419,7 @@ func (w *World) updateBiomesFromTopology() {
 	if w.TopologySystem == nil {
 		return
 	}
-	
+
 	// Check for recent geological events that might change biomes (only active events)
 	for _, event := range w.TopologySystem.GeologicalEvents {
 		// Only apply events that are currently active
@@ -3432,7 +3427,7 @@ func (w *World) updateBiomesFromTopology() {
 			w.applyGeologicalEventToBiomes(event)
 		}
 	}
-	
+
 	// Periodically recalculate biomes based on topology (much less frequently)
 	if w.Tick%2000 == 0 { // Changed from 500 to 2000 ticks
 		w.recalculateBiomesFromTopology()
@@ -3444,25 +3439,25 @@ func (w *World) applyGeologicalEventToBiomes(event GeologicalEvent) {
 	centerGridX := int((event.Center.X / float64(w.Config.Width)) * float64(w.Config.GridWidth))
 	centerGridY := int((event.Center.Y / float64(w.Config.Height)) * float64(w.Config.GridHeight))
 	gridRadius := int((event.Radius / float64(w.Config.Width)) * float64(w.Config.GridWidth))
-	
-	for x := centerGridX - gridRadius; x <= centerGridX + gridRadius; x++ {
-		for y := centerGridY - gridRadius; y <= centerGridY + gridRadius; y++ {
+
+	for x := centerGridX - gridRadius; x <= centerGridX+gridRadius; x++ {
+		for y := centerGridY - gridRadius; y <= centerGridY+gridRadius; y++ {
 			if x < 0 || x >= w.Config.GridWidth || y < 0 || y >= w.Config.GridHeight {
 				continue
 			}
-			
+
 			distance := math.Sqrt(float64((x-centerGridX)*(x-centerGridX) + (y-centerGridY)*(y-centerGridY)))
 			if distance > float64(gridRadius) {
 				continue
 			}
-			
+
 			// Get topology information
 			topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
 			topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
-			
+
 			if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
 				topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
-				
+
 				// Change biomes based on event type and topology
 				newBiome := w.determineBiomeFromGeology(event.Type, topoCell, w.Grid[y][x].Biome)
 				if newBiome != w.Grid[y][x].Biome {
@@ -3483,7 +3478,7 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 		} else if topoCell.Elevation > 0.6 {
 			return BiomeRadiation // Volcanic ash and heat
 		}
-		
+
 	case "mountain_uplift":
 		// Mountain uplift creates mountain biomes
 		if topoCell.Elevation > 0.9 {
@@ -3491,7 +3486,7 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 		} else if topoCell.Elevation > 0.7 {
 			return BiomeMountain
 		}
-		
+
 	case "seafloor_spreading", "rift_valley":
 		// Creates deep water or water biomes
 		if topoCell.Elevation < -0.3 {
@@ -3499,13 +3494,13 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 		} else if topoCell.Elevation < 0.1 {
 			return BiomeWater
 		}
-		
+
 	case "geyser_formation", "hot_spring_creation":
 		// Creates hot spring biomes
 		if topoCell.WaterLevel > 0.3 {
 			return BiomeHotSpring
 		}
-		
+
 	case "ice_sheet_advance":
 		// Creates ice biomes
 		if topoCell.WaterLevel > 0.2 && topoCell.Elevation > 0.3 {
@@ -3513,7 +3508,7 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 		} else if topoCell.Elevation > 0.5 {
 			return BiomeTundra
 		}
-		
+
 	case "glacial_retreat":
 		// Transitions from ice back to other biomes
 		if currentBiome == BiomeIce {
@@ -3525,7 +3520,7 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 				return BiomePlains
 			}
 		}
-		
+
 	case "flood":
 		// Creates swamp or water biomes
 		if topoCell.WaterLevel > 0.5 {
@@ -3536,7 +3531,7 @@ func (w *World) determineBiomeFromGeology(eventType string, topoCell TopologyCel
 			}
 		}
 	}
-	
+
 	return currentBiome // No change
 }
 
@@ -3546,18 +3541,18 @@ func (w *World) recalculateBiomesFromTopology() {
 	// Recalculate only 2% of cells each time to maintain stability
 	totalCells := w.Config.GridWidth * w.Config.GridHeight
 	cellsToUpdate := totalCells / 50 // Update 2% of cells (was 10%)
-	
+
 	for i := 0; i < cellsToUpdate; i++ {
 		x := rand.Intn(w.Config.GridWidth)
 		y := rand.Intn(w.Config.GridHeight)
-		
+
 		// Get topology information
 		topoX := int((float64(x) / float64(w.Config.GridWidth)) * float64(w.TopologySystem.Width))
 		topoY := int((float64(y) / float64(w.Config.GridHeight)) * float64(w.TopologySystem.Height))
-		
+
 		if topoX >= 0 && topoX < w.TopologySystem.Width && topoY >= 0 && topoY < w.TopologySystem.Height {
 			topoCell := w.TopologySystem.TopologyGrid[topoX][topoY]
-			
+
 			// Determine biome based on topology
 			newBiome := w.determineBiomeFromTopology(topoCell, x, y)
 			// Only change biome if there's a significant reason (large elevation change)
@@ -3573,21 +3568,21 @@ func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY i
 	elevation := topoCell.Elevation
 	waterLevel := topoCell.WaterLevel
 	slope := topoCell.Slope
-	
+
 	// Distance from edges for polar biomes
-	distFromEdge := math.Min(math.Min(float64(gridX), float64(w.Config.GridWidth-gridX)), 
+	distFromEdge := math.Min(math.Min(float64(gridX), float64(w.Config.GridWidth-gridX)),
 		math.Min(float64(gridY), float64(w.Config.GridHeight-gridY)))
-	
+
 	// Very high elevation - high altitude (adjusted thresholds)
 	if elevation > 0.4 { // Adjusted from 0.95 to 0.4
 		return BiomeHighAltitude
 	}
-	
+
 	// High elevation - mountains (adjusted thresholds)
 	if elevation > 0.3 { // Adjusted from 0.8 to 0.3
 		return BiomeMountain
 	}
-	
+
 	// Water-based biomes (adjusted thresholds)
 	if waterLevel > 0.5 || elevation < -0.2 { // Adjusted from 0.0 to -0.2
 		if elevation < -0.3 { // Adjusted from -0.5 to -0.3
@@ -3598,7 +3593,7 @@ func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY i
 		}
 		return BiomeWater
 	}
-	
+
 	// Edge biomes (polar regions)
 	if distFromEdge < 3 {
 		if waterLevel > 0.3 {
@@ -3606,12 +3601,12 @@ func (w *World) determineBiomeFromTopology(topoCell TopologyCell, gridX, gridY i
 		}
 		return BiomeTundra
 	}
-	
+
 	// Steep slopes - canyons
 	if slope > 0.7 && elevation > 0.4 {
 		return BiomeCanyon
 	}
-	
+
 	// Use the enhanced biome generation for other areas
 	return w.generateBiome(gridX, gridY)
 }
@@ -3648,12 +3643,12 @@ func (w *World) attemptHiveMindFormation() {
 			if distance < 15.0 {
 				otherIntelligence := other.GetTrait("intelligence")
 				otherCooperation := other.GetTrait("cooperation")
-				
+
 				// Check compatibility
 				intelligenceDiff := math.Abs(intelligence - otherIntelligence)
 				cooperationDiff := math.Abs(cooperation - otherCooperation)
-				
-				if intelligenceDiff < 0.5 && cooperationDiff < 0.3 && 
+
+				if intelligenceDiff < 0.5 && cooperationDiff < 0.3 &&
 					otherIntelligence > 0.3 && otherCooperation > 0.4 {
 					nearbyEntities = append(nearbyEntities, other)
 				}
@@ -3685,8 +3680,8 @@ func (w *World) attemptHiveMindFormation() {
 			// Try to form hive mind
 			hiveMind := w.HiveMindSystem.TryFormHiveMind(nearbyEntities, hiveType)
 			if hiveMind != nil {
-				w.EventLogger.LogWorldEvent(w.Tick, "hive_mind_formed", 
-					fmt.Sprintf("New %s hive mind formed with %d members", 
+				w.EventLogger.LogWorldEvent(w.Tick, "hive_mind_formed",
+					fmt.Sprintf("New %s hive mind formed with %d members",
 						hiveType, len(hiveMind.Members)))
 			}
 		}
@@ -3709,7 +3704,7 @@ func (w *World) attemptCasteColonyFormation() {
 		intelligence := entity.GetTrait("intelligence")
 		cooperation := entity.GetTrait("cooperation")
 		endurance := entity.GetTrait("endurance")
-		
+
 		// Use available traits with more achievable requirements
 		if intelligence > 0.2 && cooperation > 0.3 && endurance > 0.2 {
 			// Find nearby compatible entities for colony
@@ -3725,9 +3720,9 @@ func (w *World) attemptCasteColonyFormation() {
 				if distance < 20.0 {
 					otherCooperation := other.GetTrait("cooperation")
 					otherIntelligence := other.GetTrait("intelligence")
-					
+
 					// Check species compatibility and cooperation (relaxed requirements)
-					if other.Species == entity.Species && 
+					if other.Species == entity.Species &&
 						otherCooperation > 0.2 && otherIntelligence > 0.0 {
 						nearbyEntities = append(nearbyEntities, other)
 					}
@@ -3737,14 +3732,14 @@ func (w *World) attemptCasteColonyFormation() {
 			if len(nearbyEntities) >= 4 { // Minimum for caste colony (reduced from 6)
 				// Choose nest location
 				nestLocation := entity.Position
-				
+
 				// Try to form colony
 				colony := w.CasteSystem.TryFormCasteColony(nearbyEntities, nestLocation)
 				if colony != nil {
 					w.EventLogger.LogWorldEvent(w.Tick, "caste_colony_formed",
-						fmt.Sprintf("New caste colony formed with %d members and %d caste types", 
+						fmt.Sprintf("New caste colony formed with %d members and %d caste types",
 							colony.ColonySize, len(colony.CasteDistribution)))
-					
+
 					// Create a corresponding tribe for civilization system integration
 					if w.CivilizationSystem != nil {
 						tribeName := fmt.Sprintf("Colony-%d", colony.ID)
@@ -3767,7 +3762,7 @@ func (w *World) attemptSwarmFormation() {
 
 	// Look for entities with high swarm capability
 	swarmCandidates := make([]*Entity, 0)
-	
+
 	for _, entity := range w.AllEntities {
 		if !entity.IsAlive {
 			continue
@@ -3775,7 +3770,7 @@ func (w *World) attemptSwarmFormation() {
 
 		swarmCapability := entity.GetTrait("swarm_capability")
 		cooperation := entity.GetTrait("cooperation")
-		
+
 		// Check if already in a swarm
 		if entity.GetTrait("swarm_member") > 0.0 {
 			continue
@@ -3792,13 +3787,13 @@ func (w *World) attemptSwarmFormation() {
 
 	// Group candidates by proximity and species
 	proximityGroups := make(map[string][]*Entity)
-	
+
 	for _, entity := range swarmCandidates {
 		// Create a key based on position and species
-		posKey := fmt.Sprintf("%s_%.0f_%.0f", entity.Species, 
-			math.Floor(entity.Position.X/20.0)*20.0, 
+		posKey := fmt.Sprintf("%s_%.0f_%.0f", entity.Species,
+			math.Floor(entity.Position.X/20.0)*20.0,
 			math.Floor(entity.Position.Y/20.0)*20.0)
-		
+
 		if _, exists := proximityGroups[posKey]; !exists {
 			proximityGroups[posKey] = make([]*Entity, 0)
 		}
@@ -3812,7 +3807,7 @@ func (w *World) attemptSwarmFormation() {
 			avgAggression := 0.0
 			avgExploration := 0.0
 			avgEnergy := 0.0
-			
+
 			for _, entity := range group {
 				avgAggression += entity.GetTrait("aggression")
 				avgExploration += entity.GetTrait("exploration_drive")
@@ -3837,36 +3832,16 @@ func (w *World) attemptSwarmFormation() {
 			swarm := w.InsectSystem.CreateSwarmUnit(group, purpose)
 			if swarm != nil {
 				w.EventLogger.LogWorldEvent(w.Tick, "swarm_formed",
-					fmt.Sprintf("New %s swarm formed with %d members", 
+					fmt.Sprintf("New %s swarm formed with %d members",
 						purpose, len(swarm.Members)))
 
 				// Create pheromone trail for the swarm
 				if len(swarm.Members) > 0 && swarm.LeaderEntity != nil {
 					// Create trail from swarm center to target
-					w.InsectSystem.CreatePheromoneTrail(swarm.LeaderEntity, TrailPheromone, 
+					w.InsectSystem.CreatePheromoneTrail(swarm.LeaderEntity, TrailPheromone,
 						swarm.CenterPosition, swarm.TargetPosition)
 				}
 			}
-		}
-	}
-}
-
-// enhanceEntitiesWithSpecializedSystems adds insect traits and caste status to suitable entities
-func (w *World) enhanceEntitiesWithSpecializedSystems() {
-	for _, entity := range w.AllEntities {
-		if !entity.IsAlive {
-			continue
-		}
-
-		// Add insect traits to suitable entities
-		if IsEntityInsectLike(entity) {
-			AddInsectTraitsToEntity(entity)
-			AddPollinatorTraitsToEntity(entity) // Add pollinator traits for insect-like entities
-		}
-
-		// Add caste status to entities that don't have it
-		if entity.CasteStatus == nil {
-			AddCasteStatusToEntity(entity)
 		}
 	}
 }
@@ -3876,10 +3851,10 @@ func (w *World) CreateOffspring(parent1, parent2 *Entity) *Entity {
 	if parent1 == nil || parent2 == nil || !parent1.IsAlive || !parent2.IsAlive {
 		return nil
 	}
-	
+
 	// Generate new ID
 	w.NextID++
-	
+
 	// Create offspring with traits from both parents
 	offspring := &Entity{
 		ID:         w.NextID,
@@ -3891,50 +3866,50 @@ func (w *World) CreateOffspring(parent1, parent2 *Entity) *Entity {
 		Species:    parent1.Species, // Inherit species from first parent
 		Generation: max(parent1.Generation, parent2.Generation) + 1,
 	}
-	
+
 	// Position offspring near parents
 	offspring.Position = Position{
 		X: (parent1.Position.X + parent2.Position.X) / 2.0,
 		Y: (parent1.Position.Y + parent2.Position.Y) / 2.0,
 	}
-	
+
 	// Inherit traits from both parents with some variation
 	for traitName := range parent1.Traits {
 		parent1Value := parent1.Traits[traitName].Value
 		parent2Value := parent2.Traits[traitName].Value
-		
+
 		// Average parent values with some random variation
 		avgValue := (parent1Value + parent2Value) / 2.0
 		variation := (rand.Float64() - 0.5) * 0.2 // Small random variation
 		finalValue := avgValue + variation
-		
+
 		// Clamp to reasonable bounds
 		finalValue = math.Max(-1.0, math.Min(1.0, finalValue))
-		
+
 		offspring.Traits[traitName] = Trait{
 			Name:  traitName,
 			Value: finalValue,
 		}
 	}
-	
+
 	// Initialize molecular systems for offspring
 	offspring.MolecularNeeds = NewMolecularNeeds(offspring)
 	offspring.MolecularMetabolism = NewMolecularMetabolism(offspring)
 	offspring.MolecularProfile = CreateEntityMolecularProfile(offspring)
-	
+
 	// Initialize other systems
 	offspring.DietaryMemory = NewDietaryMemory()
 	offspring.EnvironmentalMemory = NewEnvironmentalMemory()
-	
+
 	offspring.ReproductionStatus = NewReproductionStatus()
-	
+
 	// Add enhanced systems
 	AddCasteStatusToEntity(offspring)
 	if IsEntityInsectLike(offspring) {
 		AddInsectTraitsToEntity(offspring)
 		AddPollinatorTraitsToEntity(offspring)
 	}
-	
+
 	return offspring
 }
 
@@ -3943,7 +3918,7 @@ func (w *World) checkPlayerSpeciesEvents() {
 	if w.PlayerEventsCallback == nil {
 		return
 	}
-	
+
 	// Check for extinctions
 	for speciesName, previousCount := range w.PreviousPopulationCounts {
 		if population, exists := w.Populations[speciesName]; exists {
@@ -3954,7 +3929,7 @@ func (w *World) checkPlayerSpeciesEvents() {
 					aliveCount++
 				}
 			}
-			
+
 			// Check for extinction (no alive entities)
 			if previousCount > 0 && aliveCount == 0 {
 				w.PlayerEventsCallback("species_extinct", map[string]interface{}{
@@ -3974,7 +3949,7 @@ func (w *World) checkPlayerSpeciesEvents() {
 			}
 		}
 	}
-	
+
 	// Check for new species (potential splits)
 	for speciesName, population := range w.Populations {
 		if _, existed := w.PreviousPopulationCounts[speciesName]; !existed {
@@ -3985,16 +3960,16 @@ func (w *World) checkPlayerSpeciesEvents() {
 					aliveCount++
 				}
 			}
-			
+
 			if aliveCount > 0 {
 				// Check if this could be a sub-species (similar name pattern)
 				parentSpecies := w.findPotentialParentSpecies(speciesName)
 				if parentSpecies != "" {
 					w.PlayerEventsCallback("subspecies_formed", map[string]interface{}{
-						"species_name":     speciesName,
-						"parent_species":   parentSpecies,
-						"entity_count":     aliveCount,
-						"tick":             w.Tick,
+						"species_name":   speciesName,
+						"parent_species": parentSpecies,
+						"entity_count":   aliveCount,
+						"tick":           w.Tick,
 					})
 				} else {
 					w.PlayerEventsCallback("new_species_detected", map[string]interface{}{
@@ -4006,7 +3981,7 @@ func (w *World) checkPlayerSpeciesEvents() {
 			}
 		}
 	}
-	
+
 	// Update previous counts for next check
 	for speciesName, population := range w.Populations {
 		aliveCount := 0
@@ -4033,7 +4008,7 @@ func (w *World) findPotentialParentSpecies(newSpeciesName string) string {
 				if len(newSpeciesName) < minLen {
 					minLen = len(newSpeciesName)
 				}
-				
+
 				for i := 0; i < minLen; i++ {
 					if existingSpecies[i] == newSpeciesName[i] {
 						commonPrefix++
@@ -4041,7 +4016,7 @@ func (w *World) findPotentialParentSpecies(newSpeciesName string) string {
 						break
 					}
 				}
-				
+
 				// If more than 50% of the shorter name matches, consider it related
 				if float64(commonPrefix)/float64(minLen) > 0.5 {
 					return existingSpecies
@@ -4075,16 +4050,16 @@ func (w *World) getExpectedElevationForBiome(biomeType BiomeType) float64 {
 // updateEnhancedEnvironmentalEvents processes active enhanced environmental events
 func (w *World) updateEnhancedEnvironmentalEvents() {
 	activeEvents := make([]*EnhancedEnvironmentalEvent, 0)
-	
+
 	for _, event := range w.EnvironmentalEvents {
 		event.Duration--
-		
+
 		// Update event position and spread if it's moving/spreading
 		w.updateEventMovement(event)
-		
+
 		// Apply event effects
 		w.applyEventEffects(event)
-		
+
 		// Check if event should continue
 		if event.Duration > 0 && event.Intensity > 0.1 {
 			activeEvents = append(activeEvents, event)
@@ -4097,8 +4072,8 @@ func (w *World) updateEnhancedEnvironmentalEvents() {
 					Type:        "environmental_event_end",
 					Description: fmt.Sprintf("%s ended after %d ticks", event.Name, w.Tick-event.StartTick),
 					Data: map[string]interface{}{
-						"event_type": event.Type,
-						"duration": w.Tick - event.StartTick,
+						"event_type":     event.Type,
+						"duration":       w.Tick - event.StartTick,
 						"affected_cells": len(event.AffectedCells),
 					},
 				}
@@ -4106,7 +4081,7 @@ func (w *World) updateEnhancedEnvironmentalEvents() {
 			}
 		}
 	}
-	
+
 	w.EnvironmentalEvents = activeEvents
 }
 
@@ -4129,26 +4104,26 @@ func (w *World) updateFireSpread(fire *EnhancedEnvironmentalEvent) {
 	if !fire.WindSensitive || w.WindSystem == nil {
 		return
 	}
-	
+
 	// Get wind direction and strength at fire location
 	windVector := w.getWindAtPosition(fire.Position)
-	
+
 	// Wind affects fire direction and speed
-	windInfluence := windVector.Strength * 0.5 // Wind contributes up to 50% to fire movement
+	windInfluence := windVector.Strength * 0.5              // Wind contributes up to 50% to fire movement
 	fire.Direction = math.Atan2(windVector.Y, windVector.X) // Wind direction in radians
-	fire.Speed = 0.5 + windInfluence // Base speed plus wind boost
-	
+	fire.Speed = 0.5 + windInfluence                        // Base speed plus wind boost
+
 	// Move fire center
 	fire.Position.X += fire.Speed * math.Cos(fire.Direction)
 	fire.Position.Y += fire.Speed * math.Sin(fire.Direction)
-	
+
 	// Spread fire to new cells
 	newAffectedCells := make(map[Position]BiomeType)
-	
+
 	// Current fire radius expands slightly each tick
-	currentRadius := math.Min(fire.Radius + 0.5, fire.MaxRadius)
+	currentRadius := math.Min(fire.Radius+0.5, fire.MaxRadius)
 	fire.Radius = currentRadius
-	
+
 	// Check cells within fire radius
 	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
 		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
@@ -4156,13 +4131,13 @@ func (w *World) updateFireSpread(fire *EnhancedEnvironmentalEvent) {
 				X: fire.Position.X + float64(dx),
 				Y: fire.Position.Y + float64(dy),
 			}
-			
+
 			distance := math.Sqrt(float64(dx*dx + dy*dy))
 			if distance <= currentRadius {
 				gridX, gridY := int(cellPos.X), int(cellPos.Y)
 				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
 					currentBiome := w.Grid[gridY][gridX].Biome
-					
+
 					// Check if fire can spread to this biome
 					if w.isFlammableBiome(currentBiome) {
 						// Fire spreads more easily with wind in the right direction
@@ -4172,8 +4147,8 @@ func (w *World) updateFireSpread(fire *EnhancedEnvironmentalEvent) {
 							directionAlignment := math.Cos(cellDirection - fire.Direction)
 							windBonus = windInfluence * directionAlignment * 0.3
 						}
-						
-						spreadProbability := 0.6 + windBonus - (distance / currentRadius) * 0.3
+
+						spreadProbability := 0.6 + windBonus - (distance/currentRadius)*0.3
 						if rand.Float64() < spreadProbability {
 							newAffectedCells[cellPos] = BiomeDesert // Fire turns vegetation to desert
 						}
@@ -4185,7 +4160,7 @@ func (w *World) updateFireSpread(fire *EnhancedEnvironmentalEvent) {
 			}
 		}
 	}
-	
+
 	// Add new affected cells
 	for pos, newBiome := range newAffectedCells {
 		fire.AffectedCells[pos] = newBiome
@@ -4197,23 +4172,23 @@ func (w *World) updateStormMovement(storm *EnhancedEnvironmentalEvent) {
 	if w.WindSystem == nil {
 		return
 	}
-	
+
 	// Storms follow regional wind patterns
 	baseWind := w.WindSystem.BaseWindDirection
-	
+
 	// Add some randomness to storm movement
 	stormDirection := baseWind + (rand.Float64()-0.5)*0.5 // ±0.25 radians variation
-	
+
 	storm.Direction = stormDirection
-	storm.Speed = 1.0 + w.WindSystem.BaseWindStrength * 0.5
-	
+	storm.Speed = 1.0 + w.WindSystem.BaseWindStrength*0.5
+
 	// Move storm
 	storm.Position.X += storm.Speed * math.Cos(storm.Direction)
 	storm.Position.Y += storm.Speed * math.Sin(storm.Direction)
-	
+
 	// Update affected cells as storm moves
 	newAffectedCells := make(map[Position]BiomeType)
-	
+
 	for dy := -int(storm.Radius); dy <= int(storm.Radius); dy++ {
 		for dx := -int(storm.Radius); dx <= int(storm.Radius); dx++ {
 			distance := math.Sqrt(float64(dx*dx + dy*dy))
@@ -4222,11 +4197,11 @@ func (w *World) updateStormMovement(storm *EnhancedEnvironmentalEvent) {
 					X: storm.Position.X + float64(dx),
 					Y: storm.Position.Y + float64(dy),
 				}
-				
+
 				gridX, gridY := int(cellPos.X), int(cellPos.Y)
 				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
 					currentBiome := w.Grid[gridY][gridX].Biome
-					
+
 					// Storm effects depend on type and current biome
 					if storm.Type == "hurricane" || storm.Type == "tornado" {
 						// Destructive storms can create wasteland
@@ -4243,18 +4218,18 @@ func (w *World) updateStormMovement(storm *EnhancedEnvironmentalEvent) {
 			}
 		}
 	}
-	
+
 	storm.AffectedCells = newAffectedCells
 }
 
 // updateVolcanicSpread handles volcanic eruption spreading
 func (w *World) updateVolcanicSpread(volcano *EnhancedEnvironmentalEvent) {
 	// Volcanic events spread outward from center
-	currentRadius := math.Min(volcano.Radius + 0.3, volcano.MaxRadius)
+	currentRadius := math.Min(volcano.Radius+0.3, volcano.MaxRadius)
 	volcano.Radius = currentRadius
-	
+
 	newAffectedCells := make(map[Position]BiomeType)
-	
+
 	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
 		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
 			distance := math.Sqrt(float64(dx*dx + dy*dy))
@@ -4263,11 +4238,11 @@ func (w *World) updateVolcanicSpread(volcano *EnhancedEnvironmentalEvent) {
 					X: volcano.Position.X + float64(dx),
 					Y: volcano.Position.Y + float64(dy),
 				}
-				
+
 				gridX, gridY := int(cellPos.X), int(cellPos.Y)
 				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
 					// Close to center becomes mountain, further out becomes radiation (lava)
-					if distance < currentRadius * 0.3 {
+					if distance < currentRadius*0.3 {
 						newAffectedCells[cellPos] = BiomeMountain
 					} else if rand.Float64() < 0.7 {
 						newAffectedCells[cellPos] = BiomeRadiation
@@ -4276,7 +4251,7 @@ func (w *World) updateVolcanicSpread(volcano *EnhancedEnvironmentalEvent) {
 			}
 		}
 	}
-	
+
 	// Add new affected cells
 	for pos, newBiome := range newAffectedCells {
 		volcano.AffectedCells[pos] = newBiome
@@ -4286,11 +4261,11 @@ func (w *World) updateVolcanicSpread(volcano *EnhancedEnvironmentalEvent) {
 // updateFloodSpread handles flood spreading
 func (w *World) updateFloodSpread(flood *EnhancedEnvironmentalEvent) {
 	// Floods spread to lower elevation areas
-	currentRadius := math.Min(flood.Radius + 0.4, flood.MaxRadius)
+	currentRadius := math.Min(flood.Radius+0.4, flood.MaxRadius)
 	flood.Radius = currentRadius
-	
+
 	newAffectedCells := make(map[Position]BiomeType)
-	
+
 	for dy := -int(currentRadius); dy <= int(currentRadius); dy++ {
 		for dx := -int(currentRadius); dx <= int(currentRadius); dx++ {
 			distance := math.Sqrt(float64(dx*dx + dy*dy))
@@ -4299,11 +4274,11 @@ func (w *World) updateFloodSpread(flood *EnhancedEnvironmentalEvent) {
 					X: flood.Position.X + float64(dx),
 					Y: flood.Position.Y + float64(dy),
 				}
-				
+
 				gridX, gridY := int(cellPos.X), int(cellPos.Y)
 				if gridX >= 0 && gridX < w.Config.GridWidth && gridY >= 0 && gridY < w.Config.GridHeight {
 					currentBiome := w.Grid[gridY][gridX].Biome
-					
+
 					// Floods turn plains/desert to swamp/water
 					if currentBiome == BiomePlains || currentBiome == BiomeDesert {
 						if rand.Float64() < 0.6 {
@@ -4314,7 +4289,7 @@ func (w *World) updateFloodSpread(flood *EnhancedEnvironmentalEvent) {
 			}
 		}
 	}
-	
+
 	flood.AffectedCells = newAffectedCells
 }
 
@@ -4327,25 +4302,25 @@ func (w *World) applyEventEffects(event *EnhancedEnvironmentalEvent) {
 			w.Grid[gridY][gridX].Biome = newBiome
 		}
 	}
-	
+
 	// Apply effects to entities and plants in the affected area
 	for _, entity := range w.AllEntities {
 		if !entity.IsAlive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(entity.Position.X-event.Position.X, 2) + 
-							 math.Pow(entity.Position.Y-event.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(entity.Position.X-event.Position.X, 2) +
+			math.Pow(entity.Position.Y-event.Position.Y, 2))
+
 		if distance <= event.Radius {
 			// Apply event-specific effects
 			intensity := (event.Radius - distance) / event.Radius // Stronger closer to center
-			
+
 			if mutationEffect, exists := event.Effects["mutation"]; exists {
 				// Apply mutation by directly calling the Mutate method
-				entity.Mutate(mutationEffect * intensity, 0.1)
+				entity.Mutate(mutationEffect*intensity, 0.1)
 			}
-			
+
 			if damageEffect, exists := event.Effects["damage"]; exists {
 				entity.Energy -= damageEffect * intensity
 				if entity.Energy < 0 {
@@ -4354,19 +4329,19 @@ func (w *World) applyEventEffects(event *EnhancedEnvironmentalEvent) {
 			}
 		}
 	}
-	
+
 	// Apply effects to plants
 	for _, plant := range w.AllPlants {
 		if !plant.IsAlive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(plant.Position.X-event.Position.X, 2) + 
-							 math.Pow(plant.Position.Y-event.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(plant.Position.X-event.Position.X, 2) +
+			math.Pow(plant.Position.Y-event.Position.Y, 2))
+
 		if distance <= event.Radius {
 			intensity := (event.Radius - distance) / event.Radius
-			
+
 			// Fire kills plants
 			if event.Type == "wildfire" {
 				plant.Energy -= 50 * intensity
@@ -4383,23 +4358,23 @@ func (w *World) applyEventEffects(event *EnhancedEnvironmentalEvent) {
 func (w *World) triggerEnhancedEnvironmentalEvent() {
 	eventTypes := []string{"wildfire", "storm", "volcanic_eruption", "flood", "hurricane", "tornado"}
 	eventType := eventTypes[rand.Intn(len(eventTypes))]
-	
+
 	// Random position for event
 	pos := Position{
 		X: rand.Float64() * float64(w.Config.GridWidth),
 		Y: rand.Float64() * float64(w.Config.GridHeight),
 	}
-	
+
 	event := &EnhancedEnvironmentalEvent{
-		ID:          w.NextEnvironmentalEventID,
-		Type:        eventType,
-		StartTick:   w.Tick,
-		Position:    pos,
+		ID:            w.NextEnvironmentalEventID,
+		Type:          eventType,
+		StartTick:     w.Tick,
+		Position:      pos,
 		AffectedCells: make(map[Position]BiomeType),
-		Effects:     make(map[string]float64),
+		Effects:       make(map[string]float64),
 	}
 	w.NextEnvironmentalEventID++
-	
+
 	// Configure event based on type
 	switch eventType {
 	case "wildfire":
@@ -4414,7 +4389,7 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 		event.ExtinguishOn = []BiomeType{BiomeWater, BiomeDeepWater, BiomeIce, BiomeSwamp}
 		event.Effects["damage"] = 2.0
 		event.Effects["mutation"] = 0.05
-		
+
 	case "storm":
 		event.Name = "Storm"
 		event.Description = "Heavy rainfall and wind"
@@ -4426,7 +4401,7 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 		event.SpreadPattern = "directional"
 		event.Effects["damage"] = 0.5
 		event.Effects["mutation"] = 0.02
-		
+
 	case "volcanic_eruption":
 		event.Name = "Volcanic Eruption"
 		event.Description = "Lava flows reshape the landscape"
@@ -4438,7 +4413,7 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 		event.SpreadPattern = "circular"
 		event.Effects["damage"] = 4.0
 		event.Effects["mutation"] = 0.15
-		
+
 	case "flood":
 		event.Name = "Great Flood"
 		event.Description = "Rising waters flood the land"
@@ -4450,7 +4425,7 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 		event.SpreadPattern = "circular"
 		event.Effects["damage"] = 1.5
 		event.Effects["mutation"] = 0.03
-		
+
 	case "hurricane":
 		event.Name = "Hurricane"
 		event.Description = "Massive rotating storm system"
@@ -4462,7 +4437,7 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 		event.SpreadPattern = "directional"
 		event.Effects["damage"] = 3.0
 		event.Effects["mutation"] = 0.08
-		
+
 	case "tornado":
 		event.Name = "Tornado"
 		event.Description = "Destructive rotating windstorm"
@@ -4476,9 +4451,9 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 		event.Effects["damage"] = 5.0
 		event.Effects["mutation"] = 0.1
 	}
-	
+
 	w.EnvironmentalEvents = append(w.EnvironmentalEvents, event)
-	
+
 	// Log event start
 	if w.EventLogger != nil {
 		startEvent := LogEvent{
@@ -4490,8 +4465,8 @@ func (w *World) triggerEnhancedEnvironmentalEvent() {
 				"event_type": event.Type,
 				"position_x": event.Position.X,
 				"position_y": event.Position.Y,
-				"intensity": event.Intensity,
-				"duration": event.Duration,
+				"intensity":  event.Intensity,
+				"duration":   event.Duration,
 			},
 		}
 		w.EventLogger.addEvent(startEvent)
@@ -4505,19 +4480,19 @@ func (w *World) getWindAtPosition(pos Position) WindVector {
 	if w.WindSystem == nil {
 		return WindVector{X: 0, Y: 0, Strength: 0}
 	}
-	
+
 	// Convert world position to wind map coordinates
 	windX := int(pos.X / w.WindSystem.CellSize)
 	windY := int(pos.Y / w.WindSystem.CellSize)
-	
+
 	if windX >= 0 && windX < w.WindSystem.MapWidth && windY >= 0 && windY < w.WindSystem.MapHeight {
 		return w.WindSystem.WindMap[windY][windX]
 	}
-	
+
 	// Return base wind as fallback
 	return WindVector{
-		X: math.Cos(w.WindSystem.BaseWindDirection),
-		Y: math.Sin(w.WindSystem.BaseWindDirection),
+		X:        math.Cos(w.WindSystem.BaseWindDirection),
+		Y:        math.Sin(w.WindSystem.BaseWindDirection),
 		Strength: w.WindSystem.BaseWindStrength,
 	}
 }
@@ -4527,7 +4502,7 @@ func (w *World) isFlammableBiome(biome BiomeType) bool {
 	flammableBiomes := []BiomeType{
 		BiomeForest, BiomeRainforest, BiomePlains, BiomeTundra,
 	}
-	
+
 	for _, flammable := range flammableBiomes {
 		if biome == flammable {
 			return true
@@ -4541,7 +4516,7 @@ func (w *World) isFireExtinguishingBiome(biome BiomeType) bool {
 	extinguishingBiomes := []BiomeType{
 		BiomeWater, BiomeDeepWater, BiomeIce, BiomeSwamp,
 	}
-	
+
 	for _, extinguishing := range extinguishingBiomes {
 		if biome == extinguishing {
 			return true
@@ -4558,19 +4533,19 @@ func (w *World) processDecayNutrientsToSoil() {
 		if decayItem.IsDecayed {
 			continue // Already processed
 		}
-		
+
 		// Get grid cell for decay item location
 		gridX := int((decayItem.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
 		gridY := int((decayItem.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
-		
+
 		// Clamp to grid bounds
 		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-		
+
 		gridCell := &w.Grid[gridY][gridX]
-		
+
 		// Add nutrients gradually as item decays
-		decayProgress := float64(w.Tick - decayItem.CreationTick) / float64(decayItem.DecayPeriod)
+		decayProgress := float64(w.Tick-decayItem.CreationTick) / float64(decayItem.DecayPeriod)
 		if decayProgress > 0.1 { // Start releasing nutrients after 10% decay
 			addDecayNutrientsToSoil(gridCell, decayItem)
 		}
@@ -4585,9 +4560,9 @@ func (w *World) processWeatherEffectsOnSoil() {
 			// Calculate rainfall from storm
 			for y := 0; y < w.Config.GridHeight; y++ {
 				for x := 0; x < w.Config.GridWidth; x++ {
-					distance := math.Sqrt(math.Pow(float64(x)-event.Position.X, 2) + 
-										 math.Pow(float64(y)-event.Position.Y, 2))
-					
+					distance := math.Sqrt(math.Pow(float64(x)-event.Position.X, 2) +
+						math.Pow(float64(y)-event.Position.Y, 2))
+
 					if distance <= event.Radius {
 						intensity := (event.Radius - distance) / event.Radius * event.Intensity
 						processRainfall(&w.Grid[y][x], intensity)
@@ -4596,11 +4571,11 @@ func (w *World) processWeatherEffectsOnSoil() {
 			}
 		}
 	}
-	
+
 	// Seasonal rainfall patterns
 	currentTimeState := w.AdvancedTimeSystem.GetTimeState()
 	seasonalRainfall := 0.0
-	
+
 	switch currentTimeState.Season {
 	case Spring:
 		seasonalRainfall = 0.02 // Moderate spring rains
@@ -4611,7 +4586,7 @@ func (w *World) processWeatherEffectsOnSoil() {
 	case Winter:
 		seasonalRainfall = 0.015 // Light winter precipitation
 	}
-	
+
 	// Apply seasonal rainfall randomly across the world
 	if rand.Float64() < 0.3 { // 30% chance of rain each tick
 		for y := 0; y < w.Config.GridHeight; y++ {
@@ -4624,12 +4599,11 @@ func (w *World) processWeatherEffectsOnSoil() {
 	}
 }
 
-
 // getSeasonName converts Season enum to string
 func getSeasonName(season Season) string {
-switch season {
-case Spring:
-return "spring"
+	switch season {
+	case Spring:
+		return "spring"
 	case Summer:
 		return "summer"
 	case Autumn:
@@ -4655,37 +4629,37 @@ func (w *World) processMassDieOffImpacts(deathsBySpecies map[string]int, totalDe
 	if populationSize == 0 {
 		return
 	}
-	
+
 	// Calculate death rate as percentage of population
 	deathRate := float64(totalDeaths) / float64(populationSize)
-	
+
 	// Mass die-off thresholds
-	massDieOffThreshold := 0.15 // 15% population death in one tick
+	massDieOffThreshold := 0.15   // 15% population death in one tick
 	catastrophicThreshold := 0.30 // 30% population death in one tick
-	
+
 	if deathRate >= massDieOffThreshold {
 		// Mass die-off detected - enhance resource cycling
 		w.processMassDieOffEffects(deathsBySpecies, totalDeaths, deathRate)
-		
+
 		// Log the event
 		severity := "mass_die_off"
 		if deathRate >= catastrophicThreshold {
 			severity = "catastrophic_die_off"
 		}
-		
+
 		eventDetails := make(map[string]interface{})
 		eventDetails["death_rate"] = deathRate
 		eventDetails["total_deaths"] = totalDeaths
 		eventDetails["species_affected"] = deathsBySpecies
 		eventDetails["population_before"] = populationSize + totalDeaths
-		
+
 		if w.EventLogger != nil {
-			w.EventLogger.LogWorldEvent(w.Tick, severity, 
+			w.EventLogger.LogWorldEvent(w.Tick, severity,
 				fmt.Sprintf("%s event: %.1f%% population loss (%d deaths)", severity, deathRate*100, totalDeaths))
 		}
-		
+
 		if w.StatisticalReporter != nil {
-			w.StatisticalReporter.LogSystemEvent(w.Tick, severity, 
+			w.StatisticalReporter.LogSystemEvent(w.Tick, severity,
 				fmt.Sprintf("%.1f%% population died", deathRate*100), eventDetails)
 		}
 	}
@@ -4694,17 +4668,17 @@ func (w *World) processMassDieOffImpacts(deathsBySpecies map[string]int, totalDe
 // processMassDieOffEffects applies environmental impacts from mass death events
 func (w *World) processMassDieOffEffects(deathsBySpecies map[string]int, totalDeaths int, deathRate float64) {
 	// Calculate intensity of environmental impact
-	impactIntensity := math.Min(deathRate * 3.0, 1.0) // Cap at 1.0
-	
+	impactIntensity := math.Min(deathRate*3.0, 1.0) // Cap at 1.0
+
 	// 1. Nutrient enrichment from mass decomposition
 	w.enhanceNutrientCycling(impactIntensity, totalDeaths)
-	
+
 	// 2. Disease/contamination effects
 	w.applyContaminationEffects(impactIntensity)
-	
+
 	// 3. Ecological disruption - remove key species interactions
 	w.processEcologicalDisruption(deathsBySpecies, impactIntensity)
-	
+
 	// 4. Scavenger opportunities - boost surviving carnivores
 	w.boostScavengerOpportunities(impactIntensity)
 }
@@ -4713,22 +4687,22 @@ func (w *World) processMassDieOffEffects(deathsBySpecies map[string]int, totalDe
 func (w *World) enhanceNutrientCycling(intensity float64, totalDeaths int) {
 	// Add extra nutrients to random locations based on death count
 	nutrientBoostCount := int(float64(totalDeaths) * intensity * 0.5)
-	
+
 	for i := 0; i < nutrientBoostCount; i++ {
 		x := rand.Intn(w.Config.GridWidth)
 		y := rand.Intn(w.Config.GridHeight)
-		
+
 		// Enhance soil nutrients
 		cell := &w.Grid[y][x]
 		if cell.SoilNutrients == nil {
 			cell.SoilNutrients = make(map[string]float64)
 		}
-		
+
 		// Add decomposition nutrients
 		cell.SoilNutrients["nitrogen"] += 0.3 * intensity
 		cell.SoilNutrients["phosphorus"] += 0.2 * intensity
 		cell.SoilNutrients["organic_matter"] += 0.4 * intensity
-		
+
 		// Cap nutrients to prevent unrealistic levels
 		for nutrient := range cell.SoilNutrients {
 			cell.SoilNutrients[nutrient] = math.Min(cell.SoilNutrients[nutrient], 2.0)
@@ -4740,13 +4714,13 @@ func (w *World) enhanceNutrientCycling(intensity float64, totalDeaths int) {
 func (w *World) applyContaminationEffects(intensity float64) {
 	// Create temporary contamination zones
 	contaminationCount := int(intensity * 10) // More contamination with higher death rates
-	
+
 	for i := 0; i < contaminationCount; i++ {
 		x := rand.Intn(w.Config.GridWidth)
 		y := rand.Intn(w.Config.GridHeight)
-		
+
 		cell := &w.Grid[y][x]
-		
+
 		// Temporary contamination that affects entity health
 		if cell.Event == nil {
 			cell.Event = &WorldEvent{
@@ -4770,7 +4744,7 @@ func (w *World) processEcologicalDisruption(deathsBySpecies map[string]int, inte
 				if entity.IsAlive && entity.DietaryMemory != nil {
 					if pref, exists := entity.DietaryMemory.PreySpeciesPreferences[species]; exists {
 						// Reduce preference as species becomes rarer
-						reductionFactor := math.Min(float64(deaths) * 0.1 * intensity, 0.5)
+						reductionFactor := math.Min(float64(deaths)*0.1*intensity, 0.5)
 						newPref := pref * (1.0 - reductionFactor)
 						if newPref < 0.1 {
 							delete(entity.DietaryMemory.PreySpeciesPreferences, species)
@@ -4787,19 +4761,19 @@ func (w *World) processEcologicalDisruption(deathsBySpecies map[string]int, inte
 // boostScavengerOpportunities provides benefits to surviving carnivores/omnivores
 func (w *World) boostScavengerOpportunities(intensity float64) {
 	energyBoost := 20.0 * intensity // Energy boost from scavenging opportunities
-	
+
 	for _, entity := range w.AllEntities {
 		if !entity.IsAlive {
 			continue
 		}
-		
+
 		// Carnivores and omnivores benefit from scavenging
 		if strings.Contains(entity.Species, "carnivore") || strings.Contains(entity.Species, "omnivore") {
 			entity.Energy += energyBoost
-			
+
 			// Improve dietary fitness due to abundance of food
 			if entity.DietaryMemory != nil {
-				entity.DietaryMemory.DietaryFitness = math.Min(1.0, entity.DietaryMemory.DietaryFitness + intensity*0.2)
+				entity.DietaryMemory.DietaryFitness = math.Min(1.0, entity.DietaryMemory.DietaryFitness+intensity*0.2)
 			}
 		}
 	}
@@ -4811,12 +4785,12 @@ func (w *World) attemptBasicToolsAndModifications() {
 	if len(w.AllEntities) == 0 {
 		return
 	}
-	
+
 	// Very low chance to create tools/modifications to make the systems visible
 	if rand.Float64() > 0.01 { // 1% chance per tick
 		return
 	}
-	
+
 	// Pick a random entity with decent intelligence
 	eligibleEntities := make([]*Entity, 0)
 	for _, entity := range w.AllEntities {
@@ -4824,13 +4798,13 @@ func (w *World) attemptBasicToolsAndModifications() {
 			eligibleEntities = append(eligibleEntities, entity)
 		}
 	}
-	
+
 	if len(eligibleEntities) == 0 {
 		return
 	}
-	
+
 	entity := eligibleEntities[rand.Intn(len(eligibleEntities))]
-	
+
 	// 50% chance for tool, 50% for environmental modification
 	if rand.Float64() < 0.5 {
 		// Create a basic tool
@@ -4878,29 +4852,29 @@ func (w *World) attemptBasicToolsAndModifications() {
 // calculateEnvironmentalFactors determines environmental conditions affecting metamorphosis
 func (w *World) calculateEnvironmentalFactors(entity *Entity, gridX, gridY int) map[string]float64 {
 	environment := make(map[string]float64)
-	
+
 	// Get grid cell information
 	cell := w.Grid[gridY][gridX]
-	
+
 	// Temperature based on biome and season
 	timeState := w.AdvancedTimeSystem.GetTimeState()
 	baseTemp := w.getBiomeTemperature(cell.Biome)
 	seasonalMod := w.getSeasonalTemperatureModifier(w.seasonToString(timeState.Season))
 	environment["temperature"] = baseTemp * seasonalMod
-	
+
 	// Humidity based on biome
 	environment["humidity"] = w.getBiomeHumidity(cell.Biome)
-	
+
 	// Food availability based on nearby plants and resources
 	foodCount := 0
 	totalNutrition := 0.0
 	searchRadius := 5
-	
+
 	for dx := -searchRadius; dx <= searchRadius; dx++ {
 		for dy := -searchRadius; dy <= searchRadius; dy++ {
 			checkX := gridX + dx
 			checkY := gridY + dy
-			
+
 			if checkX >= 0 && checkX < w.Config.GridWidth && checkY >= 0 && checkY < w.Config.GridHeight {
 				checkCell := w.Grid[checkY][checkX]
 				if len(checkCell.Plants) > 0 {
@@ -4914,22 +4888,22 @@ func (w *World) calculateEnvironmentalFactors(entity *Entity, gridX, gridY int) 
 			}
 		}
 	}
-	
+
 	if foodCount > 0 {
 		environment["food_availability"] = math.Min(1.0, totalNutrition/float64(foodCount)/100.0)
 	} else {
 		environment["food_availability"] = 0.0
 	}
-	
+
 	// Safety based on nearby predators and threats
 	threatLevel := 0.0
 	entityCount := 0
-	
+
 	for _, other := range w.AllEntities {
 		if other == nil || !other.IsAlive || other.ID == entity.ID {
 			continue
 		}
-		
+
 		distance := entity.DistanceTo(other)
 		if distance < 10.0 { // Within threat detection range
 			entityCount++
@@ -4939,18 +4913,18 @@ func (w *World) calculateEnvironmentalFactors(entity *Entity, gridX, gridY int) 
 			threatLevel += threat
 		}
 	}
-	
+
 	if entityCount > 0 {
 		avgThreat := threatLevel / float64(entityCount)
-		environment["safety"] = math.Max(0.0, 1.0 - avgThreat)
+		environment["safety"] = math.Max(0.0, 1.0-avgThreat)
 	} else {
 		environment["safety"] = 1.0
 	}
-	
+
 	// Population density
 	nearbyCount := float64(entityCount)
 	environment["population_density"] = math.Min(1.0, nearbyCount/20.0)
-	
+
 	return environment
 }
 
@@ -5030,22 +5004,22 @@ func (w *World) getSeasonalTemperatureModifier(season string) float64 {
 func (w *World) getTemperatureAt(pos Position) float64 {
 	biome := w.getBiomeAtPosition(pos.X, pos.Y)
 	baseTemp := w.getBiomeTemperature(biome)
-	
+
 	// Apply seasonal modifier
 	season := w.getCurrentSeason()
 	seasonMod := w.getSeasonalTemperatureModifier(season)
-	
+
 	// Add some randomness for micro-climates
 	randomVariation := (rand.Float64()*2 - 1) * 3.0 // ±3 degrees
-	
-	return baseTemp * seasonMod + randomVariation
+
+	return baseTemp*seasonMod + randomVariation
 }
 
 // getMoistureAt returns moisture level at a specific position
 func (w *World) getMoistureAt(pos Position) float64 {
 	biome := w.getBiomeAtPosition(pos.X, pos.Y)
 	baseMoisture := w.getBiomeHumidity(biome)
-	
+
 	// Apply seasonal effects
 	season := w.getCurrentSeason()
 	switch season {
@@ -5058,18 +5032,18 @@ func (w *World) getMoistureAt(pos Position) float64 {
 	case "winter":
 		baseMoisture *= 0.9 // Winter conditions
 	}
-	
+
 	// Add randomness for local weather
 	randomVariation := (rand.Float64()*2 - 1) * 0.2 // ±20%
-	
-	return math.Max(0.0, math.Min(1.0, baseMoisture + randomVariation))
+
+	return math.Max(0.0, math.Min(1.0, baseMoisture+randomVariation))
 }
 
 // getSunlightAt returns sunlight level at a specific position
 func (w *World) getSunlightAt(pos Position) float64 {
 	// Base sunlight depends on day/night cycle
-	dayTime := float64(w.Tick % 100) / 100.0 // 100 ticks per day
-	
+	dayTime := float64(w.Tick%100) / 100.0 // 100 ticks per day
+
 	var baseSunlight float64
 	if dayTime >= 0.25 && dayTime <= 0.75 { // Day time
 		// Peak at noon (0.5), fade at dawn/dusk
@@ -5081,7 +5055,7 @@ func (w *World) getSunlightAt(pos Position) float64 {
 	} else {
 		baseSunlight = 0.0 // Night time
 	}
-	
+
 	// Biome effects on sunlight
 	biome := w.getBiomeAtPosition(pos.X, pos.Y)
 	switch biome {
@@ -5094,7 +5068,7 @@ func (w *World) getSunlightAt(pos Position) float64 {
 	case BiomeHighAltitude:
 		baseSunlight *= 1.3 // High altitude has intense sunlight
 	}
-	
+
 	// Weather effects
 	if w.EnvironmentalEvents != nil {
 		for _, event := range w.EnvironmentalEvents {
@@ -5107,7 +5081,7 @@ func (w *World) getSunlightAt(pos Position) float64 {
 			}
 		}
 	}
-	
+
 	return math.Max(0.0, math.Min(1.0, baseSunlight))
 }
 
@@ -5121,11 +5095,11 @@ func (w *World) getCurrentSeason() string {
 	if w.AdvancedTimeSystem != nil {
 		return seasonToString(w.AdvancedTimeSystem.GetTimeState().Season)
 	}
-	
+
 	// Fallback: calculate season from tick
 	yearTick := w.Tick % (91 * 4) // 364 ticks per year (91 per season)
 	seasonTick := yearTick / 91
-	
+
 	switch seasonTick {
 	case 0:
 		return "spring"
@@ -5177,18 +5151,18 @@ func (w *World) processNeuralDecisions() {
 		if !entity.IsAlive || entity.GetTrait("intelligence") <= 0.3 {
 			continue // Skip dead or non-intelligent entities
 		}
-		
+
 		// Check if entity has a neural network
 		if w.NeuralAISystem.EntityNetworks[entity.ID] == nil {
 			continue // Network will be created on next update
 		}
-		
+
 		// Create environmental inputs for the neural network
 		environmentInputs := w.createEnvironmentalInputs(entity)
-		
+
 		// Get neural network decision
 		outputs := w.NeuralAISystem.ProcessNeuralDecision(entity, environmentInputs, w.Tick)
-		
+
 		// Apply neural decision to entity behavior
 		w.applyNeuralDecision(entity, outputs, environmentInputs)
 	}
@@ -5197,7 +5171,7 @@ func (w *World) processNeuralDecisions() {
 // createEnvironmentalInputs creates environmental input vector for neural network
 func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
 	inputs := make([]float64, 5) // 5 inputs: vision, energy, threat, food, social
-	
+
 	// Input 0: Vision/Environmental awareness (0-1)
 	// Based on entity's vision trait and nearby environment
 	vision := entity.GetTrait("vision")
@@ -5205,19 +5179,19 @@ func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
 	gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
 	gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 	gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
-	
+
 	// Environmental awareness based on biome favorability
 	biome := w.Grid[gridY][gridX].Biome
 	biomeScore := w.evaluateBiomeForEntity(entity, w.Biomes[biome])
-	inputs[0] = math.Max(0, math.Min(1, (biomeScore + 100) / 200)) * vision
-	
+	inputs[0] = math.Max(0, math.Min(1, (biomeScore+100)/200)) * vision
+
 	// Input 1: Energy level (0-1)
-	inputs[1] = math.Max(0, math.Min(1, entity.Energy / 100.0))
-	
+	inputs[1] = math.Max(0, math.Min(1, entity.Energy/100.0))
+
 	// Input 2: Threat level (0-1)
 	// Based on nearby dangerous entities and environmental threats
 	threatLevel := 0.0
-	
+
 	// Check for nearby aggressive entities
 	for _, other := range w.AllEntities {
 		if other.ID != entity.ID && other.IsAlive {
@@ -5229,30 +5203,30 @@ func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
 			}
 		}
 	}
-	
+
 	// Check for environmental threats (events, toxic biomes)
 	if w.Grid[gridY][gridX].Event != nil {
-		threatLevel = math.Max(threatLevel, w.Grid[gridY][gridX].Event.GlobalDamage / 50.0)
+		threatLevel = math.Max(threatLevel, w.Grid[gridY][gridX].Event.GlobalDamage/50.0)
 	}
-	
+
 	inputs[2] = math.Max(0, math.Min(1, threatLevel))
-	
+
 	// Input 3: Food availability (0-1)
 	// Based on nearby food sources (plants and prey)
 	foodLevel := 0.0
-	
+
 	// Check for nearby plants
 	for _, plant := range w.AllPlants {
 		if plant.IsAlive {
-			distance := math.Sqrt(math.Pow(entity.Position.X - plant.Position.X, 2) + 
-								  math.Pow(entity.Position.Y - plant.Position.Y, 2))
+			distance := math.Sqrt(math.Pow(entity.Position.X-plant.Position.X, 2) +
+				math.Pow(entity.Position.Y-plant.Position.Y, 2))
 			if distance < 15.0 { // Within foraging range
 				plantValue := plant.Energy / 100.0
 				foodLevel += plantValue * (15.0 - distance) / 15.0
 			}
 		}
 	}
-	
+
 	// Check for nearby prey entities (if carnivorous)
 	if entity.GetTrait("aggression") > 0.3 {
 		for _, other := range w.AllEntities {
@@ -5265,14 +5239,14 @@ func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
 			}
 		}
 	}
-	
-	inputs[3] = math.Max(0, math.Min(1, foodLevel / 3.0)) // Normalize
-	
+
+	inputs[3] = math.Max(0, math.Min(1, foodLevel/3.0)) // Normalize
+
 	// Input 4: Social interaction level (0-1)
 	// Based on nearby entities and cooperation opportunities
 	socialLevel := 0.0
 	cooperation := entity.GetTrait("cooperation")
-	
+
 	if cooperation > 0.3 {
 		nearbyEntities := 0
 		for _, other := range w.AllEntities {
@@ -5286,14 +5260,14 @@ func (w *World) createEnvironmentalInputs(entity *Entity) []float64 {
 				}
 			}
 		}
-		
+
 		if nearbyEntities > 0 {
 			socialLevel /= float64(nearbyEntities) // Average social interaction
 		}
 	}
-	
+
 	inputs[4] = math.Max(0, math.Min(1, socialLevel))
-	
+
 	return inputs
 }
 
@@ -5302,32 +5276,32 @@ func (w *World) applyNeuralDecision(entity *Entity, outputs []float64, inputs []
 	if len(outputs) < 3 {
 		return // Invalid output
 	}
-	
+
 	// Output 0: Movement X direction (-1 to 1)
 	// Output 1: Movement Y direction (-1 to 1)
 	// Output 2: Action intensity (0 to 1)
-	
+
 	moveX := outputs[0] // Already between -1 and 1 due to tanh activation
 	moveY := outputs[1]
 	actionIntensity := math.Max(0, math.Min(1, outputs[2])) // Ensure 0-1 range
-	
+
 	// Apply movement with neural decision
 	if math.Abs(moveX) > 0.1 || math.Abs(moveY) > 0.1 { // Only move if significant output
 		speed := entity.GetTrait("speed") * actionIntensity * 2.0 // Neural decision affects speed
-		
+
 		// Calculate target position
-		targetX := entity.Position.X + moveX * speed
-		targetY := entity.Position.Y + moveY * speed
-		
+		targetX := entity.Position.X + moveX*speed
+		targetY := entity.Position.Y + moveY*speed
+
 		// Apply environment-aware movement
 		gridX := int((entity.Position.X / w.Config.Width) * float64(w.Config.GridWidth))
 		gridY := int((entity.Position.Y / w.Config.Height) * float64(w.Config.GridHeight))
 		gridX = int(math.Max(0, math.Min(float64(w.Config.GridWidth-1), float64(gridX))))
 		gridY = int(math.Max(0, math.Min(float64(w.Config.GridHeight-1), float64(gridY))))
 		biome := w.Grid[gridY][gridX].Biome
-		
+
 		entity.MoveToWithEnvironment(targetX, targetY, speed, biome)
-		
+
 		// Provide learning feedback based on movement outcome
 		w.provideNeuralFeedback(entity, inputs, outputs, actionIntensity)
 	}
@@ -5338,46 +5312,46 @@ func (w *World) provideNeuralFeedback(entity *Entity, inputs []float64, outputs 
 	// Calculate success/failure based on multiple factors
 	success := false
 	reward := 0.0
-	
+
 	// Energy efficiency: Moving when energy is high is good
 	if inputs[1] > 0.5 && actionIntensity > 0.3 { // Good energy, decided to move
 		reward += 0.3
 		success = true
 	}
-	
+
 	// Threat avoidance: Moving away from high threat is good
 	if inputs[2] > 0.5 && actionIntensity > 0.4 { // High threat, decided to move
 		reward += 0.4
 		success = true
 	}
-	
+
 	// Food seeking: Moving when food is available is good
 	if inputs[3] > 0.4 && actionIntensity > 0.3 { // Food available, decided to move
 		reward += 0.3
 		success = true
 	}
-	
+
 	// Social behavior: Moving when social opportunities exist
 	if inputs[4] > 0.4 && entity.GetTrait("cooperation") > 0.3 {
 		reward += 0.2
 		success = true
 	}
-	
+
 	// Energy conservation: Not moving when energy is low is good
 	if inputs[1] < 0.3 && actionIntensity < 0.2 { // Low energy, decided not to move much
 		reward += 0.3
 		success = true
 	}
-	
+
 	// Penalize poor decisions
 	if inputs[1] < 0.2 && actionIntensity > 0.7 { // Very low energy but high activity
 		reward -= 0.5
 		success = false
 	}
-	
+
 	// Normalize reward
 	reward = math.Max(-1.0, math.Min(1.0, reward))
-	
+
 	// Provide feedback to neural network
 	w.NeuralAISystem.LearnFromOutcome(entity.ID, success, reward, w.Tick)
 }
@@ -5391,7 +5365,7 @@ func (w *World) SetSpeedMultiplier(multiplier float64) {
 		multiplier = 16.0 // Maximum speed
 	}
 	w.SpeedMultiplier = multiplier
-	
+
 	// Update the simulation configuration to reflect the new speed
 	// Always apply to the default config to avoid cumulative effects
 	baseConfig := DefaultSimulationConfig()

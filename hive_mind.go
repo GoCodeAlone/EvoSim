@@ -9,10 +9,10 @@ import (
 type HiveMindType int
 
 const (
-	SimpleCollective HiveMindType = iota // Basic shared awareness
-	SwarmIntelligence                    // Coordinated group actions
-	NeuralNetwork                        // Distributed decision making
-	QuantumMind                          // Advanced collective consciousness
+	SimpleCollective  HiveMindType = iota // Basic shared awareness
+	SwarmIntelligence                     // Coordinated group actions
+	NeuralNetwork                         // Distributed decision making
+	QuantumMind                           // Advanced collective consciousness
 )
 
 // String returns the string representation of HiveMindType
@@ -43,32 +43,32 @@ type CollectiveMemory struct {
 
 // HiveMind represents a collective intelligence system
 type HiveMind struct {
-	ID               int                `json:"id"`
-	Members          []*Entity          `json:"-"` // Exclude from JSON to avoid cycles
-	MemberIDs        []int              `json:"member_ids"`
-	Type             HiveMindType       `json:"type"`
-	CollectiveMemory *CollectiveMemory  `json:"collective_memory"`
-	Intelligence     float64            `json:"intelligence"`     // Combined intelligence of members
-	Cohesion         float64            `json:"cohesion"`         // How well the hive works together
+	ID                int               `json:"id"`
+	Members           []*Entity         `json:"-"` // Exclude from JSON to avoid cycles
+	MemberIDs         []int             `json:"member_ids"`
+	Type              HiveMindType      `json:"type"`
+	CollectiveMemory  *CollectiveMemory `json:"collective_memory"`
+	Intelligence      float64           `json:"intelligence"`       // Combined intelligence of members
+	Cohesion          float64           `json:"cohesion"`           // How well the hive works together
 	DecisionThreshold float64           `json:"decision_threshold"` // Threshold for group decisions
-	MemoryRetention  float64            `json:"memory_retention"`   // How long memories are retained
-	MaxMembers       int                `json:"max_members"`       // Maximum hive size
-	CreationTick     int                `json:"creation_tick"`
+	MemoryRetention   float64           `json:"memory_retention"`   // How long memories are retained
+	MaxMembers        int               `json:"max_members"`        // Maximum hive size
+	CreationTick      int               `json:"creation_tick"`
 }
 
 // NewHiveMind creates a new hive mind from compatible entities
 func NewHiveMind(id int, founder *Entity, hiveType HiveMindType) *HiveMind {
 	return &HiveMind{
-		ID:               id,
-		Members:          []*Entity{founder},
-		MemberIDs:        []int{founder.ID},
-		Type:             hiveType,
-		CollectiveMemory: NewCollectiveMemory(),
-		Intelligence:     founder.GetTrait("intelligence"),
-		Cohesion:         founder.GetTrait("cooperation"),
-		DecisionThreshold: 0.6, // 60% consensus needed for decisions
-		MemoryRetention:  0.95, // 95% memory retention per tick
-		MaxMembers:       getMaxMembersForType(hiveType),
+		ID:                id,
+		Members:           []*Entity{founder},
+		MemberIDs:         []int{founder.ID},
+		Type:              hiveType,
+		CollectiveMemory:  NewCollectiveMemory(),
+		Intelligence:      founder.GetTrait("intelligence"),
+		Cohesion:          founder.GetTrait("cooperation"),
+		DecisionThreshold: 0.6,  // 60% consensus needed for decisions
+		MemoryRetention:   0.95, // 95% memory retention per tick
+		MaxMembers:        getMaxMembersForType(hiveType),
 	}
 }
 
@@ -116,7 +116,7 @@ func (hm *HiveMind) CanJoinHive(entity *Entity) bool {
 	// Compatibility requirements
 	intelligence := entity.GetTrait("intelligence")
 	cooperation := entity.GetTrait("cooperation")
-	
+
 	// Must have minimum intelligence and cooperation
 	if intelligence < 0.3 || cooperation < 0.4 {
 		return false
@@ -199,7 +199,7 @@ func (hm *HiveMind) GetCollectiveDecision(decisionType string, options []string)
 
 	// Collect votes from members based on their traits and intelligence
 	votes := make(map[string]float64)
-	
+
 	for _, member := range hm.Members {
 		if !member.IsAlive {
 			continue
@@ -207,7 +207,7 @@ func (hm *HiveMind) GetCollectiveDecision(decisionType string, options []string)
 
 		// Member's influence is based on intelligence and cooperation
 		influence := (member.GetTrait("intelligence") + member.GetTrait("cooperation")) / 2.0
-		
+
 		// Simple decision making based on member traits
 		var preferredOption string
 		switch decisionType {
@@ -286,7 +286,7 @@ func (hm *HiveMind) CoordinateMovement(targetX, targetY float64) {
 // calculateFormation determines optimal positions for coordinated movement
 func (hm *HiveMind) calculateFormation(targetX, targetY float64) []Position {
 	formations := make([]Position, len(hm.Members))
-	
+
 	switch hm.Type {
 	case SimpleCollective:
 		// Simple cluster formation
@@ -303,13 +303,13 @@ func (hm *HiveMind) calculateFormation(targetX, targetY float64) []Position {
 		// Dense swarm formation
 		gridSize := int(math.Ceil(math.Sqrt(float64(len(hm.Members)))))
 		spacing := 2.0
-		
+
 		for i := range hm.Members {
 			row := i / gridSize
 			col := i % gridSize
 			offsetX := float64(col-gridSize/2) * spacing
 			offsetY := float64(row-gridSize/2) * spacing
-			
+
 			formations[i] = Position{
 				X: targetX + offsetX,
 				Y: targetY + offsetY,
@@ -322,7 +322,7 @@ func (hm *HiveMind) calculateFormation(targetX, targetY float64) []Position {
 		for i := range hm.Members {
 			layer := float64(i%3) - 1.0 // -1, 0, 1
 			position := float64(i/3) * 3.0
-			
+
 			formations[i] = Position{
 				X: targetX + position,
 				Y: targetY + layer*4.0,
@@ -336,7 +336,7 @@ func (hm *HiveMind) calculateFormation(targetX, targetY float64) []Position {
 			// Variable radius based on member intelligence
 			intelligence := hm.Members[i].GetTrait("intelligence")
 			radius := 3.0 + intelligence*7.0
-			
+
 			formations[i] = Position{
 				X: targetX + math.Cos(angle)*radius,
 				Y: targetY + math.Sin(angle)*radius,
@@ -365,7 +365,7 @@ func (hm *HiveMind) Update() {
 	// Remove dead members
 	aliveMembers := make([]*Entity, 0)
 	aliveMemberIDs := make([]int, 0)
-	
+
 	for i, member := range hm.Members {
 		if member.IsAlive {
 			aliveMembers = append(aliveMembers, member)
@@ -376,7 +376,7 @@ func (hm *HiveMind) Update() {
 			hm.Cohesion -= member.GetTrait("cooperation")
 		}
 	}
-	
+
 	hm.Members = aliveMembers
 	hm.MemberIDs = aliveMemberIDs
 
@@ -482,14 +482,14 @@ func (hm *HiveMind) IsPositionSafe(pos Position) bool {
 
 // HiveMindSystem manages all hive minds in the simulation
 type HiveMindSystem struct {
-	HiveMinds     []*HiveMind `json:"hive_minds"`
+	HiveMinds      []*HiveMind `json:"hive_minds"`
 	NextHiveMindID int         `json:"next_hive_mind_id"`
 }
 
 // NewHiveMindSystem creates a new hive mind management system
 func NewHiveMindSystem() *HiveMindSystem {
 	return &HiveMindSystem{
-		HiveMinds:     make([]*HiveMind, 0),
+		HiveMinds:      make([]*HiveMind, 0),
 		NextHiveMindID: 1,
 	}
 }

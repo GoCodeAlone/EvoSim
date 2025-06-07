@@ -7,45 +7,45 @@ import (
 
 // EnvironmentalModification represents a persistent change to the environment
 type EnvironmentalModification struct {
-	ID          int                       `json:"id"`
-	Type        EnvironmentalModType      `json:"type"`
-	Position    Position                  `json:"position"`
-	Creator     *Entity                   `json:"-"`         // Entity that created it
-	CreatedTick int                       `json:"created_tick"`
-	LastUsedTick int                      `json:"last_used_tick"`
-	Durability  float64                   `json:"durability"` // 0.0 to 1.0
-	MaxDurability float64                 `json:"max_durability"`
-	Depth       float64                   `json:"depth"`      // For tunnels/holes
-	Width       float64                   `json:"width"`      // Size of modification
-	IsActive    bool                      `json:"is_active"`
-	Properties  map[string]float64        `json:"properties"` // Custom properties
-	ConnectedTo []int                     `json:"connected_to"` // IDs of connected modifications
+	ID            int                  `json:"id"`
+	Type          EnvironmentalModType `json:"type"`
+	Position      Position             `json:"position"`
+	Creator       *Entity              `json:"-"` // Entity that created it
+	CreatedTick   int                  `json:"created_tick"`
+	LastUsedTick  int                  `json:"last_used_tick"`
+	Durability    float64              `json:"durability"` // 0.0 to 1.0
+	MaxDurability float64              `json:"max_durability"`
+	Depth         float64              `json:"depth"` // For tunnels/holes
+	Width         float64              `json:"width"` // Size of modification
+	IsActive      bool                 `json:"is_active"`
+	Properties    map[string]float64   `json:"properties"`   // Custom properties
+	ConnectedTo   []int                `json:"connected_to"` // IDs of connected modifications
 }
 
 // EnvironmentalModType represents different types of environmental modifications
 type EnvironmentalModType int
 
 const (
-	EnvModTunnel      EnvironmentalModType = iota // Underground passage
-	EnvModBurrow                                  // Shelter hole
-	EnvModCache                                   // Hidden storage
-	EnvModTrap                                    // Environmental trap
-	EnvModWaterhole                               // Dug water source
-	EnvModPath                                    // Worn path
-	EnvModMarking                                 // Scent/territorial marking
-	EnvModNest                                    // Natural shelter
-	EnvModBridge                                  // Crossing structure
-	EnvModBarrier                                 // Environmental barrier
-	EnvModTerrace                                 // Farming terrace
-	EnvModDam                                     // Water control
+	EnvModTunnel    EnvironmentalModType = iota // Underground passage
+	EnvModBurrow                                // Shelter hole
+	EnvModCache                                 // Hidden storage
+	EnvModTrap                                  // Environmental trap
+	EnvModWaterhole                             // Dug water source
+	EnvModPath                                  // Worn path
+	EnvModMarking                               // Scent/territorial marking
+	EnvModNest                                  // Natural shelter
+	EnvModBridge                                // Crossing structure
+	EnvModBarrier                               // Environmental barrier
+	EnvModTerrace                               // Farming terrace
+	EnvModDam                                   // Water control
 )
 
 // EnvironmentalModificationSystem manages environmental changes
 type EnvironmentalModificationSystem struct {
 	Modifications map[int]*EnvironmentalModification `json:"modifications"`
-	NextModID     int                                 `json:"next_mod_id"`
-	TunnelNetwork map[int][]int                       `json:"tunnel_network"` // Tunnel ID -> Connected tunnel IDs
-	eventBus      *CentralEventBus                    `json:"-"` // Event tracking
+	NextModID     int                                `json:"next_mod_id"`
+	TunnelNetwork map[int][]int                      `json:"tunnel_network"` // Tunnel ID -> Connected tunnel IDs
+	eventBus      *CentralEventBus                   `json:"-"`              // Event tracking
 }
 
 // NewEnvironmentalModificationSystem creates a new environmental modification system
@@ -65,13 +65,13 @@ func (ems *EnvironmentalModificationSystem) CreateTunnel(creator *Entity, start 
 	if diggerSkill < 0.4 {
 		return nil
 	}
-	
+
 	// Check energy requirements
 	energyCost := length * 10.0
 	if creator.Energy < energyCost {
 		return nil
 	}
-	
+
 	// Create the tunnel
 	tunnel := &EnvironmentalModification{
 		ID:            ems.NextModID,
@@ -88,20 +88,20 @@ func (ems *EnvironmentalModificationSystem) CreateTunnel(creator *Entity, start 
 		Properties:    make(map[string]float64),
 		ConnectedTo:   make([]int, 0),
 	}
-	
+
 	// Set tunnel-specific properties
 	tunnel.Properties["length"] = length
 	tunnel.Properties["direction"] = direction
 	tunnel.Properties["concealment"] = diggerSkill * 0.5
 	tunnel.Properties["capacity"] = tunnel.Width * tunnel.Depth * 2.0
-	
+
 	// Consume energy
 	creator.Energy -= energyCost
-	
+
 	// Add to system
 	ems.Modifications[tunnel.ID] = tunnel
 	ems.NextModID++
-	
+
 	return tunnel
 }
 
@@ -112,12 +112,12 @@ func (ems *EnvironmentalModificationSystem) CreateBurrow(creator *Entity, positi
 	if diggingSkill < 0.2 {
 		return nil
 	}
-	
+
 	energyCost := 15.0
 	if creator.Energy < energyCost {
 		return nil
 	}
-	
+
 	burrow := &EnvironmentalModification{
 		ID:            ems.NextModID,
 		Type:          EnvModBurrow,
@@ -133,17 +133,17 @@ func (ems *EnvironmentalModificationSystem) CreateBurrow(creator *Entity, positi
 		Properties:    make(map[string]float64),
 		ConnectedTo:   make([]int, 0),
 	}
-	
+
 	// Set burrow properties
 	burrow.Properties["shelter_value"] = diggingSkill * 0.7
 	burrow.Properties["concealment"] = diggingSkill * 0.6
 	burrow.Properties["capacity"] = burrow.Width * burrow.Depth
-	
+
 	creator.Energy -= energyCost
-	
+
 	ems.Modifications[burrow.ID] = burrow
 	ems.NextModID++
-	
+
 	return burrow
 }
 
@@ -153,12 +153,12 @@ func (ems *EnvironmentalModificationSystem) CreateCache(creator *Entity, positio
 	if creator.GetTrait("intelligence") < intelligenceReq {
 		return nil
 	}
-	
+
 	energyCost := 12.0
 	if creator.Energy < energyCost {
 		return nil
 	}
-	
+
 	cache := &EnvironmentalModification{
 		ID:            ems.NextModID,
 		Type:          EnvModCache,
@@ -174,19 +174,19 @@ func (ems *EnvironmentalModificationSystem) CreateCache(creator *Entity, positio
 		Properties:    make(map[string]float64),
 		ConnectedTo:   make([]int, 0),
 	}
-	
+
 	// Set cache properties
 	intelligence := creator.GetTrait("intelligence")
 	cache.Properties["storage_capacity"] = 10.0 + intelligence*15.0
 	cache.Properties["concealment"] = intelligence * 0.8
 	cache.Properties["preservation"] = intelligence * 0.6
 	cache.Properties["stored_resources"] = 0.0
-	
+
 	creator.Energy -= energyCost
-	
+
 	ems.Modifications[cache.ID] = cache
 	ems.NextModID++
-	
+
 	return cache
 }
 
@@ -197,12 +197,12 @@ func (ems *EnvironmentalModificationSystem) CreateTrap(creator *Entity, position
 	if skillReq < 0.4 {
 		return nil
 	}
-	
+
 	energyCost := 20.0
 	if creator.Energy < energyCost {
 		return nil
 	}
-	
+
 	trap := &EnvironmentalModification{
 		ID:            ems.NextModID,
 		Type:          EnvModTrap,
@@ -218,18 +218,18 @@ func (ems *EnvironmentalModificationSystem) CreateTrap(creator *Entity, position
 		Properties:    make(map[string]float64),
 		ConnectedTo:   make([]int, 0),
 	}
-	
+
 	// Set trap properties
 	trap.Properties["effectiveness"] = skillReq * 0.8
 	trap.Properties["trigger_sensitivity"] = creator.GetTrait("intelligence") * 0.7
 	trap.Properties["concealment"] = skillReq * 0.9
 	trap.Properties["damage_potential"] = creator.GetTrait("aggression") * 0.6
-	
+
 	creator.Energy -= energyCost
-	
+
 	ems.Modifications[trap.ID] = trap
 	ems.NextModID++
-	
+
 	return trap
 }
 
@@ -238,11 +238,11 @@ func (ems *EnvironmentalModificationSystem) CreatePath(creator *Entity, start Po
 	// Paths form naturally through repeated use
 	distance := math.Sqrt(math.Pow(end.X-start.X, 2) + math.Pow(end.Y-start.Y, 2))
 	energyCost := distance * 2.0
-	
+
 	if creator.Energy < energyCost {
 		return nil
 	}
-	
+
 	path := &EnvironmentalModification{
 		ID:            ems.NextModID,
 		Type:          EnvModPath,
@@ -258,19 +258,19 @@ func (ems *EnvironmentalModificationSystem) CreatePath(creator *Entity, start Po
 		Properties:    make(map[string]float64),
 		ConnectedTo:   make([]int, 0),
 	}
-	
+
 	// Set path properties
 	path.Properties["length"] = distance
 	path.Properties["end_x"] = end.X
 	path.Properties["end_y"] = end.Y
 	path.Properties["usage_count"] = 1.0
 	path.Properties["speed_bonus"] = 0.1 // Small movement speed bonus
-	
+
 	creator.Energy -= energyCost
-	
+
 	ems.Modifications[path.ID] = path
 	ems.NextModID++
-	
+
 	return path
 }
 
@@ -279,40 +279,40 @@ func (ems *EnvironmentalModificationSystem) UseModification(mod *EnvironmentalMo
 	if mod == nil || !mod.IsActive {
 		return 0.0
 	}
-	
+
 	// Calculate distance to modification
-	distance := math.Sqrt(math.Pow(user.Position.X-mod.Position.X, 2) + 
-						 math.Pow(user.Position.Y-mod.Position.Y, 2))
-	
+	distance := math.Sqrt(math.Pow(user.Position.X-mod.Position.X, 2) +
+		math.Pow(user.Position.Y-mod.Position.Y, 2))
+
 	// Must be close enough to use
 	maxUseDistance := mod.Width + 1.0
 	if distance > maxUseDistance {
 		return 0.0
 	}
-	
+
 	mod.LastUsedTick = tick
 	benefit := 0.0
-	
+
 	switch mod.Type {
 	case EnvModTunnel:
 		benefit = ems.useTunnel(mod, user)
-		
+
 	case EnvModBurrow:
 		benefit = ems.useBurrow(mod, user)
-		
+
 	case EnvModCache:
 		benefit = ems.useCache(mod, user)
-		
+
 	case EnvModPath:
 		benefit = ems.usePath(mod, user)
-		
+
 	case EnvModTrap:
 		// Traps are usually triggered accidentally
 		if user != mod.Creator && rand.Float64() < mod.Properties["trigger_sensitivity"] {
 			benefit = ems.triggerTrap(mod, user)
 		}
 	}
-	
+
 	return benefit
 }
 
@@ -320,28 +320,28 @@ func (ems *EnvironmentalModificationSystem) UseModification(mod *EnvironmentalMo
 func (ems *EnvironmentalModificationSystem) useTunnel(tunnel *EnvironmentalModification, user *Entity) float64 {
 	// Tunnels provide concealment and fast travel
 	concealment := tunnel.Properties["concealment"]
-	
+
 	// Energy bonus from protection
 	energyBonus := concealment * 2.0
-	user.Energy = math.Min(100.0, user.Energy + energyBonus)
-	
+	user.Energy = math.Min(100.0, user.Energy+energyBonus)
+
 	// Movement speed bonus
 	speedBonus := tunnel.Properties["length"] * 0.1
-	
+
 	return concealment + speedBonus
 }
 
 // useBurrow provides shelter benefits
 func (ems *EnvironmentalModificationSystem) useBurrow(burrow *EnvironmentalModification, user *Entity) float64 {
 	shelterValue := burrow.Properties["shelter_value"]
-	
+
 	// Energy restoration from shelter
 	energyRestoration := shelterValue * 3.0
-	user.Energy = math.Min(100.0, user.Energy + energyRestoration)
-	
+	user.Energy = math.Min(100.0, user.Energy+energyRestoration)
+
 	// Protection from environmental hazards
 	protection := burrow.Properties["concealment"]
-	
+
 	return shelterValue + protection
 }
 
@@ -350,10 +350,10 @@ func (ems *EnvironmentalModificationSystem) useCache(cache *EnvironmentalModific
 	// Simple resource interaction - could be expanded
 	storageCapacity := cache.Properties["storage_capacity"]
 	currentStored := cache.Properties["stored_resources"]
-	
+
 	if user.Energy > 80.0 && currentStored < storageCapacity {
 		// Store some energy as resources
-		storeAmount := math.Min(5.0, storageCapacity - currentStored)
+		storeAmount := math.Min(5.0, storageCapacity-currentStored)
 		cache.Properties["stored_resources"] = currentStored + storeAmount
 		user.Energy -= storeAmount
 		return storeAmount * 0.5
@@ -361,10 +361,10 @@ func (ems *EnvironmentalModificationSystem) useCache(cache *EnvironmentalModific
 		// Retrieve resources as energy
 		retrieveAmount := math.Min(10.0, currentStored)
 		cache.Properties["stored_resources"] = currentStored - retrieveAmount
-		user.Energy = math.Min(100.0, user.Energy + retrieveAmount)
+		user.Energy = math.Min(100.0, user.Energy+retrieveAmount)
 		return retrieveAmount
 	}
-	
+
 	return 0.0
 }
 
@@ -372,11 +372,11 @@ func (ems *EnvironmentalModificationSystem) useCache(cache *EnvironmentalModific
 func (ems *EnvironmentalModificationSystem) usePath(path *EnvironmentalModification, user *Entity) float64 {
 	// Increment usage count to strengthen the path
 	path.Properties["usage_count"] += 1.0
-	
+
 	// Strengthen the path with use
 	strengthIncrease := 0.01
-	path.Durability = math.Min(path.MaxDurability, path.Durability + strengthIncrease)
-	
+	path.Durability = math.Min(path.MaxDurability, path.Durability+strengthIncrease)
+
 	// Return speed bonus
 	return path.Properties["speed_bonus"] * path.Durability
 }
@@ -386,18 +386,18 @@ func (ems *EnvironmentalModificationSystem) triggerTrap(trap *EnvironmentalModif
 	if !trap.IsActive {
 		return 0.0
 	}
-	
+
 	damage := trap.Properties["damage_potential"] * 10.0
-	
+
 	// Apply damage to victim
-	victim.Energy = math.Max(0.0, victim.Energy - damage)
-	
+	victim.Energy = math.Max(0.0, victim.Energy-damage)
+
 	// Reduce trap durability after use
 	trap.Durability -= 0.3
 	if trap.Durability <= 0.0 {
 		trap.IsActive = false
 	}
-	
+
 	return -damage // Negative benefit for the victim
 }
 
@@ -405,24 +405,24 @@ func (ems *EnvironmentalModificationSystem) triggerTrap(trap *EnvironmentalModif
 func (ems *EnvironmentalModificationSystem) ConnectTunnels(tunnel1ID, tunnel2ID int) bool {
 	tunnel1, exists1 := ems.Modifications[tunnel1ID]
 	tunnel2, exists2 := ems.Modifications[tunnel2ID]
-	
+
 	if !exists1 || !exists2 || tunnel1.Type != EnvModTunnel || tunnel2.Type != EnvModTunnel {
 		return false
 	}
-	
+
 	// Check if tunnels are close enough to connect
-	distance := math.Sqrt(math.Pow(tunnel1.Position.X-tunnel2.Position.X, 2) + 
-						 math.Pow(tunnel1.Position.Y-tunnel2.Position.Y, 2))
-	
+	distance := math.Sqrt(math.Pow(tunnel1.Position.X-tunnel2.Position.X, 2) +
+		math.Pow(tunnel1.Position.Y-tunnel2.Position.Y, 2))
+
 	maxConnectionDistance := tunnel1.Properties["length"] + tunnel2.Properties["length"]
 	if distance > maxConnectionDistance {
 		return false
 	}
-	
+
 	// Add connections
 	tunnel1.ConnectedTo = append(tunnel1.ConnectedTo, tunnel2ID)
 	tunnel2.ConnectedTo = append(tunnel2.ConnectedTo, tunnel1ID)
-	
+
 	// Update tunnel network
 	if ems.TunnelNetwork[tunnel1ID] == nil {
 		ems.TunnelNetwork[tunnel1ID] = make([]int, 0)
@@ -430,30 +430,30 @@ func (ems *EnvironmentalModificationSystem) ConnectTunnels(tunnel1ID, tunnel2ID 
 	if ems.TunnelNetwork[tunnel2ID] == nil {
 		ems.TunnelNetwork[tunnel2ID] = make([]int, 0)
 	}
-	
+
 	ems.TunnelNetwork[tunnel1ID] = append(ems.TunnelNetwork[tunnel1ID], tunnel2ID)
 	ems.TunnelNetwork[tunnel2ID] = append(ems.TunnelNetwork[tunnel2ID], tunnel1ID)
-	
+
 	return true
 }
 
 // GetNearbyModifications returns environmental modifications near a position
 func (ems *EnvironmentalModificationSystem) GetNearbyModifications(position Position, radius float64) []*EnvironmentalModification {
 	nearby := make([]*EnvironmentalModification, 0)
-	
+
 	for _, mod := range ems.Modifications {
 		if !mod.IsActive {
 			continue
 		}
-		
-		distance := math.Sqrt(math.Pow(position.X-mod.Position.X, 2) + 
-							 math.Pow(position.Y-mod.Position.Y, 2))
-		
+
+		distance := math.Sqrt(math.Pow(position.X-mod.Position.X, 2) +
+			math.Pow(position.Y-mod.Position.Y, 2))
+
 		if distance <= radius {
 			nearby = append(nearby, mod)
 		}
 	}
-	
+
 	return nearby
 }
 
@@ -463,19 +463,19 @@ func (ems *EnvironmentalModificationSystem) UpdateModifications(tick int) {
 		if !mod.IsActive {
 			continue
 		}
-		
+
 		// Natural decay
 		decayRate := 0.0001
-		if tick - mod.LastUsedTick > 500 { // Faster decay if unused
+		if tick-mod.LastUsedTick > 500 { // Faster decay if unused
 			decayRate *= 2.0
 		}
-		
+
 		mod.Durability -= decayRate
-		
+
 		// Remove completely decayed modifications
 		if mod.Durability <= 0.0 {
 			mod.IsActive = false
-			
+
 			// Remove from tunnel network if it's a tunnel
 			if mod.Type == EnvModTunnel {
 				delete(ems.TunnelNetwork, id)
@@ -500,12 +500,12 @@ func (ems *EnvironmentalModificationSystem) UpdateModifications(tick int) {
 // GetModificationStats returns statistics about environmental modifications
 func (ems *EnvironmentalModificationSystem) GetModificationStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	totalMods := 0
 	activeMods := 0
 	typeCounts := make(map[EnvironmentalModType]int)
 	avgDurability := 0.0
-	
+
 	for _, mod := range ems.Modifications {
 		totalMods++
 		if mod.IsActive {
@@ -514,18 +514,18 @@ func (ems *EnvironmentalModificationSystem) GetModificationStats() map[string]in
 		}
 		typeCounts[mod.Type]++
 	}
-	
+
 	if activeMods > 0 {
 		avgDurability /= float64(activeMods)
 	}
-	
+
 	stats["total_modifications"] = totalMods
 	stats["active_modifications"] = activeMods
 	stats["inactive_modifications"] = totalMods - activeMods
 	stats["avg_durability"] = avgDurability
 	stats["tunnel_networks"] = len(ems.TunnelNetwork)
 	stats["modification_types"] = typeCounts
-	
+
 	return stats
 }
 
@@ -545,7 +545,7 @@ func GetEnvironmentalModTypeName(modType EnvironmentalModType) string {
 		EnvModTerrace:   "Terrace",
 		EnvModDam:       "Dam",
 	}
-	
+
 	if name, exists := names[modType]; exists {
 		return name
 	}

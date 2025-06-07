@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // SpeciesNaming manages the naming system for species in the simulation
@@ -111,7 +114,8 @@ func (sn *SpeciesNaming) GenerateSpeciesName(species string, parentName string, 
 	}
 
 	// Create scientific name (Genus species format)
-	genus := strings.Title(species[:4]) + "us" // e.g., "Herbus", "Predus", "Omnius"
+	caser := cases.Title(language.English)
+	genus := caser.String(species[:4]) + "us" // e.g., "Herbus", "Predus", "Omnius"
 	speciesName := strings.ToLower(strings.ReplaceAll(baseName, " ", ""))
 	scientificName := fmt.Sprintf("%s %s", genus, speciesName)
 

@@ -10,6 +10,17 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+)
+
+// Visual constants for terrain and symbols
+const (
+	SymbolUndergroundSolid = "▓"
+	SymbolUndergroundEmpty = "░"
+	SymbolMountainHigh     = "▲"
+	SymbolMountainLow      = "△"
+	SymbolCellSmall        = "●"
 )
 
 // min returns the minimum of two integers
@@ -305,10 +316,10 @@ func (m CLIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.export):
 			// Export statistical data
 			m.exportStatisticalData()
-			
+
 		case key.Matches(msg, keys.speedUp):
 			m.world.IncreaseSpeed()
-			
+
 		case key.Matches(msg, keys.speedDown):
 			m.world.DecreaseSpeed()
 		}
@@ -317,18 +328,18 @@ func (m CLIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.autoAdvance && !m.paused {
 			// Run multiple simulation updates based on speed multiplier
 			speedMultiplier := m.world.GetSpeedMultiplier()
-			
+
 			// For CLI, we'll use simple integer rounding for simplicity
 			updatesToRun := int(speedMultiplier + 0.5)
 			if updatesToRun < 1 {
 				// For very slow speeds, only update every few ticks
-				if m.tick % int(1.0/speedMultiplier + 0.5) == 0 {
+				if m.tick%int(1.0/speedMultiplier+0.5) == 0 {
 					updatesToRun = 1
 				} else {
 					updatesToRun = 0
 				}
 			}
-			
+
 			// Run the calculated number of updates
 			for i := 0; i < updatesToRun; i++ {
 				m.world.Update()
@@ -577,7 +588,7 @@ func (m CLIModel) gridView() string {
 								baseSpecies = info.Species
 							}
 						}
-						
+
 						if sym, exists := m.speciesSymbols[baseSpecies]; exists {
 							symbol = sym
 						}
@@ -622,7 +633,7 @@ func (m CLIModel) gridView() string {
 						config := GetPlantConfigs()[dominantPlant.Type]
 						symbol = config.Symbol
 						// Use a dimmer style for plants
-						style = biomeColors[cell.Biome].Copy().Foreground(lipgloss.Color("240"))
+						style = biomeColors[cell.Biome].Foreground(lipgloss.Color("240"))
 					}
 
 					// Show multiple plants with small numbers
@@ -666,7 +677,7 @@ func (m CLIModel) legendView() string {
 	sort.Slice(biomeTypes, func(i, j int) bool {
 		return m.world.Biomes[biomeTypes[i]].Name < m.world.Biomes[biomeTypes[j]].Name
 	})
-	
+
 	for _, biomeType := range biomeTypes {
 		biome := m.world.Biomes[biomeType]
 		style := biomeColors[biomeType]
@@ -692,8 +703,9 @@ func (m CLIModel) legendView() string {
 		// Fallback to old behavior
 		for species, symbol := range m.speciesSymbols {
 			style := speciesStyles[species]
+			caser := cases.Title(language.English)
 			legend.WriteString(fmt.Sprintf("%s %s\n",
-				style.Render(string(symbol)), strings.Title(species)))
+				style.Render(string(symbol)), caser.String(species)))
 		}
 	}
 
@@ -736,8 +748,9 @@ func (m CLIModel) statsView() string {
 	// Population statistics
 	if populations, ok := stats["populations"].(map[string]map[string]interface{}); ok {
 		content.WriteString("Population Details:\n")
+		caser := cases.Title(language.English)
 		for species, popStats := range populations {
-			content.WriteString(fmt.Sprintf("\n%s:\n", strings.Title(species)))
+			content.WriteString(fmt.Sprintf("\n%s:\n", caser.String(species)))
 			content.WriteString(fmt.Sprintf("  Count: %v\n", popStats["count"]))
 			if avgEnergy, exists := popStats["avg_energy"]; exists {
 				content.WriteString(fmt.Sprintf("  Avg Energy: %.1f\n", avgEnergy))
@@ -768,8 +781,8 @@ func (m CLIModel) statsView() string {
 	}
 
 	total := m.world.Config.GridWidth * m.world.Config.GridHeight
-	
-	// Get sorted biome types for consistent ordering  
+
+	// Get sorted biome types for consistent ordering
 	var sortedBiomes []BiomeType
 	for biomeType := range biomeCount {
 		sortedBiomes = append(sortedBiomes, biomeType)
@@ -777,7 +790,7 @@ func (m CLIModel) statsView() string {
 	sort.Slice(sortedBiomes, func(i, j int) bool {
 		return m.world.Biomes[sortedBiomes[i]].Name < m.world.Biomes[sortedBiomes[j]].Name
 	})
-	
+
 	for _, biomeType := range sortedBiomes {
 		biome := m.world.Biomes[biomeType]
 		count := biomeCount[biomeType]
@@ -792,16 +805,16 @@ func (m CLIModel) statsView() string {
 // calculateAdaptationStats computes feedback loop adaptation statistics
 func (m CLIModel) calculateAdaptationStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	dietaryMemoryCount := 0
 	envMemoryCount := 0
 	totalDietaryFitness := 0.0
 	totalEnvFitness := 0.0
 	plantPreferences := 0
 	preyPreferences := 0
-	
+
 	entityCount := 0
-	
+
 	// Collect data from all entities
 	for _, population := range m.world.Populations {
 		for _, entity := range population.Entities {
@@ -809,7 +822,7 @@ func (m CLIModel) calculateAdaptationStats() map[string]interface{} {
 				continue
 			}
 			entityCount++
-			
+
 			// Check dietary memory
 			if entity.DietaryMemory != nil {
 				dietaryMemoryCount++
@@ -821,7 +834,7 @@ func (m CLIModel) calculateAdaptationStats() map[string]interface{} {
 					preyPreferences += len(entity.DietaryMemory.PreySpeciesPreferences)
 				}
 			}
-			
+
 			// Check environmental memory
 			if entity.EnvironmentalMemory != nil {
 				envMemoryCount++
@@ -829,24 +842,24 @@ func (m CLIModel) calculateAdaptationStats() map[string]interface{} {
 			}
 		}
 	}
-	
+
 	stats["dietary_memory_count"] = dietaryMemoryCount
 	stats["env_memory_count"] = envMemoryCount
 	stats["plant_preferences"] = plantPreferences
 	stats["prey_preferences"] = preyPreferences
-	
+
 	if dietaryMemoryCount > 0 {
 		stats["avg_dietary_fitness"] = totalDietaryFitness / float64(dietaryMemoryCount)
 	} else {
 		stats["avg_dietary_fitness"] = 0.0
 	}
-	
+
 	if envMemoryCount > 0 {
 		stats["avg_env_fitness"] = totalEnvFitness / float64(envMemoryCount)
 	} else {
 		stats["avg_env_fitness"] = 0.0
 	}
-	
+
 	return stats
 }
 
@@ -968,7 +981,7 @@ func (m CLIModel) populationsView() string {
 					avg := sum / float64(aliveCount)
 					content.WriteString(fmt.Sprintf("  %s: %.3f\n", trait, avg))
 				}
-				
+
 				// Add feedback loop adaptation information
 				dietaryMemoryCount := 0
 				envMemoryCount := 0
@@ -976,12 +989,12 @@ func (m CLIModel) populationsView() string {
 				totalEnvFitness := 0.0
 				plantPrefs := 0
 				preyPrefs := 0
-				
+
 				for _, entity := range pop.Entities {
 					if !entity.IsAlive {
 						continue
 					}
-					
+
 					if entity.DietaryMemory != nil {
 						dietaryMemoryCount++
 						totalDietaryFitness += entity.DietaryMemory.DietaryFitness
@@ -992,25 +1005,25 @@ func (m CLIModel) populationsView() string {
 							preyPrefs += len(entity.DietaryMemory.PreySpeciesPreferences)
 						}
 					}
-					
+
 					if entity.EnvironmentalMemory != nil {
 						envMemoryCount++
 						totalEnvFitness += entity.EnvironmentalMemory.AdaptationFitness
 					}
 				}
-				
+
 				content.WriteString("\nEvolutionary Adaptations:\n")
-				content.WriteString(fmt.Sprintf("  Dietary adaptations: %d/%d (%.1f%%)\n", 
+				content.WriteString(fmt.Sprintf("  Dietary adaptations: %d/%d (%.1f%%)\n",
 					dietaryMemoryCount, aliveCount, float64(dietaryMemoryCount)*100/float64(aliveCount)))
-				content.WriteString(fmt.Sprintf("  Environmental adaptations: %d/%d (%.1f%%)\n", 
+				content.WriteString(fmt.Sprintf("  Environmental adaptations: %d/%d (%.1f%%)\n",
 					envMemoryCount, aliveCount, float64(envMemoryCount)*100/float64(aliveCount)))
-				
+
 				if dietaryMemoryCount > 0 {
 					content.WriteString(fmt.Sprintf("  Avg dietary fitness: %.3f\n", totalDietaryFitness/float64(dietaryMemoryCount)))
 					content.WriteString(fmt.Sprintf("  Plant preferences: %d\n", plantPrefs))
 					content.WriteString(fmt.Sprintf("  Prey preferences: %d\n", preyPrefs))
 				}
-				
+
 				if envMemoryCount > 0 {
 					content.WriteString(fmt.Sprintf("  Avg environmental fitness: %.3f\n", totalEnvFitness/float64(envMemoryCount)))
 				}
@@ -1544,10 +1557,10 @@ func (m CLIModel) windView() string {
 	}
 	content.WriteString(fmt.Sprintf("Pollination success rate: %.2f%%\n", successRate))
 
-	// Insect Pollination Activity  
+	// Insect Pollination Activity
 	content.WriteString("\n=== INSECT POLLINATION ===\n")
 	pollinationStats := m.world.InsectPollinationSystem.GetPollinationStats()
-	
+
 	content.WriteString(fmt.Sprintf("Active flower patches: %d\n", pollinationStats["active_flower_patches"].(int)))
 	content.WriteString(fmt.Sprintf("Active pollinators: %d\n", pollinationStats["active_pollinators"].(int)))
 	content.WriteString(fmt.Sprintf("Total insect pollinations: %d\n", pollinationStats["total_pollinations"].(int)))
@@ -1809,7 +1822,7 @@ func (m CLIModel) speciesView() string {
 	// Individual species visualization section
 	content.WriteString("\n=== INDIVIDUAL SPECIES DETAILS ===\n")
 	content.WriteString("Use arrow keys to navigate species, Enter to select for detailed view\n\n")
-	
+
 	if len(speciesList) > 0 {
 		// For now, show details for the first species - could be enhanced with selection
 		selectedSpecies := speciesList[0]
@@ -1824,56 +1837,56 @@ func (m CLIModel) speciesView() string {
 // renderSpeciesDetail creates a detailed visual representation of a species
 func (m *CLIModel) renderSpeciesDetail(species map[string]interface{}) string {
 	var detail strings.Builder
-	
+
 	name := species["name"].(string)
 	originType := species["origin_type"].(PlantType)
 	population := species["current_population"].(int)
-	
+
 	detail.WriteString(fmt.Sprintf("🌱 Species: %s\n", name))
-	detail.WriteString(fmt.Sprintf("Origin Type: %s | Population: %d\n\n", 
+	detail.WriteString(fmt.Sprintf("Origin Type: %s | Population: %d\n\n",
 		GetPlantConfigs()[originType].Name, population))
-	
+
 	// Find actual plants of this species to analyze
 	speciesPlants := make([]*Plant, 0)
 	speciesID := species["id"].(int)
-	
+
 	// Get the species from the speciation system
 	if m.world.SpeciationSystem != nil {
 		if speciesObj, exists := m.world.SpeciationSystem.ActiveSpecies[speciesID]; exists {
 			speciesPlants = speciesObj.Members
 		}
 	}
-	
+
 	if len(speciesPlants) == 0 {
 		detail.WriteString("No living plants found for this species\n")
 		return detail.String()
 	}
-	
+
 	// Visual representation based on plant traits
 	detail.WriteString("Species Visual Representation:\n")
 	detail.WriteString(m.renderSpeciesVisual(speciesPlants, originType))
-	
+
 	// Trait analysis
 	detail.WriteString("\nGenetic Trait Analysis:\n")
 	detail.WriteString(m.renderSpeciesTraits(speciesPlants))
-	
+
 	// Environmental adaptation
 	detail.WriteString("\nEnvironmental Adaptation:\n")
 	detail.WriteString(m.renderSpeciesHabitat(speciesPlants))
-	
+
 	return detail.String()
 }
 
 // renderSpeciesVisual creates a visual representation of what the species looks like
 func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) string {
 	var visual strings.Builder
-	
+
 	// Analyze average traits to determine visual characteristics
 	avgGrowth := 0.0
 	avgSize := 0.0
 	avgDefense := 0.0
 	avgToxicity := 0.0
-	
+
 	for _, plant := range plants {
 		if growthTrait, exists := plant.Traits["growth_efficiency"]; exists {
 			avgGrowth += growthTrait.Value
@@ -1886,33 +1899,33 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 			avgToxicity += toxinTrait.Value
 		}
 	}
-	
+
 	count := float64(len(plants))
 	avgGrowth /= count
 	avgSize /= count
 	avgDefense /= count
 	avgToxicity /= count
-	
+
 	// Base plant type symbol
 	config := GetPlantConfigs()[originType]
 	baseSymbol := config.Symbol
-	
+
 	// Visual representation with ASCII art
 	visual.WriteString(fmt.Sprintf("Base Form: %c (%s)\n", baseSymbol, config.Name))
-	
+
 	// Size representation
 	sizeDisplay := ""
 	if avgSize > 20 {
 		sizeDisplay = "████ Very Large"
 	} else if avgSize > 15 {
-		sizeDisplay = "███  Large"  
+		sizeDisplay = "███  Large"
 	} else if avgSize > 10 {
 		sizeDisplay = "██   Medium"
 	} else {
 		sizeDisplay = "█    Small"
 	}
 	visual.WriteString(fmt.Sprintf("Size:     %s (%.1f)\n", sizeDisplay, avgSize))
-	
+
 	// Defense/armor representation
 	defenseDisplay := ""
 	if avgDefense > 0.7 {
@@ -1925,7 +1938,7 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 		defenseDisplay = "     No Armor"
 	}
 	visual.WriteString(fmt.Sprintf("Defense:  %s (%.1f)\n", defenseDisplay, avgDefense))
-	
+
 	// Toxicity representation
 	toxinDisplay := ""
 	if avgToxicity > 0.7 {
@@ -1938,7 +1951,7 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 		toxinDisplay = "     Non-toxic"
 	}
 	visual.WriteString(fmt.Sprintf("Toxicity: %s (%.1f)\n", toxinDisplay, avgToxicity))
-	
+
 	// Growth pattern
 	growthDisplay := ""
 	if avgGrowth > 0.7 {
@@ -1949,10 +1962,10 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 		growthDisplay = "🌿     Slow Growth"
 	}
 	visual.WriteString(fmt.Sprintf("Growth:   %s (%.1f)\n", growthDisplay, avgGrowth))
-	
+
 	// Create a simple "profile" view with enhanced blocky design
 	visual.WriteString("\nProfile View (Blocky Style):\n")
-	
+
 	// Top crown based on growth (more elaborate)
 	if avgGrowth > 0.7 {
 		visual.WriteString("       ╭🌿╮ ╭🌿╮\n")
@@ -1964,7 +1977,7 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 		visual.WriteString("        🌿\n")
 		visual.WriteString("       ╱▲╲\n")
 	}
-	
+
 	// Main body sections vary by size with more detail
 	bodyHeight := int(avgSize/5) + 2
 	for i := 0; i < bodyHeight; i++ {
@@ -1978,7 +1991,7 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 			// Normal body
 			visual.WriteString("      ┃  ●  ┃\n")
 		}
-		
+
 		// Add toxicity indicators inside body
 		if avgToxicity > 0.5 && i == bodyHeight/2 {
 			if avgDefense > 0.4 {
@@ -1988,7 +2001,7 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 			}
 		}
 	}
-	
+
 	// Base varies by root strength
 	if avgGrowth > 0.5 {
 		visual.WriteString("      └─────┘\n")
@@ -1998,17 +2011,17 @@ func (m *CLIModel) renderSpeciesVisual(plants []*Plant, originType PlantType) st
 		visual.WriteString("      └─────┘\n")
 		visual.WriteString("       ╱╲╱╲  (roots)\n")
 	}
-	
+
 	return visual.String()
 }
 
 // renderSpeciesTraits shows genetic trait distribution for the species
 func (m *CLIModel) renderSpeciesTraits(plants []*Plant) string {
 	var traits strings.Builder
-	
+
 	traitSums := make(map[string]float64)
 	traitCounts := make(map[string]int)
-	
+
 	// Collect all traits
 	for _, plant := range plants {
 		for traitName, trait := range plant.Traits {
@@ -2016,15 +2029,17 @@ func (m *CLIModel) renderSpeciesTraits(plants []*Plant) string {
 			traitCounts[traitName]++
 		}
 	}
-	
+
 	// Calculate averages and display as bars
 	for traitName, sum := range traitSums {
 		avg := sum / float64(traitCounts[traitName])
 		bars := int(math.Abs(avg) * 10)
-		if bars > 10 { bars = 10 }
-		
+		if bars > 10 {
+			bars = 10
+		}
+
 		traits.WriteString(fmt.Sprintf("%-18s ", traitName))
-		
+
 		// Visual bar representation
 		if avg >= 0 {
 			traits.WriteString("[")
@@ -2049,18 +2064,18 @@ func (m *CLIModel) renderSpeciesTraits(plants []*Plant) string {
 		}
 		traits.WriteString(fmt.Sprintf(" %.3f\n", avg))
 	}
-	
+
 	return traits.String()
 }
 
 // renderSpeciesHabitat shows where the species is found and environmental preferences
 func (m *CLIModel) renderSpeciesHabitat(plants []*Plant) string {
 	var habitat strings.Builder
-	
+
 	// Analyze biome distribution
 	biomeCount := make(map[BiomeType]int)
 	totalPlants := len(plants)
-	
+
 	for _, plant := range plants {
 		x, y := int(plant.Position.X), int(plant.Position.Y)
 		if x >= 0 && x < m.world.Config.GridWidth && y >= 0 && y < m.world.Config.GridHeight {
@@ -2068,7 +2083,7 @@ func (m *CLIModel) renderSpeciesHabitat(plants []*Plant) string {
 			biomeCount[biome]++
 		}
 	}
-	
+
 	habitat.WriteString("Habitat Distribution:\n")
 	for biomeType, count := range biomeCount {
 		if count > 0 {
@@ -2077,7 +2092,7 @@ func (m *CLIModel) renderSpeciesHabitat(plants []*Plant) string {
 			habitat.WriteString(fmt.Sprintf("  %s: %d plants (%.1f%%)\n", biomeName, count, percentage))
 		}
 	}
-	
+
 	// Find preferred biome
 	maxCount := 0
 	var preferredBiome BiomeType
@@ -2087,11 +2102,11 @@ func (m *CLIModel) renderSpeciesHabitat(plants []*Plant) string {
 			preferredBiome = biome
 		}
 	}
-	
+
 	if maxCount > 0 {
 		habitat.WriteString(fmt.Sprintf("\nPreferred Habitat: %s\n", m.world.Biomes[preferredBiome].Name))
 	}
-	
+
 	return habitat.String()
 }
 
@@ -2239,39 +2254,39 @@ func (m CLIModel) networkView() string {
 func (m *CLIModel) dnaView() string {
 	var content strings.Builder
 	content.WriteString("=== DNA ANALYSIS ===\n\n")
-	
+
 	if m.world.DNASystem == nil {
 		content.WriteString("DNA system not available\n")
 		return content.String()
 	}
-	
+
 	// Show DNA system statistics
 	content.WriteString("DNA SYSTEM STATUS:\n")
 	content.WriteString(fmt.Sprintf("Active trait-gene mappings: %d\n", len(m.world.DNASystem.TraitToGene)))
 	content.WriteString(fmt.Sprintf("Gene length definitions: %d\n", len(m.world.DNASystem.GeneLength)))
-	
+
 	// Find sample entities with DNA
 	sampleCount := 0
 	for _, entity := range m.world.AllEntities {
 		if !entity.IsAlive || sampleCount >= 5 {
 			continue
 		}
-		
+
 		// Look for cellular organism
 		if organism := m.world.CellularSystem.OrganismMap[entity.ID]; organism != nil {
 			if len(organism.Cells) > 0 && organism.Cells[0].DNA != nil {
 				dna := organism.Cells[0].DNA
-				
+
 				content.WriteString(fmt.Sprintf("\n--- Entity %d DNA Analysis ---\n", entity.ID))
 				content.WriteString(fmt.Sprintf("Species: %s\n", entity.Species))
 				content.WriteString(fmt.Sprintf("Generation: %d\n", dna.Generation))
 				content.WriteString(fmt.Sprintf("Chromosomes: %d\n", len(dna.Chromosomes)))
 				content.WriteString(fmt.Sprintf("Total mutations: %d\n", dna.Mutations))
-				
+
 				// Show DNA sequence sample
 				dnaString := m.world.DNASystem.GetDNAString(dna, 50)
 				content.WriteString(fmt.Sprintf("DNA Sample: %s\n", dnaString))
-				
+
 				// Show trait expression
 				content.WriteString("Trait Expression:\n")
 				for traitName := range entity.Traits {
@@ -2279,16 +2294,16 @@ func (m *CLIModel) dnaView() string {
 					dnaValue := m.world.DNASystem.ExpressTrait(dna, traitName)
 					content.WriteString(fmt.Sprintf("  %s: %.3f (DNA: %.3f)\n", traitName, originalValue, dnaValue))
 				}
-				
+
 				sampleCount++
 			}
 		}
 	}
-	
+
 	if sampleCount == 0 {
 		content.WriteString("\nNo DNA samples available for analysis\n")
 	}
-	
+
 	return content.String()
 }
 
@@ -2296,19 +2311,19 @@ func (m *CLIModel) dnaView() string {
 func (m *CLIModel) cellularView() string {
 	var content strings.Builder
 	content.WriteString(titleStyle.Render("Cellular Analysis & Visualization") + "\n\n")
-	
+
 	if m.world.CellularSystem == nil {
 		content.WriteString("Cellular system not available\n")
 		return content.String()
 	}
-	
+
 	// System statistics
 	stats := m.world.CellularSystem.GetCellularSystemStats()
 	content.WriteString("CELLULAR SYSTEM STATUS:\n")
 	content.WriteString(fmt.Sprintf("Total organisms: %v\n", stats["total_organisms"]))
 	content.WriteString(fmt.Sprintf("Total cells: %v\n", stats["total_cells"]))
 	content.WriteString(fmt.Sprintf("Next cell ID: %v\n", stats["next_cell_id"]))
-	
+
 	// Complexity distribution
 	if complexityDist, ok := stats["complexity_distribution"].(map[int]int); ok {
 		content.WriteString("\nComplexity Distribution:\n")
@@ -2317,7 +2332,7 @@ func (m *CLIModel) cellularView() string {
 			content.WriteString(fmt.Sprintf("  Level %d: %d organisms\n", level, count))
 		}
 	}
-	
+
 	// Visual representation of selected organism
 	content.WriteString("\n=== INDIVIDUAL ORGANISM VISUALIZATION ===\n")
 	selectedOrganism := m.getSelectedOrganism()
@@ -2326,7 +2341,7 @@ func (m *CLIModel) cellularView() string {
 	} else {
 		content.WriteString("No organism selected. Use arrows to navigate and Enter to select.\n")
 	}
-	
+
 	// Sample organism details with enhanced visualization
 	content.WriteString("\n=== ORGANISM SAMPLES ===\n")
 	sampleCount := 0
@@ -2334,24 +2349,24 @@ func (m *CLIModel) cellularView() string {
 		if sampleCount >= 3 {
 			break
 		}
-		
+
 		content.WriteString(fmt.Sprintf("\n--- Organism %d ---\n", entityID))
 		content.WriteString(fmt.Sprintf("Cells: %d\n", len(organism.Cells)))
 		content.WriteString(fmt.Sprintf("Complexity Level: %d\n", organism.ComplexityLevel))
 		content.WriteString(fmt.Sprintf("Total Energy: %.1f\n", organism.TotalEnergy))
 		content.WriteString(fmt.Sprintf("Cell Divisions: %d\n", organism.CellDivisions))
 		content.WriteString(fmt.Sprintf("Generation: %d\n", organism.Generation))
-		
+
 		// Visual cell layout representation
 		content.WriteString("Cell Layout Visual:\n")
 		content.WriteString(m.renderCellLayout(organism))
-		
+
 		// Organ systems
 		content.WriteString("Organ Systems:\n")
 		for systemName, cellIDs := range organism.OrganSystems {
 			content.WriteString(fmt.Sprintf("  %s: %d cells\n", systemName, len(cellIDs)))
 		}
-		
+
 		// Sample cell details with visual representation
 		if len(organism.Cells) > 0 {
 			cell := organism.Cells[0]
@@ -2363,15 +2378,15 @@ func (m *CLIModel) cellularView() string {
 			content.WriteString(fmt.Sprintf("  Age: %d ticks\n", cell.Age))
 			content.WriteString(fmt.Sprintf("  Activity: %.1f%%\n", cell.Activity*100))
 			content.WriteString(fmt.Sprintf("  Organelles: %d types\n", len(cell.Organelles)))
-			
+
 			// Visual representation of the cell
 			content.WriteString("  Cell Visual:\n")
 			content.WriteString(m.renderCellVisual(cell))
 		}
-		
+
 		sampleCount++
 	}
-	
+
 	return content.String()
 }
 
@@ -2380,7 +2395,7 @@ func (m *CLIModel) getSelectedOrganism() *CellularOrganism {
 	if m.world.CellularSystem == nil || len(m.world.CellularSystem.OrganismMap) == 0 {
 		return nil
 	}
-	
+
 	// For now, return the first organism - later this could be enhanced with selection
 	for _, organism := range m.world.CellularSystem.OrganismMap {
 		return organism
@@ -2391,24 +2406,26 @@ func (m *CLIModel) getSelectedOrganism() *CellularOrganism {
 // renderOrganismVisual creates a visual representation of an entire organism
 func (m *CLIModel) renderOrganismVisual(organism *CellularOrganism) string {
 	var visual strings.Builder
-	
+
 	visual.WriteString(fmt.Sprintf("🦠 Organism (Complexity Level %d)\n", organism.ComplexityLevel))
-	visual.WriteString(fmt.Sprintf("Energy: %.1f | Cells: %d | Generation: %d\n\n", 
+	visual.WriteString(fmt.Sprintf("Energy: %.1f | Cells: %d | Generation: %d\n\n",
 		organism.TotalEnergy, len(organism.Cells), organism.Generation))
-	
+
 	// Create a simple grid representation based on cell count and type
 	cellsPerRow := int(math.Sqrt(float64(len(organism.Cells)))) + 1
-	if cellsPerRow > 10 { cellsPerRow = 10 }
-	
+	if cellsPerRow > 10 {
+		cellsPerRow = 10
+	}
+
 	visual.WriteString("Cellular Structure:\n")
 	for i, cell := range organism.Cells {
 		if i > 0 && i%cellsPerRow == 0 {
 			visual.WriteString("\n")
 		}
-		
+
 		// Get cell symbol based on type
 		symbol := m.getCellSymbol(int(cell.Type))
-		
+
 		// Color based on health and energy
 		if cell.Health > 0.8 && cell.Energy > 50 {
 			visual.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("46")).Render(symbol)) // Bright green
@@ -2420,7 +2437,7 @@ func (m *CLIModel) renderOrganismVisual(organism *CellularOrganism) string {
 		visual.WriteString(" ")
 	}
 	visual.WriteString("\n\n")
-	
+
 	// Organ system visualization
 	visual.WriteString("Organ Systems:\n")
 	for systemName, cellIDs := range organism.OrganSystems {
@@ -2438,23 +2455,23 @@ func (m *CLIModel) renderOrganismVisual(organism *CellularOrganism) string {
 		}
 		visual.WriteString("\n")
 	}
-	
+
 	return visual.String()
 }
 
 // renderCellLayout creates a visual layout of cells in an organism
 func (m *CLIModel) renderCellLayout(organism *CellularOrganism) string {
 	var layout strings.Builder
-	
+
 	// Simple grid layout based on cell count
 	cellsPerRow := 8
 	for i, cell := range organism.Cells {
 		if i > 0 && i%cellsPerRow == 0 {
 			layout.WriteString("\n")
 		}
-		
+
 		symbol := m.getCellSymbol(int(cell.Type))
-		
+
 		// Color coding: green=healthy, yellow=medium, red=unhealthy
 		health := cell.Health
 		if health > 0.7 {
@@ -2465,7 +2482,7 @@ func (m *CLIModel) renderCellLayout(organism *CellularOrganism) string {
 			layout.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(symbol))
 		}
 		layout.WriteString(" ")
-		
+
 		// Limit display to avoid too large grids
 		if i >= 63 { // 8x8 grid max
 			layout.WriteString("...")
@@ -2473,28 +2490,28 @@ func (m *CLIModel) renderCellLayout(organism *CellularOrganism) string {
 		}
 	}
 	layout.WriteString("\n")
-	
+
 	return layout.String()
 }
 
 // renderCellVisual creates a detailed visual representation of a single cell
 func (m *CLIModel) renderCellVisual(cell *Cell) string {
 	var visual strings.Builder
-	
+
 	symbol := m.getCellSymbol(int(cell.Type))
-	
+
 	// Main cell representation with size indication
 	sizeIndicator := ""
 	if cell.Size > 20 {
 		sizeIndicator = "●●●" // Large cell
 	} else if cell.Size > 10 {
-		sizeIndicator = "●●"  // Medium cell
+		sizeIndicator = "●●" // Medium cell
 	} else {
-		sizeIndicator = "●"   // Small cell
+		sizeIndicator = "●" // Small cell
 	}
-	
+
 	visual.WriteString(fmt.Sprintf("    [%s] %s %s\n", symbol, sizeIndicator, m.world.CellularSystem.CellTypeNames[cell.Type]))
-	
+
 	// Health bar
 	healthBars := int(cell.Health * 10)
 	visual.WriteString("    Health: [")
@@ -2506,10 +2523,12 @@ func (m *CLIModel) renderCellVisual(cell *Cell) string {
 		}
 	}
 	visual.WriteString("]\n")
-	
+
 	// Energy bar
 	energyBars := int(cell.Energy / 10)
-	if energyBars > 10 { energyBars = 10 }
+	if energyBars > 10 {
+		energyBars = 10
+	}
 	visual.WriteString("    Energy:  [")
 	for i := 0; i < 10; i++ {
 		if i < energyBars {
@@ -2519,7 +2538,7 @@ func (m *CLIModel) renderCellVisual(cell *Cell) string {
 		}
 	}
 	visual.WriteString("]\n")
-	
+
 	// Organelles representation
 	if len(cell.Organelles) > 0 {
 		visual.WriteString("    Organelles: ")
@@ -2533,7 +2552,7 @@ func (m *CLIModel) renderCellVisual(cell *Cell) string {
 			6: "🕸", // ER
 			7: "🗑", // Lysosome
 		}
-		
+
 		for organelleType, organelle := range cell.Organelles {
 			if symbol, exists := organelleSymbols[organelleType]; exists {
 				count := organelle.Count
@@ -2547,7 +2566,7 @@ func (m *CLIModel) renderCellVisual(cell *Cell) string {
 		}
 		visual.WriteString("\n")
 	}
-	
+
 	return visual.String()
 }
 
@@ -2563,7 +2582,7 @@ func (m *CLIModel) getCellSymbol(cellType int) string {
 		6: "P", // Photosynthetic
 		7: "T", // Storage
 	}
-	
+
 	if symbol, exists := symbols[cellType]; exists {
 		return symbol
 	}
@@ -2584,12 +2603,12 @@ func (m *CLIModel) findCellByID(organism *CellularOrganism, cellID int) *Cell {
 func (m *CLIModel) evolutionView() string {
 	var content strings.Builder
 	content.WriteString("=== MACRO EVOLUTION ===\n\n")
-	
+
 	if m.world.MacroEvolutionSystem == nil {
 		content.WriteString("Macro evolution system not available\n")
 		return content.String()
 	}
-	
+
 	// System statistics
 	stats := m.world.MacroEvolutionSystem.GetEvolutionStats()
 	content.WriteString("EVOLUTIONARY OVERVIEW:\n")
@@ -2599,7 +2618,7 @@ func (m *CLIModel) evolutionView() string {
 	content.WriteString(fmt.Sprintf("Total evolutionary events: %v\n", stats["total_events"]))
 	content.WriteString(fmt.Sprintf("Recent events (last 100 ticks): %v\n", stats["recent_events"]))
 	content.WriteString(fmt.Sprintf("Extinction events: %v\n", stats["extinction_events"]))
-	
+
 	// Phylogenetic tree info
 	if treeDepth, ok := stats["tree_depth"]; ok {
 		content.WriteString(fmt.Sprintf("Phylogenetic tree depth: %v\n", treeDepth))
@@ -2607,7 +2626,7 @@ func (m *CLIModel) evolutionView() string {
 	if treeNodes, ok := stats["tree_nodes"]; ok {
 		content.WriteString(fmt.Sprintf("Tree nodes: %v\n", treeNodes))
 	}
-	
+
 	// Recent evolutionary events
 	content.WriteString("\n=== RECENT EVOLUTIONARY EVENTS ===\n")
 	recentEvents := m.world.MacroEvolutionSystem.GetRecentEvents(5)
@@ -2615,14 +2634,14 @@ func (m *CLIModel) evolutionView() string {
 		content.WriteString("No recent evolutionary events\n")
 	} else {
 		for _, event := range recentEvents {
-			content.WriteString(fmt.Sprintf("Tick %d [%s]: %s\n", 
+			content.WriteString(fmt.Sprintf("Tick %d [%s]: %s\n",
 				event.Tick, strings.ToUpper(event.Type), event.Description))
 			if event.Significance > 0.5 {
 				content.WriteString("  *** HIGHLY SIGNIFICANT ***\n")
 			}
 		}
 	}
-	
+
 	// Feedback Loop Evolution Data
 	content.WriteString("\n=== FEEDBACK LOOP EVOLUTION ===\n")
 	adaptationStats := m.calculateAdaptationStats()
@@ -2630,7 +2649,7 @@ func (m *CLIModel) evolutionView() string {
 	content.WriteString(fmt.Sprintf("Entities with environmental adaptations: %d\n", adaptationStats["env_memory_count"]))
 	content.WriteString(fmt.Sprintf("Average dietary fitness: %.3f\n", adaptationStats["avg_dietary_fitness"]))
 	content.WriteString(fmt.Sprintf("Average environmental fitness: %.3f\n", adaptationStats["avg_env_fitness"]))
-	
+
 	// Show evolutionary pressure indicators
 	highPressureCount := 0
 	for _, population := range m.world.Populations {
@@ -2638,7 +2657,7 @@ func (m *CLIModel) evolutionView() string {
 			if !entity.IsAlive {
 				continue
 			}
-			
+
 			highPressure := false
 			if entity.EnvironmentalMemory != nil && entity.EnvironmentalMemory.AdaptationFitness < 0.8 {
 				highPressure = true
@@ -2646,14 +2665,14 @@ func (m *CLIModel) evolutionView() string {
 			if entity.DietaryMemory != nil && entity.DietaryMemory.DietaryFitness < 0.6 {
 				highPressure = true
 			}
-			
+
 			if highPressure {
 				highPressureCount++
 			}
 		}
 	}
 	content.WriteString(fmt.Sprintf("Entities under evolutionary pressure: %d\n", highPressureCount))
-	
+
 	// Species lineages
 	content.WriteString("\n=== SPECIES LINEAGES ===\n")
 	lineageCount := 0
@@ -2663,37 +2682,37 @@ func (m *CLIModel) evolutionView() string {
 			content.WriteString(fmt.Sprintf("... and %d more species\n", remaining))
 			break
 		}
-		
+
 		status := "LIVING"
 		if lineage.ExtinctionTick != 0 {
 			status = "EXTINCT"
 		}
-		
+
 		content.WriteString(fmt.Sprintf("%s [%s]:\n", speciesName, status))
 		content.WriteString(fmt.Sprintf("  Origin: Tick %d", lineage.OriginTick))
 		if lineage.ParentSpecies != "" {
 			content.WriteString(fmt.Sprintf(" (from %s)", lineage.ParentSpecies))
 		}
 		content.WriteString("\n")
-		
+
 		if lineage.ExtinctionTick != 0 {
 			duration := lineage.ExtinctionTick - lineage.OriginTick
-			content.WriteString(fmt.Sprintf("  Extinction: Tick %d (survived %d ticks)\n", 
+			content.WriteString(fmt.Sprintf("  Extinction: Tick %d (survived %d ticks)\n",
 				lineage.ExtinctionTick, duration))
 		}
-		
+
 		content.WriteString(fmt.Sprintf("  Peak population: %d\n", lineage.PeakPopulation))
 		content.WriteString(fmt.Sprintf("  Child species: %d\n", len(lineage.ChildSpecies)))
 		content.WriteString(fmt.Sprintf("  Adaptations: %d\n", len(lineage.Adaptations)))
-		
+
 		// Show niches
 		if len(lineage.Niches) > 0 {
 			content.WriteString(fmt.Sprintf("  Niches: %s\n", strings.Join(lineage.Niches, ", ")))
 		}
-		
+
 		lineageCount++
 	}
-	
+
 	return content.String()
 }
 
@@ -2701,12 +2720,12 @@ func (m *CLIModel) evolutionView() string {
 func (m *CLIModel) topologyView() string {
 	var content strings.Builder
 	content.WriteString(titleStyle.Render("World Topology & Underground Visualization") + "\n\n")
-	
+
 	if m.world.TopologySystem == nil {
 		content.WriteString("Topology system not available\n")
 		return content.String()
 	}
-	
+
 	// System statistics
 	stats := m.world.TopologySystem.GetTopologyStats()
 	content.WriteString("TOPOLOGY OVERVIEW:\n")
@@ -2717,29 +2736,29 @@ func (m *CLIModel) topologyView() string {
 	content.WriteString(fmt.Sprintf("Water coverage: %.1f%%\n", stats["water_coverage"].(float64)*100))
 	content.WriteString(fmt.Sprintf("Erosion rate: %.6f\n", stats["erosion_rate"]))
 	content.WriteString(fmt.Sprintf("Tectonic activity: %.2f\n", stats["tectonic_activity"]))
-	
+
 	// 3D-style visualization controls
 	content.WriteString("\n=== VIEWING ANGLES ===\n")
 	content.WriteString("🔍 [1] Surface View (Default) | [2] Cross-Section | [3] Underground | [4] Isometric\n")
 	content.WriteString("Use number keys to switch viewing angles\n")
-	
+
 	// Enhanced topographic map with underground features
 	content.WriteString("\n=== ENHANCED TOPOGRAPHIC MAP ===\n")
 	content.WriteString(m.renderTopographicMap())
-	
+
 	// Underground features visualization
 	content.WriteString("\n=== UNDERGROUND FEATURES ===\n")
 	content.WriteString(m.renderUndergroundMap())
-	
+
 	// Cross-section view
 	content.WriteString("\n=== CROSS-SECTION VIEW ===\n")
 	content.WriteString(m.renderCrossSectionView())
-	
+
 	// Terrain features
 	content.WriteString(fmt.Sprintf("\nTerrain features: %v\n", stats["terrain_features"]))
 	content.WriteString(fmt.Sprintf("Water bodies: %v\n", stats["water_bodies"]))
 	content.WriteString(fmt.Sprintf("Active geological events: %v\n", stats["geological_events"]))
-	
+
 	// Active geological events
 	if len(m.world.TopologySystem.GeologicalEvents) > 0 {
 		content.WriteString("\n=== ACTIVE GEOLOGICAL EVENTS ===\n")
@@ -2751,7 +2770,7 @@ func (m *CLIModel) topologyView() string {
 			content.WriteString(fmt.Sprintf("  Duration remaining: %d ticks\n", event.Duration))
 		}
 	}
-	
+
 	// Major terrain features with visual representation
 	content.WriteString("\n=== MAJOR TERRAIN FEATURES ===\n")
 	featureCount := 0
@@ -2761,10 +2780,10 @@ func (m *CLIModel) topologyView() string {
 			content.WriteString(fmt.Sprintf("... and %d more features\n", remaining))
 			break
 		}
-		
+
 		typeName := m.world.TopologySystem.GetTerrainTypeName(feature.Type)
 		featureSymbol := m.getTerrainFeatureSymbol(feature.Type)
-		
+
 		content.WriteString(fmt.Sprintf("%s %s (ID %d):\n", featureSymbol, typeName, feature.ID))
 		content.WriteString(fmt.Sprintf("  Center: (%.1f, %.1f)\n", feature.Center.X, feature.Center.Y))
 		content.WriteString(fmt.Sprintf("  Size: %.1f\n", feature.Radius))
@@ -2772,15 +2791,15 @@ func (m *CLIModel) topologyView() string {
 		content.WriteString(fmt.Sprintf("  Age: %d ticks\n", feature.Age))
 		content.WriteString(fmt.Sprintf("  Stability: %.2f\n", feature.Stability))
 		content.WriteString(fmt.Sprintf("  Composition: %s\n", feature.Composition))
-		
+
 		// Visual mini-profile for each feature
 		content.WriteString("  Profile: ")
 		content.WriteString(m.renderFeatureProfile(feature))
 		content.WriteString("\n")
-		
+
 		featureCount++
 	}
-	
+
 	// Major water bodies with flow visualization
 	if len(m.world.TopologySystem.WaterBodies) > 0 {
 		content.WriteString("\n=== WATER BODIES ===\n")
@@ -2791,38 +2810,38 @@ func (m *CLIModel) topologyView() string {
 				content.WriteString(fmt.Sprintf("... and %d more water bodies\n", remaining))
 				break
 			}
-			
+
 			waterSymbol := m.getWaterBodySymbol(waterBody.Type)
 			content.WriteString(fmt.Sprintf("%s %s (ID %d):\n", waterSymbol, strings.ToTitle(waterBody.Type), waterBody.ID))
 			content.WriteString(fmt.Sprintf("  Depth: %.2f\n", waterBody.Depth))
 			content.WriteString(fmt.Sprintf("  Flow: %.2f\n", waterBody.Flow))
 			content.WriteString(fmt.Sprintf("  Salinity: %.1f%%\n", waterBody.Salinity*100))
 			content.WriteString(fmt.Sprintf("  Points: %d\n", len(waterBody.Points)))
-			
+
 			// Flow direction visualization
 			if waterBody.Flow > 0.1 {
 				content.WriteString("  Flow: ")
 				content.WriteString(m.renderWaterFlow(waterBody))
 				content.WriteString("\n")
 			}
-			
+
 			waterCount++
 		}
 	}
-	
+
 	return content.String()
 }
 
 // renderTopographicMap creates an enhanced topographic map
 func (m *CLIModel) renderTopographicMap() string {
 	var topo strings.Builder
-	
+
 	topo.WriteString("Surface Elevation Map (Minecraft/Rimworld style):\n")
-	
+
 	// Use a smaller sample of the world for display
 	sampleWidth := min(m.world.TopologySystem.Width, 40)
 	sampleHeight := min(m.world.TopologySystem.Height, 20)
-	
+
 	for y := 0; y < sampleHeight; y++ {
 		for x := 0; x < sampleWidth; x++ {
 			if x < m.world.TopologySystem.Width && y < m.world.TopologySystem.Height {
@@ -2836,34 +2855,34 @@ func (m *CLIModel) renderTopographicMap() string {
 		}
 		topo.WriteString("\n")
 	}
-	
+
 	// Legend
 	topo.WriteString("\nElevation Legend:\n")
 	topo.WriteString("▲ High mountains   ▲ Medium mountains   △ Hills   . Plains   ~ Low areas   ≈ Water\n")
-	
+
 	return topo.String()
 }
 
 // renderUndergroundMap shows underground features like tunnels and caves
 func (m *CLIModel) renderUndergroundMap() string {
 	var underground strings.Builder
-	
+
 	underground.WriteString("Underground Structure Map:\n")
-	
+
 	// Check for environmental modifications (tunnels, burrows, etc.)
 	if m.world.EnvironmentalModSystem != nil {
 		sampleWidth := min(m.world.Config.GridWidth, 40)
 		sampleHeight := min(m.world.Config.GridHeight, 20)
-		
+
 		// Create underground map
 		undergroundGrid := make([][]string, sampleHeight)
 		for y := range undergroundGrid {
 			undergroundGrid[y] = make([]string, sampleWidth)
 			for x := range undergroundGrid[y] {
-				undergroundGrid[y][x] = "░" // Empty underground
+				undergroundGrid[y][x] = SymbolUndergroundEmpty // Empty underground
 			}
 		}
-		
+
 		// Mark underground modifications
 		for _, mod := range m.world.EnvironmentalModSystem.Modifications {
 			x, y := int(mod.Position.X), int(mod.Position.Y)
@@ -2880,11 +2899,11 @@ func (m *CLIModel) renderUndergroundMap() string {
 				case 10: // Farm (root system)
 					undergroundGrid[y][x] = "┼"
 				default:
-					undergroundGrid[y][x] = "▓"
+					undergroundGrid[y][x] = SymbolUndergroundSolid
 				}
 			}
 		}
-		
+
 		// Render underground map
 		for y := 0; y < sampleHeight; y++ {
 			for x := 0; x < sampleWidth; x++ {
@@ -2897,26 +2916,26 @@ func (m *CLIModel) renderUndergroundMap() string {
 			}
 			underground.WriteString("\n")
 		}
-		
+
 		underground.WriteString("\nUnderground Legend:\n")
 		underground.WriteString("═ Tunnels   ○ Burrows   □ Caches   ⚒ Workshops   ┼ Root Systems   ░ Empty\n")
 	} else {
 		underground.WriteString("No underground modification system available\n")
 	}
-	
+
 	return underground.String()
 }
 
 // renderCrossSectionView shows a cross-section of the world
 func (m *CLIModel) renderCrossSectionView() string {
 	var section strings.Builder
-	
+
 	section.WriteString("World Cross-Section (Center slice):\n")
-	
+
 	// Take a vertical slice through the center of the world
 	centerX := m.world.TopologySystem.Width / 2
 	width := min(60, m.world.TopologySystem.Height) // Display width
-	
+
 	// Surface line
 	section.WriteString("Surface: ")
 	for y := 0; y < width; y++ {
@@ -2927,7 +2946,7 @@ func (m *CLIModel) renderCrossSectionView() string {
 		}
 	}
 	section.WriteString("\n")
-	
+
 	// Underground layers (simulated)
 	for layer := 1; layer <= 5; layer++ {
 		section.WriteString(fmt.Sprintf("Layer %d: ", layer))
@@ -2941,10 +2960,10 @@ func (m *CLIModel) renderCrossSectionView() string {
 		}
 		section.WriteString("\n")
 	}
-	
+
 	section.WriteString("\nCross-Section Legend:\n")
 	section.WriteString("▓ Rock   ░ Soil   ≈ Groundwater   ● Ore deposits   ○ Air pockets\n")
-	
+
 	return section.String()
 }
 
@@ -2952,11 +2971,11 @@ func (m *CLIModel) renderCrossSectionView() string {
 
 func (m *CLIModel) getElevationSymbol(elevation float64) string {
 	if elevation > 0.8 {
-		return "▲" // High mountains
+		return SymbolMountainHigh // High mountains
 	} else if elevation > 0.6 {
-		return "▲" // Medium mountains
+		return SymbolMountainHigh // Medium mountains
 	} else if elevation > 0.3 {
-		return "△" // Hills
+		return SymbolMountainLow // Hills
 	} else if elevation > 0.0 {
 		return "." // Plains
 	} else if elevation > -0.3 {
@@ -3072,9 +3091,9 @@ func (m *CLIModel) getUndergroundLayerSymbol(cell TopologyCell, layer int) strin
 
 func (m *CLIModel) reproductionView() string {
 	var content strings.Builder
-	
+
 	content.WriteString("=== REPRODUCTION & DECAY SYSTEM ===\n\n")
-	
+
 	// Reproduction system stats
 	if m.world.ReproductionSystem != nil {
 		rs := m.world.ReproductionSystem
@@ -3082,7 +3101,7 @@ func (m *CLIModel) reproductionView() string {
 		content.WriteString(fmt.Sprintf("Decaying items: %d\n", len(rs.DecayingItems)))
 		content.WriteString(fmt.Sprintf("Next egg ID: %d\n", rs.NextEggID))
 		content.WriteString(fmt.Sprintf("Next item ID: %d\n", rs.NextItemID))
-		
+
 		// Egg details
 		if len(rs.Eggs) > 0 {
 			content.WriteString("\n=== ACTIVE EGGS ===\n")
@@ -3091,7 +3110,7 @@ func (m *CLIModel) reproductionView() string {
 					content.WriteString(fmt.Sprintf("... and %d more eggs\n", len(rs.Eggs)-i))
 					break
 				}
-				
+
 				content.WriteString(fmt.Sprintf("Egg %d:\n", egg.ID))
 				content.WriteString(fmt.Sprintf("  Parents: %d + %d\n", egg.Parent1ID, egg.Parent2ID))
 				content.WriteString(fmt.Sprintf("  Species: %s\n", egg.Species))
@@ -3101,7 +3120,7 @@ func (m *CLIModel) reproductionView() string {
 				content.WriteString("\n")
 			}
 		}
-		
+
 		// Decaying items
 		if len(rs.DecayingItems) > 0 {
 			content.WriteString("\n=== DECAYING ITEMS ===\n")
@@ -3110,7 +3129,7 @@ func (m *CLIModel) reproductionView() string {
 					content.WriteString(fmt.Sprintf("... and %d more items\n", len(rs.DecayingItems)-i))
 					break
 				}
-				
+
 				content.WriteString(fmt.Sprintf("%s %d:\n", item.ItemType, item.ID))
 				content.WriteString(fmt.Sprintf("  Origin: %s\n", item.OriginSpecies))
 				content.WriteString(fmt.Sprintf("  Age: %d/%d ticks\n", m.world.Tick-item.CreationTick, item.DecayPeriod))
@@ -3121,10 +3140,10 @@ func (m *CLIModel) reproductionView() string {
 			}
 		}
 	}
-	
+
 	// Entity reproduction status
 	content.WriteString("\n=== ENTITY REPRODUCTION STATUS ===\n")
-	
+
 	// Count entities by reproduction mode and status
 	modeCount := make(map[string]int)
 	strategyCount := make(map[string]int)
@@ -3132,16 +3151,16 @@ func (m *CLIModel) reproductionView() string {
 	readyToMateCount := 0
 	matingSeasonCount := 0
 	migratingCount := 0
-	
+
 	for _, entity := range m.world.AllEntities {
 		if !entity.IsAlive || entity.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		rs := entity.ReproductionStatus
 		modeCount[rs.Mode.String()]++
 		strategyCount[rs.Strategy.String()]++
-		
+
 		if rs.IsPregnant {
 			pregnantCount++
 		}
@@ -3155,23 +3174,23 @@ func (m *CLIModel) reproductionView() string {
 			migratingCount++
 		}
 	}
-	
+
 	content.WriteString("Reproduction Statistics:\n")
 	content.WriteString(fmt.Sprintf("  Pregnant entities: %d\n", pregnantCount))
 	content.WriteString(fmt.Sprintf("  Ready to mate: %d\n", readyToMateCount))
 	content.WriteString(fmt.Sprintf("  In mating season: %d\n", matingSeasonCount))
 	content.WriteString(fmt.Sprintf("  Require migration: %d\n", migratingCount))
-	
+
 	content.WriteString("\nReproduction Modes:\n")
 	for mode, count := range modeCount {
 		content.WriteString(fmt.Sprintf("  %s: %d\n", mode, count))
 	}
-	
+
 	content.WriteString("\nMating Strategies:\n")
 	for strategy, count := range strategyCount {
 		content.WriteString(fmt.Sprintf("  %s: %d\n", strategy, count))
 	}
-	
+
 	// Show some example entities with detailed reproduction info
 	content.WriteString("\n=== SAMPLE ENTITIES ===\n")
 	entityCount := 0
@@ -3179,36 +3198,36 @@ func (m *CLIModel) reproductionView() string {
 		if !entity.IsAlive || entity.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		if entityCount >= 3 { // Show only first 3
 			break
 		}
-		
+
 		rs := entity.ReproductionStatus
 		content.WriteString(fmt.Sprintf("Entity %d (%s):\n", entity.ID, entity.Species))
 		content.WriteString(fmt.Sprintf("  Mode: %s, Strategy: %s\n", rs.Mode.String(), rs.Strategy.String()))
 		content.WriteString(fmt.Sprintf("  Age: %d, Energy: %.1f\n", entity.Age, entity.Energy))
-		
+
 		if rs.IsPregnant {
 			gestation := m.world.Tick - rs.GestationStartTick
 			content.WriteString(fmt.Sprintf("  PREGNANT (%.1f%% complete)\n", float64(gestation)/float64(rs.GestationPeriod)*100))
 		}
-		
+
 		if rs.MateID > 0 {
 			content.WriteString(fmt.Sprintf("  Mated to: Entity %d\n", rs.MateID))
 		}
-		
+
 		if rs.RequiresMigration {
 			dx := entity.Position.X - rs.PreferredMatingLocation.X
 			dy := entity.Position.Y - rs.PreferredMatingLocation.Y
 			distance := math.Sqrt(dx*dx + dy*dy)
 			content.WriteString(fmt.Sprintf("  Migration distance: %.1f units\n", distance))
 		}
-		
+
 		content.WriteString("\n")
 		entityCount++
 	}
-	
+
 	return content.String()
 }
 
@@ -3232,7 +3251,7 @@ func (m *CLIModel) statisticalView() string {
 	content.WriteString(fmt.Sprintf("  Total Plants: %d\n", summary["total_plants"]))
 	content.WriteString(fmt.Sprintf("  Total Energy: %.2f\n", summary["total_energy"]))
 	content.WriteString(fmt.Sprintf("  Species Count: %d\n", summary["species_count"]))
-	
+
 	if baseline, ok := summary["energy_baseline"].(float64); ok && baseline > 0 {
 		currentEnergy := summary["total_energy"].(float64)
 		change := ((currentEnergy - baseline) / baseline) * 100
@@ -3252,12 +3271,12 @@ func (m *CLIModel) statisticalView() string {
 	// Recent anomalies summary
 	recentAnomalies := m.world.StatisticalReporter.GetRecentAnomalies(100, m.world.Tick)
 	content.WriteString(fmt.Sprintf("RECENT ANOMALIES (%d):\n", len(recentAnomalies)))
-	
+
 	anomalyCounts := make(map[AnomalyType]int)
 	for _, anomaly := range recentAnomalies {
 		anomalyCounts[anomaly.Type]++
 	}
-	
+
 	for anomalyType, count := range anomalyCounts {
 		content.WriteString(fmt.Sprintf("  %s: %d\n", anomalyType, count))
 	}
@@ -3270,19 +3289,19 @@ func (m *CLIModel) statisticalView() string {
 		content.WriteString(fmt.Sprintf("  Tick: %d\n", latest.Tick))
 		content.WriteString(fmt.Sprintf("  Entities: %d, Plants: %d\n", latest.TotalEntities, latest.TotalPlants))
 		content.WriteString(fmt.Sprintf("  Total Energy: %.2f\n", latest.TotalEnergy))
-		
+
 		// Physics metrics
 		content.WriteString(fmt.Sprintf("  Total Momentum: %.4f\n", latest.PhysicsMetrics.TotalMomentum))
 		content.WriteString(fmt.Sprintf("  Kinetic Energy: %.4f\n", latest.PhysicsMetrics.TotalKineticEnergy))
 		content.WriteString(fmt.Sprintf("  Avg Velocity: %.4f\n", latest.PhysicsMetrics.AverageVelocity))
 		content.WriteString(fmt.Sprintf("  Collisions: %d\n", latest.PhysicsMetrics.CollisionCount))
-		
+
 		// Communication metrics
 		content.WriteString(fmt.Sprintf("  Active Signals: %d\n", latest.CommunicationMetrics.ActiveSignals))
 		content.WriteString(fmt.Sprintf("  Signal Efficiency: %.4f\n", latest.CommunicationMetrics.SignalEfficiency))
 	}
 	content.WriteString("\n")
-	
+
 	// Ecosystem metrics
 	if m.world.EcosystemMonitor != nil {
 		metrics := m.world.EcosystemMonitor.CurrentMetrics
@@ -3296,17 +3315,17 @@ func (m *CLIModel) statisticalView() string {
 		content.WriteString(fmt.Sprintf("  Pollination Success: %.4f\n", metrics.PollinationSuccess))
 		content.WriteString(fmt.Sprintf("  Ecosystem Stability: %.4f\n", metrics.EcosystemStability))
 		content.WriteString(fmt.Sprintf("  Biodiversity Index: %.4f\n", metrics.BiodiversityIndex))
-		
+
 		// Health score
 		healthScore := m.world.EcosystemMonitor.GetHealthScore()
 		content.WriteString(fmt.Sprintf("  Ecosystem Health: %.1f/100\n", healthScore))
-		
+
 		// Trends
 		trends := m.world.EcosystemMonitor.GetTrends()
 		content.WriteString(fmt.Sprintf("  Diversity Trend: %s\n", trends["diversity"]))
 		content.WriteString(fmt.Sprintf("  Population Trend: %s\n", trends["population"]))
 		content.WriteString(fmt.Sprintf("  Stability Trend: %s\n", trends["stability"]))
-		
+
 		content.WriteString("\n")
 	}
 
@@ -3315,7 +3334,7 @@ func (m *CLIModel) statisticalView() string {
 	if len(recentEvents) > 10 {
 		recentEvents = recentEvents[len(recentEvents)-10:] // Last 10 events
 	}
-	
+
 	content.WriteString("RECENT EVENTS:\n")
 	for _, event := range recentEvents {
 		content.WriteString(fmt.Sprintf("  T%d: %s (%s)\n", event.Tick, event.EventType, event.Category))
@@ -3339,7 +3358,7 @@ func (m *CLIModel) ecosystemView() string {
 	content.WriteString("🌍 ECOSYSTEM METRICS\n\n")
 
 	metrics := m.world.EcosystemMonitor.CurrentMetrics
-	
+
 	// Diversity metrics
 	content.WriteString("DIVERSITY METRICS:\n")
 	content.WriteString(fmt.Sprintf("  Shannon Diversity Index: %.4f\n", metrics.ShannonDiversity))
@@ -3347,21 +3366,21 @@ func (m *CLIModel) ecosystemView() string {
 	content.WriteString(fmt.Sprintf("  Species Richness: %d\n", metrics.SpeciesRichness))
 	content.WriteString(fmt.Sprintf("  Species Evenness: %.4f\n", metrics.SpeciesEvenness))
 	content.WriteString("\n")
-	
+
 	// Population metrics
 	content.WriteString("POPULATION METRICS:\n")
 	content.WriteString(fmt.Sprintf("  Total Population: %d\n", metrics.TotalPopulation))
 	content.WriteString(fmt.Sprintf("  Extinction Rate: %.4f%%\n", metrics.ExtinctionRate*100))
 	content.WriteString(fmt.Sprintf("  Speciation Rate: %.4f%%\n", metrics.SpeciationRate*100))
 	content.WriteString("\n")
-	
+
 	// Network connectivity
 	content.WriteString("NETWORK & INTERACTION METRICS:\n")
 	content.WriteString(fmt.Sprintf("  Network Connectivity: %.4f\n", metrics.NetworkConnectivity))
 	content.WriteString(fmt.Sprintf("  Average Path Length: %.2f\n", metrics.AveragePathLength))
 	content.WriteString(fmt.Sprintf("  Clustering Coefficient: %.4f\n", metrics.ClusteringCoefficient))
 	content.WriteString("\n")
-	
+
 	// Pollination metrics
 	content.WriteString("POLLINATION METRICS:\n")
 	content.WriteString(fmt.Sprintf("  Pollination Success Rate: %.2f%%\n", metrics.PollinationSuccess*100))
@@ -3373,7 +3392,7 @@ func (m *CLIModel) ecosystemView() string {
 		}
 	}
 	content.WriteString("\n")
-	
+
 	// Dispersal metrics
 	content.WriteString("DISPERSAL METRICS:\n")
 	content.WriteString(fmt.Sprintf("  Average Dispersal Distance: %.2f\n", metrics.AverageDispersalDistance))
@@ -3386,7 +3405,7 @@ func (m *CLIModel) ecosystemView() string {
 		}
 	}
 	content.WriteString("\n")
-	
+
 	// Ecosystem health
 	content.WriteString("ECOSYSTEM HEALTH:\n")
 	healthScore := m.world.EcosystemMonitor.GetHealthScore()
@@ -3396,7 +3415,7 @@ func (m *CLIModel) ecosystemView() string {
 	content.WriteString(fmt.Sprintf("  Ecosystem Resilience: %.4f\n", metrics.EcosystemResilience))
 	content.WriteString(fmt.Sprintf("  Carrying Capacity: %.0f\n", metrics.CarryingCapacity))
 	content.WriteString("\n")
-	
+
 	// Trends
 	trends := m.world.EcosystemMonitor.GetTrends()
 	content.WriteString("TRENDS:\n")
@@ -3404,21 +3423,21 @@ func (m *CLIModel) ecosystemView() string {
 	content.WriteString(fmt.Sprintf("  Population Trend: %s\n", trends["population"]))
 	content.WriteString(fmt.Sprintf("  Stability Trend: %s\n", trends["stability"]))
 	content.WriteString("\n")
-	
+
 	// Top species by population
 	if len(metrics.PopulationBySpecies) > 0 {
 		content.WriteString("TOP SPECIES BY POPULATION:\n")
-		
+
 		// Convert to slice and sort by population
 		type speciesCount struct {
-			name string
+			name  string
 			count int
 		}
 		var species []speciesCount
 		for name, count := range metrics.PopulationBySpecies {
 			species = append(species, speciesCount{name, count})
 		}
-		
+
 		// Sort by count descending
 		for i := 0; i < len(species)-1; i++ {
 			for j := i + 1; j < len(species); j++ {
@@ -3427,7 +3446,7 @@ func (m *CLIModel) ecosystemView() string {
 				}
 			}
 		}
-		
+
 		// Display top 10
 		maxDisplay := len(species)
 		if maxDisplay > 10 {
@@ -3456,23 +3475,23 @@ func (m *CLIModel) anomaliesView() string {
 	content.WriteString("⚠️  ANOMALY DETECTION\n\n")
 
 	recentAnomalies := m.world.StatisticalReporter.GetRecentAnomalies(50, m.world.Tick)
-	
+
 	if len(recentAnomalies) == 0 {
 		content.WriteString("✅ No anomalies detected!\n")
 		content.WriteString("The simulation appears to be running within expected parameters.\n\n")
 	} else {
 		content.WriteString(fmt.Sprintf("Found %d anomalies:\n\n", len(recentAnomalies)))
-		
+
 		// Group anomalies by type
 		anomaliesByType := make(map[AnomalyType][]Anomaly)
 		for _, anomaly := range recentAnomalies {
 			anomaliesByType[anomaly.Type] = append(anomaliesByType[anomaly.Type], anomaly)
 		}
-		
+
 		// Display each type
 		for anomalyType, anomalies := range anomaliesByType {
 			content.WriteString(fmt.Sprintf("🔍 %s (%d occurrences):\n", anomalyType, len(anomalies)))
-			
+
 			// Show most recent and most severe
 			var mostRecent, mostSevere Anomaly
 			for i, anomaly := range anomalies {
@@ -3488,40 +3507,40 @@ func (m *CLIModel) anomaliesView() string {
 					}
 				}
 			}
-			
+
 			content.WriteString(fmt.Sprintf("  Most Recent (T%d): %s\n", mostRecent.Tick, mostRecent.Description))
 			content.WriteString(fmt.Sprintf("    Severity: %.2f, Confidence: %.2f\n", mostRecent.Severity, mostRecent.Confidence))
-			
+
 			if mostSevere.Tick != mostRecent.Tick {
 				content.WriteString(fmt.Sprintf("  Most Severe (T%d): %s\n", mostSevere.Tick, mostSevere.Description))
 				content.WriteString(fmt.Sprintf("    Severity: %.2f, Confidence: %.2f\n", mostSevere.Severity, mostSevere.Confidence))
 			}
 			content.WriteString("\n")
 		}
-		
+
 		// Recommendations based on anomaly types
 		content.WriteString("RECOMMENDATIONS:\n")
-		
+
 		if _, hasEnergyIssues := anomaliesByType[AnomalyEnergyConservation]; hasEnergyIssues {
 			content.WriteString("• Energy Conservation: Check entity/plant death and birth rates\n")
 			content.WriteString("• Verify energy gain/loss calculations are balanced\n")
 		}
-		
+
 		if _, hasDistIssues := anomaliesByType[AnomalyUnrealisticDistribution]; hasDistIssues {
 			content.WriteString("• Distribution Issues: Check mutation algorithms for proper randomization\n")
 			content.WriteString("• Verify trait bounds and initialization\n")
 		}
-		
+
 		if _, hasPhysicsIssues := anomaliesByType[AnomalyPhysicsViolation]; hasPhysicsIssues {
 			content.WriteString("• Physics Violations: Check momentum and energy conservation in physics engine\n")
 			content.WriteString("• Verify collision and force calculations\n")
 		}
-		
+
 		if _, hasBioIssues := anomaliesByType[AnomalyBiologicalImplausibility]; hasBioIssues {
 			content.WriteString("• Biological Issues: Check trait evolution and bounds\n")
 			content.WriteString("• Verify species-specific behaviors are realistic\n")
 		}
-		
+
 		if _, hasPopIssues := anomaliesByType[AnomalyPopulationAnomaly]; hasPopIssues {
 			content.WriteString("• Population Issues: Check carrying capacity and reproduction rates\n")
 			content.WriteString("• Verify death conditions and environmental pressures\n")
@@ -3545,14 +3564,14 @@ func (m CLIModel) warfareView() string {
 
 	// Get warfare statistics
 	stats := m.world.ColonyWarfareSystem.GetWarfareStats()
-	
+
 	// General Statistics
 	content.WriteString("=== SYSTEM STATUS ===\n")
 	content.WriteString(fmt.Sprintf("Total colonies: %d\n", stats["total_colonies"].(int)))
 	content.WriteString(fmt.Sprintf("Active conflicts: %d\n", stats["active_conflicts"].(int)))
 	content.WriteString(fmt.Sprintf("Active alliances: %d\n", stats["total_alliances"].(int)))
 	content.WriteString(fmt.Sprintf("Trade agreements: %d\n", stats["active_trade_agreements"].(int)))
-	
+
 	// Diplomatic Relations
 	content.WriteString("\n=== DIPLOMATIC RELATIONS ===\n")
 	totalRelations := stats["total_relations"].(int)
@@ -3561,7 +3580,7 @@ func (m CLIModel) warfareView() string {
 		alliedPct := float64(stats["allied_relations"].(int)) / float64(totalRelations) * 100
 		enemyPct := float64(stats["enemy_relations"].(int)) / float64(totalRelations) * 100
 		trucePct := float64(stats["truce_relations"].(int)) / float64(totalRelations) * 100
-		
+
 		content.WriteString(fmt.Sprintf("Neutral: %d (%.1f%%)\n", stats["neutral_relations"].(int), neutralPct))
 		content.WriteString(fmt.Sprintf("Allied: %d (%.1f%%)\n", stats["allied_relations"].(int), alliedPct))
 		content.WriteString(fmt.Sprintf("Enemy: %d (%.1f%%)\n", stats["enemy_relations"].(int), enemyPct))
@@ -3569,7 +3588,7 @@ func (m CLIModel) warfareView() string {
 	} else {
 		content.WriteString("No diplomatic relations established\n")
 	}
-	
+
 	// Active Conflicts
 	content.WriteString("\n=== ACTIVE CONFLICTS ===\n")
 	conflicts := m.world.ColonyWarfareSystem.ActiveConflicts
@@ -3581,7 +3600,7 @@ func (m CLIModel) warfareView() string {
 				content.WriteString(fmt.Sprintf("... and %d more conflicts\n", len(conflicts)-5))
 				break
 			}
-			
+
 			conflictTypeStr := "Unknown"
 			switch conflict.ConflictType {
 			case BorderSkirmish:
@@ -3593,22 +3612,22 @@ func (m CLIModel) warfareView() string {
 			case Raid:
 				conflictTypeStr = "Raid"
 			}
-			
+
 			content.WriteString(fmt.Sprintf("Conflict #%d: %s\n", conflict.ID, conflictTypeStr))
-			content.WriteString(fmt.Sprintf("  Attacker: Colony %d vs Defender: Colony %d\n", 
+			content.WriteString(fmt.Sprintf("  Attacker: Colony %d vs Defender: Colony %d\n",
 				conflict.Attacker, conflict.Defender))
-			content.WriteString(fmt.Sprintf("  Duration: %d ticks, Intensity: %.2f\n", 
+			content.WriteString(fmt.Sprintf("  Duration: %d ticks, Intensity: %.2f\n",
 				conflict.TurnsActive, conflict.Intensity))
-			content.WriteString(fmt.Sprintf("  Casualties: %d, War Goal: %s\n", 
+			content.WriteString(fmt.Sprintf("  Casualties: %d, War Goal: %s\n",
 				conflict.CasualtyCount, conflict.WarGoal))
-			
+
 			if len(conflict.TerritoryClaimed) > 0 {
 				content.WriteString(fmt.Sprintf("  Territory claimed: %d areas\n", len(conflict.TerritoryClaimed)))
 			}
 			content.WriteString("\n")
 		}
 	}
-	
+
 	// Active Trade Agreements
 	content.WriteString("=== ACTIVE TRADE AGREEMENTS ===\n")
 	tradeAgreements := m.world.ColonyWarfareSystem.TradeAgreements
@@ -3618,7 +3637,7 @@ func (m CLIModel) warfareView() string {
 			activeTradeCount++
 		}
 	}
-	
+
 	if activeTradeCount == 0 {
 		content.WriteString("No active trade agreements\n")
 	} else {
@@ -3631,12 +3650,12 @@ func (m CLIModel) warfareView() string {
 				content.WriteString(fmt.Sprintf("... and %d more trade agreements\n", activeTradeCount-5))
 				break
 			}
-			
+
 			content.WriteString(fmt.Sprintf("Trade Agreement #%d:\n", agreement.ID))
-			content.WriteString(fmt.Sprintf("  Colonies: %d ↔ %d\n", 
+			content.WriteString(fmt.Sprintf("  Colonies: %d ↔ %d\n",
 				agreement.Colony1ID, agreement.Colony2ID))
 			content.WriteString(fmt.Sprintf("  Volume: %.1f units/trade\n", agreement.TradeVolume))
-			
+
 			// Show what's being traded
 			if len(agreement.ResourcesOffered) > 0 {
 				content.WriteString("  Offering: ")
@@ -3650,7 +3669,7 @@ func (m CLIModel) warfareView() string {
 				}
 				content.WriteString("\n")
 			}
-			
+
 			if len(agreement.ResourcesWanted) > 0 {
 				content.WriteString("  Wanting: ")
 				first := true
@@ -3663,7 +3682,7 @@ func (m CLIModel) warfareView() string {
 				}
 				content.WriteString("\n")
 			}
-			
+
 			// Enhanced: Show trade security information
 			content.WriteString(fmt.Sprintf("  Security Level: %.1f%%\n", agreement.SecurityLevel*100))
 			if agreement.EscortStrength > 0 {
@@ -3679,12 +3698,12 @@ func (m CLIModel) warfareView() string {
 				}
 				content.WriteString(")\n")
 			}
-			
+
 			content.WriteString("\n")
 			displayCount++
 		}
 	}
-	
+
 	// Active Alliances
 	content.WriteString("=== ACTIVE ALLIANCES ===\n")
 	alliances := m.world.ColonyWarfareSystem.Alliances
@@ -3694,7 +3713,7 @@ func (m CLIModel) warfareView() string {
 			activeAllianceCount++
 		}
 	}
-	
+
 	if activeAllianceCount == 0 {
 		content.WriteString("No active alliances\n")
 	} else {
@@ -3707,9 +3726,9 @@ func (m CLIModel) warfareView() string {
 				content.WriteString(fmt.Sprintf("... and %d more alliances\n", activeAllianceCount-3))
 				break
 			}
-			
+
 			content.WriteString(fmt.Sprintf("Alliance #%d (%s):\n", alliance.ID, alliance.AllianceType))
-			content.WriteString(fmt.Sprintf("  Members: "))
+			content.WriteString("  Members: ")
 			for i, memberID := range alliance.Members {
 				if i > 0 {
 					content.WriteString(", ")
@@ -3717,15 +3736,15 @@ func (m CLIModel) warfareView() string {
 				content.WriteString(fmt.Sprintf("Colony %d", memberID))
 			}
 			content.WriteString("\n")
-			
+
 			if alliance.ResourceShare > 0 {
 				content.WriteString(fmt.Sprintf("  Resource sharing: %.1f%%\n", alliance.ResourceShare*100))
 			}
-			
+
 			if alliance.SharedDefense {
 				content.WriteString("  Shared defense: Active\n")
 			}
-			
+
 			// Enhanced: Show coordination features
 			content.WriteString(fmt.Sprintf("  Coordination Level: %.1f%%\n", alliance.CoordinationLevel*100))
 			if alliance.TradeProtection {
@@ -3748,16 +3767,16 @@ func (m CLIModel) warfareView() string {
 					content.WriteString(fmt.Sprintf("  Active Joint Operations: %d\n", activeOps))
 				}
 			}
-			
+
 			// Show alliance age
 			age := m.world.Tick - alliance.StartTick
 			content.WriteString(fmt.Sprintf("  Age: %d ticks\n", age))
-			
+
 			content.WriteString("\n")
 			displayCount++
 		}
 	}
-	
+
 	// Colony Information
 	content.WriteString("=== COLONY OVERVIEW ===\n")
 	colonies := m.world.CasteSystem.Colonies
@@ -3769,15 +3788,15 @@ func (m CLIModel) warfareView() string {
 				content.WriteString(fmt.Sprintf("... and %d more colonies\n", len(colonies)-8))
 				break
 			}
-			
+
 			diplomacy := m.world.ColonyWarfareSystem.ColonyDiplomacies[colony.ID]
-			
+
 			content.WriteString(fmt.Sprintf("Colony %d:\n", colony.ID))
-			content.WriteString(fmt.Sprintf("  Size: %d members, Age: %d ticks\n", 
+			content.WriteString(fmt.Sprintf("  Size: %d members, Age: %d ticks\n",
 				colony.ColonySize, colony.ColonyAge))
-			content.WriteString(fmt.Sprintf("  Territory: %d areas, Fitness: %.2f\n", 
+			content.WriteString(fmt.Sprintf("  Territory: %d areas, Fitness: %.2f\n",
 				len(colony.Territory), colony.ColonyFitness))
-			
+
 			// Show resource stockpiles
 			if len(colony.Resources) > 0 {
 				content.WriteString("  Resources: ")
@@ -3791,10 +3810,10 @@ func (m CLIModel) warfareView() string {
 				}
 				content.WriteString("\n")
 			}
-			
+
 			if diplomacy != nil {
 				content.WriteString(fmt.Sprintf("  Reputation: %.2f\n", diplomacy.Reputation))
-				
+
 				// Count relations
 				allies := 0
 				enemies := 0
@@ -3809,11 +3828,11 @@ func (m CLIModel) warfareView() string {
 						trading++
 					}
 				}
-				
+
 				if allies > 0 || enemies > 0 || trading > 0 {
 					content.WriteString(fmt.Sprintf("  Allies: %d, Enemies: %d, Trading: %d\n", allies, enemies, trading))
 				}
-				
+
 				// Show active conflicts for this colony
 				activeConflictsForColony := 0
 				for _, conflict := range conflicts {
@@ -3824,7 +3843,7 @@ func (m CLIModel) warfareView() string {
 				if activeConflictsForColony > 0 {
 					content.WriteString(fmt.Sprintf("  Active conflicts: %d\n", activeConflictsForColony))
 				}
-				
+
 				// Show trade agreements for this colony
 				tradeCount := 0
 				for _, agreement := range tradeAgreements {
@@ -3836,19 +3855,19 @@ func (m CLIModel) warfareView() string {
 					content.WriteString(fmt.Sprintf("  Trade agreements: %d\n", tradeCount))
 				}
 			}
-			
+
 			content.WriteString("\n")
 		}
 	}
-	
+
 	// System Configuration
 	content.WriteString("=== SYSTEM SETTINGS ===\n")
 	content.WriteString(fmt.Sprintf("Border conflict chance: %.1f%%\n", stats["border_conflicts"].(float64)*100))
 	content.WriteString(fmt.Sprintf("Resource competition: %.1f%%\n", stats["resource_competition"].(float64)*100))
 	content.WriteString(fmt.Sprintf("Max simultaneous conflicts: %d\n", m.world.ColonyWarfareSystem.MaxActiveConflicts))
-	
+
 	content.WriteString("\nControls: [v] Next View")
-	
+
 	return content.String()
 }
 
@@ -3860,17 +3879,11 @@ func (m *CLIModel) exportStatisticalData() {
 
 	// Export to CSV
 	csvFilename := fmt.Sprintf("evosim_stats_%d.csv", m.world.Tick)
-	if err := m.world.StatisticalReporter.ExportToCSV(csvFilename); err == nil {
-		// In a real CLI app, we'd show a notification
-		// For now, this happens silently
-	}
+	_ = m.world.StatisticalReporter.ExportToCSV(csvFilename) // Ignore error for silent operation
 
 	// Export to JSON
 	jsonFilename := fmt.Sprintf("evosim_analysis_%d.json", m.world.Tick)
-	if err := m.world.StatisticalReporter.ExportToJSON(jsonFilename); err == nil {
-		// In a real CLI app, we'd show a notification
-		// For now, this happens silently
-	}
+	_ = m.world.StatisticalReporter.ExportToJSON(jsonFilename) // Ignore error for silent operation
 }
 
 // toolsView renders the tool system information
@@ -3885,7 +3898,7 @@ func (m CLIModel) toolsView() string {
 
 	// Get tool statistics from the system
 	stats := m.world.ToolSystem.GetToolStats()
-	
+
 	// Basic tool statistics
 	content.WriteString("=== TOOL STATISTICS ===\n")
 	if totalTools, ok := stats["total_tools"].(int); ok {
@@ -3930,7 +3943,7 @@ func (m CLIModel) toolsView() string {
 	content.WriteString("\n=== TOOL DISTRIBUTION ===\n")
 	entityToolCount := make(map[int]int) // entity ID -> tool count
 	toolsWithOwners := 0
-	
+
 	// Count tools per entity
 	for _, tool := range m.world.ToolSystem.Tools {
 		if tool.Owner != nil {
@@ -3938,10 +3951,10 @@ func (m CLIModel) toolsView() string {
 			toolsWithOwners++
 		}
 	}
-	
+
 	content.WriteString(fmt.Sprintf("Entities with tools: %d\n", len(entityToolCount)))
 	content.WriteString(fmt.Sprintf("Tools with owners: %d\n", toolsWithOwners))
-	
+
 	if len(entityToolCount) > 0 {
 		// Find min, max, average tools per entity
 		minTools, maxTools, totalTools := entityToolCount[0], 0, 0
@@ -3955,7 +3968,7 @@ func (m CLIModel) toolsView() string {
 			totalTools += count
 		}
 		avgTools := float64(totalTools) / float64(len(entityToolCount))
-		
+
 		content.WriteString(fmt.Sprintf("Tools per entity: min=%d, max=%d, avg=%.1f\n", minTools, maxTools, avgTools))
 	}
 
@@ -3971,26 +3984,26 @@ func (m CLIModel) environmentView() string {
 	content.WriteString("=== 🌡️ ENVIRONMENTAL PRESSURES ===\n")
 	if m.world.EnvironmentalPressures != nil {
 		pressureStats := m.world.EnvironmentalPressures.GetPressureStats()
-		
+
 		activePressures := 0
 		if ap, ok := pressureStats["active_pressures"].(int); ok {
 			activePressures = ap
 		}
-		
+
 		totalHistory := 0
 		if th, ok := pressureStats["total_pressure_history"].(int); ok {
 			totalHistory = th
 		}
-		
+
 		avgSeverity := 0.0
 		if as, ok := pressureStats["average_severity"].(float64); ok {
 			avgSeverity = as
 		}
-		
+
 		content.WriteString(fmt.Sprintf("Active Pressures: %d\n", activePressures))
 		content.WriteString(fmt.Sprintf("Historical Events: %d\n", totalHistory))
 		content.WriteString(fmt.Sprintf("Average Severity: %.3f\n", avgSeverity))
-		
+
 		// Show pressure types
 		if pressureTypes, ok := pressureStats["pressure_types"].(map[string]int); ok && len(pressureTypes) > 0 {
 			content.WriteString("\nActive Pressure Types:\n")
@@ -4000,7 +4013,7 @@ func (m CLIModel) environmentView() string {
 		} else {
 			content.WriteString("\nNo active environmental pressures\n")
 		}
-		
+
 		// Show detailed active pressures
 		if len(m.world.EnvironmentalPressures.ActivePressures) > 0 {
 			content.WriteString("\n=== ACTIVE PRESSURE DETAILS ===\n")
@@ -4010,17 +4023,17 @@ func (m CLIModel) environmentView() string {
 					content.WriteString(fmt.Sprintf("... and %d more pressures\n", remaining))
 					break
 				}
-				
+
 				durationText := "Permanent"
 				if pressure.Duration > 0 {
 					durationText = fmt.Sprintf("%d ticks", pressure.Duration)
 				}
-				
+
 				content.WriteString(fmt.Sprintf("%s (ID: %d):\n", pressure.Name, pressure.ID))
 				content.WriteString(fmt.Sprintf("  Type: %s\n", pressure.Type))
 				content.WriteString(fmt.Sprintf("  Severity: %.2f\n", pressure.Severity))
 				content.WriteString(fmt.Sprintf("  Duration: %s\n", durationText))
-				content.WriteString(fmt.Sprintf("  Affected Area: (%.1f, %.1f) radius %.1f\n", 
+				content.WriteString(fmt.Sprintf("  Affected Area: (%.1f, %.1f) radius %.1f\n",
 					pressure.AffectedArea.X, pressure.AffectedArea.Y, pressure.Radius))
 				content.WriteString("\n")
 			}
@@ -4189,7 +4202,7 @@ func (m CLIModel) behaviorView() string {
 		for _, count := range behaviorSpread {
 			totalBehaviorInstances += count
 		}
-		
+
 		if totalBehaviorInstances > 0 {
 			content.WriteString("Most Common Behaviors:\n")
 			// Sort behaviors by prevalence
@@ -4201,7 +4214,7 @@ func (m CLIModel) behaviorView() string {
 			for name, count := range behaviorSpread {
 				behaviors = append(behaviors, behaviorCount{name, count})
 			}
-			
+
 			// Simple sorting by count (descending)
 			for i := 0; i < len(behaviors)-1; i++ {
 				for j := i + 1; j < len(behaviors); j++ {
@@ -4210,7 +4223,7 @@ func (m CLIModel) behaviorView() string {
 					}
 				}
 			}
-			
+
 			for i, behavior := range behaviors {
 				if i >= 5 { // Show top 5
 					break
@@ -4237,20 +4250,20 @@ func (m CLIModel) behaviorView() string {
 // getModificationTypeName returns the name of a modification type
 func (m CLIModel) getModificationTypeName(modType int) string {
 	modNames := map[int]string{
-		int(EnvModTunnel):      "Tunnel",
-		int(EnvModBurrow):      "Burrow",
-		int(EnvModCache):       "Cache",
-		int(EnvModTrap):        "Trap",
-		int(EnvModWaterhole):   "Waterhole",
-		int(EnvModPath):        "Path",
-		int(EnvModMarking):     "Marking",
-		int(EnvModNest):        "Nest",
-		int(EnvModBridge):      "Bridge",
-		int(EnvModBarrier):     "Barrier",
-		int(EnvModTerrace):     "Terrace",
-		int(EnvModDam):         "Dam",
+		int(EnvModTunnel):    "Tunnel",
+		int(EnvModBurrow):    "Burrow",
+		int(EnvModCache):     "Cache",
+		int(EnvModTrap):      "Trap",
+		int(EnvModWaterhole): "Waterhole",
+		int(EnvModPath):      "Path",
+		int(EnvModMarking):   "Marking",
+		int(EnvModNest):      "Nest",
+		int(EnvModBridge):    "Bridge",
+		int(EnvModBarrier):   "Barrier",
+		int(EnvModTerrace):   "Terrace",
+		int(EnvModDam):       "Dam",
 	}
-	
+
 	if name, exists := modNames[modType]; exists {
 		return name
 	}
@@ -4291,7 +4304,7 @@ func (m CLIModel) fungalView() string {
 	// Active organisms
 	if len(m.world.FungalNetwork.Organisms) > 0 {
 		content.WriteString("\n=== ACTIVE ORGANISMS (Top 5) ===\n")
-		
+
 		// Sort organisms by biomass
 		organisms := make([]*FungalOrganism, 0)
 		for _, org := range m.world.FungalNetwork.Organisms {
@@ -4299,7 +4312,7 @@ func (m CLIModel) fungalView() string {
 				organisms = append(organisms, org)
 			}
 		}
-		
+
 		// Simple sort by biomass (top 5)
 		for i := 0; i < len(organisms) && i < 5; i++ {
 			largest := i
@@ -4318,11 +4331,11 @@ func (m CLIModel) fungalView() string {
 			if displayCount >= 5 {
 				break
 			}
-			
+
 			content.WriteString(fmt.Sprintf("Organism #%d (%s):\n", org.ID, org.Species))
 			content.WriteString(fmt.Sprintf("  Position: (%.1f, %.1f)\n", org.Position.X, org.Position.Y))
 			content.WriteString(fmt.Sprintf("  Biomass: %.2f | Age: %d ticks\n", org.Biomass, org.Age))
-			content.WriteString(fmt.Sprintf("  Nutrients: %.2f | Decomposition rate: %.3f\n", 
+			content.WriteString(fmt.Sprintf("  Nutrients: %.2f | Decomposition rate: %.3f\n",
 				org.NutrientStorage, org.DecompositionRate))
 			content.WriteString(fmt.Sprintf("  Network connections: %d\n", len(org.NetworkConnections)))
 			content.WriteString("\n")
@@ -4340,17 +4353,17 @@ func (m CLIModel) fungalView() string {
 	// Decomposition targets
 	if m.world.ReproductionSystem != nil && len(m.world.ReproductionSystem.DecayingItems) > 0 {
 		content.WriteString("\n=== AVAILABLE DECOMPOSITION TARGETS ===\n")
-		
+
 		undecayedCount := 0
 		totalNutrients := 0.0
-		
+
 		for _, item := range m.world.ReproductionSystem.DecayingItems {
 			if !item.IsDecayed {
 				undecayedCount++
 				totalNutrients += item.NutrientValue
 			}
 		}
-		
+
 		content.WriteString(fmt.Sprintf("Undecayed organic matter: %d items\n", undecayedCount))
 		content.WriteString(fmt.Sprintf("Total available nutrients: %.1f\n", totalNutrients))
 	}
@@ -4400,15 +4413,15 @@ func (m CLIModel) culturalView() string {
 		if knowledge.Innovation {
 			icon = "💡"
 		}
-		
+
 		content.WriteString(fmt.Sprintf("%s %s (ID: %d)\n", icon, knowledge.Type.String(), knowledge.ID))
-		content.WriteString(fmt.Sprintf("  Effectiveness: %.2f | Complexity: %.2f\n", 
+		content.WriteString(fmt.Sprintf("  Effectiveness: %.2f | Complexity: %.2f\n",
 			knowledge.Effectiveness, knowledge.Complexity))
-		content.WriteString(fmt.Sprintf("  Teachers: %d | Learners: %d\n", 
+		content.WriteString(fmt.Sprintf("  Teachers: %d | Learners: %d\n",
 			knowledge.TeacherCount, knowledge.LearnerCount))
-		content.WriteString(fmt.Sprintf("  Age: %d generations | Last used: tick %d\n", 
+		content.WriteString(fmt.Sprintf("  Age: %d generations | Last used: tick %d\n",
 			knowledge.AgeInGeneration, knowledge.LastUsed))
-		
+
 		if knowledge.Innovation {
 			content.WriteString("  ⚡ Recent Innovation\n")
 		}
@@ -4422,14 +4435,14 @@ func (m CLIModel) culturalView() string {
 		if displayCount >= 5 {
 			break
 		}
-		
+
 		content.WriteString(fmt.Sprintf("Entity #%d:\n", entityID))
-		content.WriteString(fmt.Sprintf("  Known knowledge: %d/%d\n", 
+		content.WriteString(fmt.Sprintf("  Known knowledge: %d/%d\n",
 			len(memory.KnownKnowledge), memory.KnowledgeCapacity))
-		content.WriteString(fmt.Sprintf("  Teaching ability: %.2f | Learning ability: %.2f\n", 
+		content.WriteString(fmt.Sprintf("  Teaching ability: %.2f | Learning ability: %.2f\n",
 			memory.TeachingAbility, memory.LearningAbility))
 		content.WriteString(fmt.Sprintf("  Innovation chance: %.3f\n", memory.InnovationChance))
-		
+
 		// Show some of the knowledge this entity has
 		knowledgeTypes := make([]string, 0)
 		for _, knowledge := range memory.KnownKnowledge {
@@ -4438,20 +4451,20 @@ func (m CLIModel) culturalView() string {
 				break
 			}
 		}
-		
+
 		if len(knowledgeTypes) > 0 {
 			content.WriteString(fmt.Sprintf("  Sample knowledge: %s\n", strings.Join(knowledgeTypes, ", ")))
 			if len(memory.KnownKnowledge) > 3 {
 				content.WriteString(fmt.Sprintf("  ... and %d more\n", len(memory.KnownKnowledge)-3))
 			}
 		}
-		
+
 		content.WriteString("\n")
 		displayCount++
 	}
 
 	if len(m.world.CulturalKnowledgeSystem.EntityMemories) > 5 {
-		content.WriteString(fmt.Sprintf("... and %d more entities with knowledge\n", 
+		content.WriteString(fmt.Sprintf("... and %d more entities with knowledge\n",
 			len(m.world.CulturalKnowledgeSystem.EntityMemories)-5))
 	}
 
@@ -4536,12 +4549,12 @@ func (m CLIModel) symbioticView() string {
 		content.WriteString(fmt.Sprintf("%s %s (ID: %d):\n", typeSymbol, typeName, relationship.ID))
 		content.WriteString(fmt.Sprintf("  Host: Entity %d | Symbiont: Entity %d\n", relationship.HostID, relationship.SymbiontID))
 		content.WriteString(fmt.Sprintf("  Strength: %.2f | Duration: %d ticks\n", relationship.Strength, relationship.Duration))
-		
+
 		if relationship.Type == RelationshipParasitic {
 			content.WriteString(fmt.Sprintf("  Virulence: %.2f | Transmission: %.2f\n", relationship.Virulence, relationship.Transmission))
 		}
-		
-		content.WriteString(fmt.Sprintf("  Host Benefit: %.2f | Symbiont Benefit: %.2f\n", 
+
+		content.WriteString(fmt.Sprintf("  Host Benefit: %.2f | Symbiont Benefit: %.2f\n",
 			relationship.HostBenefit, relationship.SymbiontBenefit))
 		content.WriteString("\n")
 		relationshipCount++
@@ -4561,7 +4574,7 @@ func (m CLIModel) symbioticView() string {
 		if !entity.IsAlive {
 			continue
 		}
-		
+
 		// Check if entity is parasitized
 		isParasitized := false
 		for _, relationship := range m.world.SymbioticRelationships.Relationships {
@@ -4570,11 +4583,11 @@ func (m CLIModel) symbioticView() string {
 				break
 			}
 		}
-		
+
 		if isParasitized {
 			parasitizedEntities++
 		}
-		
+
 		// Track resistance levels
 		if defenseTrait, exists := entity.Traits["defense"]; exists {
 			totalResistance += defenseTrait.Value
@@ -4637,17 +4650,17 @@ func (m *CLIModel) neuralView() string {
 			if neuralData != nil {
 				content.WriteString(fmt.Sprintf("Entity %d (%s):\n", entity.ID, entity.Species))
 				content.WriteString(fmt.Sprintf("  Network Type: %s\n", neuralData["architecture"].(string)))
-				content.WriteString(fmt.Sprintf("  Neurons: %d (%d inputs, %d outputs, %d hidden layers)\n", 
-					neuralData["neuron_count"].(int), neuralData["input_count"].(int), 
+				content.WriteString(fmt.Sprintf("  Neurons: %d (%d inputs, %d outputs, %d hidden layers)\n",
+					neuralData["neuron_count"].(int), neuralData["input_count"].(int),
 					neuralData["output_count"].(int), neuralData["hidden_layers"].(int)))
 				content.WriteString(fmt.Sprintf("  Experience: %.2f\n", neuralData["experience"].(float64)))
 				content.WriteString(fmt.Sprintf("  Learning Rate: %.4f\n", neuralData["learning_rate"].(float64)))
-				content.WriteString(fmt.Sprintf("  Decisions: %d (%.1f%% correct)\n", 
+				content.WriteString(fmt.Sprintf("  Decisions: %d (%.1f%% correct)\n",
 					neuralData["total_decisions"].(int), neuralData["success_rate"].(float64)*100))
 				content.WriteString(fmt.Sprintf("  Complexity Score: %.2f\n", neuralData["complexity_score"].(float64)))
 				content.WriteString("\n")
 				count++
-				
+
 				// Limit display to prevent screen overflow
 				if count >= 10 {
 					remaining := len(m.world.NeuralAISystem.EntityNetworks) - count
@@ -4669,7 +4682,7 @@ func (m *CLIModel) neuralView() string {
 	if len(m.world.NeuralAISystem.CollectiveBehaviors) > 0 {
 		content.WriteString("Shared Learned Behaviors:\n")
 		for name, behavior := range m.world.NeuralAISystem.CollectiveBehaviors {
-			content.WriteString(fmt.Sprintf("  %s: %.1f%% success (used %d times)\n", 
+			content.WriteString(fmt.Sprintf("  %s: %.1f%% success (used %d times)\n",
 				name, behavior.SuccessRate*100, behavior.UsageCount))
 		}
 	} else {
@@ -4695,34 +4708,34 @@ func (m *CLIModel) neuralView() string {
 // biorhythmView shows biorhythm system status and entity activities
 func (m CLIModel) biorhythmView() string {
 	var content strings.Builder
-	
+
 	content.WriteString("=== BIORHYTHM SYSTEM ===\n")
-	
+
 	if len(m.world.AllEntities) == 0 {
 		content.WriteString("No entities to display biorhythm data\n")
 		return content.String()
 	}
-	
+
 	// Time context
 	timeState := m.world.AdvancedTimeSystem.GetTimeState()
-	content.WriteString(fmt.Sprintf("Current Time: %s (%s)\n", 
+	content.WriteString(fmt.Sprintf("Current Time: %s (%s)\n",
 		getTimeOfDayName(timeState.TimeOfDay), seasonToString(timeState.Season)))
 	content.WriteString(fmt.Sprintf("Is Night: %v\n\n", timeState.IsNight()))
-	
+
 	// Activity Distribution
 	content.WriteString("=== ACTIVITY DISTRIBUTION ===\n")
 	activityCounts := make(map[ActivityType]int)
 	activityNames := map[ActivityType]string{
 		ActivitySleep:     "Sleep",
 		ActivityEat:       "Eat",
-		ActivityDrink:     "Drink", 
+		ActivityDrink:     "Drink",
 		ActivityPlay:      "Play",
 		ActivityExplore:   "Explore",
 		ActivityScavenge:  "Scavenge",
 		ActivityRest:      "Rest",
 		ActivitySocialize: "Socialize",
 	}
-	
+
 	totalEntities := 0
 	for _, entity := range m.world.AllEntities {
 		if !entity.IsAlive || entity.BioRhythm == nil {
@@ -4732,23 +4745,23 @@ func (m CLIModel) biorhythmView() string {
 		currentActivity := entity.BioRhythm.GetCurrentActivity()
 		activityCounts[currentActivity]++
 	}
-	
+
 	for activity, name := range activityNames {
 		count := activityCounts[activity]
 		percentage := 0.0
 		if totalEntities > 0 {
 			percentage = float64(count) / float64(totalEntities) * 100
 		}
-		content.WriteString(fmt.Sprintf("  %-10s: %3d entities (%5.1f%%)\n", 
+		content.WriteString(fmt.Sprintf("  %-10s: %3d entities (%5.1f%%)\n",
 			name, count, percentage))
 	}
-	
+
 	// Circadian Distribution
 	content.WriteString("\n=== CIRCADIAN PREFERENCES ===\n")
 	nocturnalCount := 0
 	diurnalCount := 0
 	crepuscularCount := 0
-	
+
 	for _, entity := range m.world.AllEntities {
 		if !entity.IsAlive {
 			continue
@@ -4762,21 +4775,21 @@ func (m CLIModel) biorhythmView() string {
 			crepuscularCount++
 		}
 	}
-	
+
 	if totalEntities > 0 {
-		content.WriteString(fmt.Sprintf("  Nocturnal:    %3d entities (%5.1f%%)\n", 
+		content.WriteString(fmt.Sprintf("  Nocturnal:    %3d entities (%5.1f%%)\n",
 			nocturnalCount, float64(nocturnalCount)/float64(totalEntities)*100))
-		content.WriteString(fmt.Sprintf("  Diurnal:      %3d entities (%5.1f%%)\n", 
+		content.WriteString(fmt.Sprintf("  Diurnal:      %3d entities (%5.1f%%)\n",
 			diurnalCount, float64(diurnalCount)/float64(totalEntities)*100))
-		content.WriteString(fmt.Sprintf("  Crepuscular:  %3d entities (%5.1f%%)\n", 
+		content.WriteString(fmt.Sprintf("  Crepuscular:  %3d entities (%5.1f%%)\n",
 			crepuscularCount, float64(crepuscularCount)/float64(totalEntities)*100))
 	}
-	
+
 	// Average Need Levels
 	content.WriteString("\n=== AVERAGE NEED LEVELS ===\n")
 	needSums := make(map[ActivityType]float64)
 	needCounts := make(map[ActivityType]int)
-	
+
 	for _, entity := range m.world.AllEntities {
 		if !entity.IsAlive || entity.BioRhythm == nil {
 			continue
@@ -4787,7 +4800,7 @@ func (m CLIModel) biorhythmView() string {
 			needCounts[activity]++
 		}
 	}
-	
+
 	for activity, name := range activityNames {
 		avgNeed := 0.0
 		if needCounts[activity] > 0 {
@@ -4804,7 +4817,7 @@ func (m CLIModel) biorhythmView() string {
 		}
 		content.WriteString(fmt.Sprintf("  %-10s: %s\n", name, needStr))
 	}
-	
+
 	// Biorhythm Efficiency
 	content.WriteString("\n=== BIORHYTHM EFFICIENCY ===\n")
 	if totalEntities > 0 {
@@ -4814,10 +4827,10 @@ func (m CLIModel) biorhythmView() string {
 			if !entity.IsAlive || entity.BioRhythm == nil {
 				continue
 			}
-			
+
 			circadianPref := entity.GetTrait("circadian_preference")
 			currentActivity := entity.BioRhythm.GetCurrentActivity()
-			
+
 			// Check if entity is acting according to their circadian preference
 			isEfficient := false
 			if circadianPref < -0.3 && timeState.IsNight() && currentActivity != ActivitySleep {
@@ -4833,17 +4846,17 @@ func (m CLIModel) biorhythmView() string {
 					isEfficient = true
 				}
 			}
-			
+
 			if isEfficient {
 				efficientCount++
 			}
 		}
-		
+
 		efficiency := float64(efficientCount) / float64(totalEntities) * 100
-		content.WriteString(fmt.Sprintf("Entities in sync with biorhythm: %d/%d (%.1f%%)\n", 
+		content.WriteString(fmt.Sprintf("Entities in sync with biorhythm: %d/%d (%.1f%%)\n",
 			efficientCount, totalEntities, efficiency))
 	}
-	
+
 	// Sample Entity Details (first 10 entities)
 	content.WriteString("\n=== SAMPLE ENTITY BIORHYTHMS ===\n")
 	count := 0
@@ -4851,21 +4864,21 @@ func (m CLIModel) biorhythmView() string {
 		if !entity.IsAlive || entity.BioRhythm == nil || count >= 10 {
 			break
 		}
-		
+
 		currentActivity := entity.BioRhythm.GetCurrentActivity()
 		activityName := activityNames[currentActivity]
 		circadianPref := entity.GetTrait("circadian_preference")
-		
+
 		circadianType := "Crepuscular"
 		if circadianPref < -0.3 {
 			circadianType = "Nocturnal"
 		} else if circadianPref > 0.3 {
 			circadianType = "Diurnal"
 		}
-		
-		content.WriteString(fmt.Sprintf("  Entity %d (%s): %s (%s, Energy: %.1f)\n", 
+
+		content.WriteString(fmt.Sprintf("  Entity %d (%s): %s (%s, Energy: %.1f)\n",
 			entity.ID, entity.Species, activityName, circadianType, entity.Energy))
-		
+
 		// Show top 3 needs
 		type needPair struct {
 			activity ActivityType
@@ -4876,40 +4889,40 @@ func (m CLIModel) biorhythmView() string {
 			need := entity.BioRhythm.GetActivityNeed(activity)
 			needs = append(needs, needPair{activity, need})
 		}
-		
+
 		// Sort by need level
 		for i := 0; i < len(needs)-1; i++ {
-			for j := i+1; j < len(needs); j++ {
+			for j := i + 1; j < len(needs); j++ {
 				if needs[i].need < needs[j].need {
 					needs[i], needs[j] = needs[j], needs[i]
 				}
 			}
 		}
-		
+
 		content.WriteString("    Top needs: ")
 		for i := 0; i < 3 && i < len(needs); i++ {
 			if i > 0 {
 				content.WriteString(", ")
 			}
-			content.WriteString(fmt.Sprintf("%s (%.2f)", 
+			content.WriteString(fmt.Sprintf("%s (%.2f)",
 				activityNames[needs[i].activity], needs[i].need))
 		}
 		content.WriteString("\n")
-		
+
 		count++
 	}
-	
+
 	if count == 0 {
 		content.WriteString("No entities with biorhythm data found\n")
 	}
-	
+
 	return content.String()
 }
 
 func getTimeOfDayName(timeOfDay TimeOfDay) string {
 	names := map[TimeOfDay]string{
 		Dawn:      "Dawn",
-		Morning:   "Morning", 
+		Morning:   "Morning",
 		Midday:    "Midday",
 		Afternoon: "Afternoon",
 		Evening:   "Evening",

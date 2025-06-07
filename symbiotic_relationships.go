@@ -9,42 +9,42 @@ import (
 type RelationshipType int
 
 const (
-	RelationshipParasitic RelationshipType = iota // Parasite benefits, host harmed
-	RelationshipMutualistic                       // Both organisms benefit
-	RelationshipCommensal                         // One benefits, other neutral
+	RelationshipParasitic   RelationshipType = iota // Parasite benefits, host harmed
+	RelationshipMutualistic                         // Both organisms benefit
+	RelationshipCommensal                           // One benefits, other neutral
 )
 
 // SymbioticRelationship represents a symbiotic relationship between two entities
 type SymbioticRelationship struct {
-	ID           int              `json:"id"`
-	HostID       int              `json:"host_id"`
-	SymbiontID   int              `json:"symbiont_id"`
-	Type         RelationshipType `json:"type"`
-	Strength     float64          `json:"strength"`     // 0.0 to 1.0, intensity of relationship
-	Duration     int              `json:"duration"`     // How long relationship has lasted
-	HostBenefit  float64          `json:"host_benefit"` // Positive or negative effect on host
-	SymbiontBenefit float64       `json:"symbiont_benefit"` // Effect on symbiont
-	IsActive     bool             `json:"is_active"`
-	
+	ID              int              `json:"id"`
+	HostID          int              `json:"host_id"`
+	SymbiontID      int              `json:"symbiont_id"`
+	Type            RelationshipType `json:"type"`
+	Strength        float64          `json:"strength"`         // 0.0 to 1.0, intensity of relationship
+	Duration        int              `json:"duration"`         // How long relationship has lasted
+	HostBenefit     float64          `json:"host_benefit"`     // Positive or negative effect on host
+	SymbiontBenefit float64          `json:"symbiont_benefit"` // Effect on symbiont
+	IsActive        bool             `json:"is_active"`
+
 	// Disease/pathogen specific properties
-	Virulence       float64 `json:"virulence"`        // How harmful the symbiont is
-	Transmission    float64 `json:"transmission"`     // How easily it spreads
-	Resistance      float64 `json:"resistance"`       // Host's resistance level
-	MutationRate    float64 `json:"mutation_rate"`    // Rate of evolutionary change
+	Virulence    float64 `json:"virulence"`     // How harmful the symbiont is
+	Transmission float64 `json:"transmission"`  // How easily it spreads
+	Resistance   float64 `json:"resistance"`    // Host's resistance level
+	MutationRate float64 `json:"mutation_rate"` // Rate of evolutionary change
 }
 
 // SymbioticRelationshipSystem manages all symbiotic relationships
 type SymbioticRelationshipSystem struct {
-	Relationships     []*SymbioticRelationship `json:"relationships"`
+	Relationships       []*SymbioticRelationship `json:"relationships"`
 	RelationshipHistory []*SymbioticRelationship `json:"relationship_history"`
-	NextRelationshipID int                     `json:"next_relationship_id"`
-	
+	NextRelationshipID  int                      `json:"next_relationship_id"`
+
 	// Configuration
 	FormationRate      float64 `json:"formation_rate"`      // Rate of new relationship formation
 	DissolutionRate    float64 `json:"dissolution_rate"`    // Rate of relationship breakdown
 	TransmissionRadius float64 `json:"transmission_radius"` // Distance for disease transmission
-	CoevolutionRate    float64 `json:"coevolution_rate"`   // Rate of host-parasite evolution
-	
+	CoevolutionRate    float64 `json:"coevolution_rate"`    // Rate of host-parasite evolution
+
 	// Statistics
 	TotalRelationships      int     `json:"total_relationships"`
 	ActiveParasitic         int     `json:"active_parasitic"`
@@ -71,18 +71,18 @@ func NewSymbioticRelationshipSystem() *SymbioticRelationshipSystem {
 func (srs *SymbioticRelationshipSystem) Update(world *World, tick int) {
 	// Update existing relationships
 	srs.updateExistingRelationships(world, tick)
-	
+
 	// Form new relationships
 	srs.formNewRelationships(world, tick)
-	
+
 	// Handle disease transmission
 	srs.handleDiseaseTransmission(world, tick)
-	
+
 	// Apply co-evolutionary pressure
 	if tick%50 == 0 { // Every 50 ticks
 		srs.applyCoevolutionaryPressure(world, tick)
 	}
-	
+
 	// Update statistics
 	srs.updateStatistics()
 }
@@ -91,11 +91,11 @@ func (srs *SymbioticRelationshipSystem) Update(world *World, tick int) {
 func (srs *SymbioticRelationshipSystem) updateExistingRelationships(world *World, tick int) {
 	for i := len(srs.Relationships) - 1; i >= 0; i-- {
 		relationship := srs.Relationships[i]
-		
+
 		// Find host and symbiont entities
 		host := world.findEntityByID(relationship.HostID)
 		symbiont := world.findEntityByID(relationship.SymbiontID)
-		
+
 		// Remove relationship if either entity is dead or missing
 		if host == nil || symbiont == nil || !host.IsAlive || !symbiont.IsAlive {
 			relationship.IsActive = false
@@ -103,13 +103,13 @@ func (srs *SymbioticRelationshipSystem) updateExistingRelationships(world *World
 			srs.Relationships = append(srs.Relationships[:i], srs.Relationships[i+1:]...)
 			continue
 		}
-		
+
 		// Update relationship duration
 		relationship.Duration++
-		
+
 		// Apply relationship effects
 		srs.applyRelationshipEffects(relationship, host, symbiont, world, tick)
-		
+
 		// Check for relationship dissolution
 		if rand.Float64() < srs.DissolutionRate {
 			relationship.IsActive = false
@@ -124,30 +124,30 @@ func (srs *SymbioticRelationshipSystem) formNewRelationships(world *World, tick 
 	if rand.Float64() > srs.FormationRate {
 		return
 	}
-	
+
 	// Find compatible entity pairs
 	for i, entity1 := range world.AllEntities {
 		if !entity1.IsAlive {
 			continue
 		}
-		
+
 		for j, entity2 := range world.AllEntities {
 			if i >= j || !entity2.IsAlive {
 				continue
 			}
-			
+
 			// Check if they're already in a relationship
 			if srs.hasRelationship(entity1.ID, entity2.ID) {
 				continue
 			}
-			
+
 			// Check proximity
-			distance := math.Sqrt(math.Pow(entity1.Position.X-entity2.Position.X, 2) + 
-								 math.Pow(entity1.Position.Y-entity2.Position.Y, 2))
+			distance := math.Sqrt(math.Pow(entity1.Position.X-entity2.Position.X, 2) +
+				math.Pow(entity1.Position.Y-entity2.Position.Y, 2))
 			if distance > srs.TransmissionRadius {
 				continue
 			}
-			
+
 			// Determine relationship compatibility and type
 			if compatibility, relType := srs.checkCompatibility(entity1, entity2); compatibility > 0.5 {
 				srs.createRelationship(entity1, entity2, relType, compatibility, tick)
@@ -161,25 +161,25 @@ func (srs *SymbioticRelationshipSystem) formNewRelationships(world *World, tick 
 func (srs *SymbioticRelationshipSystem) checkCompatibility(entity1, entity2 *Entity) (float64, RelationshipType) {
 	// Size difference factor (larger entities can host smaller ones)
 	sizeDiff := math.Abs(entity1.Traits["size"].Value - entity2.Traits["size"].Value)
-	
+
 	// Intelligence and cooperation factors
 	intel1 := entity1.Traits["intelligence"].Value
 	intel2 := entity2.Traits["intelligence"].Value
 	coop1 := entity1.Traits["cooperation"].Value
 	coop2 := entity2.Traits["cooperation"].Value
-	
+
 	// Aggression factor
 	aggr1 := entity1.Traits["aggression"].Value
 	aggr2 := entity2.Traits["aggression"].Value
-	
+
 	// Determine relationship type based on traits
 	avgCooperation := (coop1 + coop2) / 2
 	avgAggression := (aggr1 + aggr2) / 2
 	avgIntelligence := (intel1 + intel2) / 2
-	
+
 	var compatibility float64
 	var relType RelationshipType
-	
+
 	if avgAggression > 0.7 && sizeDiff > 0.3 {
 		// High aggression and size difference -> Parasitic
 		relType = RelationshipParasitic
@@ -196,7 +196,7 @@ func (srs *SymbioticRelationshipSystem) checkCompatibility(entity1, entity2 *Ent
 		// No compatible relationship
 		compatibility = 0.0
 	}
-	
+
 	return compatibility, relType
 }
 
@@ -211,7 +211,7 @@ func (srs *SymbioticRelationshipSystem) createRelationship(entity1, entity2 *Ent
 		host = entity2
 		symbiont = entity1
 	}
-	
+
 	relationship := &SymbioticRelationship{
 		ID:         srs.NextRelationshipID,
 		HostID:     host.ID,
@@ -221,7 +221,7 @@ func (srs *SymbioticRelationshipSystem) createRelationship(entity1, entity2 *Ent
 		Duration:   0,
 		IsActive:   true,
 	}
-	
+
 	// Set relationship effects based on type
 	switch relType {
 	case RelationshipParasitic:
@@ -231,15 +231,15 @@ func (srs *SymbioticRelationshipSystem) createRelationship(entity1, entity2 *Ent
 		relationship.Transmission = strength * 0.4
 		relationship.Resistance = host.Traits["defense"].Value * 0.5
 		relationship.MutationRate = 0.02
-		
+
 	case RelationshipMutualistic:
-		relationship.HostBenefit = strength * 0.6     // Both benefit
+		relationship.HostBenefit = strength * 0.6 // Both benefit
 		relationship.SymbiontBenefit = strength * 0.6
 		relationship.Virulence = 0.0
 		relationship.Transmission = 0.0
 		relationship.Resistance = 1.0
 		relationship.MutationRate = 0.001
-		
+
 	case RelationshipCommensal:
 		relationship.HostBenefit = 0.0                // Host neutral
 		relationship.SymbiontBenefit = strength * 0.4 // Symbiont benefits mildly
@@ -248,7 +248,7 @@ func (srs *SymbioticRelationshipSystem) createRelationship(entity1, entity2 *Ent
 		relationship.Resistance = 1.0
 		relationship.MutationRate = 0.005
 	}
-	
+
 	srs.NextRelationshipID++
 	srs.Relationships = append(srs.Relationships, relationship)
 }
@@ -265,11 +265,11 @@ func (srs *SymbioticRelationshipSystem) applyRelationshipEffects(relationship *S
 			}
 		}
 	}
-	
+
 	if relationship.SymbiontBenefit != 0 {
 		symbiont.Energy = math.Max(0, symbiont.Energy+relationship.SymbiontBenefit*0.1)
 	}
-	
+
 	// Handle disease effects for parasitic relationships
 	if relationship.Type == RelationshipParasitic {
 		// Reduce host fitness and reproduction
@@ -277,7 +277,7 @@ func (srs *SymbioticRelationshipSystem) applyRelationshipEffects(relationship *S
 			reducedFertility := fertilityTrait.Value * (1.0 - relationship.Virulence*0.3)
 			host.Traits["fertility"] = Trait{Value: math.Max(0, reducedFertility)}
 		}
-		
+
 		// Increase mutation rate in host (evolutionary pressure)
 		if relationship.Duration%10 == 0 && rand.Float64() < srs.CoevolutionRate {
 			// Small chance to mutate defense or health traits
@@ -294,7 +294,7 @@ func (srs *SymbioticRelationshipSystem) applyRelationshipEffects(relationship *S
 			}
 		}
 	}
-	
+
 	// Handle mutualistic benefits
 	if relationship.Type == RelationshipMutualistic {
 		// Boost both entities' traits slightly
@@ -315,33 +315,33 @@ func (srs *SymbioticRelationshipSystem) handleDiseaseTransmission(world *World, 
 		if relationship.Type != RelationshipParasitic || relationship.Transmission <= 0 {
 			continue
 		}
-		
+
 		// Find infected host
 		host := world.findEntityByID(relationship.HostID)
 		if host == nil || !host.IsAlive {
 			continue
 		}
-		
+
 		// Look for nearby susceptible entities
 		for _, nearbyEntity := range world.AllEntities {
 			if nearbyEntity.ID == host.ID || !nearbyEntity.IsAlive {
 				continue
 			}
-			
-			distance := math.Sqrt(math.Pow(host.Position.X-nearbyEntity.Position.X, 2) + 
-								 math.Pow(host.Position.Y-nearbyEntity.Position.Y, 2))
-			
+
+			distance := math.Sqrt(math.Pow(host.Position.X-nearbyEntity.Position.X, 2) +
+				math.Pow(host.Position.Y-nearbyEntity.Position.Y, 2))
+
 			if distance <= srs.TransmissionRadius {
 				// Check if entity is already infected
 				if srs.hasParasiticRelationship(nearbyEntity.ID) {
 					continue
 				}
-				
+
 				// Calculate transmission probability
 				transmissionProb := relationship.Transmission * 0.1
 				nearbyResistance := nearbyEntity.Traits["defense"].Value
 				finalProb := transmissionProb * (1.0 - nearbyResistance*0.5)
-				
+
 				if rand.Float64() < finalProb {
 					// Create new parasitic relationship (disease transmission)
 					symbiont := world.findEntityByID(relationship.SymbiontID)
@@ -371,7 +371,7 @@ func (srs *SymbioticRelationshipSystem) createTransmittedRelationship(newHost *E
 		MutationRate:    originalRelationship.MutationRate,
 		IsActive:        true,
 	}
-	
+
 	srs.NextRelationshipID++
 	srs.Relationships = append(srs.Relationships, newRelationship)
 }
@@ -382,14 +382,14 @@ func (srs *SymbioticRelationshipSystem) applyCoevolutionaryPressure(world *World
 		if relationship.Type != RelationshipParasitic {
 			continue
 		}
-		
+
 		host := world.findEntityByID(relationship.HostID)
 		symbiont := world.findEntityByID(relationship.SymbiontID)
-		
+
 		if host == nil || symbiont == nil || !host.IsAlive || !symbiont.IsAlive {
 			continue
 		}
-		
+
 		// Host evolution: increase resistance
 		if rand.Float64() < srs.CoevolutionRate {
 			if defenseTrait, exists := host.Traits["defense"]; exists {
@@ -398,12 +398,12 @@ func (srs *SymbioticRelationshipSystem) applyCoevolutionaryPressure(world *World
 				host.Traits["defense"] = Trait{Value: math.Max(0, math.Min(1, newDefense))}
 			}
 		}
-		
+
 		// Symbiont evolution: adjust virulence and transmission
 		if rand.Float64() < relationship.MutationRate {
 			virulenceMutation := (rand.Float64() - 0.5) * 0.1
 			transmissionMutation := (rand.Float64() - 0.5) * 0.1
-			
+
 			relationship.Virulence = math.Max(0, math.Min(1, relationship.Virulence+virulenceMutation))
 			relationship.Transmission = math.Max(0, math.Min(1, relationship.Transmission+transmissionMutation))
 		}
@@ -416,7 +416,7 @@ func (srs *SymbioticRelationshipSystem) applyCoevolutionaryPressure(world *World
 func (srs *SymbioticRelationshipSystem) hasRelationship(entityID1, entityID2 int) bool {
 	for _, relationship := range srs.Relationships {
 		if (relationship.HostID == entityID1 && relationship.SymbiontID == entityID2) ||
-		   (relationship.HostID == entityID2 && relationship.SymbiontID == entityID1) {
+			(relationship.HostID == entityID2 && relationship.SymbiontID == entityID1) {
 			return true
 		}
 	}
@@ -439,10 +439,10 @@ func (srs *SymbioticRelationshipSystem) updateStatistics() {
 	srs.ActiveParasitic = 0
 	srs.ActiveMutualistic = 0
 	srs.ActiveCommensal = 0
-	
+
 	totalAge := 0
 	diseaseCount := 0
-	
+
 	for _, relationship := range srs.Relationships {
 		switch relationship.Type {
 		case RelationshipParasitic:
@@ -455,13 +455,13 @@ func (srs *SymbioticRelationshipSystem) updateStatistics() {
 		}
 		totalAge += relationship.Duration
 	}
-	
+
 	if len(srs.Relationships) > 0 {
 		srs.AverageRelationshipAge = float64(totalAge) / float64(len(srs.Relationships))
 	} else {
 		srs.AverageRelationshipAge = 0
 	}
-	
+
 	// Calculate disease transmission rate (diseases per total relationships)
 	if srs.TotalRelationships > 0 {
 		srs.DiseaseTransmissionRate = float64(diseaseCount) / float64(srs.TotalRelationships)
@@ -473,7 +473,7 @@ func (srs *SymbioticRelationshipSystem) updateStatistics() {
 // GetSymbioticStats returns statistics about symbiotic relationships
 func (srs *SymbioticRelationshipSystem) GetSymbioticStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	stats["total_relationships"] = srs.TotalRelationships
 	stats["active_relationships"] = len(srs.Relationships)
 	stats["active_parasitic"] = srs.ActiveParasitic
@@ -481,20 +481,20 @@ func (srs *SymbioticRelationshipSystem) GetSymbioticStats() map[string]interface
 	stats["active_commensal"] = srs.ActiveCommensal
 	stats["average_relationship_age"] = srs.AverageRelationshipAge
 	stats["disease_transmission_rate"] = srs.DiseaseTransmissionRate
-	
+
 	// Relationship type breakdown
 	relationshipTypes := make(map[string]int)
 	relationshipTypes["parasitic"] = srs.ActiveParasitic
 	relationshipTypes["mutualistic"] = srs.ActiveMutualistic
 	relationshipTypes["commensal"] = srs.ActiveCommensal
 	stats["relationship_types"] = relationshipTypes
-	
+
 	// Average virulence and transmission for parasitic relationships
 	if srs.ActiveParasitic > 0 {
 		totalVirulence := 0.0
 		totalTransmission := 0.0
 		count := 0
-		
+
 		for _, relationship := range srs.Relationships {
 			if relationship.Type == RelationshipParasitic {
 				totalVirulence += relationship.Virulence
@@ -502,7 +502,7 @@ func (srs *SymbioticRelationshipSystem) GetSymbioticStats() map[string]interface
 				count++
 			}
 		}
-		
+
 		if count > 0 {
 			stats["average_virulence"] = totalVirulence / float64(count)
 			stats["average_transmission"] = totalTransmission / float64(count)
@@ -511,7 +511,7 @@ func (srs *SymbioticRelationshipSystem) GetSymbioticStats() map[string]interface
 		stats["average_virulence"] = 0.0
 		stats["average_transmission"] = 0.0
 	}
-	
+
 	return stats
 }
 

@@ -17,9 +17,9 @@ const (
 	ProteinDefensive                       // For immune responses
 
 	// Amino Acids - building blocks of proteins
-	AminoEssential   // Essential amino acids that can't be synthesized
+	AminoEssential    // Essential amino acids that can't be synthesized
 	AminoNonEssential // Non-essential amino acids
-	AminoConditional // Conditional amino acids (sometimes essential)
+	AminoConditional  // Conditional amino acids (sometimes essential)
 
 	// Lipids - for energy storage and membrane structure
 	LipidSaturated   // Energy storage
@@ -51,7 +51,7 @@ const (
 
 // MolecularComponent represents a specific molecule with concentration
 type MolecularComponent struct {
-	Type         MolecularType `json:"type"`
+	Type          MolecularType `json:"type"`
 	Concentration float64       `json:"concentration"` // Amount present (0.0-1.0)
 	Quality       float64       `json:"quality"`       // Quality/bioavailability (0.0-1.0)
 	Freshness     float64       `json:"freshness"`     // How fresh/active (0.0-1.0, decays over time)
@@ -75,11 +75,11 @@ type MolecularNeeds struct {
 
 // MolecularMetabolism represents how an entity processes molecules
 type MolecularMetabolism struct {
-	Efficiency      map[MolecularType]float64 `json:"efficiency"`       // How efficiently each type is processed
-	StorageCapacity map[MolecularType]float64 `json:"storage_capacity"` // How much can be stored
-	CurrentStorage  map[MolecularType]float64 `json:"current_storage"`  // Current storage levels
-	ProcessingRate  float64                   `json:"processing_rate"`  // Overall processing speed
-	DetoxificationRate float64                `json:"detoxification_rate"` // Ability to neutralize toxins
+	Efficiency         map[MolecularType]float64 `json:"efficiency"`          // How efficiently each type is processed
+	StorageCapacity    map[MolecularType]float64 `json:"storage_capacity"`    // How much can be stored
+	CurrentStorage     map[MolecularType]float64 `json:"current_storage"`     // Current storage levels
+	ProcessingRate     float64                   `json:"processing_rate"`     // Overall processing speed
+	DetoxificationRate float64                   `json:"detoxification_rate"` // Ability to neutralize toxins
 }
 
 // NewMolecularProfile creates a new molecular profile
@@ -103,17 +103,17 @@ func NewMolecularNeeds(entity *Entity) *MolecularNeeds {
 
 	// Base requirements for all entities
 	baseRequirements := map[MolecularType]float64{
-		ProteinStructural:  0.3,
-		ProteinEnzymatic:   0.2,
-		AminoEssential:     0.4,
-		AminoNonEssential:  0.2,
-		LipidSaturated:     0.2,
-		LipidUnsaturated:   0.3,
-		CarboSimple:        0.4,
-		CarboComplex:       0.3,
-		NucleicATP:         0.5,
-		MineralTrace:       0.1,
-		VitaminWater:       0.2,
+		ProteinStructural: 0.3,
+		ProteinEnzymatic:  0.2,
+		AminoEssential:    0.4,
+		AminoNonEssential: 0.2,
+		LipidSaturated:    0.2,
+		LipidUnsaturated:  0.3,
+		CarboSimple:       0.4,
+		CarboComplex:      0.3,
+		NucleicATP:        0.5,
+		MineralTrace:      0.1,
+		VitaminWater:      0.2,
 	}
 
 	// Adjust requirements based on entity traits and species
@@ -121,10 +121,10 @@ func NewMolecularNeeds(entity *Entity) *MolecularNeeds {
 	intelligence := entity.GetTrait("intelligence")
 	speed := entity.GetTrait("speed")
 	size := entity.GetTrait("size")
-	
+
 	// Apply species-specific nutritional dependencies
 	needs.applySpeciesNutritionalRequirements(entity.Species)
-	
+
 	// Apply environmental adaptations to water needs
 	needs.applyEnvironmentalWaterRequirements(entity)
 	aggression := entity.GetTrait("aggression")
@@ -156,7 +156,7 @@ func NewMolecularNeeds(entity *Entity) *MolecularNeeds {
 	// Set requirements and initial priorities
 	for molType, requirement := range baseRequirements {
 		needs.Requirements[molType] = math.Min(requirement, 1.0)
-		needs.Priorities[molType] = requirement // Higher requirement = higher priority
+		needs.Priorities[molType] = requirement   // Higher requirement = higher priority
 		needs.Deficiencies[molType] = requirement // Start with full deficiency
 	}
 
@@ -166,10 +166,10 @@ func NewMolecularNeeds(entity *Entity) *MolecularNeeds {
 // NewMolecularMetabolism creates new molecular metabolism based on entity traits
 func NewMolecularMetabolism(entity *Entity) *MolecularMetabolism {
 	metabolism := &MolecularMetabolism{
-		Efficiency:      make(map[MolecularType]float64),
-		StorageCapacity: make(map[MolecularType]float64),
-		CurrentStorage:  make(map[MolecularType]float64),
-		ProcessingRate:  0.5,
+		Efficiency:         make(map[MolecularType]float64),
+		StorageCapacity:    make(map[MolecularType]float64),
+		CurrentStorage:     make(map[MolecularType]float64),
+		ProcessingRate:     0.5,
 		DetoxificationRate: 0.3,
 	}
 
@@ -189,12 +189,12 @@ func NewMolecularMetabolism(entity *Entity) *MolecularMetabolism {
 	// Set efficiencies and storage for all molecule types
 	for molType := ProteinStructural; molType <= ToxinTannin; molType++ {
 		efficiency := baseEfficiency + rand.Float64()*0.2 - 0.1 // Some variation
-		
+
 		// Cooperative entities are better at processing social molecules
 		if molType == ProteinTransport || molType == VitaminWater {
 			efficiency += cooperation * 0.2
 		}
-		
+
 		metabolism.Efficiency[molType] = math.Min(efficiency, 1.0)
 		metabolism.StorageCapacity[molType] = (0.3 + rand.Float64()*0.4) * storageMultiplier
 		metabolism.CurrentStorage[molType] = 0.0
@@ -225,12 +225,12 @@ func (mp *MolecularProfile) updateDerivedMetrics() {
 		weightedConcentration := component.Concentration * component.Quality * component.Freshness
 		totalMolecules += weightedConcentration
 		totalBiomass += weightedConcentration
-		
+
 		// Count toxins
 		if molType >= ToxinAlkaloid {
 			totalToxicity += weightedConcentration
 		}
-		
+
 		if component.Concentration > 0.01 {
 			diversityCount++
 		}
@@ -250,11 +250,11 @@ func (mp *MolecularProfile) GetNutritionalValue(needs *MolecularNeeds) float64 {
 		if component, exists := mp.Components[molType]; exists {
 			priority := needs.Priorities[molType]
 			componentValue := component.Concentration * component.Quality * component.Freshness
-			
+
 			// Value is based on how well it meets the requirement
 			satisfactionRatio := math.Min(componentValue/requirement, 1.0)
 			weightedValue := satisfactionRatio * priority
-			
+
 			totalValue += weightedValue
 			totalWeight += priority
 		}
@@ -285,18 +285,18 @@ func (mp *MolecularProfile) ConsumeNutrients(needs *MolecularNeeds, metabolism *
 		if molType >= ToxinAlkaloid {
 			tolerance := needs.Tolerances[molType]
 			detoxRate := metabolism.DetoxificationRate
-			
+
 			toxinEffect := actualConsumption * (1.0 - tolerance) * (1.0 - detoxRate)
 			toxinDamage += toxinEffect * 10.0 // Scale toxin damage
 		} else {
 			// It's a nutrient - calculate energy gain
 			requirement := needs.Requirements[molType]
 			deficiency := needs.Deficiencies[molType]
-			
+
 			// Energy gain is higher when there's a deficiency
 			deficiencyBonus := 1.0 + deficiency*2.0
 			energyContribution := actualConsumption * component.Quality * deficiencyBonus
-			
+
 			// Different molecule types provide different energy amounts
 			energyMultiplier := getMolecularEnergyMultiplier(molType)
 			energyGained += energyContribution * energyMultiplier
@@ -348,7 +348,7 @@ func (needs *MolecularNeeds) UpdateDeficiencies(timeStep float64) {
 	for molType, requirement := range needs.Requirements {
 		// Deficiencies increase over time as molecules are used up
 		metabolicRate := 0.05 * timeStep // Base metabolic consumption rate
-		
+
 		// Some molecules are consumed faster
 		switch molType {
 		case CarboSimple, NucleicATP:
@@ -358,7 +358,7 @@ func (needs *MolecularNeeds) UpdateDeficiencies(timeStep float64) {
 		case ProteinStructural, AminoEssential:
 			metabolicRate *= 0.5 // Slow consumption
 		}
-		
+
 		currentDeficiency := needs.Deficiencies[molType]
 		newDeficiency := math.Min(requirement, currentDeficiency+metabolicRate)
 		needs.Deficiencies[molType] = newDeficiency
@@ -373,10 +373,10 @@ func (needs *MolecularNeeds) GetOverallNutritionalStatus() float64 {
 	for molType, requirement := range needs.Requirements {
 		deficiency := needs.Deficiencies[molType]
 		priority := needs.Priorities[molType]
-		
+
 		weightedDeficiency := deficiency * priority
 		weightedRequirement := requirement * priority
-		
+
 		totalDeficiency += weightedDeficiency
 		totalRequirement += weightedRequirement
 	}
@@ -391,7 +391,7 @@ func (needs *MolecularNeeds) GetOverallNutritionalStatus() float64 {
 // CreatePlantMolecularProfile creates a molecular profile for a plant based on its type and traits
 func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 	profile := NewMolecularProfile()
-	
+
 	// Base profile varies by plant type
 	switch plant.Type {
 	case PlantGrass:
@@ -401,7 +401,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 		profile.AddComponent(ProteinStructural, 0.3, 0.6, 1.0)
 		profile.AddComponent(VitaminWater, 0.4, 0.8, 1.0)
 		profile.AddComponent(MineralTrace, 0.3, 0.7, 1.0)
-		
+
 	case PlantBush:
 		// Balanced nutrients, some defensive compounds
 		profile.AddComponent(CarboComplex, 0.5, 0.7, 1.0)
@@ -409,7 +409,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 		profile.AddComponent(LipidUnsaturated, 0.3, 0.8, 1.0)
 		profile.AddComponent(VitaminFat, 0.3, 0.6, 1.0)
 		profile.AddComponent(ToxinTannin, 0.2, 0.8, 1.0)
-		
+
 	case PlantTree:
 		// High structural content, some toxins for defense
 		profile.AddComponent(CarboComplex, 0.7, 0.8, 1.0)
@@ -417,7 +417,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 		profile.AddComponent(ProteinStructural, 0.6, 0.8, 1.0)
 		profile.AddComponent(LipidSaturated, 0.4, 0.7, 1.0)
 		profile.AddComponent(ToxinAlkaloid, 0.3, 0.7, 1.0)
-		
+
 	case PlantMushroom:
 		// High protein, unique amino acids, some toxins
 		profile.AddComponent(ProteinEnzymatic, 0.8, 0.9, 1.0)
@@ -425,7 +425,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 		profile.AddComponent(AminoConditional, 0.6, 0.8, 1.0)
 		profile.AddComponent(VitaminFat, 0.5, 0.8, 1.0)
 		profile.AddComponent(ToxinGlycoside, 0.4, 0.6, 1.0)
-		
+
 	case PlantAlgae:
 		// High protein, omega fatty acids, vitamins
 		profile.AddComponent(ProteinStructural, 0.7, 0.9, 1.0)
@@ -433,7 +433,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 		profile.AddComponent(VitaminWater, 0.6, 0.9, 1.0)
 		profile.AddComponent(VitaminFat, 0.4, 0.8, 1.0)
 		profile.AddComponent(MineralTrace, 0.5, 0.9, 1.0)
-		
+
 	case PlantCactus:
 		// Water storage, some nutrients, defensive compounds
 		profile.AddComponent(CarboSimple, 0.4, 0.6, 1.0)
@@ -442,7 +442,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 		profile.AddComponent(ToxinAlkaloid, 0.6, 0.8, 1.0)
 		profile.AddComponent(ToxinTannin, 0.3, 0.7, 1.0)
 	}
-	
+
 	// Modify based on plant traits
 	if plantTraits, ok := plant.Traits["nutrition_value"]; ok {
 		nutritionMultiplier := 1.0 + plantTraits.Value*0.5
@@ -453,7 +453,7 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 			}
 		}
 	}
-	
+
 	if plantTraits, ok := plant.Traits["toxicity"]; ok {
 		toxicityMultiplier := 1.0 + plantTraits.Value*0.8
 		for molType, component := range profile.Components {
@@ -463,14 +463,14 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 			}
 		}
 	}
-	
+
 	// Age affects freshness
-	ageFactor := math.Max(0.1, 1.0 - float64(plant.Age)*0.01)
+	ageFactor := math.Max(0.1, 1.0-float64(plant.Age)*0.01)
 	for molType, component := range profile.Components {
 		component.Freshness *= ageFactor
 		profile.Components[molType] = component
 	}
-	
+
 	profile.updateDerivedMetrics()
 	return profile
 }
@@ -478,41 +478,41 @@ func CreatePlantMolecularProfile(plant *Plant) *MolecularProfile {
 // CreateEntityMolecularProfile creates a molecular profile for an entity based on its traits and species
 func CreateEntityMolecularProfile(entity *Entity) *MolecularProfile {
 	profile := NewMolecularProfile()
-	
+
 	// Base profile for entities (what they're made of when consumed)
 	size := entity.GetTrait("size")
 	strength := entity.GetTrait("strength")
 	intelligence := entity.GetTrait("intelligence")
-	
+
 	// Larger, stronger entities have more structural proteins
 	structuralProtein := 0.4 + size*0.2 + strength*0.2
 	profile.AddComponent(ProteinStructural, structuralProtein, 0.8, 1.0)
-	
+
 	// More intelligent entities have more enzymatic proteins and nucleic acids
 	enzymaticProtein := 0.3 + intelligence*0.3
 	profile.AddComponent(ProteinEnzymatic, enzymaticProtein, 0.8, 1.0)
-	profile.AddComponent(NucleicDNA, 0.2 + intelligence*0.2, 0.9, 1.0)
-	profile.AddComponent(NucleicRNA, 0.3 + intelligence*0.1, 0.8, 1.0)
-	
+	profile.AddComponent(NucleicDNA, 0.2+intelligence*0.2, 0.9, 1.0)
+	profile.AddComponent(NucleicRNA, 0.3+intelligence*0.1, 0.8, 1.0)
+
 	// Essential amino acids from muscle tissue
 	aminoContent := 0.5 + strength*0.2 + size*0.1
 	profile.AddComponent(AminoEssential, aminoContent, 0.9, 1.0)
 	profile.AddComponent(AminoNonEssential, aminoContent*0.8, 0.7, 1.0)
-	
+
 	// Lipids for energy storage
 	lipidContent := 0.3 + size*0.3
 	profile.AddComponent(LipidSaturated, lipidContent, 0.7, 1.0)
 	profile.AddComponent(LipidUnsaturated, lipidContent*0.6, 0.8, 1.0)
-	
+
 	// Transport proteins for circulatory systems
 	transportProtein := 0.2 + intelligence*0.1
 	profile.AddComponent(ProteinTransport, transportProtein, 0.7, 1.0)
-	
+
 	// Minerals and vitamins from organ tissue
 	profile.AddComponent(MineralTrace, 0.3, 0.8, 1.0)
 	profile.AddComponent(VitaminFat, 0.2, 0.6, 1.0)
 	profile.AddComponent(VitaminWater, 0.3, 0.7, 1.0)
-	
+
 	// Species-specific modifications
 	switch entity.Species {
 	case "herbivore", "aquatic_herbivore", "aerial_herbivore":
@@ -524,7 +524,7 @@ func CreateEntityMolecularProfile(entity *Entity) *MolecularProfile {
 			}
 		}
 		profile.AddComponent(CarboComplex, 0.4, 0.6, 1.0)
-		
+
 	case "carnivore", "predator":
 		// Carnivores have more protein, defensive compounds
 		for molType, component := range profile.Components {
@@ -535,13 +535,13 @@ func CreateEntityMolecularProfile(entity *Entity) *MolecularProfile {
 			}
 		}
 		profile.AddComponent(ProteinDefensive, 0.3, 0.8, 1.0)
-		
+
 	case "omnivore", "aerial_omnivore":
 		// Omnivores are balanced
 		profile.AddComponent(CarboSimple, 0.3, 0.7, 1.0)
 		profile.AddComponent(ProteinDefensive, 0.2, 0.7, 1.0)
 	}
-	
+
 	// Environmental adaptations affect molecular composition
 	if aquaticAdaptation := entity.GetTrait("aquatic_adaptation"); aquaticAdaptation > 0 {
 		// Aquatic creatures have more unsaturated fats and transport proteins
@@ -555,7 +555,7 @@ func CreateEntityMolecularProfile(entity *Entity) *MolecularProfile {
 			profile.Components[ProteinTransport] = component
 		}
 	}
-	
+
 	if flyingAbility := entity.GetTrait("flying_ability"); flyingAbility > 0 {
 		// Flying creatures have lighter, more efficient proteins
 		for molType, component := range profile.Components {
@@ -564,11 +564,11 @@ func CreateEntityMolecularProfile(entity *Entity) *MolecularProfile {
 				profile.Components[molType] = component
 			}
 		}
-		profile.AddComponent(NucleicATP, 0.4 + flyingAbility*0.3, 0.9, 1.0)
+		profile.AddComponent(NucleicATP, 0.4+flyingAbility*0.3, 0.9, 1.0)
 	}
-	
+
 	// Age affects freshness and some nutritional quality
-	ageFactor := math.Max(0.3, 1.0 - float64(entity.Age)*0.005)
+	ageFactor := math.Max(0.3, 1.0-float64(entity.Age)*0.005)
 	for molType, component := range profile.Components {
 		component.Freshness *= ageFactor
 		// Older entities may have more complex, tougher proteins
@@ -577,7 +577,7 @@ func CreateEntityMolecularProfile(entity *Entity) *MolecularProfile {
 		}
 		profile.Components[molType] = component
 	}
-	
+
 	profile.updateDerivedMetrics()
 	return profile
 }
@@ -587,10 +587,10 @@ func GetMolecularDesirability(foodProfile *MolecularProfile, entityNeeds *Molecu
 	if foodProfile == nil || entityNeeds == nil {
 		return 0.0
 	}
-	
+
 	// Base nutritional value
 	nutritionalValue := foodProfile.GetNutritionalValue(entityNeeds)
-	
+
 	// Penalty for toxicity
 	toxinPenalty := 0.0
 	for molType, component := range foodProfile.Components {
@@ -603,10 +603,10 @@ func GetMolecularDesirability(foodProfile *MolecularProfile, entityNeeds *Molecu
 			toxinPenalty += toxinEffect
 		}
 	}
-	
+
 	// Bonus for molecular diversity
 	diversityBonus := foodProfile.Diversity * 0.2
-	
+
 	// Overall desirability
 	desirability := nutritionalValue + diversityBonus - toxinPenalty*2.0
 	return math.Max(0.0, math.Min(1.0, desirability))
@@ -625,7 +625,7 @@ func (needs *MolecularNeeds) applySpeciesNutritionalRequirements(species string)
 		// Improved toxin tolerance for plant consumption
 		needs.Tolerances[ToxinTannin] = 0.8
 		needs.Tolerances[ToxinAlkaloid] = 0.6
-		
+
 	} else if strings.Contains(species, "carnivore") {
 		// High protein and lipid needs, low carbohydrate needs
 		needs.Requirements[ProteinStructural] *= 1.8
@@ -637,7 +637,7 @@ func (needs *MolecularNeeds) applySpeciesNutritionalRequirements(species string)
 		// Better processing of animal proteins
 		needs.Priorities[ProteinStructural] = 1.0
 		needs.Priorities[AminoEssential] = 0.9
-		
+
 	} else if strings.Contains(species, "omnivore") {
 		// Balanced requirements, good adaptability
 		needs.Requirements[ProteinStructural] *= 1.2
@@ -648,7 +648,7 @@ func (needs *MolecularNeeds) applySpeciesNutritionalRequirements(species string)
 		needs.Tolerances[ToxinTannin] = 0.5
 		needs.Tolerances[ToxinAlkaloid] = 0.4
 	}
-	
+
 	// Size-based species requirements
 	if strings.Contains(species, "large") {
 		// Larger species need more total nutrition
@@ -664,33 +664,33 @@ func (needs *MolecularNeeds) applySpeciesNutritionalRequirements(species string)
 		needs.Requirements[NucleicATP] *= 1.3
 		needs.Requirements[MineralTrace] *= 1.2
 	}
-	
+
 	// Aquatic species requirements
 	if strings.Contains(species, "aquatic") {
-		needs.Requirements[MineralSalt] *= 2.0  // High salt needs
-		needs.Requirements[LipidUnsaturated] *= 1.3  // Insulation
-		needs.Tolerances[MineralSalt] = 1.0  // High salt tolerance
+		needs.Requirements[MineralSalt] *= 2.0      // High salt needs
+		needs.Requirements[LipidUnsaturated] *= 1.3 // Insulation
+		needs.Tolerances[MineralSalt] = 1.0         // High salt tolerance
 	}
-	
+
 	// Aerial species requirements
 	if strings.Contains(species, "aerial") {
-		needs.Requirements[NucleicATP] *= 1.5  // High energy for flight
+		needs.Requirements[NucleicATP] *= 1.5   // High energy for flight
 		needs.Requirements[CarboSimple] *= 1.4  // Quick energy
-		needs.Requirements[MineralTrace] *= 0.8  // Lighter bones
+		needs.Requirements[MineralTrace] *= 0.8 // Lighter bones
 	}
-	
+
 	// Underground species requirements
 	if strings.Contains(species, "soil") || strings.Contains(species, "underground") {
-		needs.Requirements[VitaminWater] *= 0.8  // Less water loss
-		needs.Requirements[MineralTrace] *= 1.3  // Mineral-rich environment
-		needs.Tolerances[ToxinHeavyMetal] = 0.6  // Heavy metal tolerance
+		needs.Requirements[VitaminWater] *= 0.8 // Less water loss
+		needs.Requirements[MineralTrace] *= 1.3 // Mineral-rich environment
+		needs.Tolerances[ToxinHeavyMetal] = 0.6 // Heavy metal tolerance
 	}
 }
 
 // applyEnvironmentalWaterRequirements adjusts water needs based on environmental adaptations
 func (needs *MolecularNeeds) applyEnvironmentalWaterRequirements(entity *Entity) {
 	baseWaterNeed := needs.Requirements[VitaminWater]
-	
+
 	// Aquatic adaptation reduces water dependency
 	aquaticAdaptation := entity.GetTrait("aquatic_adaptation")
 	if aquaticAdaptation > 0.5 {
@@ -698,31 +698,31 @@ func (needs *MolecularNeeds) applyEnvironmentalWaterRequirements(entity *Entity)
 		// Aquatic entities need salt balance
 		needs.Requirements[MineralSalt] *= (1.0 + aquaticAdaptation*0.5)
 	}
-	
+
 	// Desert/endurance adaptation affects water efficiency
 	endurance := entity.GetTrait("endurance")
 	if endurance > 0.7 {
 		// High endurance means efficient water use
 		needs.Requirements[VitaminWater] = baseWaterNeed * (0.8 - endurance*0.2)
 	}
-	
+
 	// Size affects water needs
 	size := entity.GetTrait("size")
-	waterSizeMultiplier := 1.0 + size*0.5  // Larger entities need more water
+	waterSizeMultiplier := 1.0 + size*0.5 // Larger entities need more water
 	needs.Requirements[VitaminWater] *= waterSizeMultiplier
-	
+
 	// Underground navigation reduces surface water needs
 	undergroundNav := entity.GetTrait("underground_nav")
 	if undergroundNav > 0.5 {
 		needs.Requirements[VitaminWater] *= (0.9 - undergroundNav*0.2)
 	}
-	
+
 	// Flying ability increases water needs (dehydration)
 	flyingAbility := entity.GetTrait("flying_ability")
 	if flyingAbility > 0.5 {
 		needs.Requirements[VitaminWater] *= (1.0 + flyingAbility*0.3)
 	}
-	
+
 	// Set water priority based on environmental adaptation
 	avgAdaptation := (aquaticAdaptation + endurance + undergroundNav) / 3.0
 	needs.Priorities[VitaminWater] = 0.7 + avgAdaptation*0.3

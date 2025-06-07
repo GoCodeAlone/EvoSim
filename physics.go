@@ -239,11 +239,11 @@ func (cs *CollisionSystem) CheckCollisions(entities []*Entity, physicsComponents
 				// Emit collision event to central event bus
 				if world != nil && world.CentralEventBus != nil {
 					metadata := map[string]interface{}{
-						"entity1_id":     entity1.ID,
-						"entity2_id":     entity2.ID,
+						"entity1_id":      entity1.ID,
+						"entity2_id":      entity2.ID,
 						"entity1_species": entity1.Species,
 						"entity2_species": entity2.Species,
-						"distance":       distance,
+						"distance":        distance,
 						"collision_force": collisionDistance - distance,
 					}
 					world.CentralEventBus.EmitSystemEvent(world.Tick, "collision", "physics", "collision_system",

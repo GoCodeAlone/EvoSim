@@ -1,0 +1,24 @@
+version: 2
+
+run:
+  timeout: 5m
+  go: "1.23"
+
+linters:
+  enable:
+    - errcheck
+    - unused
+    - misspell
+    - goconst
+    - dupl
+  disable-all: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - funlen
+        - gocyclo
+        - gosec
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -42,14 +42,14 @@ type PollenCloud struct {
 // RegionalStorm represents localized weather events
 type RegionalStorm struct {
 	ID          int
-	Type        StormType  // Type of storm
-	Center      Position   // Storm center
-	Radius      float64    // Affected area
-	Intensity   float64    // Storm intensity (0.0 to 1.0)
-	Duration    int        // Remaining duration
-	MaxDuration int        // Total duration
-	MovementDir float64    // Direction storm is moving
-	Speed       float64    // How fast storm moves
+	Type        StormType // Type of storm
+	Center      Position  // Storm center
+	Radius      float64   // Affected area
+	Intensity   float64   // Storm intensity (0.0 to 1.0)
+	Duration    int       // Remaining duration
+	MaxDuration int       // Total duration
+	MovementDir float64   // Direction storm is moving
+	Speed       float64   // How fast storm moves
 }
 
 // StormType represents different types of regional storms
@@ -84,7 +84,7 @@ type WindSystem struct {
 	SeasonalMultiplier float64 // Wind strength varies by season
 	WeatherPattern     int     // Current weather (0=calm, 1=windy, 2=storm, 3=tornado, 4=hurricane)
 	WeatherDuration    int     // How long current weather lasts
-	
+
 	// Regional weather systems
 	RegionalStorms []RegionalStorm // Active regional weather events
 
@@ -92,7 +92,7 @@ type WindSystem struct {
 	TotalPollenReleased            int
 	SuccessfulPollinationsThisTick int
 	TotalCrossPollinations         int
-	
+
 	// Event tracking
 	EventBus *CentralEventBus
 }
@@ -145,7 +145,7 @@ func (ws *WindSystem) Update(season Season, tick int) {
 		if ws.BaseWindDirection >= 2*math.Pi {
 			ws.BaseWindDirection -= 2 * math.Pi
 		}
-		
+
 		// Very small strength variation
 		strengthChange := (rand.Float64() - 0.5) * 0.02 // ±0.01 change
 		ws.BaseWindStrength += strengthChange
@@ -159,10 +159,10 @@ func (ws *WindSystem) Update(season Season, tick int) {
 
 	// Update weather patterns
 	ws.updateWeatherPattern(tick)
-	
+
 	// Update regional storms
 	ws.updateRegionalStorms()
-	
+
 	// Potentially spawn new regional storms
 	if rand.Float64() < 0.01 { // 1% chance per tick
 		ws.spawnRegionalStorm()
@@ -209,7 +209,7 @@ func (ws *WindSystem) generateWindPattern() {
 			case 4: // Hurricane (regional, handled separately)
 				strength *= 1.8
 			}
-			
+
 			// Apply regional storm effects
 			cellPos := Position{X: float64(x) * ws.CellSize, Y: float64(y) * ws.CellSize}
 			stormEffect := ws.getRegionalStormEffect(cellPos)
@@ -490,7 +490,7 @@ func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrai
 		motherTypeName := "unknown"
 		fatherTypeName := "unknown"
 		offspringTypeName := "unknown"
-		
+
 		if int(motherPlant.Type) < len(plantTypeNames) {
 			motherTypeName = plantTypeNames[motherPlant.Type]
 		}
@@ -502,14 +502,14 @@ func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrai
 		}
 
 		metadata := map[string]interface{}{
-			"mother_id":       motherPlant.ID,
-			"mother_type":     motherTypeName,
-			"father_id":       pollenGrain.PlantID,
-			"father_type":     fatherTypeName,
-			"offspring_id":    offspring.ID,
-			"offspring_type":  offspringTypeName,
+			"mother_id":        motherPlant.ID,
+			"mother_type":      motherTypeName,
+			"father_id":        pollenGrain.PlantID,
+			"father_type":      fatherTypeName,
+			"offspring_id":     offspring.ID,
+			"offspring_type":   offspringTypeName,
 			"is_cross_species": isCrossSpecies,
-			"generation":      offspring.Generation,
+			"generation":       offspring.Generation,
 			"pollen_viability": pollenGrain.Viability,
 		}
 
@@ -519,7 +519,7 @@ func (ws *WindSystem) crossPollinate(motherPlant *Plant, pollenGrain *PollenGrai
 		}
 
 		ws.EventBus.EmitSystemEvent(tick, eventType, "wind", "wind_system",
-			fmt.Sprintf("Plant %d (%s) pollinated by pollen from plant %d (%s), offspring: %d (%s)", 
+			fmt.Sprintf("Plant %d (%s) pollinated by pollen from plant %d (%s), offspring: %d (%s)",
 				motherPlant.ID, motherTypeName, pollenGrain.PlantID, fatherTypeName, offspring.ID, offspringTypeName),
 			&newPos, metadata)
 	}
@@ -632,7 +632,7 @@ func (ws *WindSystem) updateWeatherPattern(tick int) {
 		case 4: // Hurricane
 			ws.WeatherDuration = 50 + rand.Intn(100) // Longer duration
 		}
-		
+
 		// When weather changes, also slightly adjust base wind direction and strength
 		ws.BaseWindDirection += (rand.Float64() - 0.5) * 0.3 // Small direction change
 		if ws.BaseWindDirection < 0 {
@@ -641,7 +641,7 @@ func (ws *WindSystem) updateWeatherPattern(tick int) {
 		if ws.BaseWindDirection >= 2*math.Pi {
 			ws.BaseWindDirection -= 2 * math.Pi
 		}
-		
+
 		// Adjust base strength slightly
 		strengthChange := (rand.Float64() - 0.5) * 0.2 // ±0.1 change
 		ws.BaseWindStrength += strengthChange
@@ -651,13 +651,13 @@ func (ws *WindSystem) updateWeatherPattern(tick int) {
 		if ws.BaseWindStrength > 0.9 {
 			ws.BaseWindStrength = 0.9
 		}
-		
+
 		// Emit event for weather pattern change if patterns differ
 		if oldPattern != ws.WeatherPattern && ws.EventBus != nil {
 			weatherNames := []string{"calm", "windy", "storm", "tornado", "hurricane"}
 			oldWeatherName := "unknown"
 			newWeatherName := "unknown"
-			
+
 			if oldPattern < len(weatherNames) {
 				oldWeatherName = weatherNames[oldPattern]
 			}
@@ -666,12 +666,12 @@ func (ws *WindSystem) updateWeatherPattern(tick int) {
 			}
 
 			metadata := map[string]interface{}{
-				"old_pattern":      oldPattern,
-				"new_pattern":      ws.WeatherPattern,
-				"duration":         ws.WeatherDuration,
-				"wind_direction":   ws.BaseWindDirection,
-				"wind_strength":    ws.BaseWindStrength,
-				"seasonal_mult":    ws.SeasonalMultiplier,
+				"old_pattern":    oldPattern,
+				"new_pattern":    ws.WeatherPattern,
+				"duration":       ws.WeatherDuration,
+				"wind_direction": ws.BaseWindDirection,
+				"wind_strength":  ws.BaseWindStrength,
+				"seasonal_mult":  ws.SeasonalMultiplier,
 			}
 
 			ws.EventBus.EmitSystemEvent(tick, "weather_change", "wind", "wind_system",
@@ -740,25 +740,25 @@ func (ws *WindSystem) getRegionalStormEffect(pos Position) RegionalStormEffect {
 
 	for _, storm := range ws.RegionalStorms {
 		distance := math.Sqrt(math.Pow(pos.X-storm.Center.X, 2) + math.Pow(pos.Y-storm.Center.Y, 2))
-		
+
 		if distance <= storm.Radius {
 			// Within storm effect radius
 			stormInfluence := (storm.Radius - distance) / storm.Radius // 0 to 1
 			stormInfluence *= storm.Intensity
-			
+
 			switch storm.Type {
 			case StormThunderstorm:
 				effect.Strength *= 1.0 + stormInfluence*0.8
 				effect.TurbulenceMultiplier *= 1.0 + stormInfluence*2.0
 				effect.DirectionChange += (rand.Float64() - 0.5) * stormInfluence * 0.3
-				
+
 			case StormTornado:
 				// Tornado creates circular wind pattern
 				angle := math.Atan2(pos.Y-storm.Center.Y, pos.X-storm.Center.X)
 				effect.DirectionChange += angle + math.Pi/2 // Perpendicular to radius for rotation
 				effect.Strength *= 1.0 + stormInfluence*3.0
 				effect.TurbulenceMultiplier *= 1.0 + stormInfluence*5.0
-				
+
 			case StormHurricane:
 				// Hurricane creates spiral pattern
 				angle := math.Atan2(pos.Y-storm.Center.Y, pos.X-storm.Center.X)
@@ -766,12 +766,12 @@ func (ws *WindSystem) getRegionalStormEffect(pos Position) RegionalStormEffect {
 				effect.DirectionChange += spiralAngle * stormInfluence
 				effect.Strength *= 1.0 + stormInfluence*2.5
 				effect.TurbulenceMultiplier *= 1.0 + stormInfluence*3.0
-				
+
 			case StormBlizzard:
 				effect.Strength *= 1.0 + stormInfluence*1.5
 				effect.TurbulenceMultiplier *= 1.0 + stormInfluence*2.5
 				effect.DirectionChange += (rand.Float64() - 0.5) * stormInfluence * 0.4
-				
+
 			case StormDustStorm:
 				effect.Strength *= 1.0 + stormInfluence*1.2
 				effect.TurbulenceMultiplier *= 1.0 + stormInfluence*2.0
@@ -789,11 +789,11 @@ func (ws *WindSystem) updateRegionalStorms() {
 
 	for _, storm := range ws.RegionalStorms {
 		storm.Duration--
-		
+
 		// Move storm
 		storm.Center.X += math.Cos(storm.MovementDir) * storm.Speed
 		storm.Center.Y += math.Sin(storm.MovementDir) * storm.Speed
-		
+
 		// Intensity may change over time
 		ageRatio := float64(storm.MaxDuration-storm.Duration) / float64(storm.MaxDuration)
 		if ageRatio < 0.3 {
@@ -803,7 +803,7 @@ func (ws *WindSystem) updateRegionalStorms() {
 			// Weakening phase
 			storm.Intensity = math.Max(0.1, storm.Intensity-0.03)
 		}
-		
+
 		// Keep active storms
 		if storm.Duration > 0 {
 			activeStorms = append(activeStorms, storm)
@@ -821,7 +821,7 @@ func (ws *WindSystem) spawnRegionalStorm() {
 
 	worldWidth := float64(ws.MapWidth) * ws.CellSize
 	worldHeight := float64(ws.MapHeight) * ws.CellSize
-	
+
 	storm := RegionalStorm{
 		ID:          len(ws.RegionalStorms) + 1,
 		Center:      Position{X: rand.Float64() * worldWidth, Y: rand.Float64() * worldHeight},
@@ -866,7 +866,7 @@ func (ws *WindSystem) spawnRegionalStorm() {
 func (ws *WindSystem) GetRegionalStormStats() map[string]interface{} {
 	stormCounts := make(map[string]int)
 	totalIntensity := 0.0
-	
+
 	for _, storm := range ws.RegionalStorms {
 		switch storm.Type {
 		case StormThunderstorm:
@@ -882,7 +882,7 @@ func (ws *WindSystem) GetRegionalStormStats() map[string]interface{} {
 		}
 		totalIntensity += storm.Intensity
 	}
-	
+
 	return map[string]interface{}{
 		"active_storms":   len(ws.RegionalStorms),
 		"storm_types":     stormCounts,

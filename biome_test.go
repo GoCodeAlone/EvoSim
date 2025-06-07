@@ -42,14 +42,14 @@ func TestBiomeEnvironmentalProperties(t *testing.T) {
 	biomes := initializeBiomes()
 
 	testCases := []struct {
-		biomeType    BiomeType
-		name         string
-		tempRange    [2]float64 // [min, max] acceptable temperature
+		biomeType     BiomeType
+		name          string
+		tempRange     [2]float64 // [min, max] acceptable temperature
 		pressureRange [2]float64 // [min, max] acceptable pressure
-		oxygenRange  [2]float64 // [min, max] acceptable oxygen
-		isAquatic    bool
+		oxygenRange   [2]float64 // [min, max] acceptable oxygen
+		isAquatic     bool
 		isUnderground bool
-		isAerial     bool
+		isAerial      bool
 	}{
 		{BiomeIce, "Ice", [2]float64{-1, -0.5}, [2]float64{0.8, 1.2}, [2]float64{0.8, 1.0}, false, false, false},
 		{BiomeDeepWater, "Deep Water", [2]float64{-0.5, 0.1}, [2]float64{1.5, 2.5}, [2]float64{0.1, 0.5}, true, false, false},
@@ -63,35 +63,35 @@ func TestBiomeEnvironmentalProperties(t *testing.T) {
 
 	for _, tc := range testCases {
 		biome := biomes[tc.biomeType]
-		
+
 		// Test temperature range
 		if biome.Temperature < tc.tempRange[0] || biome.Temperature > tc.tempRange[1] {
-			t.Errorf("%s temperature %.2f outside expected range [%.2f, %.2f]", 
+			t.Errorf("%s temperature %.2f outside expected range [%.2f, %.2f]",
 				tc.name, biome.Temperature, tc.tempRange[0], tc.tempRange[1])
 		}
-		
+
 		// Test pressure range
 		if biome.Pressure < tc.pressureRange[0] || biome.Pressure > tc.pressureRange[1] {
-			t.Errorf("%s pressure %.2f outside expected range [%.2f, %.2f]", 
+			t.Errorf("%s pressure %.2f outside expected range [%.2f, %.2f]",
 				tc.name, biome.Pressure, tc.pressureRange[0], tc.pressureRange[1])
 		}
-		
+
 		// Test oxygen range
 		if biome.OxygenLevel < tc.oxygenRange[0] || biome.OxygenLevel > tc.oxygenRange[1] {
-			t.Errorf("%s oxygen %.2f outside expected range [%.2f, %.2f]", 
+			t.Errorf("%s oxygen %.2f outside expected range [%.2f, %.2f]",
 				tc.name, biome.OxygenLevel, tc.oxygenRange[0], tc.oxygenRange[1])
 		}
-		
+
 		// Test aquatic flag
 		if biome.IsAquatic != tc.isAquatic {
 			t.Errorf("%s IsAquatic is %v, expected %v", tc.name, biome.IsAquatic, tc.isAquatic)
 		}
-		
+
 		// Test underground flag
 		if biome.IsUnderground != tc.isUnderground {
 			t.Errorf("%s IsUnderground is %v, expected %v", tc.name, biome.IsUnderground, tc.isUnderground)
 		}
-		
+
 		// Test aerial flag
 		if biome.IsAerial != tc.isAerial {
 			t.Errorf("%s IsAerial is %v, expected %v", tc.name, biome.IsAerial, tc.isAerial)
@@ -107,9 +107,9 @@ func TestEnhancedBiomeGeneration(t *testing.T) {
 		GridWidth:  20,
 		GridHeight: 20,
 	}
-	
+
 	world := NewWorld(config)
-	
+
 	// Count occurrences of each biome type
 	biomeCounts := make(map[BiomeType]int)
 	for y := 0; y < config.GridHeight; y++ {
@@ -118,12 +118,12 @@ func TestEnhancedBiomeGeneration(t *testing.T) {
 			biomeCounts[biome]++
 		}
 	}
-	
+
 	// Verify that we have multiple biome types
 	if len(biomeCounts) < 3 {
 		t.Errorf("Expected at least 3 different biome types, got %d", len(biomeCounts))
 	}
-	
+
 	// Verify that polar biomes (Ice, Tundra) appear near edges
 	edgeBiomes := make(map[BiomeType]int)
 	for y := 0; y < config.GridHeight; y++ {
@@ -135,15 +135,15 @@ func TestEnhancedBiomeGeneration(t *testing.T) {
 			}
 		}
 	}
-	
+
 	// Ice and Tundra should be more common at edges
 	iceAndTundraAtEdges := edgeBiomes[BiomeIce] + edgeBiomes[BiomeTundra]
 	_ = iceAndTundraAtEdges // Use the variable to avoid compile error
-	
+
 	if iceAndTundraAtEdges == 0 {
 		t.Log("Warning: No ice or tundra biomes found at edges")
 	}
-	
+
 	t.Logf("Biome distribution: %v", biomeCounts)
 	t.Logf("Edge biomes: %v", edgeBiomes)
 }
@@ -156,9 +156,9 @@ func TestBiomeEffectsOnEntities(t *testing.T) {
 		GridWidth:  10,
 		GridHeight: 10,
 	}
-	
+
 	world := NewWorld(config)
-	
+
 	// Create test entities with different traits
 	entities := []*Entity{
 		// Aquatic-adapted entity
@@ -169,7 +169,7 @@ func TestBiomeEffectsOnEntities(t *testing.T) {
 			IsAlive:  true,
 			Traits: map[string]Trait{
 				"aquatic_adaptation": {Value: 0.8},
-				"endurance":         {Value: 0.3},
+				"endurance":          {Value: 0.3},
 			},
 		},
 		// High-altitude adapted entity
@@ -192,40 +192,40 @@ func TestBiomeEffectsOnEntities(t *testing.T) {
 			Traits: map[string]Trait{
 				"aquatic_adaptation": {Value: 0.1},
 				"altitude_tolerance": {Value: 0.1},
-				"endurance":         {Value: 0.2},
+				"endurance":          {Value: 0.2},
 			},
 		},
 	}
-	
+
 	world.AllEntities = entities
-	
+
 	// Force specific biomes for testing
 	world.Grid[5][5].Biome = BiomeDeepWater    // Entity 1 location
-	world.Grid[2][2].Biome = BiomeHighAltitude // Entity 2 location  
+	world.Grid[2][2].Biome = BiomeHighAltitude // Entity 2 location
 	world.Grid[7][7].Biome = BiomeIce          // Entity 3 location
-	
+
 	// Store initial energy levels
 	initialEnergies := make([]float64, len(entities))
 	for i, entity := range entities {
 		initialEnergies[i] = entity.Energy
 	}
-	
+
 	// Apply biome effects
 	world.applyBiomeEffects()
-	
+
 	// Check that adapted entities fare better than non-adapted ones
 	// Entity 1 (aquatic) in deep water should lose less energy
 	entity1EnergyLoss := initialEnergies[0] - entities[0].Energy
 	t.Logf("Entity 1 (aquatic) energy loss in deep water: %.2f", entity1EnergyLoss)
-	
-	// Entity 2 (altitude) in high altitude should lose less energy  
+
+	// Entity 2 (altitude) in high altitude should lose less energy
 	entity2EnergyLoss := initialEnergies[1] - entities[1].Energy
 	t.Logf("Entity 2 (altitude) energy loss in high altitude: %.2f", entity2EnergyLoss)
-	
+
 	// Entity 3 (poorly adapted) in ice should lose more energy
 	entity3EnergyLoss := initialEnergies[2] - entities[2].Energy
 	t.Logf("Entity 3 (poorly adapted) energy loss in ice: %.2f", entity3EnergyLoss)
-	
+
 	// Poorly adapted entity should lose more energy
 	if entity3EnergyLoss <= entity1EnergyLoss {
 		t.Errorf("Expected poorly adapted entity to lose more energy than adapted entity")
@@ -235,30 +235,30 @@ func TestBiomeEffectsOnEntities(t *testing.T) {
 // TestBiomeTraitModifiers tests that biome trait modifiers are applied correctly
 func TestBiomeTraitModifiers(t *testing.T) {
 	biomes := initializeBiomes()
-	
+
 	// Test specific biome trait modifiers
 	testCases := []struct {
-		biomeType    BiomeType
+		biomeType     BiomeType
 		expectedTrait string
 		expectedSign  float64 // 1 for positive, -1 for negative, 0 for either
 	}{
-		{BiomeIce, "endurance", 1},      // Ice should boost endurance
-		{BiomeIce, "speed", -1},         // Ice should reduce speed
-		{BiomeRainforest, "intelligence", 1}, // Rainforest should boost intelligence
-		{BiomeDeepWater, "aquatic_adaptation", 1}, // Deep water should boost aquatic adaptation
+		{BiomeIce, "endurance", 1},                   // Ice should boost endurance
+		{BiomeIce, "speed", -1},                      // Ice should reduce speed
+		{BiomeRainforest, "intelligence", 1},         // Rainforest should boost intelligence
+		{BiomeDeepWater, "aquatic_adaptation", 1},    // Deep water should boost aquatic adaptation
 		{BiomeHighAltitude, "altitude_tolerance", 1}, // High altitude should boost altitude tolerance
-		{BiomeCanyon, "agility", 1},     // Canyon should boost agility
+		{BiomeCanyon, "agility", 1},                  // Canyon should boost agility
 	}
-	
+
 	for _, tc := range testCases {
 		biome := biomes[tc.biomeType]
 		modifier, exists := biome.TraitModifiers[tc.expectedTrait]
-		
+
 		if !exists {
 			t.Errorf("Biome %d missing expected trait modifier for %s", tc.biomeType, tc.expectedTrait)
 			continue
 		}
-		
+
 		if tc.expectedSign > 0 && modifier <= 0 {
 			t.Errorf("Biome %d trait modifier for %s is %.2f, expected positive", tc.biomeType, tc.expectedTrait, modifier)
 		}
@@ -275,16 +275,16 @@ func TestPerlinNoise(t *testing.T) {
 		x := float64(i) * 0.1
 		y := float64(i) * 0.05
 		noise := perlinNoise(x, y)
-		
+
 		if noise < -1.5 || noise > 1.5 {
 			t.Errorf("Perlin noise value %.3f at (%.1f, %.1f) outside expected range [-1.5, 1.5]", noise, x, y)
 		}
 	}
-	
+
 	// Test that noise is deterministic (same input gives same output)
 	noise1 := perlinNoise(1.0, 2.0)
 	noise2 := perlinNoise(1.0, 2.0)
-	
+
 	if math.Abs(noise1-noise2) > 1e-10 {
 		t.Errorf("Perlin noise is not deterministic: %.10f != %.10f", noise1, noise2)
 	}
@@ -298,16 +298,16 @@ func TestGeologicalEvents(t *testing.T) {
 		GridWidth:  20,
 		GridHeight: 20,
 	}
-	
+
 	world := NewWorld(config)
-	
+
 	// Force a specific biome configuration
 	for y := 0; y < config.GridHeight; y++ {
 		for x := 0; x < config.GridWidth; x++ {
 			world.Grid[y][x].Biome = BiomePlains // Start with all plains
 		}
 	}
-	
+
 	// Create a mock geological event
 	event := GeologicalEvent{
 		ID:        1,
@@ -319,10 +319,10 @@ func TestGeologicalEvents(t *testing.T) {
 		StartTick: world.Tick,
 		Effects:   make(map[string]float64),
 	}
-	
+
 	// Add the event to the topology system
 	world.TopologySystem.GeologicalEvents = append(world.TopologySystem.GeologicalEvents, event)
-	
+
 	// Store initial biome state
 	initialBiomes := make(map[BiomeType]int)
 	for y := 0; y < config.GridHeight; y++ {
@@ -331,10 +331,10 @@ func TestGeologicalEvents(t *testing.T) {
 			initialBiomes[biome]++
 		}
 	}
-	
+
 	// Apply geological event to biomes
 	world.applyGeologicalEventToBiomes(event)
-	
+
 	// Check final biome state
 	finalBiomes := make(map[BiomeType]int)
 	for y := 0; y < config.GridHeight; y++ {
@@ -343,10 +343,10 @@ func TestGeologicalEvents(t *testing.T) {
 			finalBiomes[biome]++
 		}
 	}
-	
+
 	t.Logf("Initial biomes: %v", initialBiomes)
 	t.Logf("Final biomes: %v", finalBiomes)
-	
+
 	// Should have some biome changes
 	if finalBiomes[BiomePlains] == initialBiomes[BiomePlains] {
 		t.Log("Warning: No biome changes detected from geological event")
@@ -361,15 +361,15 @@ func TestDetermineBiomeFromGeology(t *testing.T) {
 		GridWidth:  10,
 		GridHeight: 10,
 	}
-	
+
 	world := NewWorld(config)
-	
+
 	testCases := []struct {
-		eventType    string
-		topoCell     TopologyCell
-		currentBiome BiomeType
+		eventType     string
+		topoCell      TopologyCell
+		currentBiome  BiomeType
 		expectedBiome BiomeType
-		description  string
+		description   string
 	}{
 		{
 			"volcanic_eruption",
@@ -407,7 +407,7 @@ func TestDetermineBiomeFromGeology(t *testing.T) {
 			"Ice sheet advance should create ice biome",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		result := world.determineBiomeFromGeology(tc.eventType, tc.topoCell, tc.currentBiome)
 		if result != tc.expectedBiome {
@@ -424,9 +424,9 @@ func TestTopologyBiomeIntegration(t *testing.T) {
 		GridWidth:  20,
 		GridHeight: 20,
 	}
-	
+
 	world := NewWorld(config)
-	
+
 	// Simulate some ticks to allow geological events
 	for i := 0; i < 200; i++ {
 		world.TopologySystem.UpdateTopology(i)
@@ -434,7 +434,7 @@ func TestTopologyBiomeIntegration(t *testing.T) {
 			world.updateBiomesFromTopology()
 		}
 	}
-	
+
 	// Count final biome distribution
 	biomeCount := make(map[BiomeType]int)
 	for y := 0; y < config.GridHeight; y++ {
@@ -443,9 +443,9 @@ func TestTopologyBiomeIntegration(t *testing.T) {
 			biomeCount[biome]++
 		}
 	}
-	
+
 	t.Logf("Final biome distribution: %v", biomeCount)
-	
+
 	// Should have multiple biome types
 	if len(biomeCount) < 2 {
 		t.Errorf("Expected multiple biome types, got %d", len(biomeCount))

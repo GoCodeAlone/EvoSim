@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -21,59 +21,59 @@ func NewStateManager(world *World) *StateManager {
 
 // SimulationState represents the complete state of the simulation
 type SimulationState struct {
-	Version     string                 `json:"version"`
-	SavedAt     time.Time              `json:"saved_at"`
-	Tick        int                    `json:"tick"`
-	NextID      int                    `json:"next_id"`
-	NextPlantID int                    `json:"next_plant_id"`
-	Config      WorldConfig            `json:"config"`
-	Entities    []*EntityState         `json:"entities"`
-	Plants      []*PlantState          `json:"plants"`
-	Biomes      [][]BiomeType          `json:"biomes"`
-	Events      []*WorldEventState     `json:"events"`
-	Time        AdvancedTimeState      `json:"time"`
-	Wind        WindSystemState        `json:"wind"`
-	Species     SpeciationSystemState  `json:"species"`
-	Network     PlantNetworkState      `json:"network"`
+	Version     string                `json:"version"`
+	SavedAt     time.Time             `json:"saved_at"`
+	Tick        int                   `json:"tick"`
+	NextID      int                   `json:"next_id"`
+	NextPlantID int                   `json:"next_plant_id"`
+	Config      WorldConfig           `json:"config"`
+	Entities    []*EntityState        `json:"entities"`
+	Plants      []*PlantState         `json:"plants"`
+	Biomes      [][]BiomeType         `json:"biomes"`
+	Events      []*WorldEventState    `json:"events"`
+	Time        AdvancedTimeState     `json:"time"`
+	Wind        WindSystemState       `json:"wind"`
+	Species     SpeciationSystemState `json:"species"`
+	Network     PlantNetworkState     `json:"network"`
 }
 
 // EntityState represents serializable entity data
 type EntityState struct {
-	ID       int                    `json:"id"`
-	Species  string                 `json:"species"`
-	Position Position               `json:"position"`
-	Traits   map[string]float64     `json:"traits"`
-	Fitness  float64                `json:"fitness"`
-	Energy   float64                `json:"energy"`
-	Age      int                    `json:"age"`
-	DNA      *DNAState              `json:"dna,omitempty"`
-	Cellular *CellularState         `json:"cellular,omitempty"`
+	ID       int                `json:"id"`
+	Species  string             `json:"species"`
+	Position Position           `json:"position"`
+	Traits   map[string]float64 `json:"traits"`
+	Fitness  float64            `json:"fitness"`
+	Energy   float64            `json:"energy"`
+	Age      int                `json:"age"`
+	DNA      *DNAState          `json:"dna,omitempty"`
+	Cellular *CellularState     `json:"cellular,omitempty"`
 }
 
 // PlantState represents serializable plant data
 type PlantState struct {
-	ID         int                `json:"id"`
-	Type       PlantType          `json:"type"`
-	Position   Position           `json:"position"`
-	Energy     float64            `json:"energy"`
-	Age        int                `json:"age"`
-	Size       float64            `json:"size"`
-	Traits     map[string]float64 `json:"traits"`
-	Generation int                `json:"generation"`
-	IsAlive    bool               `json:"is_alive"`
-	NutritionVal float64          `json:"nutrition_value"`
-	Toxicity     float64          `json:"toxicity"`
-	GrowthRate   float64          `json:"growth_rate"`
+	ID           int                `json:"id"`
+	Type         PlantType          `json:"type"`
+	Position     Position           `json:"position"`
+	Energy       float64            `json:"energy"`
+	Age          int                `json:"age"`
+	Size         float64            `json:"size"`
+	Traits       map[string]float64 `json:"traits"`
+	Generation   int                `json:"generation"`
+	IsAlive      bool               `json:"is_alive"`
+	NutritionVal float64            `json:"nutrition_value"`
+	Toxicity     float64            `json:"toxicity"`
+	GrowthRate   float64            `json:"growth_rate"`
 }
 
 // WorldEventState represents serializable world event data
 type WorldEventState struct {
-	Name           string                 `json:"name"`
-	Description    string                 `json:"description"`
-	Duration       int                    `json:"duration"`
-	GlobalMutation float64                `json:"global_mutation"`
-	GlobalDamage   float64                `json:"global_damage"`
-	BiomeChanges   map[string]BiomeType   `json:"biome_changes"`
+	Name           string               `json:"name"`
+	Description    string               `json:"description"`
+	Duration       int                  `json:"duration"`
+	GlobalMutation float64              `json:"global_mutation"`
+	GlobalDamage   float64              `json:"global_damage"`
+	BiomeChanges   map[string]BiomeType `json:"biome_changes"`
 }
 
 // AdvancedTimeState represents serializable time system data
@@ -92,67 +92,67 @@ type AdvancedTimeState struct {
 
 // WindSystemState represents serializable wind system data
 type WindSystemState struct {
-	BaseWindDirection   float64 `json:"base_wind_direction"`
-	BaseWindStrength    float64 `json:"base_wind_strength"`
-	TurbulenceLevel     float64 `json:"turbulence_level"`
-	SeasonalMultiplier  float64 `json:"seasonal_multiplier"`
-	WeatherPattern      int     `json:"weather_pattern"`
+	BaseWindDirection  float64 `json:"base_wind_direction"`
+	BaseWindStrength   float64 `json:"base_wind_strength"`
+	TurbulenceLevel    float64 `json:"turbulence_level"`
+	SeasonalMultiplier float64 `json:"seasonal_multiplier"`
+	WeatherPattern     int     `json:"weather_pattern"`
 }
 
 // SpeciationSystemState represents serializable speciation data
 type SpeciationSystemState struct {
-	Species        map[string]*SpeciesState `json:"species"`
-	NextSpeciesID  int                      `json:"next_species_id"`
+	Species       map[string]*SpeciesState `json:"species"`
+	NextSpeciesID int                      `json:"next_species_id"`
 }
 
 // SpeciesState represents serializable species data
 type SpeciesState struct {
-	ID           int       `json:"id"`
-	Name         string    `json:"name"`
-	ParentID     int       `json:"parent_id"`
-	CreatedAt    int       `json:"created_at"`
-	ExtinctAt    int       `json:"extinct_at"`
-	IsExtinct    bool      `json:"is_extinct"`
-	Population   int       `json:"population"`
-	BaseTraits   map[string]float64 `json:"base_traits"`
+	ID         int                `json:"id"`
+	Name       string             `json:"name"`
+	ParentID   int                `json:"parent_id"`
+	CreatedAt  int                `json:"created_at"`
+	ExtinctAt  int                `json:"extinct_at"`
+	IsExtinct  bool               `json:"is_extinct"`
+	Population int                `json:"population"`
+	BaseTraits map[string]float64 `json:"base_traits"`
 }
 
 // PlantNetworkState represents serializable plant network data
 type PlantNetworkState struct {
-	Connections    []*NetworkConnectionState `json:"connections"`
-	ActiveSignals  []*ChemicalSignalState    `json:"active_signals"`
+	Connections   []*NetworkConnectionState `json:"connections"`
+	ActiveSignals []*ChemicalSignalState    `json:"active_signals"`
 }
 
 // NetworkConnectionState represents serializable network connection data
 type NetworkConnectionState struct {
-	Plant1ID     int                 `json:"plant1_id"`
-	Plant2ID     int                 `json:"plant2_id"`
-	Type         NetworkConnectionType `json:"type"`
-	Strength     float64             `json:"strength"`
-	Health       float64             `json:"health"`
-	Efficiency   float64             `json:"efficiency"`
-	Age          int                 `json:"age"`
+	Plant1ID   int                   `json:"plant1_id"`
+	Plant2ID   int                   `json:"plant2_id"`
+	Type       NetworkConnectionType `json:"type"`
+	Strength   float64               `json:"strength"`
+	Health     float64               `json:"health"`
+	Efficiency float64               `json:"efficiency"`
+	Age        int                   `json:"age"`
 }
 
 // ChemicalSignalState represents serializable chemical signal data
 type ChemicalSignalState struct {
-	ID        int                    `json:"id"`
-	SourceID  int                    `json:"source_id"`
-	Type      ChemicalSignalType     `json:"type"`
-	Intensity float64                `json:"intensity"`
-	Age       int                    `json:"age"`
-	MaxAge    int                    `json:"max_age"`
-	Visited   map[int]bool           `json:"visited"`
-	Message   string                 `json:"message"`
-	Metadata  map[string]float64     `json:"metadata"`
+	ID        int                `json:"id"`
+	SourceID  int                `json:"source_id"`
+	Type      ChemicalSignalType `json:"type"`
+	Intensity float64            `json:"intensity"`
+	Age       int                `json:"age"`
+	MaxAge    int                `json:"max_age"`
+	Visited   map[int]bool       `json:"visited"`
+	Message   string             `json:"message"`
+	Metadata  map[string]float64 `json:"metadata"`
 }
 
 // DNAState represents serializable DNA data
 type DNAState struct {
-	EntityID    int                `json:"entity_id"`
-	Chromosomes []ChromosomeState  `json:"chromosomes"`
-	Mutations   int                `json:"mutations"`
-	Generation  int                `json:"generation"`
+	EntityID    int               `json:"entity_id"`
+	Chromosomes []ChromosomeState `json:"chromosomes"`
+	Mutations   int               `json:"mutations"`
+	Generation  int               `json:"generation"`
 }
 
 // ChromosomeState represents serializable chromosome data
@@ -163,37 +163,37 @@ type ChromosomeState struct {
 
 // GeneState represents serializable gene data
 type GeneState struct {
-	Name       string       `json:"name"`
-	Sequence   []string     `json:"sequence"`  // Convert nucleotides to strings
-	Dominant   bool         `json:"dominant"`
-	Expression float64      `json:"expression"`
+	Name       string   `json:"name"`
+	Sequence   []string `json:"sequence"` // Convert nucleotides to strings
+	Dominant   bool     `json:"dominant"`
+	Expression float64  `json:"expression"`
 }
 
 // CellularState represents serializable cellular data
 type CellularState struct {
-	EntityID        int                `json:"entity_id"`
-	ComplexityLevel int                `json:"complexity_level"`
-	TotalEnergy     float64            `json:"total_energy"`
-	CellDivisions   int                `json:"cell_divisions"`
-	Generation      int                `json:"generation"`
-	Cells           []CellState        `json:"cells"`
-	OrganSystems    map[string][]int   `json:"organ_systems"`
+	EntityID        int              `json:"entity_id"`
+	ComplexityLevel int              `json:"complexity_level"`
+	TotalEnergy     float64          `json:"total_energy"`
+	CellDivisions   int              `json:"cell_divisions"`
+	Generation      int              `json:"generation"`
+	Cells           []CellState      `json:"cells"`
+	OrganSystems    map[string][]int `json:"organ_systems"`
 }
 
 // CellState represents serializable cell data
 type CellState struct {
-	ID          int                    `json:"id"`
-	Type        CellType               `json:"type"`
-	Size        float64                `json:"size"`
-	Energy      float64                `json:"energy"`
-	Health      float64                `json:"health"`
-	Age         int                    `json:"age"`
-	DNA         *DNAState              `json:"dna"`
+	ID          int                       `json:"id"`
+	Type        CellType                  `json:"type"`
+	Size        float64                   `json:"size"`
+	Energy      float64                   `json:"energy"`
+	Health      float64                   `json:"health"`
+	Age         int                       `json:"age"`
+	DNA         *DNAState                 `json:"dna"`
 	Organelles  map[string]OrganelleState `json:"organelles"` // Use string keys for JSON
-	Position    Position               `json:"position"`
-	Connections []int                  `json:"connections"`
-	Activity    float64                `json:"activity"`
-	Specialized bool                   `json:"specialized"`
+	Position    Position                  `json:"position"`
+	Connections []int                     `json:"connections"`
+	Activity    float64                   `json:"activity"`
+	Specialized bool                      `json:"specialized"`
 }
 
 // OrganelleState represents serializable organelle data
@@ -216,7 +216,7 @@ func (sm *StateManager) SaveToFile(filename string) error {
 		return fmt.Errorf("failed to marshal state: %v", err)
 	}
 
-	err = ioutil.WriteFile(filename, data, 0644)
+	err = os.WriteFile(filename, data, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write state file: %v", err)
 	}
@@ -227,7 +227,7 @@ func (sm *StateManager) SaveToFile(filename string) error {
 
 // LoadFromFile loads simulation state from a JSON file
 func (sm *StateManager) LoadFromFile(filename string) error {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read state file: %v", err)
 	}
@@ -330,18 +330,18 @@ func (sm *StateManager) createState() (*SimulationState, error) {
 	// Convert plants
 	for _, plant := range sm.world.AllPlants {
 		plantState := &PlantState{
-			ID:         plant.ID,
-			Type:       plant.Type,
-			Position:   plant.Position,
-			Energy:     plant.Energy,
-			Age:        plant.Age,
-			Size:       plant.Size,
-			Traits:     make(map[string]float64),
-			Generation: plant.Generation,
-			IsAlive:    plant.IsAlive,
+			ID:           plant.ID,
+			Type:         plant.Type,
+			Position:     plant.Position,
+			Energy:       plant.Energy,
+			Age:          plant.Age,
+			Size:         plant.Size,
+			Traits:       make(map[string]float64),
+			Generation:   plant.Generation,
+			IsAlive:      plant.IsAlive,
 			NutritionVal: plant.NutritionVal,
-			Toxicity:   plant.Toxicity,
-			GrowthRate: plant.GrowthRate,
+			Toxicity:     plant.Toxicity,
+			GrowthRate:   plant.GrowthRate,
 		}
 
 		// Copy plant traits
@@ -480,8 +480,6 @@ func (sm *StateManager) createState() (*SimulationState, error) {
 	return state, nil
 }
 
-
-
 // convertDNAToState converts DNA structure to serializable state
 func (sm *StateManager) convertDNAToState(dna *DNAStrand) *DNAState {
 	if dna == nil {
@@ -609,7 +607,7 @@ func (sm *StateManager) restoreState(state *SimulationState) error {
 	for _, entityState := range state.Entities {
 		entity := sm.restoreEntity(entityState)
 		sm.world.AllEntities = append(sm.world.AllEntities, entity)
-		
+
 		// Group by species
 		if populationGroups[entity.Species] == nil {
 			populationGroups[entity.Species] = make([]*Entity, 0)
@@ -623,7 +621,7 @@ func (sm *StateManager) restoreState(state *SimulationState) error {
 			sm.world.Grid[gridY][gridX].Entities = append(sm.world.Grid[gridY][gridX].Entities, entity)
 		}
 	}
-	
+
 	// Recreate populations from grouped entities
 	for species, entities := range populationGroups {
 		if len(entities) > 0 {
@@ -632,17 +630,17 @@ func (sm *StateManager) restoreState(state *SimulationState) error {
 			for name := range entities[0].Traits {
 				traitNames = append(traitNames, name)
 			}
-			
+
 			pop := NewPopulation(len(entities), traitNames, 0.1, 0.2)
 			pop.Species = species
-			
+
 			// Copy entities to population
 			for i, entity := range entities {
 				if i < len(pop.Entities) {
 					pop.Entities[i] = entity
 				}
 			}
-			
+
 			sm.world.Populations[species] = pop
 		}
 	}
@@ -674,7 +672,7 @@ func (sm *StateManager) restoreState(state *SimulationState) error {
 		// Convert string keys back to positions
 		for key, biome := range eventState.BiomeChanges {
 			var x, y float64
-			fmt.Sscanf(key, "%f,%f", &x, &y)
+			_, _ = fmt.Sscanf(key, "%f,%f", &x, &y)
 			event.BiomeChanges[Position{X: x, Y: y}] = biome
 		}
 
@@ -740,7 +738,7 @@ func (sm *StateManager) restoreEntity(state *EntityState) *Entity {
 		// Restore the cellular organism and DNA
 		dna := sm.restoreDNA(state.DNA)
 		organism := sm.restoreCellular(state.Cellular, dna)
-		
+
 		if organism != nil {
 			sm.world.CellularSystem.OrganismMap[entity.ID] = organism
 		}
@@ -752,18 +750,18 @@ func (sm *StateManager) restoreEntity(state *EntityState) *Entity {
 // restorePlant creates a plant from its serialized state
 func (sm *StateManager) restorePlant(state *PlantState) *Plant {
 	plant := &Plant{
-		ID:         state.ID,
-		Type:       state.Type,
-		Position:   state.Position,
-		Energy:     state.Energy,
-		Age:        state.Age,
-		Size:       state.Size,
-		Generation: state.Generation,
-		IsAlive:    state.IsAlive,
+		ID:           state.ID,
+		Type:         state.Type,
+		Position:     state.Position,
+		Energy:       state.Energy,
+		Age:          state.Age,
+		Size:         state.Size,
+		Generation:   state.Generation,
+		IsAlive:      state.IsAlive,
 		NutritionVal: state.NutritionVal,
-		Toxicity:   state.Toxicity,
-		GrowthRate: state.GrowthRate,
-		Traits:     make(map[string]Trait),
+		Toxicity:     state.Toxicity,
+		GrowthRate:   state.GrowthRate,
+		Traits:       make(map[string]Trait),
 	}
 
 	// Restore traits
@@ -869,7 +867,7 @@ func (sm *StateManager) restoreCellular(state *CellularState, dna *DNAStrand) *C
 		for key, organelleState := range cellState.Organelles {
 			// Convert string key back to OrganelleType
 			var organelleType OrganelleType
-			fmt.Sscanf(key, "%d", (*int)(&organelleType))
+			_, _ = fmt.Sscanf(key, "%d", (*int)(&organelleType))
 
 			cell.Organelles[organelleType] = &Organelle{
 				Type:       organelleState.Type,

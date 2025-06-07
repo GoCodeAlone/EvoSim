@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"time"
 )
 
 // ReproductionMode represents different ways entities can reproduce
@@ -39,10 +38,10 @@ func (rm ReproductionMode) String() string {
 type MatingStrategy int
 
 const (
-	Monogamous MatingStrategy = iota // Single mate for life
-	Polygamous                       // Multiple mates
-	Sequential                       // One mate at a time, can change
-	Promiscuous                      // No preference, any compatible mate
+	Monogamous  MatingStrategy = iota // Single mate for life
+	Polygamous                        // Multiple mates
+	Sequential                        // One mate at a time, can change
+	Promiscuous                       // No preference, any compatible mate
 )
 
 // String returns the string representation of MatingStrategy
@@ -63,21 +62,21 @@ func (ms MatingStrategy) String() string {
 
 // ReproductionStatus tracks an entity's current reproductive state
 type ReproductionStatus struct {
-	Mode               ReproductionMode `json:"mode"`
-	Strategy           MatingStrategy   `json:"strategy"`
-	IsPregnant         bool             `json:"is_pregnant"`
-	GestationStartTick int              `json:"gestation_start_tick"`
-	GestationPeriod    int              `json:"gestation_period"`
-	Mate               *Entity          `json:"-"` // Current or preferred mate (exclude from JSON to avoid cycles)
-	MateID             int              `json:"mate_id"`
-	OffspringCount     int              `json:"offspring_count"`
-	LastMatingTick     int              `json:"last_mating_tick"`
-	MatingLocation     Position         `json:"mating_location"`
-	PreferredMatingLocation Position    `json:"preferred_mating_location"` // Location entity prefers to mate at
-	ReadyToMate        bool             `json:"ready_to_mate"`
-	MatingSeason       bool             `json:"mating_season"`
-	MigrationDistance  float64          `json:"migration_distance"`        // How far entity will travel to mate
-	RequiresMigration  bool             `json:"requires_migration"`        // Whether entity needs to migrate for mating
+	Mode                    ReproductionMode `json:"mode"`
+	Strategy                MatingStrategy   `json:"strategy"`
+	IsPregnant              bool             `json:"is_pregnant"`
+	GestationStartTick      int              `json:"gestation_start_tick"`
+	GestationPeriod         int              `json:"gestation_period"`
+	Mate                    *Entity          `json:"-"` // Current or preferred mate (exclude from JSON to avoid cycles)
+	MateID                  int              `json:"mate_id"`
+	OffspringCount          int              `json:"offspring_count"`
+	LastMatingTick          int              `json:"last_mating_tick"`
+	MatingLocation          Position         `json:"mating_location"`
+	PreferredMatingLocation Position         `json:"preferred_mating_location"` // Location entity prefers to mate at
+	ReadyToMate             bool             `json:"ready_to_mate"`
+	MatingSeason            bool             `json:"mating_season"`
+	MigrationDistance       float64          `json:"migration_distance"` // How far entity will travel to mate
+	RequiresMigration       bool             `json:"requires_migration"` // Whether entity needs to migrate for mating
 }
 
 // Egg represents an egg that can hatch into an entity
@@ -95,23 +94,23 @@ type Egg struct {
 
 // DecayableItem represents an item that can decay over time
 type DecayableItem struct {
-	ID           int      `json:"id"`
-	Position     Position `json:"position"`
-	ItemType     string   `json:"item_type"` // "corpse", "fruit", "organic_matter"
-	CreationTick int      `json:"creation_tick"`
-	DecayPeriod  int      `json:"decay_period"`
+	ID            int      `json:"id"`
+	Position      Position `json:"position"`
+	ItemType      string   `json:"item_type"` // "corpse", "fruit", "organic_matter"
+	CreationTick  int      `json:"creation_tick"`
+	DecayPeriod   int      `json:"decay_period"`
 	NutrientValue float64  `json:"nutrient_value"`
-	IsDecayed    bool     `json:"is_decayed"`
+	IsDecayed     bool     `json:"is_decayed"`
 	OriginSpecies string   `json:"origin_species"`
-	Size         float64  `json:"size"`
+	Size          float64  `json:"size"`
 }
 
 // ReproductionSystem manages reproduction, gestation, and decay processes
 type ReproductionSystem struct {
-	Eggs          []*Egg          `json:"eggs"`
+	Eggs          []*Egg           `json:"eggs"`
 	DecayingItems []*DecayableItem `json:"decaying_items"`
-	NextEggID     int             `json:"next_egg_id"`
-	NextItemID    int             `json:"next_item_id"`
+	NextEggID     int              `json:"next_egg_id"`
+	NextItemID    int              `json:"next_item_id"`
 	eventBus      *CentralEventBus `json:"-"` // Event tracking
 }
 
@@ -131,17 +130,17 @@ func NewReproductionStatus() *ReproductionStatus {
 	// Randomly assign reproduction mode and strategy based on entity traits
 	mode := ReproductionMode(rand.Intn(5))
 	strategy := MatingStrategy(rand.Intn(4))
-	
+
 	return &ReproductionStatus{
-		Mode:            mode,
-		Strategy:        strategy,
-		IsPregnant:      false,
-		GestationPeriod: 50 + rand.Intn(100), // 50-150 ticks
-		OffspringCount:  0,
-		ReadyToMate:     true,
-		MatingSeason:    true,
+		Mode:              mode,
+		Strategy:          strategy,
+		IsPregnant:        false,
+		GestationPeriod:   50 + rand.Intn(100), // 50-150 ticks
+		OffspringCount:    0,
+		ReadyToMate:       true,
+		MatingSeason:      true,
 		MigrationDistance: 10.0 + rand.Float64()*20.0, // 10-30 units
-		RequiresMigration: rand.Float64() < 0.3,        // 30% chance of requiring migration
+		RequiresMigration: rand.Float64() < 0.3,       // 30% chance of requiring migration
 		PreferredMatingLocation: Position{
 			X: rand.Float64() * 100.0, // Random preferred location
 			Y: rand.Float64() * 100.0,
@@ -154,11 +153,11 @@ func (rs *ReproductionStatus) CanMate(other *ReproductionStatus, otherEntityID i
 	if !rs.ReadyToMate || !rs.MatingSeason {
 		return false
 	}
-	
+
 	if rs.IsPregnant {
 		return false
 	}
-	
+
 	// Check strategy-specific constraints
 	switch rs.Strategy {
 	case Monogamous:
@@ -180,25 +179,25 @@ func (rs *ReproductionSystem) CanMateWithClassification(entity1, entity2 *Entity
 	if entity1.ReproductionStatus == nil || entity2.ReproductionStatus == nil {
 		return false
 	}
-	
+
 	// Check basic mating compatibility
 	if !entity1.ReproductionStatus.CanMate(entity2.ReproductionStatus, entity2.ID, currentTick) {
 		return false
 	}
-	
+
 	if !entity2.ReproductionStatus.CanMate(entity1.ReproductionStatus, entity1.ID, currentTick) {
 		return false
 	}
-	
+
 	// Check reproductive maturity based on organism classification
 	if !classifier.IsReproductivelyMature(entity1, entity1.Classification) {
 		return false
 	}
-	
+
 	if !classifier.IsReproductivelyMature(entity2, entity2.Classification) {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -207,53 +206,53 @@ func (rs *ReproductionSystem) StartMating(entity1, entity2 *Entity, currentTick 
 	if entity1.ReproductionStatus == nil || entity2.ReproductionStatus == nil {
 		return false
 	}
-	
+
 	if !entity1.ReproductionStatus.CanMate(entity2.ReproductionStatus, entity2.ID, currentTick) {
 		return false
 	}
-	
+
 	if !entity2.ReproductionStatus.CanMate(entity1.ReproductionStatus, entity1.ID, currentTick) {
 		return false
 	}
-	
+
 	// Record mating
 	entity1.ReproductionStatus.LastMatingTick = currentTick
 	entity2.ReproductionStatus.LastMatingTick = currentTick
 	entity1.ReproductionStatus.MateID = entity2.ID
 	entity2.ReproductionStatus.MateID = entity1.ID
-	
+
 	// Emit mating event
 	if rs.eventBus != nil {
 		pos := Position{
 			X: (entity1.Position.X + entity2.Position.X) / 2,
 			Y: (entity1.Position.Y + entity2.Position.Y) / 2,
 		}
-		
+
 		metadata := map[string]interface{}{
-			"entity1_id":           entity1.ID,
-			"entity2_id":           entity2.ID,
-			"entity1_species":      entity1.Species,
-			"entity2_species":      entity2.Species,
-			"reproduction_mode":    entity1.ReproductionStatus.Mode.String(),
-			"mating_strategy":      entity1.ReproductionStatus.Strategy.String(),
-			"entity1_age":          entity1.Age,
-			"entity2_age":          entity2.Age,
-			"entity1_energy":       entity1.Energy,
-			"entity2_energy":       entity2.Energy,
+			"entity1_id":        entity1.ID,
+			"entity2_id":        entity2.ID,
+			"entity1_species":   entity1.Species,
+			"entity2_species":   entity2.Species,
+			"reproduction_mode": entity1.ReproductionStatus.Mode.String(),
+			"mating_strategy":   entity1.ReproductionStatus.Strategy.String(),
+			"entity1_age":       entity1.Age,
+			"entity2_age":       entity2.Age,
+			"entity1_energy":    entity1.Energy,
+			"entity2_energy":    entity2.Energy,
 		}
-		
+
 		rs.eventBus.EmitSystemEvent(
 			currentTick,
 			"mating_initiated",
 			"reproduction",
 			"reproduction_system",
-			fmt.Sprintf("Mating initiated between entity %d (%s) and entity %d (%s) using %s mode", 
+			fmt.Sprintf("Mating initiated between entity %d (%s) and entity %d (%s) using %s mode",
 				entity1.ID, entity1.Species, entity2.ID, entity2.Species, entity1.ReproductionStatus.Mode.String()),
 			&pos,
 			metadata,
 		)
 	}
-	
+
 	// Determine reproduction outcome based on mode
 	switch entity1.ReproductionStatus.Mode {
 	case DirectCoupling:
@@ -268,7 +267,7 @@ func (rs *ReproductionSystem) StartMating(entity1, entity2 *Entity, currentTick 
 	case Fission:
 		return rs.Split(entity1, currentTick)
 	}
-	
+
 	return false
 }
 
@@ -277,29 +276,29 @@ func (rs *ReproductionSystem) StartMatingWithClassification(entity1, entity2 *En
 	if !rs.CanMateWithClassification(entity1, entity2, classifier, currentTick) {
 		return false
 	}
-	
+
 	// Calculate reproductive vigor for both parents
 	vigor1 := classifier.CalculateReproductiveVigor(entity1, entity1.Classification)
 	vigor2 := classifier.CalculateReproductiveVigor(entity2, entity2.Classification)
-	
+
 	// Average vigor affects success rate
 	avgVigor := (vigor1 + vigor2) / 2.0
-	
+
 	// Record mating with vigor bonus
 	entity1.ReproductionStatus.LastMatingTick = currentTick
 	entity2.ReproductionStatus.LastMatingTick = currentTick
 	entity1.ReproductionStatus.MateID = entity2.ID
 	entity2.ReproductionStatus.MateID = entity1.ID
-	
+
 	// Higher vigor increases energy efficiency and offspring quality
 	energyCostMultiplier := 1.0 - avgVigor*0.3 // Up to 30% energy savings with high vigor
-	
+
 	// Determine reproduction outcome based on mode
 	switch entity1.ReproductionStatus.Mode {
 	case DirectCoupling:
 		// Immediate offspring - return success, calling code handles crossover
 		return true
-	
+
 	case EggLaying:
 		success := rs.LayEgg(entity1, entity2, currentTick)
 		if success {
@@ -307,34 +306,34 @@ func (rs *ReproductionSystem) StartMatingWithClassification(entity1, entity2 *En
 			entity1.Energy += (1.0 - energyCostMultiplier) * 10.0 // Energy savings
 		}
 		return success
-	
+
 	case LiveBirth:
 		success := rs.StartGestation(entity1, entity2, currentTick)
 		if success {
 			// Adjust gestation period based on vigor (higher vigor = shorter gestation)
 			gestationReduction := int(float64(entity1.ReproductionStatus.GestationPeriod) * avgVigor * 0.2)
-			entity1.ReproductionStatus.GestationPeriod = maxInt(30, entity1.ReproductionStatus.GestationPeriod - gestationReduction)
-			
+			entity1.ReproductionStatus.GestationPeriod = maxInt(30, entity1.ReproductionStatus.GestationPeriod-gestationReduction)
+
 			// Energy savings
 			entity1.Energy += (1.0 - energyCostMultiplier) * 20.0
 			entity2.Energy += (1.0 - energyCostMultiplier) * 10.0
 		}
 		return success
-	
+
 	case Budding:
 		success := rs.Bud(entity1, currentTick)
 		if success {
 			entity1.Energy += (1.0 - energyCostMultiplier) * 15.0
 		}
 		return success
-	
+
 	case Fission:
 		success := rs.Split(entity1, currentTick)
 		if success {
 			entity1.Energy += (1.0 - energyCostMultiplier) * 25.0
 		}
 		return success
-	
+
 	default:
 		return false
 	}
@@ -352,29 +351,29 @@ func maxInt(a, b int) int {
 func (rs *ReproductionSystem) LayEgg(parent1, parent2 *Entity, currentTick int) bool {
 	// Choose location between parents with some variation
 	eggPos := Position{
-		X: (parent1.Position.X + parent2.Position.X) / 2.0 + (rand.Float64()-0.5)*5.0,
-		Y: (parent1.Position.Y + parent2.Position.Y) / 2.0 + (rand.Float64()-0.5)*5.0,
+		X: (parent1.Position.X+parent2.Position.X)/2.0 + (rand.Float64()-0.5)*5.0,
+		Y: (parent1.Position.Y+parent2.Position.Y)/2.0 + (rand.Float64()-0.5)*5.0,
 	}
-	
+
 	egg := &Egg{
 		ID:             rs.NextEggID,
 		Position:       eggPos,
 		Parent1ID:      parent1.ID,
 		Parent2ID:      parent2.ID,
 		LayingTick:     currentTick,
-		HatchingPeriod: 30 + rand.Intn(70), // 30-100 ticks to hatch
+		HatchingPeriod: 30 + rand.Intn(70),                      // 30-100 ticks to hatch
 		Energy:         (parent1.Energy + parent2.Energy) * 0.2, // Inherit some energy
 		IsViable:       true,
 		Species:        parent1.Species,
 	}
-	
+
 	rs.Eggs = append(rs.Eggs, egg)
 	rs.NextEggID++
-	
+
 	// Parents lose some energy
 	parent1.Energy -= 15.0
 	parent2.Energy -= 10.0
-	
+
 	return true
 }
 
@@ -383,14 +382,14 @@ func (rs *ReproductionSystem) StartGestation(parent1, parent2 *Entity, currentTi
 	// Usually the first parent carries the offspring
 	parent1.ReproductionStatus.IsPregnant = true
 	parent1.ReproductionStatus.GestationStartTick = currentTick
-	
+
 	// Store mating location for potential migration behavior
 	parent1.ReproductionStatus.MatingLocation = parent1.Position
-	
+
 	// Energy cost for gestation start
 	parent1.Energy -= 20.0
 	parent2.Energy -= 10.0
-	
+
 	return true
 }
 
@@ -399,7 +398,7 @@ func (rs *ReproductionSystem) Bud(parent *Entity, currentTick int) bool {
 	if parent.Energy < 50.0 {
 		return false // Not enough energy
 	}
-	
+
 	// This will be handled by creating a clone with mutation
 	parent.Energy -= 30.0
 	return true
@@ -410,7 +409,7 @@ func (rs *ReproductionSystem) Split(parent *Entity, currentTick int) bool {
 	if parent.Energy < 80.0 {
 		return false // Not enough energy
 	}
-	
+
 	// This will create multiple offspring
 	parent.Energy -= 60.0
 	return true
@@ -420,7 +419,7 @@ func (rs *ReproductionSystem) Split(parent *Entity, currentTick int) bool {
 func (rs *ReproductionSystem) Update(currentTick int) ([]*Entity, []*DecayableItem) {
 	newEntities := make([]*Entity, 0)
 	fertilizers := make([]*DecayableItem, 0)
-	
+
 	// Process egg hatching
 	var remainingEggs []*Egg
 	for _, egg := range rs.Eggs {
@@ -437,7 +436,7 @@ func (rs *ReproductionSystem) Update(currentTick int) ([]*Entity, []*DecayableIt
 		// Eggs that are too old or not viable are discarded
 	}
 	rs.Eggs = remainingEggs
-	
+
 	// Process decay
 	var remainingItems []*DecayableItem
 	for _, item := range rs.DecayingItems {
@@ -452,7 +451,7 @@ func (rs *ReproductionSystem) Update(currentTick int) ([]*Entity, []*DecayableIt
 		// Fully decayed items are removed from tracking
 	}
 	rs.DecayingItems = remainingItems
-	
+
 	return newEntities, fertilizers
 }
 
@@ -467,7 +466,7 @@ func (rs *ReproductionSystem) HatchEgg(egg *Egg) *Entity {
 		IsAlive:  true,
 		Species:  egg.Species,
 	}
-	
+
 	// Initialize traits (this will be enhanced when we integrate with existing parents)
 	hatchling.Traits = make(map[string]Trait)
 	// For now, create random traits - in real use, this would inherit from parents
@@ -478,10 +477,10 @@ func (rs *ReproductionSystem) HatchEgg(egg *Egg) *Entity {
 			Value: rand.Float64()*2 - 1,
 		}
 	}
-	
+
 	// Initialize reproduction status
 	hatchling.ReproductionStatus = NewReproductionStatus()
-	
+
 	return hatchling
 }
 
@@ -498,7 +497,7 @@ func (rs *ReproductionSystem) AddDecayingItem(itemType string, position Position
 		OriginSpecies: originSpecies,
 		Size:          size,
 	}
-	
+
 	rs.DecayingItems = append(rs.DecayingItems, item)
 	rs.NextItemID++
 }
@@ -509,7 +508,7 @@ func (rs *ReproductionSystem) UpdateMatingSeasons(entities []*Entity, season str
 		if entity.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		// Determine if it's mating season based on season and entity traits
 		switch season {
 		case "Spring":
@@ -532,12 +531,12 @@ func (rs *ReproductionSystem) UpdateMatingSeasons(entities []*Entity, season str
 // CheckGestation checks if any entities are ready to give birth
 func (rs *ReproductionSystem) CheckGestation(entities []*Entity, currentTick int) []*Entity {
 	newborns := make([]*Entity, 0)
-	
+
 	for _, entity := range entities {
 		if entity.ReproductionStatus == nil || !entity.ReproductionStatus.IsPregnant {
 			continue
 		}
-		
+
 		gestationTime := currentTick - entity.ReproductionStatus.GestationStartTick
 		if gestationTime >= entity.ReproductionStatus.GestationPeriod {
 			// Give birth
@@ -545,21 +544,21 @@ func (rs *ReproductionSystem) CheckGestation(entities []*Entity, currentTick int
 			if offspring != nil {
 				newborns = append(newborns, offspring...)
 			}
-			
+
 			// Reset pregnancy status
 			entity.ReproductionStatus.IsPregnant = false
 			entity.ReproductionStatus.GestationStartTick = 0
 			entity.ReproductionStatus.OffspringCount++
 		}
 	}
-	
+
 	return newborns
 }
 
 // GiveBirth creates offspring from a pregnant entity
 func (rs *ReproductionSystem) GiveBirth(parent *Entity, currentTick int) []*Entity {
 	offspring := make([]*Entity, 0)
-	
+
 	// Number of offspring depends on species and traits
 	numOffspring := 1
 	if parent.GetTrait("fertility") > 0.5 {
@@ -568,14 +567,14 @@ func (rs *ReproductionSystem) GiveBirth(parent *Entity, currentTick int) []*Enti
 	if parent.GetTrait("multiple_births") > 0.7 {
 		numOffspring = 3
 	}
-	
+
 	for i := 0; i < numOffspring; i++ {
 		// Create offspring near parent
 		childPos := Position{
 			X: parent.Position.X + (rand.Float64()-0.5)*3.0,
 			Y: parent.Position.Y + (rand.Float64()-0.5)*3.0,
 		}
-		
+
 		child := &Entity{
 			ID:         rs.NextEggID, // Reuse ID system
 			Position:   childPos,
@@ -585,7 +584,7 @@ func (rs *ReproductionSystem) GiveBirth(parent *Entity, currentTick int) []*Enti
 			Species:    parent.Species,
 			Generation: parent.Generation + 1,
 		}
-		
+
 		// Initialize traits (simplified for now)
 		child.Traits = make(map[string]Trait)
 		for name, trait := range parent.Traits {
@@ -593,17 +592,17 @@ func (rs *ReproductionSystem) GiveBirth(parent *Entity, currentTick int) []*Enti
 			childValue := trait.Value + (rand.Float64()-0.5)*0.2
 			child.Traits[name] = Trait{Name: name, Value: childValue}
 		}
-		
+
 		// Initialize reproduction status
 		child.ReproductionStatus = NewReproductionStatus()
-		
+
 		offspring = append(offspring, child)
 		rs.NextEggID++
 	}
-	
+
 	// Parent loses energy from birth
 	parent.Energy -= float64(numOffspring) * 25.0
-	
+
 	return offspring
 }
 
@@ -613,9 +612,9 @@ func (rs *ReproductionSystem) UpdateSeasonalMatingBehaviors(entities []*Entity, 
 		if !entity.IsAlive || entity.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		status := entity.ReproductionStatus
-		
+
 		// Seasonal mating readiness
 		switch currentSeason {
 		case Spring:
@@ -626,13 +625,13 @@ func (rs *ReproductionSystem) UpdateSeasonalMatingBehaviors(entities []*Entity, 
 				status.RequiresMigration = true
 				status.MigrationDistance = 20.0 + rand.Float64()*30.0 // 20-50 units
 			}
-			
+
 		case Summer:
 			// Active season but less focused on mating
 			status.MatingSeason = entity.Energy > 50.0 // Only if well-fed
 			status.ReadyToMate = status.MatingSeason
 			status.RequiresMigration = rand.Float64() < 0.2 // 20% migratory
-			
+
 		case Autumn:
 			// Last chance mating before winter
 			status.MatingSeason = true
@@ -643,19 +642,19 @@ func (rs *ReproductionSystem) UpdateSeasonalMatingBehaviors(entities []*Entity, 
 					status.MigrationDistance = 15.0
 				}
 			}
-			
+
 		case Winter:
 			// Survival mode - minimal mating
-			status.MatingSeason = entity.Energy > 80.0 // Only if very healthy
+			status.MatingSeason = entity.Energy > 80.0                       // Only if very healthy
 			status.ReadyToMate = status.MatingSeason && rand.Float64() < 0.3 // 30% chance
-			status.RequiresMigration = false // No migration in winter
+			status.RequiresMigration = false                                 // No migration in winter
 		}
-		
+
 		// Update preferred mating locations based on season
 		if status.MatingSeason && rand.Float64() < 0.1 { // 10% chance to change preference
 			rs.updateSeasonalMatingLocation(status, currentSeason, entity.Position)
 		}
-		
+
 		// Courtship behavior duration varies by season
 		if status.Strategy == Monogamous && currentSeason == Spring {
 			// Longer courtship in spring
@@ -697,15 +696,15 @@ func (rs *ReproductionSystem) ImplementTerritorialMating(entities []*Entity, ter
 		if !entity.IsAlive || entity.ReproductionStatus == nil {
 			continue
 		}
-		
+
 		status := entity.ReproductionStatus
-		
+
 		// Check if entity is in a territory
 		for _, territory := range territories {
 			if rs.isInTerritory(entity.Position, territory) {
 				// Territorial mating success based on dominance
 				dominanceScore := entity.GetTrait("strength") + entity.GetTrait("intelligence")
-				
+
 				// Territory owner gets mating advantage
 				if territory.OwnerID == entity.ID {
 					status.ReadyToMate = status.ReadyToMate && true // Always ready if in own territory
@@ -760,7 +759,7 @@ func (rs *ReproductionSystem) ImplementCrossSpeciesCompatibility(entity1, entity
 	if entity1.Species == entity2.Species {
 		return true
 	}
-	
+
 	// Define compatibility matrix for cross-species mating
 	compatibility := map[string]map[string]float64{
 		"herbivore": {
@@ -774,21 +773,21 @@ func (rs *ReproductionSystem) ImplementCrossSpeciesCompatibility(entity1, entity
 			"omnivore": 0.1,
 		},
 	}
-	
+
 	// Check if species are compatible
 	if speciesCompat, exists := compatibility[entity1.Species]; exists {
 		if chance, exists := speciesCompat[entity2.Species]; exists {
 			// Additional factors affecting compatibility
 			geneticSimilarity := rs.calculateGeneticSimilarity(entity1, entity2)
 			environmentalSimilarity := rs.calculateEnvironmentalSimilarity(entity1, entity2)
-			
+
 			// Adjust chance based on similarities
 			adjustedChance := chance * geneticSimilarity * environmentalSimilarity
-			
+
 			return rand.Float64() < adjustedChance
 		}
 	}
-	
+
 	return false // No compatibility defined
 }
 
@@ -797,10 +796,10 @@ func (rs *ReproductionSystem) calculateGeneticSimilarity(entity1, entity2 *Entit
 	if len(entity1.Traits) == 0 || len(entity2.Traits) == 0 {
 		return 0.5 // Default similarity
 	}
-	
+
 	totalDifference := 0.0
 	traitCount := 0
-	
+
 	for traitName, trait1 := range entity1.Traits {
 		if trait2, exists := entity2.Traits[traitName]; exists {
 			difference := (trait1.Value - trait2.Value)
@@ -808,15 +807,15 @@ func (rs *ReproductionSystem) calculateGeneticSimilarity(entity1, entity2 *Entit
 			traitCount++
 		}
 	}
-	
+
 	if traitCount == 0 {
 		return 0.5
 	}
-	
+
 	avgDifference := totalDifference / float64(traitCount)
 	// Convert difference to similarity (0-1 scale)
 	similarity := 1.0 / (1.0 + avgDifference)
-	
+
 	return similarity
 }
 
@@ -826,7 +825,7 @@ func (rs *ReproductionSystem) calculateEnvironmentalSimilarity(entity1, entity2 
 	dx := entity1.Position.X - entity2.Position.X
 	dy := entity1.Position.Y - entity2.Position.Y
 	distance := dx*dx + dy*dy
-	
+
 	// Close entities are more likely to be environmentally similar
 	maxDistance := 50.0 // Maximum distance for full similarity
 	normalizedDistance := distance / (maxDistance * maxDistance)
@@ -834,10 +833,11 @@ func (rs *ReproductionSystem) calculateEnvironmentalSimilarity(entity1, entity2 
 		normalizedDistance = 1.0
 	}
 	similarity := 1.0 - normalizedDistance
-	
+
 	return 0.5 + similarity*0.5 // Range from 0.5 to 1.0
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	// Note: As of Go 1.20, rand.Seed is deprecated and not needed
+	// Global random generator is automatically seeded
 }

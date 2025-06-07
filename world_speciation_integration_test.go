@@ -23,7 +23,7 @@ func TestWorldInitialSpeciesCreation(t *testing.T) {
 	// Now we should have species created immediately
 	if len(world.AllPlants) > 0 {
 		if len(world.SpeciationSystem.ActiveSpecies) == 0 {
-			t.Errorf("Expected active species immediately after world creation. Plants: %d, Active Species: %d", 
+			t.Errorf("Expected active species immediately after world creation. Plants: %d, Active Species: %d",
 				len(world.AllPlants), len(world.SpeciationSystem.ActiveSpecies))
 		}
 	}
@@ -65,28 +65,28 @@ func TestWorldSpeciesTrackingAfterUpdate(t *testing.T) {
 	// Should have immediate species
 	initialActiveSpecies := len(world.SpeciationSystem.ActiveSpecies)
 	initialPlants := len(world.AllPlants)
-	
+
 	t.Logf("After world creation:")
 	t.Logf("  Plants: %d, Active Species: %d", initialPlants, initialActiveSpecies)
 
 	// Run several updates to see how the system behaves
 	for tick := 1; tick <= 50; tick++ {
 		world.Update()
-		
+
 		if tick%10 == 0 {
 			vm := NewViewManager(world)
 			viewData := vm.GetCurrentViewData()
-			
+
 			t.Logf("Tick %d: Plants=%d, Active Species=%d, With Members=%d, Awaiting Extinction=%d",
-				tick, len(world.AllPlants), viewData.Species.ActiveSpecies, 
+				tick, len(world.AllPlants), viewData.Species.ActiveSpecies,
 				viewData.Species.SpeciesWithMembers, viewData.Species.SpeciesAwaitingExtinction)
 		}
 	}
-	
+
 	// Final check
 	vm := NewViewManager(world)
 	viewData := vm.GetCurrentViewData()
-	
+
 	t.Logf("Final state:")
 	t.Logf("  Plants: %d", len(world.AllPlants))
 	t.Logf("  Active Species: %d", viewData.Species.ActiveSpecies)
