@@ -4,7 +4,7 @@ test('Enhanced 2.5D Isometric View - Visual Documentation', async ({ page }) => 
   console.log('Documenting enhanced isometric view...');
   
   // Navigate to the enhanced isometric view
-  await page.goto('http://localhost:8082/iso');
+  await page.goto('http://localhost:8080/iso');
   
   // Wait for the canvas to load
   await page.waitForSelector('#gameCanvas', { timeout: 10000 });
