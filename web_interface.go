@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ const (
 type WebInterface struct {
 	world              *World
 	viewManager        *ViewManager
+	isometricManager   *IsometricViewManager
 	clients            map[*websocket.Conn]bool
 	clientsMutex       sync.RWMutex
 	broadcastChan      chan *ViewData
@@ -40,17 +42,18 @@ type WebInterface struct {
 // NewWebInterface creates a new web interface
 func NewWebInterface(world *World) *WebInterface {
 	webInterface := &WebInterface{
-		world:          world,
-		viewManager:    NewViewManager(world),
-		clients:        make(map[*websocket.Conn]bool),
-		broadcastChan:  make(chan *ViewData, 100),
-		stopChan:       make(chan bool),
-		updateInterval: 100 * time.Millisecond, // 10 FPS
-		playerManager:  NewPlayerManager(),
-		clientPlayers:  make(map[*websocket.Conn]string),
-		viewportX:      0,
-		viewportY:      0,
-		zoomLevel:      1.0,
+		world:            world,
+		viewManager:      NewViewManager(world),
+		isometricManager: NewIsometricViewManager(world),
+		clients:          make(map[*websocket.Conn]bool),
+		broadcastChan:    make(chan *ViewData, 100),
+		stopChan:         make(chan bool),
+		updateInterval:   100 * time.Millisecond, // 10 FPS
+		playerManager:    NewPlayerManager(),
+		clientPlayers:    make(map[*websocket.Conn]string),
+		viewportX:        0,
+		viewportY:        0,
+		zoomLevel:        1.0,
 	}
 
 	// Set up player events callback
@@ -71,6 +74,7 @@ func RunWebInterface(world *World, port int) error {
 
 	// Set up HTTP routes
 	http.HandleFunc("/", webInterface.serveHome)
+	http.HandleFunc("/iso", webInterface.serveIsometric)
 	http.HandleFunc("/api/status", webInterface.handleStatus)
 	http.HandleFunc("/api/export/events", webInterface.handleExportEvents)
 	http.HandleFunc("/api/export/analysis", webInterface.handleExportAnalysis)
@@ -4017,6 +4021,19 @@ func (wi *WebInterface) serveHome(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(html))
 }
 
+// serveIsometric serves the isometric 2.5D view page
+func (wi *WebInterface) serveIsometric(w http.ResponseWriter, r *http.Request) {
+	// Read the isometric HTML file
+	htmlBytes, err := os.ReadFile("isometric_view.html")
+	if err != nil {
+		http.Error(w, "Isometric view not available", http.StatusNotFound)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "text/html")
+	_, _ = w.Write(htmlBytes)
+}
+
 // handleStatus provides a simple status endpoint
 func (wi *WebInterface) handleStatus(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
@@ -4250,6 +4267,11 @@ func (wi *WebInterface) handleWebSocket(ws *websocket.Conn) {
 			}
 			wi.handleClientAction(ws, action, data)
 		}
+		
+		// Handle isometric data requests
+		if msgType, ok := msg["type"].(string); ok && msgType == "get_isometric_data" {
+			wi.handleIsometricDataRequest(ws, msg)
+		}
 	}
 
 	// Clean up client connection
@@ -4365,6 +4387,41 @@ func (wi *WebInterface) handleClientAction(ws *websocket.Conn, action string, da
 	case "reset_viewport":
 		wi.resetViewport()
 		log.Printf("Client reset viewport")
+	}
+}
+
+// handleIsometricDataRequest handles requests for isometric view data
+func (wi *WebInterface) handleIsometricDataRequest(ws *websocket.Conn, msg map[string]interface{}) {
+	// Extract request parameters
+	viewportX := 50 // Default center
+	viewportY := 50
+	zoom := 1.0
+	maxTiles := 1000
+	
+	if x, ok := msg["viewportX"].(float64); ok {
+		viewportX = int(x)
+	}
+	if y, ok := msg["viewportY"].(float64); ok {
+		viewportY = int(y)
+	}
+	if z, ok := msg["zoom"].(float64); ok {
+		zoom = z
+	}
+	if m, ok := msg["maxTiles"].(float64); ok {
+		maxTiles = int(m)
+	}
+	
+	// Generate isometric data
+	isometricData := wi.isometricManager.GenerateIsometricData(viewportX, viewportY, zoom, maxTiles)
+	
+	// Send response
+	response := map[string]interface{}{
+		"type": "isometric",
+		"data": isometricData,
+	}
+	
+	if err := websocket.JSON.Send(ws, response); err != nil {
+		log.Printf("Error sending isometric data: %v", err)
 	}
 }
 

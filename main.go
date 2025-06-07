@@ -72,6 +72,7 @@ func main() {
 		saveState  = flag.String("save", "", "Save simulation state to file and exit")
 		webMode    = flag.Bool("web", false, "Enable web interface mode")
 		webPort    = flag.Int("web-port", 8080, "Port for web interface")
+		isoMode    = flag.Bool("iso", false, "Enable 2.5D isometric game view")
 		primitive  = flag.Bool("primitive", false, "Start with primitive life forms that can evolve into complex species")
 	)
 
@@ -93,6 +94,7 @@ func main() {
 		fmt.Println("• Tool creation and environmental modification")
 		fmt.Println("• Emergent behavior discovery and social learning")
 		fmt.Println("• Web interface with real-time visualization")
+		fmt.Println("• 2.5D isometric game view with interactive features")
 		fmt.Println("• State persistence for save/load functionality")
 		fmt.Println()
 		fmt.Println("Usage:")
@@ -118,6 +120,14 @@ func main() {
 		fmt.Println("  Access via browser at http://localhost:<port> (default: 8080)")
 		fmt.Println("  All 14 view modes available with real-time updates")
 		fmt.Println("  WebSocket-based live simulation streaming")
+		fmt.Println()
+		fmt.Println("2.5D Isometric View:")
+		fmt.Println("  Use --iso flag to enable 2.5D isometric game interface")
+		fmt.Println("  Launches web server with isometric view at http://localhost:<port>/iso")
+		fmt.Println("  Interactive world with clickable entities and plants")
+		fmt.Println("  Real-time DNA and species details on selection")
+		fmt.Println("  WASD/Arrow Keys - Camera movement, Mouse Wheel - Zoom")
+		fmt.Println("  Left Click - Select entity/plant, Space - Toggle details")
 		fmt.Println()
 		fmt.Println("State Management:")
 		fmt.Println("  --save <file>   Save simulation state to JSON file")
@@ -318,6 +328,12 @@ func main() {
 		// Create and run the web interface
 		if err := RunWebInterface(world, *webPort); err != nil {
 			log.Fatalf("Error running web interface: %v", err)
+		}
+	} else if *isoMode {
+		// Create and run the web interface with isometric view
+		fmt.Printf("Starting isometric 2.5D interface on http://localhost:%d/iso\n", *webPort)
+		if err := RunWebInterface(world, *webPort); err != nil {
+			log.Fatalf("Error running isometric interface: %v", err)
 		}
 	} else {
 		// Create and run the CLI
