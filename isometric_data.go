@@ -19,12 +19,27 @@ type IsometricViewData struct {
 
 // IsometricTile represents a single tile in the isometric view
 type IsometricTile struct {
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	BiomeType int    `json:"biomeType"`
-	BiomeName string `json:"biomeName"`
-	Symbol    string `json:"symbol"`
-	Color     string `json:"color"`
+	X         int     `json:"x"`
+	Y         int     `json:"y"`
+	BiomeType int     `json:"biomeType"`
+	BiomeName string  `json:"biomeName"`
+	Symbol    string  `json:"symbol"`
+	Color     string  `json:"color"`
+	Elevation float64 `json:"elevation"`
+	Slope     float64 `json:"slope"`
+	WaterLevel float64 `json:"waterLevel"`
+	TerrainFeatures []int `json:"terrainFeatures,omitempty"`
+	GeologicalEvents []IsometricGeologicalEvent `json:"geologicalEvents,omitempty"`
+}
+
+// IsometricGeologicalEvent represents geological events for enhanced visualization
+type IsometricGeologicalEvent struct {
+	ID        int     `json:"id"`
+	Type      string  `json:"type"`
+	Intensity float64 `json:"intensity"`
+	Duration  int     `json:"duration"`
+	StartTick int     `json:"startTick"`
+	Color     string  `json:"color"`
 }
 
 // IsometricEntity represents an entity in the isometric view
@@ -132,13 +147,57 @@ func (ivm *IsometricViewManager) GenerateIsometricData(viewportX, viewportY int,
 				cell := ivm.world.Grid[y][x]
 				biome := ivm.world.Biomes[cell.Biome]
 				
+				// Get topology data
+				elevation := 0.0
+				slope := 0.0
+				waterLevel := 0.0
+				var terrainFeatures []int
+				var geologicalEvents []IsometricGeologicalEvent
+				
+				if ivm.world.TopologySystem != nil {
+					// Map grid coordinates to topology coordinates
+					topoX := int((float64(x) / float64(ivm.world.Config.GridWidth)) * float64(ivm.world.TopologySystem.Width))
+					topoY := int((float64(y) / float64(ivm.world.Config.GridHeight)) * float64(ivm.world.TopologySystem.Height))
+					
+					if topoX >= 0 && topoX < ivm.world.TopologySystem.Width && topoY >= 0 && topoY < ivm.world.TopologySystem.Height {
+						topoCell := ivm.world.TopologySystem.TopologyGrid[topoX][topoY]
+						elevation = topoCell.Elevation
+						slope = topoCell.Slope
+						waterLevel = topoCell.WaterLevel
+						terrainFeatures = topoCell.Features
+						
+						// Add geological events affecting this cell
+						for _, event := range ivm.world.TopologySystem.GeologicalEvents {
+							// Check if event affects this cell
+							distance := math.Sqrt((float64(x)-event.Center.X)*(float64(x)-event.Center.X) + 
+							                     (float64(y)-event.Center.Y)*(float64(y)-event.Center.Y))
+							if distance <= event.Radius {
+								geoEvent := IsometricGeologicalEvent{
+									ID:        event.ID,
+									Type:      event.Type,
+									Intensity: event.Intensity,
+									Duration:  event.Duration,
+									StartTick: event.StartTick,
+									Color:     ivm.getGeologicalEventColor(event.Type),
+								}
+								geologicalEvents = append(geologicalEvents, geoEvent)
+							}
+						}
+					}
+				}
+				
 				tile := IsometricTile{
-					X:         x,
-					Y:         y,
-					BiomeType: int(cell.Biome),
-					BiomeName: biome.Name,
-					Symbol:    string(biome.Symbol),
-					Color:     ivm.getBiomeColorHex(cell.Biome),
+					X:                x,
+					Y:                y,
+					BiomeType:        int(cell.Biome),
+					BiomeName:        biome.Name,
+					Symbol:           string(biome.Symbol),
+					Color:            ivm.getBiomeColorHex(cell.Biome),
+					Elevation:        elevation,
+					Slope:            slope,
+					WaterLevel:       waterLevel,
+					TerrainFeatures:  terrainFeatures,
+					GeologicalEvents: geologicalEvents,
 				}
 				data.Tiles = append(data.Tiles, tile)
 				
@@ -395,6 +454,29 @@ func (ivm *IsometricViewManager) addRecentEvents(data *IsometricViewData, viewpo
 		
 		data.Events = append(data.Events, isometricEvent)
 	}
+}
+
+// getGeologicalEventColor returns color for geological events
+func (ivm *IsometricViewManager) getGeologicalEventColor(eventType string) string {
+	colors := map[string]string{
+		"earthquake":           "#8B4513", // Brown
+		"volcanic_eruption":    "#FF4500", // Orange-red
+		"landslide":            "#A0522D", // Sienna
+		"flood":                "#1E90FF", // Dodger blue
+		"continental_drift":    "#696969", // Dim gray
+		"seafloor_spreading":   "#20B2AA", // Light sea green
+		"mountain_uplift":      "#708090", // Slate gray
+		"rift_valley":          "#8B0000", // Dark red
+		"geyser_formation":     "#00FFFF", // Cyan
+		"hot_spring_creation":  "#FFB347", // Peach
+		"ice_sheet_advance":    "#F0F8FF", // Alice blue
+		"glacial_retreat":      "#B0E0E6", // Powder blue
+	}
+	
+	if color, exists := colors[eventType]; exists {
+		return color
+	}
+	return "#808080" // Default gray
 }
 
 // getEventColor returns color for different event types

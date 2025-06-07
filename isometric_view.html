@@ -142,6 +142,8 @@
         <div>Plants: <span id="plantCount">0</span></div>
         <div>World Tick: <span id="worldTick">0</span></div>
         <div>FPS: <span id="fps">0</span></div>
+        <div>Terrain: <span id="terrainInfo">Loading...</span></div>
+        <div>Geological Events: <span id="geoEvents">0</span></div>
     </div>
     
     <div id="controls">
@@ -179,7 +181,11 @@
             lastFpsUpdate: 0,
             keys: {},
             mousePos: { x: 0, y: 0 },
-            tileSize: { width: 64, height: 32 }
+            tileSize: { width: 64, height: 32 },
+            elevationScale: 50, // Height multiplier for elevation rendering
+            maxElevation: 1.0,  // Maximum elevation value for scaling
+            minElevation: -0.5, // Minimum elevation value for scaling
+            depthLayers: []     // For depth sorting
         };
 
         // Initialize the game
@@ -319,7 +325,7 @@
             }
         }
 
-        // Render the game
+        // Render the game with proper depth sorting and 2.5D effects
         function render() {
             const ctx = gameState.ctx;
             const canvas = gameState.canvas;
@@ -336,37 +342,137 @@
                 return;
             }
             
-            // Render tiles
-            gameState.isometricData.tiles.forEach(tile => {
-                renderTile(tile);
+            // Create depth-sorted render layers
+            const renderLayers = createDepthSortedLayers();
+            
+            // Render each layer in depth order (back to front)
+            renderLayers.forEach(layer => {
+                switch (layer.type) {
+                    case 'tile':
+                        renderEnhancedTile(layer.object);
+                        break;
+                    case 'plant':
+                        renderEnhancedPlant(layer.object);
+                        break;
+                    case 'entity':
+                        renderEnhancedEntity(layer.object);
+                        break;
+                    case 'event':
+                        renderEnhancedEvent(layer.object);
+                        break;
+                    case 'geological':
+                        renderGeologicalEffect(layer.object);
+                        break;
+                }
             });
             
-            // Render plants
-            gameState.isometricData.plants.forEach(plant => {
-                renderPlant(plant);
-            });
+            // Render atmospheric effects (weather, etc.)
+            renderAtmosphericEffects();
             
-            // Render entities
-            gameState.isometricData.entities.forEach(entity => {
-                renderEntity(entity);
-            });
-            
-            // Render world events
-            gameState.isometricData.events.forEach(event => {
-                renderEvent(event);
-            });
-            
-            // Render selection highlights
+            // Render UI overlays
             renderSelectionHighlights();
         }
+        
+        // Create depth-sorted rendering layers for proper 2.5D visualization
+        function createDepthSortedLayers() {
+            const layers = [];
+            
+            // Add tiles with elevation consideration
+            gameState.isometricData.tiles.forEach(tile => {
+                const depth = calculateDepthSortValue(tile.x, tile.y, tile.elevation);
+                layers.push({
+                    type: 'tile',
+                    object: tile,
+                    depth: depth,
+                    elevation: tile.elevation
+                });
+                
+                // Add geological events as separate layers
+                if (tile.geologicalEvents && tile.geologicalEvents.length > 0) {
+                    tile.geologicalEvents.forEach(event => {
+                        layers.push({
+                            type: 'geological',
+                            object: { ...event, x: tile.x, y: tile.y, elevation: tile.elevation },
+                            depth: depth - 0.1, // Slightly above tile
+                            elevation: tile.elevation
+                        });
+                    });
+                }
+            });
+            
+            // Add plants with their base elevation
+            gameState.isometricData.plants.forEach(plant => {
+                const baseTile = gameState.isometricData.tiles.find(t => 
+                    Math.floor(plant.x) === t.x && Math.floor(plant.y) === t.y);
+                const baseElevation = baseTile ? baseTile.elevation : 0;
+                const plantElevation = baseElevation + (plant.size * 0.1); // Plants add height
+                
+                const depth = calculateDepthSortValue(plant.x, plant.y, plantElevation);
+                layers.push({
+                    type: 'plant',
+                    object: { ...plant, baseElevation: baseElevation },
+                    depth: depth,
+                    elevation: plantElevation
+                });
+            });
+            
+            // Add entities with their base elevation
+            gameState.isometricData.entities.forEach(entity => {
+                const baseTile = gameState.isometricData.tiles.find(t => 
+                    Math.floor(entity.x) === t.x && Math.floor(entity.y) === t.y);
+                const baseElevation = baseTile ? baseTile.elevation : 0;
+                const entityElevation = baseElevation + 0.2; // Entities are above ground
+                
+                const depth = calculateDepthSortValue(entity.x, entity.y, entityElevation);
+                layers.push({
+                    type: 'entity',
+                    object: { ...entity, baseElevation: baseElevation },
+                    depth: depth,
+                    elevation: entityElevation
+                });
+            });
+            
+            // Add world events at elevated positions
+            gameState.isometricData.events.forEach(event => {
+                const baseTile = gameState.isometricData.tiles.find(t => 
+                    Math.floor(event.x) === t.x && Math.floor(event.y) === t.y);
+                const baseElevation = baseTile ? baseTile.elevation : 0;
+                const eventElevation = baseElevation + 0.5; // Events float above everything
+                
+                const depth = calculateDepthSortValue(event.x, event.y, eventElevation);
+                layers.push({
+                    type: 'event',
+                    object: { ...event, baseElevation: baseElevation },
+                    depth: depth,
+                    elevation: eventElevation
+                });
+            });
+            
+            // Sort by depth (higher depth values render first = background)
+            layers.sort((a, b) => b.depth - a.depth);
+            
+            return layers;
+        }
+        
+        // Calculate depth sort value considering both position and elevation
+        function calculateDepthSortValue(x, y, elevation) {
+            // Isometric depth sorting: items further "back" (higher x+y) render first
+            // Items with higher elevation render later (appear in front)
+            const isoDepth = x + y;
+            const elevationBoost = elevation * 1000; // Elevation takes priority
+            return isoDepth - elevationBoost;
+        }
 
-        // Convert world coordinates to isometric screen coordinates
-        function worldToIso(worldX, worldY) {
+        // Convert world coordinates to isometric screen coordinates with elevation support
+        function worldToIso(worldX, worldY, elevation = 0) {
             const isoX = (worldX - worldY) * (gameState.tileSize.width / 2);
             const isoY = (worldX + worldY) * (gameState.tileSize.height / 2);
             
+            // Apply elevation offset - higher elevation appears higher on screen
+            const elevationOffset = elevation * gameState.elevationScale * gameState.zoom;
+            
             const screenX = (isoX - gameState.camera.x * gameState.tileSize.width / 2) * gameState.zoom + gameState.canvas.width / 2;
-            const screenY = (isoY - gameState.camera.y * gameState.tileSize.height / 2) * gameState.zoom + gameState.canvas.height / 2;
+            const screenY = (isoY - gameState.camera.y * gameState.tileSize.height / 2) * gameState.zoom + gameState.canvas.height / 2 - elevationOffset;
             
             return { x: screenX, y: screenY };
         }
@@ -383,16 +489,32 @@
         }
 
         // Render a tile
-        function renderTile(tile) {
-            const pos = worldToIso(tile.x, tile.y);
+        // Enhanced tile rendering with elevation-based 3D effect
+        function renderEnhancedTile(tile) {
+            const pos = worldToIso(tile.x, tile.y, tile.elevation);
             const ctx = gameState.ctx;
             
             const tileWidth = gameState.tileSize.width * gameState.zoom;
             const tileHeight = gameState.tileSize.height * gameState.zoom;
             
-            // Draw diamond shape
+            // Calculate tile depth based on elevation
+            const depthHeight = Math.abs(tile.elevation) * gameState.elevationScale * gameState.zoom * 0.3;
+            
+            // Draw tile base with depth effect
+            if (tile.elevation !== 0) {
+                // Draw side faces for elevation effect
+                drawTileDepth(pos, tileWidth, tileHeight, depthHeight, tile.elevation, tile.color);
+            }
+            
+            // Draw top diamond face
             ctx.fillStyle = tile.color;
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            
+            // Adjust color based on elevation (higher = lighter, lower = darker)
+            const elevationFactor = (tile.elevation + 1) / 2; // Normalize to 0-1
+            const shadedColor = adjustColorBrightness(tile.color, elevationFactor);
+            ctx.fillStyle = shadedColor;
+            
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
             ctx.lineWidth = 1;
             
             ctx.beginPath();
@@ -403,73 +525,283 @@
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
+            
+            // Draw water surface if present
+            if (tile.waterLevel > 0) {
+                renderWaterSurface(pos, tileWidth, tileHeight, tile.waterLevel, tile.elevation);
+            }
+            
+            // Draw slope indicators for steep terrain
+            if (tile.slope > 0.3) {
+                renderSlopeIndicators(pos, tile.slope, tileWidth, tileHeight);
+            }
         }
-
-        // Render a plant
-        function renderPlant(plant) {
-            const pos = worldToIso(plant.x, plant.y);
+        
+        // Draw 3D depth effect for elevated tiles
+        function drawTileDepth(pos, tileWidth, tileHeight, depthHeight, elevation, baseColor) {
+            const ctx = gameState.ctx;
+            
+            if (elevation > 0) {
+                // Draw right face (darker)
+                ctx.fillStyle = adjustColorBrightness(baseColor, 0.7);
+                ctx.beginPath();
+                ctx.moveTo(pos.x + tileWidth / 2, pos.y);
+                ctx.lineTo(pos.x + tileWidth / 2, pos.y + depthHeight);
+                ctx.lineTo(pos.x, pos.y + tileHeight / 2 + depthHeight);
+                ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Draw left face (darkest)
+                ctx.fillStyle = adjustColorBrightness(baseColor, 0.5);
+                ctx.beginPath();
+                ctx.moveTo(pos.x - tileWidth / 2, pos.y);
+                ctx.lineTo(pos.x - tileWidth / 2, pos.y + depthHeight);
+                ctx.lineTo(pos.x, pos.y + tileHeight / 2 + depthHeight);
+                ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // For negative elevation (valleys), draw depression effect
+                ctx.fillStyle = adjustColorBrightness(baseColor, 0.3);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y - tileHeight / 2);
+                ctx.lineTo(pos.x + tileWidth / 2, pos.y);
+                ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+                ctx.lineTo(pos.x - tileWidth / 2, pos.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+        
+        // Render water surface with transparency and animation
+        function renderWaterSurface(pos, tileWidth, tileHeight, waterLevel, baseElevation) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            
+            // Animate water with subtle wave effect
+            const waveOffset = Math.sin(time + pos.x * 0.01 + pos.y * 0.01) * 2;
+            const waterY = pos.y - (baseElevation + waterLevel) * gameState.elevationScale * gameState.zoom + waveOffset;
+            
+            // Water surface
+            ctx.fillStyle = `rgba(50, 100, 200, ${Math.min(waterLevel, 0.7)})`;
+            ctx.strokeStyle = 'rgba(30, 80, 180, 0.8)';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, waterY - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 2, waterY);
+            ctx.lineTo(pos.x, waterY + tileHeight / 2);
+            ctx.lineTo(pos.x - tileWidth / 2, waterY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add water reflection effect
+            ctx.fillStyle = `rgba(255, 255, 255, ${waterLevel * 0.1})`;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, waterY - tileHeight / 4);
+            ctx.lineTo(pos.x + tileWidth / 4, waterY);
+            ctx.lineTo(pos.x, waterY + tileHeight / 4);
+            ctx.lineTo(pos.x - tileWidth / 4, waterY);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Render slope indicators for steep terrain
+        function renderSlopeIndicators(pos, slope, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const intensity = Math.min(slope, 1.0);
+            
+            ctx.strokeStyle = `rgba(100, 100, 100, ${intensity * 0.5})`;
+            ctx.lineWidth = 1;
+            
+            // Draw slope lines
+            const numLines = Math.floor(intensity * 4) + 1;
+            for (let i = 0; i < numLines; i++) {
+                const offset = (i - numLines / 2) * (tileWidth / numLines) * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(pos.x + offset, pos.y - tileHeight / 4);
+                ctx.lineTo(pos.x + offset, pos.y + tileHeight / 4);
+                ctx.stroke();
+            }
+        }
+        
+        // Enhanced plant rendering with elevation awareness
+        function renderEnhancedPlant(plant) {
+            const pos = worldToIso(plant.x, plant.y, plant.baseElevation);
             const ctx = gameState.ctx;
             
             const size = Math.max(3, plant.size * gameState.zoom * 3);
-            const plantY = pos.y - gameState.tileSize.height * gameState.zoom * 0.3;
+            const plantHeight = plant.size * 10 * gameState.zoom; // Plant height based on size
+            const plantTopY = pos.y - plantHeight;
             
-            // Draw plant as circle
-            ctx.fillStyle = plant.color;
-            ctx.strokeStyle = 'rgba(0, 100, 0, 0.8)';
-            ctx.lineWidth = 1;
+            // Draw plant trunk/stem
+            if (plant.type === 2) { // Tree
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = Math.max(2, size * 0.3);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(pos.x, plantTopY);
+                ctx.stroke();
+                
+                // Tree canopy
+                ctx.fillStyle = plant.color;
+                ctx.strokeStyle = 'rgba(0, 100, 0, 0.8)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(pos.x, plantTopY - size / 2, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                // Other plants (grass, bushes, etc.)
+                ctx.fillStyle = plant.color;
+                ctx.strokeStyle = 'rgba(0, 100, 0, 0.8)';
+                ctx.lineWidth = 1;
+                
+                if (plant.type === 1) { // Bush
+                    // Draw bush as multiple circles
+                    const bushSize = size * 0.7;
+                    for (let i = 0; i < 3; i++) {
+                        const offset = (i - 1) * bushSize * 0.3;
+                        ctx.beginPath();
+                        ctx.arc(pos.x + offset, pos.y - bushSize + offset * 0.5, bushSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else {
+                    // Grass and other plants
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y - size / 2, size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
             
-            ctx.beginPath();
-            ctx.arc(pos.x, plantY, size, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
+            // Add plant shadow
+            renderPlantShadow(pos, size, plant.type);
         }
-
-        // Render an entity
-        function renderEntity(entity) {
-            const pos = worldToIso(entity.x, entity.y);
+        
+        // Render plant shadow for depth perception
+        function renderPlantShadow(pos, size, plantType) {
+            const ctx = gameState.ctx;
+            const shadowOffset = size * 0.5;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(pos.x + shadowOffset, pos.y + shadowOffset, size * 0.8, size * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Enhanced entity rendering with elevation and improved visuals
+        function renderEnhancedEntity(entity) {
+            const pos = worldToIso(entity.x, entity.y, entity.baseElevation);
             const ctx = gameState.ctx;
             
             const size = Math.max(4, (entity.size + 1) * gameState.zoom * 4);
-            const entityY = pos.y - gameState.tileSize.height * gameState.zoom * 0.5 - size / 2;
+            const entityHeight = size * 1.5; // Entity height
+            const entityY = pos.y - entityHeight / 2;
             
-            // Draw entity as rectangle
-            ctx.fillStyle = entity.color;
+            // Draw entity shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(pos.x + size * 0.3, pos.y + size * 0.3, size * 0.8, size * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw entity body with gradient effect
+            const gradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, size);
+            gradient.addColorStop(0, entity.color);
+            gradient.addColorStop(1, adjustColorBrightness(entity.color, 0.7));
+            
+            ctx.fillStyle = gradient;
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.lineWidth = 1;
             
-            ctx.fillRect(pos.x - size / 2, entityY, size, size);
-            ctx.strokeRect(pos.x - size / 2, entityY, size, size);
+            // Draw entity shape based on species/traits
+            if (entity.traits.flying_ability > 0.5) {
+                // Flying entity - draw with wing-like shape
+                ctx.beginPath();
+                ctx.ellipse(pos.x, entityY, size, size * 0.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Wing indicators
+                ctx.strokeStyle = adjustColorBrightness(entity.color, 1.2);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(pos.x - size, entityY);
+                ctx.lineTo(pos.x + size, entityY);
+                ctx.stroke();
+            } else if (entity.traits.aquatic_adaptation > 0.5) {
+                // Aquatic entity - elongated shape
+                ctx.beginPath();
+                ctx.ellipse(pos.x, entityY, size * 1.2, size * 0.8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                // Land entity - standard rectangular/circular shape
+                ctx.fillRect(pos.x - size / 2, entityY - size / 2, size, size);
+                ctx.strokeRect(pos.x - size / 2, entityY - size / 2, size, size);
+            }
+            
+            // Draw entity status indicators
+            renderEntityStatusIndicators(pos, entityY, size, entity);
         }
-
-        // Render a world event with visual effects
-        function renderEvent(event) {
-            const pos = worldToIso(event.x, event.y);
+        
+        // Render status indicators for entities (energy, health, etc.)
+        function renderEntityStatusIndicators(pos, entityY, size, entity) {
             const ctx = gameState.ctx;
             
-            // Calculate alpha based on event intensity (fades over time)
-            const alpha = event.intensity;
+            // Energy bar
+            const barWidth = size;
+            const barHeight = 3;
+            const energyPercent = Math.max(0, Math.min(1, entity.energy / 100));
+            
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(pos.x - barWidth / 2, entityY - size / 2 - 8, barWidth, barHeight);
+            
+            // Energy level
+            ctx.fillStyle = energyPercent > 0.3 ? '#4CAF50' : '#F44336';
+            ctx.fillRect(pos.x - barWidth / 2, entityY - size / 2 - 8, barWidth * energyPercent, barHeight);
+        }
+        
+        // Enhanced event rendering with 3D effects and animations
+        function renderEnhancedEvent(event) {
+            const pos = worldToIso(event.x, event.y, event.baseElevation);
+            const ctx = gameState.ctx;
+            
+            const alpha = Math.max(0, Math.min(1, event.intensity));
             if (alpha <= 0) return;
             
-            // Event visual size based on intensity
+            const time = Date.now() * 0.001;
             const baseSize = 20;
             const size = baseSize * (1 + event.intensity) * gameState.zoom;
             
-            // Event elevation (above everything else)
-            const eventY = pos.y - gameState.tileSize.height * gameState.zoom * 0.8;
+            // Animated elevation offset for floating effect
+            const floatOffset = Math.sin(time * 2 + event.id) * 5;
+            const eventY = pos.y - gameState.elevationScale * gameState.zoom * 0.8 + floatOffset;
             
-            // Parse color and add alpha
-            const color = hexToRgba(event.color, alpha * 0.7);
-            const pulseColor = hexToRgba(event.color, alpha * 0.3);
+            // Draw multiple animated layers for enhanced visual effect
+            const layers = 3;
+            for (let layer = 0; layer < layers; layer++) {
+                const layerAlpha = alpha * (0.8 - layer * 0.2);
+                const layerSize = size * (1.2 - layer * 0.2);
+                const layerOffset = Math.sin(time * (1 + layer * 0.5) + event.id) * (2 + layer);
+                
+                const color = hexToRgba(event.color, layerAlpha * 0.4);
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(pos.x, eventY + layerOffset, layerSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
             
-            // Draw pulsing effect
-            const pulseSize = size * (1 + Math.sin(Date.now() * 0.01) * 0.3);
-            ctx.fillStyle = pulseColor;
-            ctx.beginPath();
-            ctx.arc(pos.x, eventY, pulseSize, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Draw main event circle
-            ctx.fillStyle = color;
+            // Main event core
+            ctx.fillStyle = hexToRgba(event.color, alpha * 0.8);
             ctx.strokeStyle = event.color;
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -477,7 +809,7 @@
             ctx.fill();
             ctx.stroke();
             
-            // Draw event type symbol
+            // Event type symbol
             ctx.fillStyle = '#FFFFFF';
             ctx.font = `${Math.max(8, size * 0.3)}px monospace`;
             ctx.textAlign = 'center';
@@ -486,18 +818,187 @@
             const symbol = getEventSymbol(event.type);
             ctx.fillText(symbol, pos.x, eventY);
             
-            // Draw event description on hover (simplified)
-            if (isNearMouse(pos.x, eventY, size)) {
-                drawEventTooltip(pos.x, eventY - size - 10, event);
+            // Particle effects for certain event types
+            renderEventParticles(pos.x, eventY, event, size);
+        }
+        
+        // Render geological effects with enhanced animations
+        function renderGeologicalEffect(geoEvent) {
+            const pos = worldToIso(geoEvent.x, geoEvent.y, geoEvent.elevation);
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            
+            const intensity = geoEvent.intensity;
+            const alpha = Math.max(0, Math.min(0.8, intensity));
+            
+            switch (geoEvent.type) {
+                case 'earthquake':
+                    renderEarthquakeEffect(pos, intensity, alpha, time);
+                    break;
+                case 'volcanic_eruption':
+                    renderVolcanicEruption(pos, intensity, alpha, time);
+                    break;
+                case 'flood':
+                    renderFloodEffect(pos, intensity, alpha, time);
+                    break;
+                case 'landslide':
+                    renderLandslideEffect(pos, intensity, alpha, time);
+                    break;
+                default:
+                    renderGenericGeologicalEffect(pos, intensity, alpha, geoEvent.color);
+                    break;
             }
         }
+        
+        // Render atmospheric effects (weather, general ambiance)
+        function renderAtmosphericEffects() {
+            // Add subtle ambient effects based on world state
+            // This could include weather patterns, day/night effects, etc.
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            
+            // Example: subtle fog effect
+            const fogAlpha = 0.05 + Math.sin(time * 0.5) * 0.02;
+            ctx.fillStyle = `rgba(200, 200, 255, ${fogAlpha})`;
+            ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
+        }
 
+        // Render an entity
         // Convert hex color to rgba
         function hexToRgba(hex, alpha) {
             const r = parseInt(hex.slice(1, 3), 16);
             const g = parseInt(hex.slice(3, 5), 16);
             const b = parseInt(hex.slice(5, 7), 16);
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        
+        // Adjust color brightness for shading effects
+        function adjustColorBrightness(hex, factor) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            
+            const newR = Math.min(255, Math.max(0, Math.floor(r * factor)));
+            const newG = Math.min(255, Math.max(0, Math.floor(g * factor)));
+            const newB = Math.min(255, Math.max(0, Math.floor(b * factor)));
+            
+            return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+        }
+        
+        // Geological effect rendering functions
+        function renderEarthquakeEffect(pos, intensity, alpha, time) {
+            const ctx = gameState.ctx;
+            const shakeX = Math.sin(time * 20) * intensity * 3;
+            const shakeY = Math.cos(time * 25) * intensity * 2;
+            
+            ctx.strokeStyle = `rgba(139, 69, 19, ${alpha})`;
+            ctx.lineWidth = Math.max(1, intensity * 3);
+            
+            // Draw crack lines
+            for (let i = 0; i < 5; i++) {
+                const angle = (i / 5) * Math.PI * 2;
+                const length = intensity * 20;
+                ctx.beginPath();
+                ctx.moveTo(pos.x + shakeX, pos.y + shakeY);
+                ctx.lineTo(pos.x + Math.cos(angle) * length + shakeX, pos.y + Math.sin(angle) * length + shakeY);
+                ctx.stroke();
+            }
+        }
+        
+        function renderVolcanicEruption(pos, intensity, alpha, time) {
+            const ctx = gameState.ctx;
+            
+            // Lava particles
+            for (let i = 0; i < intensity * 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * intensity * 30;
+                const height = Math.sin(time * 2 + i) * intensity * 20;
+                
+                const x = pos.x + Math.cos(angle) * distance;
+                const y = pos.y + Math.sin(angle) * distance - height;
+                
+                ctx.fillStyle = `rgba(255, ${Math.floor(100 + Math.random() * 100)}, 0, ${alpha * 0.8})`;
+                ctx.beginPath();
+                ctx.arc(x, y, Math.random() * 3 + 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function renderFloodEffect(pos, intensity, alpha, time) {
+            const ctx = gameState.ctx;
+            const waveOffset = Math.sin(time * 3) * 5;
+            
+            ctx.fillStyle = `rgba(30, 144, 255, ${alpha * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y + waveOffset, intensity * 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Water ripples
+            for (let i = 1; i <= 3; i++) {
+                ctx.strokeStyle = `rgba(30, 144, 255, ${alpha * 0.3 / i})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y + waveOffset, intensity * 25 * i, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        function renderLandslideEffect(pos, intensity, alpha, time) {
+            const ctx = gameState.ctx;
+            
+            // Falling debris
+            for (let i = 0; i < intensity * 8; i++) {
+                const offsetX = (Math.random() - 0.5) * intensity * 40;
+                const fallY = Math.sin(time + i) * intensity * 15;
+                
+                ctx.fillStyle = `rgba(160, 82, 45, ${alpha * 0.7})`;
+                ctx.beginPath();
+                ctx.arc(pos.x + offsetX, pos.y + fallY, Math.random() * 2 + 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function renderGenericGeologicalEffect(pos, intensity, alpha, color) {
+            const ctx = gameState.ctx;
+            
+            ctx.fillStyle = hexToRgba(color, alpha * 0.5);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, intensity * 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Render particle effects for events
+        function renderEventParticles(x, y, event, size) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            
+            switch (event.type) {
+                case 'birth':
+                    // Sparkle effect
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i / 5) * Math.PI * 2 + time;
+                        const distance = Math.sin(time * 3 + i) * size * 0.5;
+                        const sparkleX = x + Math.cos(angle) * distance;
+                        const sparkleY = y + Math.sin(angle) * distance;
+                        
+                        ctx.fillStyle = '#FFD700';
+                        ctx.beginPath();
+                        ctx.arc(sparkleX, sparkleY, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                    
+                case 'death':
+                    // Fade particles
+                    for (let i = 0; i < 3; i++) {
+                        const offsetY = Math.sin(time + i) * 10 - i * 5;
+                        ctx.fillStyle = `rgba(128, 128, 128, ${0.5 - i * 0.15})`;
+                        ctx.beginPath();
+                        ctx.arc(x, y + offsetY, 1, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+            }
         }
 
         // Get symbol for event type
@@ -689,6 +1190,43 @@
             document.getElementById('plantCount').textContent = gameState.isometricData.plants.length;
             document.getElementById('worldTick').textContent = gameState.isometricData.worldInfo.tick;
             document.getElementById('fps').textContent = gameState.fps;
+            
+            // Update terrain info
+            const terrainStats = calculateTerrainStats();
+            document.getElementById('terrainInfo').textContent = terrainStats;
+            
+            // Count geological events
+            let geoEventCount = 0;
+            gameState.isometricData.tiles.forEach(tile => {
+                if (tile.geologicalEvents) {
+                    geoEventCount += tile.geologicalEvents.length;
+                }
+            });
+            document.getElementById('geoEvents').textContent = geoEventCount;
+        }
+        
+        // Calculate terrain statistics for UI display
+        function calculateTerrainStats() {
+            if (!gameState.isometricData || !gameState.isometricData.tiles) {
+                return "Loading...";
+            }
+            
+            let minElevation = Infinity;
+            let maxElevation = -Infinity;
+            let totalElevation = 0;
+            let waterTiles = 0;
+            
+            gameState.isometricData.tiles.forEach(tile => {
+                minElevation = Math.min(minElevation, tile.elevation);
+                maxElevation = Math.max(maxElevation, tile.elevation);
+                totalElevation += tile.elevation;
+                if (tile.waterLevel > 0) waterTiles++;
+            });
+            
+            const avgElevation = totalElevation / gameState.isometricData.tiles.length;
+            const waterPercent = (waterTiles / gameState.isometricData.tiles.length * 100).toFixed(1);
+            
+            return `Elev: ${minElevation.toFixed(2)} to ${maxElevation.toFixed(2)} (avg: ${avgElevation.toFixed(2)}) | Water: ${waterPercent}%`;
         }
 
         // Update details panel
