@@ -509,14 +509,14 @@ func (m CLIModel) gridView() string {
 				for _, structure := range m.world.CivilizationSystem.Structures {
 					if int(structure.Position.X) == x && int(structure.Position.Y) == y && structure.IsActive {
 						structureSymbols := map[StructureType]rune{
-							StructureNest:    '🏠',
-							StructureCache:   '📦',
-							StructureBarrier: '🚧',
-							StructureTrap:    '🕳',
-							StructureFarm:    '🌾',
-							StructureWell:    '🚰',
-							StructureTower:   '🗼',
-							StructureMarket:  '🏪',
+							StructureNest:    'N',
+							StructureCache:   'C',
+							StructureBarrier: 'B',
+							StructureTrap:    'P',
+							StructureFarm:    'F',
+							StructureWell:    'W',
+							StructureTower:   'O',
+							StructureMarket:  'M',
 						}
 						if structSymbol, exists := structureSymbols[structure.Type]; exists {
 							symbol = structSymbol
@@ -537,7 +537,7 @@ func (m CLIModel) gridView() string {
 						signalSymbols := map[SignalType]rune{
 							SignalDanger:    '!',
 							SignalFood:      '*',
-							SignalMating:    '♥',
+							SignalMating:    'M',
 							SignalTerritory: 'T',
 							SignalHelp:      '?',
 							SignalMigration: '→',

@@ -89,7 +89,7 @@ func GetPlantConfigs() map[PlantType]PlantConfig {
 		},
 		PlantBush: {
 			Name:             "Bush",
-			Symbol:           '♦',
+			Symbol:           'b',
 			BaseEnergy:       40,
 			BaseSize:         1.0,
 			BaseNutrition:    25,
@@ -102,7 +102,7 @@ func GetPlantConfigs() map[PlantType]PlantConfig {
 		},
 		PlantTree: {
 			Name:             "Tree",
-			Symbol:           '♠',
+			Symbol:           'T',
 			BaseEnergy:       100,
 			BaseSize:         3.0,
 			BaseNutrition:    40,
@@ -115,7 +115,7 @@ func GetPlantConfigs() map[PlantType]PlantConfig {
 		},
 		PlantMushroom: {
 			Name:             "Mushroom",
-			Symbol:           '♪',
+			Symbol:           'M',
 			BaseEnergy:       30,
 			BaseSize:         0.8,
 			BaseNutrition:    20,
