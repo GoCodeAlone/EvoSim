@@ -188,6 +188,9 @@
             depthLayers: []     // For depth sorting
         };
 
+        // Expose gameState globally for debugging
+        window.gameState = gameState;
+
         // Initialize the game
         function init() {
             gameState.canvas = document.getElementById('gameCanvas');
@@ -202,8 +205,7 @@
             // Start game loop
             gameLoop();
             
-            // Hide loading screen
-            document.getElementById('loading').style.display = 'none';
+            // Don't hide loading screen yet - wait for data to load
         }
 
         // Setup event listeners
@@ -232,17 +234,24 @@
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
+            console.log('Connecting to WebSocket:', wsUrl);
             gameState.websocket = new WebSocket(wsUrl);
             
             gameState.websocket.onopen = () => {
-                console.log('WebSocket connected');
+                console.log('WebSocket connected successfully');
                 // Request isometric view data
                 requestIsometricData();
             };
             
             gameState.websocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                console.log('Received WebSocket message:', data.type);
                 if (data.type === 'isometric') {
+                    console.log('Received isometric data with', 
+                        data.data.tiles?.length || 0, 'tiles,',
+                        data.data.entities?.length || 0, 'entities,',
+                        data.data.plants?.length || 0, 'plants');
+                    
                     const wasFirstLoad = !gameState.isometricData;
                     gameState.isometricData = data.data;
                     
@@ -250,6 +259,10 @@
                     if (wasFirstLoad && gameState.isometricData.worldInfo) {
                         gameState.camera.x = gameState.isometricData.worldInfo.width / 2;
                         gameState.camera.y = gameState.isometricData.worldInfo.height / 2;
+                        
+                        // Hide loading screen once we have data
+                        document.getElementById('loading').style.display = 'none';
+                        console.log('First data load complete, camera centered at:', gameState.camera);
                     }
                     
                     updateUI();
@@ -276,7 +289,10 @@
                     zoom: gameState.zoom,
                     maxTiles: 1000
                 };
+                console.log('Requesting isometric data:', request);
                 gameState.websocket.send(JSON.stringify(request));
+            } else {
+                console.log('WebSocket not ready, current state:', gameState.websocket?.readyState);
             }
         }
 
@@ -347,6 +363,11 @@
                 ctx.font = '20px monospace';
                 ctx.textAlign = 'center';
                 ctx.fillText('Loading world data...', canvas.width / 2, canvas.height / 2);
+                
+                // Add debug info about WebSocket state
+                ctx.font = '14px monospace';
+                ctx.fillText(`WebSocket State: ${gameState.websocket?.readyState || 'unknown'}`, canvas.width / 2, canvas.height / 2 + 30);
+                ctx.fillText(`Ready States: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED`, canvas.width / 2, canvas.height / 2 + 50);
                 return;
             }
             
@@ -856,12 +877,6 @@
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-        }
-            
-            // Draw slope indicators for steep terrain
-            if (tile.slope > 0.3) {
-                renderSlopeIndicators(pos, tile.slope, tileWidth, tileHeight);
-            }
         }
         
         // Draw 3D depth effect for elevated tiles
@@ -1467,13 +1482,6 @@
             
             ctx.setLineDash([]); // Reset line dash
         }
-            const shadowOffset = size * 0.5;
-            
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            ctx.beginPath();
-            ctx.ellipse(pos.x + shadowOffset, pos.y + shadowOffset, size * 0.8, size * 0.4, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
         
         // Enhanced entity rendering with sophisticated 3D-style visuals
         function renderEnhancedEntity(entity) {
@@ -1863,7 +1871,6 @@
             ctx.stroke();
             
             ctx.setLineDash([]); // Reset line dash
-        }
         }
         
         // Render status indicators for entities (energy, health, etc.)
