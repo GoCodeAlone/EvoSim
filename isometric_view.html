@@ -1514,6 +1514,18 @@
                 case 'small_herbivore':
                     renderSmallHerbivore(pos, entityY, size, entity);
                     break;
+                case 'scavenger':
+                    renderScavenger(pos, entityY, size, entity);
+                    break;
+                case 'intelligent_social':
+                    renderIntelligentSocial(pos, entityY, size, entity);
+                    break;
+                case 'explorer':
+                    renderExplorer(pos, entityY, size, entity);
+                    break;
+                case 'stealth':
+                    renderStealthCreature(pos, entityY, size, entity);
+                    break;
                 default:
                     renderStandardCreature(pos, entityY, size, entity);
                     break;
@@ -1532,11 +1544,16 @@
         function determineEntityType(entity) {
             const traits = entity.traits;
             
-            if (traits.flying_ability > 0.6) return 'flying';
-            if (traits.aquatic_adaptation > 0.6) return 'aquatic';
-            if (traits.digging_ability > 0.6) return 'underground';
-            if (traits.size > 1.5 && traits.aggression > 0.5) return 'large_predator';
-            if (traits.size < 0.5 && traits.speed > 0.5) return 'small_herbivore';
+            // Priority-based classification for most distinctive features
+            if (traits.flying_ability > 0.3) return 'flying';
+            if (traits.aquatic_adaptation > 0.3) return 'aquatic';
+            if (traits.digging_ability > 0.3 || traits.underground_nav > 0.2) return 'underground';
+            if (traits.size > 0.4 && traits.aggression > 0.3) return 'large_predator';
+            if (traits.size < -0.2 && (traits.speed > 0.2 || traits.cooperation > 0.4)) return 'small_herbivore';
+            if (traits.scavenging_behavior > 0.4) return 'scavenger';
+            if (traits.intelligence > 0.5 && traits.cooperation > 0.3) return 'intelligent_social';
+            if (traits.endurance > 0.5 && traits.exploration_drive > 0.3) return 'explorer';
+            if (traits.stealth && traits.stealth > 0.4) return 'stealth';
             
             return 'standard';
         }
@@ -1854,6 +1871,238 @@
                 ctx.lineTo(leg.x, leg.y + size * 0.4);
                 ctx.stroke();
             });
+        }
+        
+        // Scavenger creature with distinctive features
+        function renderScavenger(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.003;
+            const sniff = Math.sin(time * 6 + entity.id) * 0.2; // Sniffing motion
+            
+            // Draw hunched, lean body
+            const bodyGradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, size);
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.1));
+            bodyGradient.addColorStop(0.6, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.7));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY, size * 0.9, size * 1.1, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add patchy fur pattern
+            ctx.fillStyle = adjustColorBrightness(entity.color, 0.6);
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const patchX = pos.x + Math.cos(angle) * size * 0.4;
+                const patchY = entityY + Math.sin(angle) * size * 0.4;
+                
+                ctx.beginPath();
+                ctx.ellipse(patchX, patchY, size * 0.15, size * 0.1, angle, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Prominent snout with sniffing animation
+            ctx.fillStyle = adjustColorBrightness(entity.color, 0.8);
+            ctx.beginPath();
+            ctx.ellipse(pos.x + size * 0.6, entityY - size * 0.1 + sniff, size * 0.3, size * 0.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Alert ears
+            ctx.fillStyle = adjustColorBrightness(entity.color, 0.9);
+            ctx.beginPath();
+            ctx.ellipse(pos.x - size * 0.3, entityY - size * 0.5, size * 0.12, size * 0.3, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(pos.x + size * 0.3, entityY - size * 0.5, size * 0.12, size * 0.3, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Intelligent social creature with tool-like appendages
+        function renderIntelligentSocial(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.002;
+            const think = Math.sin(time * 3 + entity.id) * 0.1; // Thoughtful head movement
+            
+            // Draw upright, humanoid body
+            const bodyGradient = ctx.createLinearGradient(
+                pos.x, entityY - size, pos.x, entityY + size
+            );
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.3));
+            bodyGradient.addColorStop(0.5, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.8));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY, size * 0.7, size * 1.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Large head indicating intelligence
+            const headGradient = ctx.createRadialGradient(
+                pos.x, entityY - size * 0.8 + think, 0,
+                pos.x, entityY - size * 0.8 + think, size * 0.6
+            );
+            headGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.4));
+            headGradient.addColorStop(1, adjustColorBrightness(entity.color, 1.0));
+            
+            ctx.fillStyle = headGradient;
+            ctx.beginPath();
+            ctx.arc(pos.x, entityY - size * 0.8 + think, size * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Tool-using arms
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.7);
+            ctx.lineWidth = Math.max(2, size * 0.08);
+            ctx.lineCap = 'round';
+            
+            // Left arm holding tool
+            ctx.beginPath();
+            ctx.moveTo(pos.x - size * 0.5, entityY - size * 0.2);
+            ctx.lineTo(pos.x - size * 0.9, entityY - size * 0.4);
+            ctx.stroke();
+            
+            // Simple tool (stick)
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pos.x - size * 0.9, entityY - size * 0.4);
+            ctx.lineTo(pos.x - size * 1.1, entityY - size * 0.6);
+            ctx.stroke();
+            
+            // Right arm
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.7);
+            ctx.lineWidth = Math.max(2, size * 0.08);
+            ctx.beginPath();
+            ctx.moveTo(pos.x + size * 0.5, entityY - size * 0.2);
+            ctx.lineTo(pos.x + size * 0.8, entityY + size * 0.1);
+            ctx.stroke();
+            
+            // Intelligent eyes
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(pos.x - size * 0.2, entityY - size * 0.8 + think, size * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(pos.x + size * 0.2, entityY - size * 0.8 + think, size * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Explorer creature with travel gear
+        function renderExplorer(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.004;
+            const walk = Math.sin(time * 8 + entity.id) * 0.15; // Walking motion
+            
+            // Draw lean, athletic body
+            const bodyGradient = ctx.createLinearGradient(
+                pos.x - size, entityY, pos.x + size, entityY
+            );
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 0.9));
+            bodyGradient.addColorStop(0.5, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 1.1));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY + walk, size * 1.0, size * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Backpack/satchel
+            ctx.fillStyle = '#8B4513';
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(pos.x - size * 0.6, entityY - size * 0.1 + walk, size * 0.3, size * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Travel staff/walking stick
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(pos.x + size * 0.8, entityY + size * 0.5 + walk);
+            ctx.lineTo(pos.x + size * 0.8, entityY - size * 1.2 + walk);
+            ctx.stroke();
+            
+            // Staff top decoration
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(pos.x + size * 0.8, entityY - size * 1.2 + walk, size * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Wide-brimmed hat
+            ctx.fillStyle = '#654321';
+            ctx.strokeStyle = '#4A4A4A';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY - size * 0.7 + walk, size * 0.6, size * 0.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Hat crown
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY - size * 0.8 + walk, size * 0.25, size * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Keen, searching eyes
+            ctx.fillStyle = '#000080';
+            ctx.beginPath();
+            ctx.arc(pos.x - size * 0.15, entityY - size * 0.8 + walk, size * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(pos.x + size * 0.15, entityY - size * 0.8 + walk, size * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Stealth creature with camouflage abilities
+        function renderStealthCreature(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            const fade = Math.abs(Math.sin(time * 2 + entity.id)) * 0.4 + 0.4; // Fading effect
+            
+            // Draw semi-transparent, sleek body
+            const bodyColor = hexToRgba(entity.color, fade);
+            const bodyGradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, size);
+            bodyGradient.addColorStop(0, hexToRgba(adjustColorBrightness(entity.color, 1.2), fade));
+            bodyGradient.addColorStop(0.7, bodyColor);
+            bodyGradient.addColorStop(1, hexToRgba(adjustColorBrightness(entity.color, 0.6), fade * 0.8));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY, size * 1.1, size * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Camouflage pattern
+            ctx.fillStyle = hexToRgba(adjustColorBrightness(entity.color, 0.7), fade * 0.6);
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const camX = pos.x + Math.cos(angle) * size * 0.5;
+                const camY = entityY + Math.sin(angle) * size * 0.3;
+                
+                ctx.beginPath();
+                ctx.arc(camX, camY, size * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Subtle eyes that blend with environment
+            ctx.fillStyle = hexToRgba('#404040', fade * 0.8);
+            ctx.beginPath();
+            ctx.arc(pos.x - size * 0.3, entityY - size * 0.2, size * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(pos.x + size * 0.3, entityY - size * 0.2, size * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add subtle shimmer effect
+            if (fade > 0.7) {
+                ctx.strokeStyle = hexToRgba('#FFFFFF', 0.3);
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.ellipse(pos.x, entityY, size * 1.1, size * 0.6, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
         }
         
         // Selection effect for entities

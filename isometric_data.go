@@ -226,21 +226,28 @@ func (ivm *IsometricViewManager) GenerateIsometricData(viewportX, viewportY int,
 				
 				// Add entities in this cell
 				for _, entity := range cell.Entities {
-					// Convert traits to map
+					// Convert all available traits to map for complete entity visualization
 					traits := map[string]float64{
-						"speed":              ivm.getTraitValue(entity.Traits, "speed"),
-						"aggression":         ivm.getTraitValue(entity.Traits, "aggression"),
-						"intelligence":       ivm.getTraitValue(entity.Traits, "intelligence"),
-						"cooperation":        ivm.getTraitValue(entity.Traits, "cooperation"),
-						"defense":            ivm.getTraitValue(entity.Traits, "defense"),
-						"size":               ivm.getTraitValue(entity.Traits, "size"),
-						"endurance":          ivm.getTraitValue(entity.Traits, "endurance"),
-						"strength":           ivm.getTraitValue(entity.Traits, "strength"),
-						"aquatic_adaptation": ivm.getTraitValue(entity.Traits, "aquatic_adaptation"),
-						"digging_ability":    ivm.getTraitValue(entity.Traits, "digging_ability"),
-						"underground_nav":    ivm.getTraitValue(entity.Traits, "underground_nav"),
-						"flying_ability":     ivm.getTraitValue(entity.Traits, "flying_ability"),
-						"altitude_tolerance": ivm.getTraitValue(entity.Traits, "altitude_tolerance"),
+						"speed":                ivm.getTraitValue(entity.Traits, "speed"),
+						"aggression":           ivm.getTraitValue(entity.Traits, "aggression"),
+						"intelligence":         ivm.getTraitValue(entity.Traits, "intelligence"),
+						"cooperation":          ivm.getTraitValue(entity.Traits, "cooperation"),
+						"defense":              ivm.getTraitValue(entity.Traits, "defense"),
+						"size":                 ivm.getTraitValue(entity.Traits, "size"),
+						"endurance":            ivm.getTraitValue(entity.Traits, "endurance"),
+						"strength":             ivm.getTraitValue(entity.Traits, "strength"),
+						"aquatic_adaptation":   ivm.getTraitValue(entity.Traits, "aquatic_adaptation"),
+						"digging_ability":      ivm.getTraitValue(entity.Traits, "digging_ability"),
+						"underground_nav":      ivm.getTraitValue(entity.Traits, "underground_nav"),
+						"flying_ability":       ivm.getTraitValue(entity.Traits, "flying_ability"),
+						"altitude_tolerance":   ivm.getTraitValue(entity.Traits, "altitude_tolerance"),
+						"circadian_preference": ivm.getTraitValue(entity.Traits, "circadian_preference"),
+						"sleep_need":           ivm.getTraitValue(entity.Traits, "sleep_need"),
+						"hunger_need":          ivm.getTraitValue(entity.Traits, "hunger_need"),
+						"thirst_need":          ivm.getTraitValue(entity.Traits, "thirst_need"),
+						"play_drive":           ivm.getTraitValue(entity.Traits, "play_drive"),
+						"exploration_drive":    ivm.getTraitValue(entity.Traits, "exploration_drive"),
+						"scavenging_behavior":  ivm.getTraitValue(entity.Traits, "scavenging_behavior"),
 					}
 					
 					// Convert DNA information (simplified since Entity doesn't have direct DNA field)
@@ -340,25 +347,46 @@ func (ivm *IsometricViewManager) getPlantColorHex(plantType PlantType) string {
 	return "#64C864" // Default green
 }
 
-// getEntityColorHex returns hex color for entity species
+// getEntityColorHex returns hex color for entity species with trait-based variations
 func (ivm *IsometricViewManager) getEntityColorHex(species string) string {
-	// Use a hash of the species name to generate consistent colors
-	hash := 0
-	for _, char := range species {
-		hash = int(char) + ((hash << 5) - hash)
+	// Base species colors
+	baseColors := map[string]string{
+		"microbe":    "#808080", // Gray
+		"simple":     "#FFFF80", // Light yellow
+		"herbivore":  "#40FF40", // Green
+		"predator":   "#FF4040", // Red
+		"omnivore":   "#8080FF", // Blue
+		"scavenger":  "#C0C040", // Olive
+		"aquatic":    "#40C0FF", // Cyan
+		"flying":     "#FF80FF", // Magenta
+		"underground":"#8B4513", // Brown
 	}
 	
-	// Convert hash to RGB
-	r := (hash & 0xFF0000) >> 16
-	g := (hash & 0x00FF00) >> 8
-	b := hash & 0x0000FF
+	// Use base color if available, otherwise generate from hash
+	var baseColor string
+	if color, exists := baseColors[species]; exists {
+		baseColor = color
+	} else {
+		// Use a hash of the species name to generate consistent colors
+		hash := 0
+		for _, char := range species {
+			hash = int(char) + ((hash << 5) - hash)
+		}
+		
+		// Convert hash to RGB
+		r := (hash & 0xFF0000) >> 16
+		g := (hash & 0x00FF00) >> 8
+		b := hash & 0x0000FF
+		
+		// Ensure colors are bright enough
+		if r < 100 { r += 100 }
+		if g < 100 { g += 100 }
+		if b < 100 { b += 100 }
+		
+		baseColor = fmt.Sprintf("#%02X%02X%02X", r&0xFF, g&0xFF, b&0xFF)
+	}
 	
-	// Ensure colors are bright enough
-	if r < 100 { r += 100 }
-	if g < 100 { g += 100 }
-	if b < 100 { b += 100 }
-	
-	return fmt.Sprintf("#%02X%02X%02X", r&0xFF, g&0xFF, b&0xFF)
+	return baseColor
 }
 
 // getPlantTypeName returns human-readable plant type names
