@@ -74,6 +74,26 @@ test.describe('EvoSim Isometric 2.5D View', () => {
     expect(parseInt(width || '0')).toBeGreaterThan(0);
     expect(parseInt(height || '0')).toBeGreaterThan(0);
     
+    // Wait for simulation data to load and validate that the simulation is actually running
+    const simulationLoaded = await page.waitForFunction(() => {
+      // Check if gameState exists and has proper data
+      const gameState = (window as any).gameState;
+      if (!gameState) return false;
+      
+      // WebSocket should be connected
+      if (!gameState.websocket || gameState.websocket.readyState !== WebSocket.OPEN) return false;
+      
+      // Should have isometric data
+      if (!gameState.isometricData) return false;
+      
+      // Should have tiles in the data
+      if (!gameState.isometricData.tiles || gameState.isometricData.tiles.length === 0) return false;
+      
+      return true;
+    }, {}, { timeout: 30000 });
+    
+    expect(simulationLoaded).toBeTruthy();
+    
     // Verify canvas context is working by checking if it has content
     const hasContent = await page.evaluate(() => {
       const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -88,13 +108,29 @@ test.describe('EvoSim Isometric 2.5D View', () => {
     });
     
     expect(hasContent).toBeTruthy();
+    
+    // Ensure loading screen is not visible (simulation has loaded)
+    const loadingVisible = await page.locator('#loadingScreen').isVisible();
+    expect(loadingVisible).toBe(false);
   });
 
   test('UI displays simulation status and controls', async ({ page }) => {
     await page.goto('/iso', { waitUntil: 'networkidle', timeout: 45000 });
     
-    // Wait for simulation data to load
-    await page.waitForTimeout(8000);
+    // Wait for simulation data to load and validate it's actually running
+    await page.waitForFunction(() => {
+      const gameState = (window as any).gameState;
+      return gameState && 
+             gameState.websocket && 
+             gameState.websocket.readyState === WebSocket.OPEN &&
+             gameState.isometricData &&
+             gameState.isometricData.tiles &&
+             gameState.isometricData.tiles.length > 0;
+    }, {}, { timeout: 30000 });
+    
+    // Ensure loading screen is not visible
+    const loadingVisible = await page.locator('#loadingScreen').isVisible();
+    expect(loadingVisible).toBe(false);
     
     // Check UI panel content
     const uiPanel = page.locator('#ui');
@@ -104,6 +140,16 @@ test.describe('EvoSim Isometric 2.5D View', () => {
     
     // Should contain simulation status information
     expect(uiContent).toContain('EvoSim');
+    
+    // Validate that we have actual simulation data in the UI
+    const hasSimulationData = await page.evaluate(() => {
+      const gameState = (window as any).gameState;
+      return gameState && gameState.isometricData && 
+             (gameState.isometricData.entities.length > 0 || 
+              gameState.isometricData.plants.length > 0 ||
+              gameState.isometricData.tiles.length > 0);
+    });
+    expect(hasSimulationData).toBeTruthy();
     
     // Check controls panel
     const controlsPanel = page.locator('#controls');
@@ -191,11 +237,100 @@ test.describe('EvoSim Isometric 2.5D View', () => {
     console.log(`Entity clicking test: ${isVisible ? 'Successfully clicked entity and verified details' : 'No entity found, but click mechanism tested'}`);
   });
 
+  test('captures screenshots of working isometric view', async ({ page }) => {
+    await page.goto('/iso', { waitUntil: 'networkidle', timeout: 45000 });
+    
+    // Wait for simulation data to load and validate it's actually running
+    const simulationLoaded = await page.waitForFunction(() => {
+      const gameState = (window as any).gameState;
+      return gameState && 
+             gameState.websocket && 
+             gameState.websocket.readyState === WebSocket.OPEN &&
+             gameState.isometricData &&
+             gameState.isometricData.tiles &&
+             gameState.isometricData.tiles.length > 0;
+    }, {}, { timeout: 30000 });
+    
+    expect(simulationLoaded).toBeTruthy();
+    
+    // Ensure loading screen is gone
+    const loadingVisible = await page.locator('#loadingScreen').isVisible();
+    expect(loadingVisible).toBe(false);
+    
+    // Validate the canvas has actual content
+    const hasContent = await page.evaluate(() => {
+      const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+      if (!canvas) return false;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return imageData.data.some(pixel => pixel !== 0);
+    });
+    expect(hasContent).toBeTruthy();
+    
+    console.log('Documenting working isometric view...');
+    
+    // 1. Initial view - centered on world
+    await page.screenshot({ 
+      path: 'screenshots/isometric-views/working-initial-view.png',
+      fullPage: true
+    });
+    console.log('Screenshot saved: working-initial-view.png');
+    
+    // 2. Zoomed out view
+    await page.mouse.wheel(0, 500); // Zoom out
+    await page.waitForTimeout(1000);
+    await page.screenshot({ 
+      path: 'screenshots/isometric-views/working-zoomed-out.png',
+      fullPage: true
+    });
+    console.log('Screenshot saved: working-zoomed-out.png');
+    
+    // 3. Camera moved to different area
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(1000);
+    await page.screenshot({ 
+      path: 'screenshots/isometric-views/working-camera-moved.png',
+      fullPage: true
+    });
+    console.log('Screenshot saved: working-camera-moved.png');
+    
+    // 4. Zoomed in view
+    await page.mouse.wheel(0, -800); // Zoom in
+    await page.waitForTimeout(1000);
+    await page.screenshot({ 
+      path: 'screenshots/isometric-views/working-zoomed-in.png',
+      fullPage: true
+    });
+    console.log('Screenshot saved: working-zoomed-in.png');
+    
+    // 5. Try clicking to show interaction
+    await page.click('#gameCanvas', { position: { x: 400, y: 300 } });
+    await page.waitForTimeout(2000);
+    await page.screenshot({ 
+      path: 'screenshots/isometric-views/working-interaction.png',
+      fullPage: true
+    });
+    console.log('Screenshot saved: working-interaction.png');
+    
+    console.log('Working isometric view documentation completed!');
+  });
+
   test('DNA visualization displays when entity is selected', async ({ page }) => {
     await page.goto('/iso', { waitUntil: 'networkidle', timeout: 45000 });
     
-    // Wait for simulation to have some entities
-    await page.waitForTimeout(10000);
+    // Wait for simulation to have some entities and be fully loaded
+    await page.waitForFunction(() => {
+      const gameState = (window as any).gameState;
+      return gameState && 
+             gameState.websocket && 
+             gameState.websocket.readyState === WebSocket.OPEN &&
+             gameState.isometricData &&
+             gameState.isometricData.entities &&
+             gameState.isometricData.entities.length > 0;
+    }, {}, { timeout: 30000 });
     
     // Try clicking in several locations to find an entity, avoiding UI panel area
     const canvas = page.locator('#gameCanvas');

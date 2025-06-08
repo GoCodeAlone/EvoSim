@@ -35,6 +35,7 @@ type WebInterface struct {
 	isometricManager   *IsometricViewManager
 	clients            map[*websocket.Conn]bool
 	clientsMutex       sync.RWMutex
+	connMutexes        map[*websocket.Conn]*sync.Mutex // Per-connection write mutexes
 	broadcastChan      chan *ViewData
 	stopChan           chan bool
 	updateInterval     time.Duration
@@ -54,6 +55,7 @@ func NewWebInterface(world *World) *WebInterface {
 		viewManager:      NewViewManager(world),
 		isometricManager: NewIsometricViewManager(world),
 		clients:          make(map[*websocket.Conn]bool),
+		connMutexes:      make(map[*websocket.Conn]*sync.Mutex),
 		broadcastChan:    make(chan *ViewData, 100),
 		stopChan:         make(chan bool),
 		updateInterval:   100 * time.Millisecond, // 10 FPS
@@ -4263,6 +4265,7 @@ func (wi *WebInterface) handleWebSocket(conn *websocket.Conn) {
 	// Add client to the list
 	wi.clientsMutex.Lock()
 	wi.clients[conn] = true
+	wi.connMutexes[conn] = &sync.Mutex{} // Create mutex for this connection
 	wi.clientsMutex.Unlock()
 
 	log.Printf("Client connected. Total clients: %d", len(wi.clients))
@@ -4300,6 +4303,7 @@ func (wi *WebInterface) handleWebSocket(conn *websocket.Conn) {
 	// Clean up client connection
 	wi.clientsMutex.Lock()
 	delete(wi.clients, conn)
+	delete(wi.connMutexes, conn) // Remove mutex for this connection
 	if playerID, exists := wi.clientPlayers[conn]; exists {
 		wi.playerManager.RemovePlayer(playerID)
 		delete(wi.clientPlayers, conn)
@@ -4449,7 +4453,20 @@ func (wi *WebInterface) handleIsometricDataRequest(conn *websocket.Conn, msg map
 		"data": isometricData,
 	}
 	
-	if err := conn.WriteJSON(response); err != nil {
+	wi.clientsMutex.RLock()
+	connMutex, exists := wi.connMutexes[conn]
+	wi.clientsMutex.RUnlock()
+	
+	if !exists {
+		log.Printf("Connection no longer exists, cannot send isometric data")
+		return
+	}
+	
+	connMutex.Lock()
+	err := conn.WriteJSON(response)
+	connMutex.Unlock()
+	
+	if err != nil {
 		log.Printf("Error sending isometric data: %v", err)
 	} else {
 		log.Printf("Successfully sent isometric data to client")
@@ -4531,24 +4548,48 @@ func (wi *WebInterface) broadcastToClients(data *ViewData) {
 
 // sendToClient sends data to a specific client
 func (wi *WebInterface) sendToClient(conn *websocket.Conn, data *ViewData) {
+	wi.clientsMutex.RLock()
+	connMutex, exists := wi.connMutexes[conn]
+	wi.clientsMutex.RUnlock()
+	
+	if !exists {
+		return // Connection no longer exists
+	}
+	
+	connMutex.Lock()
+	defer connMutex.Unlock()
+	
 	err := conn.WriteJSON(data)
 	if err != nil {
 		log.Printf("Error sending data to client: %v", err)
 		// Client disconnected, remove from list
 		wi.clientsMutex.Lock()
 		delete(wi.clients, conn)
+		delete(wi.connMutexes, conn)
 		wi.clientsMutex.Unlock()
 	}
 }
 
 // sendJSONToClient sends any JSON-serializable data to a specific client
 func (wi *WebInterface) sendJSONToClient(conn *websocket.Conn, data interface{}) {
+	wi.clientsMutex.RLock()
+	connMutex, exists := wi.connMutexes[conn]
+	wi.clientsMutex.RUnlock()
+	
+	if !exists {
+		return // Connection no longer exists
+	}
+	
+	connMutex.Lock()
+	defer connMutex.Unlock()
+	
 	err := conn.WriteJSON(data)
 	if err != nil {
 		log.Printf("Error sending JSON to client: %v", err)
 		// Client disconnected, remove from list
 		wi.clientsMutex.Lock()
 		delete(wi.clients, conn)
+		delete(wi.connMutexes, conn)
 		wi.clientsMutex.Unlock()
 	}
 }
