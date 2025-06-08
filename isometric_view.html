@@ -169,7 +169,7 @@
             ctx: null,
             websocket: null,
             isometricData: null,
-            camera: { x: 50, y: 50 },
+            camera: { x: 0, y: 0 }, // Will be centered when world data loads
             zoom: 1.0,
             selectedEntity: null,
             selectedPlant: null,
@@ -243,7 +243,15 @@
             gameState.websocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'isometric') {
+                    const wasFirstLoad = !gameState.isometricData;
                     gameState.isometricData = data.data;
+                    
+                    // Center camera on first load
+                    if (wasFirstLoad && gameState.isometricData.worldInfo) {
+                        gameState.camera.x = gameState.isometricData.worldInfo.width / 2;
+                        gameState.camera.y = gameState.isometricData.worldInfo.height / 2;
+                    }
+                    
                     updateUI();
                 }
             };
@@ -488,8 +496,7 @@
             return { x: worldX, y: worldY };
         }
 
-        // Render a tile
-        // Enhanced tile rendering with elevation-based 3D effect
+        // Enhanced tile rendering with sophisticated 3D terrain features
         function renderEnhancedTile(tile) {
             const pos = worldToIso(tile.x, tile.y, tile.elevation);
             const ctx = gameState.ctx;
@@ -497,39 +504,359 @@
             const tileWidth = gameState.tileSize.width * gameState.zoom;
             const tileHeight = gameState.tileSize.height * gameState.zoom;
             
-            // Calculate tile depth based on elevation
-            const depthHeight = Math.abs(tile.elevation) * gameState.elevationScale * gameState.zoom * 0.3;
-            
-            // Draw tile base with depth effect
-            if (tile.elevation !== 0) {
-                // Draw side faces for elevation effect
-                drawTileDepth(pos, tileWidth, tileHeight, depthHeight, tile.elevation, tile.color);
+            // Enhanced terrain rendering based on biome and elevation
+            switch (tile.biomeType) {
+                case 3: // Mountain
+                    renderMountainTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
+                case 10: // Canyon
+                    renderCanyonTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
+                case 2: // Water/Deep Water
+                case 11:
+                    renderWaterTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
+                case 1: // Forest
+                case 8: // Rainforest
+                    renderForestTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
+                case 4: // Desert
+                    renderDesertTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
+                case 7: // Ice/Tundra
+                case 5:
+                    renderIceTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
+                default:
+                    renderStandardTerrain(tile, pos, tileWidth, tileHeight);
+                    break;
             }
             
-            // Draw top diamond face
-            ctx.fillStyle = tile.color;
+            // Add terrain features and geological events
+            if (tile.terrainFeatures && tile.terrainFeatures.length > 0) {
+                renderTerrainFeatures(tile, pos, tileWidth, tileHeight);
+            }
             
-            // Adjust color based on elevation (higher = lighter, lower = darker)
-            const elevationFactor = (tile.elevation + 1) / 2; // Normalize to 0-1
-            const shadedColor = adjustColorBrightness(tile.color, elevationFactor);
-            ctx.fillStyle = shadedColor;
+            // Draw slope indicators for steep terrain
+            if (tile.slope > 0.3) {
+                renderAdvancedSlopeIndicators(pos, tile.slope, tileWidth, tileHeight, tile.elevation);
+            }
             
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-            ctx.lineWidth = 1;
+            // Add atmospheric effects based on elevation
+            if (tile.elevation > 0.7) {
+                renderHighAltitudeEffects(pos, tileWidth, tileHeight, tile.elevation);
+            } else if (tile.elevation < -0.3) {
+                renderDepthEffects(pos, tileWidth, tileHeight, tile.elevation);
+            }
+        }
+        
+        // Mountain terrain with rocky peaks and layered stone
+        function renderMountainTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const depthHeight = Math.abs(tile.elevation) * gameState.elevationScale * gameState.zoom * 0.5;
             
+            // Draw mountain base with layered rock effect
+            if (tile.elevation > 0) {
+                // Draw multiple rock layers
+                const layers = Math.min(5, Math.floor(tile.elevation * 6) + 2);
+                for (let layer = layers - 1; layer >= 0; layer--) {
+                    const layerHeight = (depthHeight / layers) * (layer + 1);
+                    const layerBrightness = 0.6 + (layer / layers) * 0.4; // Higher layers are brighter
+                    
+                    drawRockLayer(pos, tileWidth, tileHeight, layerHeight, tile.color, layerBrightness);
+                }
+            }
+            
+            // Draw mountain top diamond
+            const peakGradient = ctx.createLinearGradient(
+                pos.x, pos.y - tileHeight / 2 - depthHeight,
+                pos.x, pos.y + tileHeight / 2
+            );
+            peakGradient.addColorStop(0, adjustColorBrightness(tile.color, 1.3)); // Snow-capped
+            peakGradient.addColorStop(0.3, adjustColorBrightness(tile.color, 1.1));
+            peakGradient.addColorStop(0.7, tile.color);
+            peakGradient.addColorStop(1, adjustColorBrightness(tile.color, 0.8));
+            
+            ctx.fillStyle = peakGradient;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.lineWidth = 2;
+            
+            const peakY = pos.y - depthHeight;
             ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y - tileHeight / 2);           // Top
-            ctx.lineTo(pos.x + tileWidth / 2, pos.y);            // Right
-            ctx.lineTo(pos.x, pos.y + tileHeight / 2);           // Bottom
-            ctx.lineTo(pos.x - tileWidth / 2, pos.y);            // Left
+            ctx.moveTo(pos.x, peakY - tileHeight / 2);           // Top
+            ctx.lineTo(pos.x + tileWidth / 2, peakY);            // Right
+            ctx.lineTo(pos.x, peakY + tileHeight / 2);           // Bottom
+            ctx.lineTo(pos.x - tileWidth / 2, peakY);            // Left
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
             
-            // Draw water surface if present
-            if (tile.waterLevel > 0) {
-                renderWaterSurface(pos, tileWidth, tileHeight, tile.waterLevel, tile.elevation);
+            // Add rocky texture details
+            renderRockyTexture(pos, tileWidth, tileHeight, tile.elevation);
+            
+            // Add snow cap for high peaks
+            if (tile.elevation > 0.8) {
+                renderSnowCap(pos, tileWidth, tileHeight, depthHeight);
             }
+        }
+        
+        // Canyon terrain with deep carved valleys
+        function renderCanyonTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const depthHeight = Math.abs(tile.elevation) * gameState.elevationScale * gameState.zoom * 0.7;
+            
+            // Draw canyon walls with stratified rock layers
+            const stratumCount = 4;
+            for (let stratum = 0; stratum < stratumCount; stratum++) {
+                const stratumHeight = depthHeight / stratumCount;
+                const stratumY = pos.y + (stratum * stratumHeight);
+                const stratumBrightness = 0.9 - stratum * 0.15; // Deeper layers are darker
+                
+                const stratumColor = adjustColorBrightness(tile.color, stratumBrightness);
+                
+                // Left canyon wall
+                ctx.fillStyle = adjustColorBrightness(stratumColor, 0.7);
+                ctx.beginPath();
+                ctx.moveTo(pos.x - tileWidth / 2, stratumY);
+                ctx.lineTo(pos.x - tileWidth / 2, stratumY + stratumHeight);
+                ctx.lineTo(pos.x, stratumY + stratumHeight + tileHeight / 2);
+                ctx.lineTo(pos.x, stratumY + tileHeight / 2);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Right canyon wall
+                ctx.fillStyle = adjustColorBrightness(stratumColor, 0.5);
+                ctx.beginPath();
+                ctx.moveTo(pos.x + tileWidth / 2, stratumY);
+                ctx.lineTo(pos.x + tileWidth / 2, stratumY + stratumHeight);
+                ctx.lineTo(pos.x, stratumY + stratumHeight + tileHeight / 2);
+                ctx.lineTo(pos.x, stratumY + tileHeight / 2);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Stratum line
+                ctx.strokeStyle = adjustColorBrightness(tile.color, 0.4);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(pos.x - tileWidth / 2, stratumY + stratumHeight);
+                ctx.lineTo(pos.x + tileWidth / 2, stratumY + stratumHeight);
+                ctx.stroke();
+            }
+            
+            // Canyon floor
+            const floorGradient = ctx.createLinearGradient(
+                pos.x - tileWidth / 2, pos.y + depthHeight,
+                pos.x + tileWidth / 2, pos.y + depthHeight
+            );
+            floorGradient.addColorStop(0, adjustColorBrightness(tile.color, 0.3));
+            floorGradient.addColorStop(0.5, adjustColorBrightness(tile.color, 0.4));
+            floorGradient.addColorStop(1, adjustColorBrightness(tile.color, 0.3));
+            
+            ctx.fillStyle = floorGradient;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.lineWidth = 1;
+            
+            const floorY = pos.y + depthHeight;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, floorY - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 2, floorY);
+            ctx.lineTo(pos.x, floorY + tileHeight / 2);
+            ctx.lineTo(pos.x - tileWidth / 2, floorY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add erosion patterns
+            renderErosionPatterns(pos, tileWidth, tileHeight, depthHeight);
+        }
+        
+        // Water terrain with depth and reflection
+        function renderWaterTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            const waveAnimation = Math.sin(time * 2 + pos.x * 0.01 + pos.y * 0.01);
+            
+            // Draw water depth layers
+            const waterDepth = Math.max(0.1, tile.waterLevel || (tile.elevation < 0 ? Math.abs(tile.elevation) : 0.3));
+            const layers = Math.min(4, Math.floor(waterDepth * 5) + 1);
+            
+            for (let layer = layers - 1; layer >= 0; layer--) {
+                const layerDepth = (waterDepth / layers) * (layer + 1);
+                const layerAlpha = 0.3 + (layerDepth * 0.4);
+                const layerY = pos.y + (layer * 8 * gameState.zoom);
+                
+                const waterGradient = ctx.createRadialGradient(
+                    pos.x, layerY, 0,
+                    pos.x, layerY, Math.max(tileWidth, tileHeight)
+                );
+                waterGradient.addColorStop(0, hexToRgba(tile.color, layerAlpha * 0.6));
+                waterGradient.addColorStop(0.7, hexToRgba(tile.color, layerAlpha));
+                waterGradient.addColorStop(1, hexToRgba(adjustColorBrightness(tile.color, 0.7), layerAlpha * 0.8));
+                
+                ctx.fillStyle = waterGradient;
+                ctx.strokeStyle = hexToRgba(adjustColorBrightness(tile.color, 0.6), layerAlpha * 1.5);
+                ctx.lineWidth = 1;
+                
+                const waveOffset = waveAnimation * 2 * (layer + 1);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, layerY - tileHeight / 2 + waveOffset);
+                ctx.lineTo(pos.x + tileWidth / 2, layerY + waveOffset);
+                ctx.lineTo(pos.x, layerY + tileHeight / 2 + waveOffset);
+                ctx.lineTo(pos.x - tileWidth / 2, layerY + waveOffset);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            // Add surface reflection
+            renderWaterReflection(pos, tileWidth, tileHeight, waveAnimation);
+            
+            // Add bubble effects for deep water
+            if (waterDepth > 0.5) {
+                renderWaterBubbles(pos, tileWidth, tileHeight, time);
+            }
+        }
+        
+        // Forest terrain with rich vegetation
+        function renderForestTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            
+            // Draw forest floor with organic texture
+            const forestGradient = ctx.createRadialGradient(
+                pos.x, pos.y, 0,
+                pos.x, pos.y, Math.max(tileWidth, tileHeight) / 2
+            );
+            forestGradient.addColorStop(0, adjustColorBrightness(tile.color, 1.1));
+            forestGradient.addColorStop(0.6, tile.color);
+            forestGradient.addColorStop(1, adjustColorBrightness(tile.color, 0.8));
+            
+            ctx.fillStyle = forestGradient;
+            ctx.strokeStyle = adjustColorBrightness(tile.color, 0.6);
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 2, pos.y);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+            ctx.lineTo(pos.x - tileWidth / 2, pos.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add forest floor texture
+            renderForestFloorTexture(pos, tileWidth, tileHeight, tile.color);
+            
+            // Add undergrowth
+            renderUndergrowth(pos, tileWidth, tileHeight, tile.color);
+        }
+        
+        // Desert terrain with sand dunes and textures
+        function renderDesertTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.0005;
+            const windPattern = Math.sin(time + pos.x * 0.01) * 0.5;
+            
+            // Draw sand dune with wind-blown texture
+            const duneGradient = ctx.createLinearGradient(
+                pos.x - tileWidth / 2, pos.y - tileHeight / 2,
+                pos.x + tileWidth / 2, pos.y + tileHeight / 2
+            );
+            duneGradient.addColorStop(0, adjustColorBrightness(tile.color, 1.2 + windPattern * 0.1));
+            duneGradient.addColorStop(0.5, tile.color);
+            duneGradient.addColorStop(1, adjustColorBrightness(tile.color, 0.8 - windPattern * 0.1));
+            
+            ctx.fillStyle = duneGradient;
+            ctx.strokeStyle = adjustColorBrightness(tile.color, 0.7);
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 2, pos.y);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+            ctx.lineTo(pos.x - tileWidth / 2, pos.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add sand ripples
+            renderSandRipples(pos, tileWidth, tileHeight, windPattern);
+            
+            // Occasional oasis effects
+            if (tile.waterLevel > 0) {
+                renderOasisEffect(pos, tileWidth, tileHeight);
+            }
+        }
+        
+        // Ice terrain with crystalline effects
+        function renderIceTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.002;
+            const shimmer = Math.sin(time + pos.x + pos.y) * 0.1;
+            
+            // Draw ice with crystalline gradient
+            const iceGradient = ctx.createLinearGradient(
+                pos.x - tileWidth / 2, pos.y - tileHeight / 2,
+                pos.x + tileWidth / 2, pos.y + tileHeight / 2
+            );
+            iceGradient.addColorStop(0, adjustColorBrightness(tile.color, 1.3 + shimmer));
+            iceGradient.addColorStop(0.3, adjustColorBrightness(tile.color, 1.1));
+            iceGradient.addColorStop(0.7, tile.color);
+            iceGradient.addColorStop(1, adjustColorBrightness(tile.color, 0.9 + shimmer));
+            
+            ctx.fillStyle = iceGradient;
+            ctx.strokeStyle = adjustColorBrightness(tile.color, 0.8);
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 2, pos.y);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+            ctx.lineTo(pos.x - tileWidth / 2, pos.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add ice crystal patterns
+            renderIceCrystals(pos, tileWidth, tileHeight, shimmer);
+            
+            // Add reflective shine
+            renderIceShine(pos, tileWidth, tileHeight, time);
+        }
+        
+        // Standard terrain for basic biomes
+        function renderStandardTerrain(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const depthHeight = Math.abs(tile.elevation) * gameState.elevationScale * gameState.zoom * 0.3;
+            
+            // Draw elevation depth if present
+            if (tile.elevation !== 0) {
+                drawTileDepth(pos, tileWidth, tileHeight, depthHeight, tile.elevation, tile.color);
+            }
+            
+            // Draw main tile surface
+            const elevationFactor = (tile.elevation + 1) / 2;
+            const terrainGradient = ctx.createRadialGradient(
+                pos.x, pos.y - depthHeight, 0,
+                pos.x, pos.y - depthHeight, Math.max(tileWidth, tileHeight) / 2
+            );
+            terrainGradient.addColorStop(0, adjustColorBrightness(tile.color, 1 + elevationFactor * 0.3));
+            terrainGradient.addColorStop(0.7, tile.color);
+            terrainGradient.addColorStop(1, adjustColorBrightness(tile.color, 0.7 + elevationFactor * 0.2));
+            
+            ctx.fillStyle = terrainGradient;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.lineWidth = 1;
+            
+            const surfaceY = pos.y - depthHeight;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, surfaceY - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 2, surfaceY);
+            ctx.lineTo(pos.x, surfaceY + tileHeight / 2);
+            ctx.lineTo(pos.x - tileWidth / 2, surfaceY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
             
             // Draw slope indicators for steep terrain
             if (tile.slope > 0.3) {
@@ -631,64 +958,515 @@
             }
         }
         
-        // Enhanced plant rendering with elevation awareness
+        // Enhanced plant rendering with sophisticated 3D-style visuals
         function renderEnhancedPlant(plant) {
             const pos = worldToIso(plant.x, plant.y, plant.baseElevation);
             const ctx = gameState.ctx;
             
-            const size = Math.max(3, plant.size * gameState.zoom * 3);
-            const plantHeight = plant.size * 10 * gameState.zoom; // Plant height based on size
-            const plantTopY = pos.y - plantHeight;
+            const size = Math.max(4, plant.size * gameState.zoom * 4);
             
-            // Draw plant trunk/stem
-            if (plant.type === 2) { // Tree
-                ctx.strokeStyle = '#8B4513';
-                ctx.lineWidth = Math.max(2, size * 0.3);
+            // Draw enhanced shadow first
+            renderAdvancedPlantShadow(pos, size, plant.type, plant.baseElevation);
+            
+            // Render based on plant type with sophisticated visuals
+            switch (plant.type) {
+                case 2: // Tree
+                    renderEnhancedTree(pos, size, plant);
+                    break;
+                case 1: // Bush
+                    renderEnhancedBush(pos, size, plant);
+                    break;
+                case 0: // Grass
+                    renderEnhancedGrass(pos, size, plant);
+                    break;
+                case 3: // Mushroom
+                    renderEnhancedMushroom(pos, size, plant);
+                    break;
+                case 4: // Algae
+                    renderEnhancedAlgae(pos, size, plant);
+                    break;
+                case 5: // Cactus
+                    renderEnhancedCactus(pos, size, plant);
+                    break;
+                default:
+                    renderGenericPlant(pos, size, plant);
+                    break;
+            }
+            
+            // Add selection highlight if selected
+            if (gameState.selectedPlant && gameState.selectedPlant.x === plant.x && gameState.selectedPlant.y === plant.y) {
+                renderPlantSelectionEffect(pos, size);
+            }
+        }
+        
+        // Enhanced tree rendering with 3D trunk and canopy
+        function renderEnhancedTree(pos, size, plant) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            const sway = Math.sin(time * 2 + plant.x + plant.y) * 2; // Wind sway effect
+            
+            const trunkHeight = size * 2.5;
+            const trunkWidth = Math.max(3, size * 0.25);
+            const canopySize = size * 1.2;
+            
+            // Draw 3D trunk with bark texture
+            const trunkGradient = ctx.createLinearGradient(
+                pos.x - trunkWidth, pos.y - trunkHeight,
+                pos.x + trunkWidth, pos.y
+            );
+            trunkGradient.addColorStop(0, '#654321');
+            trunkGradient.addColorStop(0.3, '#8B4513');
+            trunkGradient.addColorStop(0.7, '#A0522D');
+            trunkGradient.addColorStop(1, '#654321');
+            
+            ctx.fillStyle = trunkGradient;
+            ctx.strokeStyle = '#4A4A4A';
+            ctx.lineWidth = 1;
+            
+            // Trunk with slight curve from wind
+            ctx.beginPath();
+            ctx.moveTo(pos.x - trunkWidth, pos.y);
+            ctx.lineTo(pos.x - trunkWidth + sway, pos.y - trunkHeight);
+            ctx.lineTo(pos.x + trunkWidth + sway, pos.y - trunkHeight);
+            ctx.lineTo(pos.x + trunkWidth, pos.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add bark texture lines
+            ctx.strokeStyle = '#3A3A3A';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 4; i++) {
+                const lineY = pos.y - (trunkHeight * (i + 1) / 5);
                 ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(pos.x, plantTopY);
+                ctx.moveTo(pos.x - trunkWidth, lineY);
+                ctx.lineTo(pos.x + trunkWidth, lineY);
                 ctx.stroke();
+            }
+            
+            // Draw 3D canopy with multiple layers
+            const canopyLayers = 3;
+            for (let layer = canopyLayers - 1; layer >= 0; layer--) {
+                const layerSize = canopySize * (1 - layer * 0.15);
+                const layerY = pos.y - trunkHeight - canopySize * 0.3 + layer * canopySize * 0.2 + sway * 0.5;
+                const layerBrightness = 1 + layer * 0.2; // Outer layers brighter
                 
-                // Tree canopy
-                ctx.fillStyle = plant.color;
-                ctx.strokeStyle = 'rgba(0, 100, 0, 0.8)';
+                const canopyGradient = ctx.createRadialGradient(
+                    pos.x + sway, layerY, 0,
+                    pos.x + sway, layerY, layerSize
+                );
+                canopyGradient.addColorStop(0, adjustColorBrightness(plant.color, layerBrightness));
+                canopyGradient.addColorStop(0.7, plant.color);
+                canopyGradient.addColorStop(1, adjustColorBrightness(plant.color, 0.6));
+                
+                ctx.fillStyle = canopyGradient;
+                ctx.strokeStyle = adjustColorBrightness(plant.color, 0.5);
                 ctx.lineWidth = 1;
+                
                 ctx.beginPath();
-                ctx.arc(pos.x, plantTopY - size / 2, size, 0, Math.PI * 2);
+                ctx.arc(pos.x + sway, layerY, layerSize, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
-            } else {
-                // Other plants (grass, bushes, etc.)
-                ctx.fillStyle = plant.color;
-                ctx.strokeStyle = 'rgba(0, 100, 0, 0.8)';
+            }
+            
+            // Add leaves detail
+            ctx.fillStyle = adjustColorBrightness(plant.color, 1.3);
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const leafX = pos.x + sway + Math.cos(angle) * canopySize * 0.8;
+                const leafY = pos.y - trunkHeight - canopySize * 0.3 + Math.sin(angle) * canopySize * 0.5;
+                
+                ctx.beginPath();
+                ctx.ellipse(leafX, leafY, size * 0.1, size * 0.2, angle, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Enhanced bush rendering with clustered foliage
+        function renderEnhancedBush(pos, size, plant) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.003;
+            
+            const clusterCount = 5;
+            const baseRadius = size * 0.7;
+            
+            // Draw multiple foliage clusters
+            for (let i = 0; i < clusterCount; i++) {
+                const angle = (i / clusterCount) * Math.PI * 2;
+                const distance = baseRadius * 0.4;
+                const clusterX = pos.x + Math.cos(angle) * distance;
+                const clusterY = pos.y - baseRadius * 0.5 + Math.sin(angle) * distance * 0.3;
+                const clusterSize = baseRadius * (0.6 + Math.sin(time * 4 + i) * 0.1); // Subtle size variation
+                
+                // Create gradient for each cluster
+                const clusterGradient = ctx.createRadialGradient(
+                    clusterX, clusterY, 0,
+                    clusterX, clusterY, clusterSize
+                );
+                clusterGradient.addColorStop(0, adjustColorBrightness(plant.color, 1.4));
+                clusterGradient.addColorStop(0.6, plant.color);
+                clusterGradient.addColorStop(1, adjustColorBrightness(plant.color, 0.7));
+                
+                ctx.fillStyle = clusterGradient;
+                ctx.strokeStyle = adjustColorBrightness(plant.color, 0.5);
                 ctx.lineWidth = 1;
                 
-                if (plant.type === 1) { // Bush
-                    // Draw bush as multiple circles
-                    const bushSize = size * 0.7;
-                    for (let i = 0; i < 3; i++) {
-                        const offset = (i - 1) * bushSize * 0.3;
-                        ctx.beginPath();
-                        ctx.arc(pos.x + offset, pos.y - bushSize + offset * 0.5, bushSize, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-                } else {
-                    // Grass and other plants
+                ctx.beginPath();
+                ctx.arc(clusterX, clusterY, clusterSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            // Add berry details for some bushes
+            if (plant.age > 50) {
+                ctx.fillStyle = '#FF4444';
+                for (let i = 0; i < 3; i++) {
+                    const berryAngle = Math.random() * Math.PI * 2;
+                    const berryX = pos.x + Math.cos(berryAngle) * baseRadius * 0.6;
+                    const berryY = pos.y - baseRadius * 0.3 + Math.sin(berryAngle) * baseRadius * 0.3;
+                    
                     ctx.beginPath();
-                    ctx.arc(pos.x, pos.y - size / 2, size, 0, Math.PI * 2);
+                    ctx.arc(berryX, berryY, size * 0.08, 0, Math.PI * 2);
                     ctx.fill();
+                }
+            }
+        }
+        
+        // Enhanced grass rendering with individual blades
+        function renderEnhancedGrass(pos, size, plant) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.005;
+            const wind = Math.sin(time * 3 + pos.x * 0.1) * 1.5;
+            
+            const bladeCount = Math.max(3, Math.floor(size / 2));
+            const grassHeight = size * 1.5;
+            
+            ctx.strokeStyle = plant.color;
+            ctx.lineWidth = Math.max(1, size * 0.1);
+            ctx.lineCap = 'round';
+            
+            // Draw individual grass blades
+            for (let i = 0; i < bladeCount; i++) {
+                const bladeAngle = (i / bladeCount) * Math.PI * 0.4 - Math.PI * 0.2; // Spread blades
+                const bladeX = pos.x + Math.sin(bladeAngle) * size * 0.3;
+                const bladeTopX = bladeX + wind + Math.sin(bladeAngle) * size * 0.1;
+                const bladeTopY = pos.y - grassHeight + Math.cos(time * 4 + i) * 1;
+                
+                // Create gradient for each blade
+                const bladeGradient = ctx.createLinearGradient(bladeX, pos.y, bladeTopX, bladeTopY);
+                bladeGradient.addColorStop(0, adjustColorBrightness(plant.color, 0.8));
+                bladeGradient.addColorStop(0.7, plant.color);
+                bladeGradient.addColorStop(1, adjustColorBrightness(plant.color, 1.2));
+                
+                ctx.strokeStyle = bladeGradient;
+                
+                ctx.beginPath();
+                ctx.moveTo(bladeX, pos.y);
+                ctx.quadraticCurveTo(
+                    bladeX + wind * 0.5, pos.y - grassHeight * 0.6,
+                    bladeTopX, bladeTopY
+                );
+                ctx.stroke();
+            }
+            
+            // Add flower if mature
+            if (plant.age > 30 && plant.energy > 80) {
+                ctx.fillStyle = '#FFFF00';
+                ctx.beginPath();
+                ctx.arc(pos.x + wind * 0.3, pos.y - grassHeight * 0.8, size * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Enhanced mushroom rendering with 3D cap and stem
+        function renderEnhancedMushroom(pos, size, plant) {
+            const ctx = gameState.ctx;
+            
+            const stemHeight = size * 1.2;
+            const stemWidth = size * 0.3;
+            const capSize = size * 0.8;
+            
+            // Draw 3D stem
+            const stemGradient = ctx.createLinearGradient(
+                pos.x - stemWidth, pos.y - stemHeight,
+                pos.x + stemWidth, pos.y
+            );
+            stemGradient.addColorStop(0, '#F5F5DC');
+            stemGradient.addColorStop(0.5, '#FFFFFF');
+            stemGradient.addColorStop(1, '#E0E0E0');
+            
+            ctx.fillStyle = stemGradient;
+            ctx.strokeStyle = '#D0D0D0';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y - stemHeight / 2, stemWidth, stemHeight / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw 3D mushroom cap
+            const capGradient = ctx.createRadialGradient(
+                pos.x, pos.y - stemHeight - capSize * 0.3, 0,
+                pos.x, pos.y - stemHeight - capSize * 0.3, capSize
+            );
+            capGradient.addColorStop(0, adjustColorBrightness(plant.color, 1.3));
+            capGradient.addColorStop(0.6, plant.color);
+            capGradient.addColorStop(1, adjustColorBrightness(plant.color, 0.6));
+            
+            ctx.fillStyle = capGradient;
+            ctx.strokeStyle = adjustColorBrightness(plant.color, 0.5);
+            ctx.lineWidth = 1;
+            
+            // Cap top
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - stemHeight - capSize * 0.3, capSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Cap bottom (gills)
+            ctx.fillStyle = adjustColorBrightness(plant.color, 0.8);
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y - stemHeight + capSize * 0.1, capSize * 0.9, capSize * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add gill lines
+            ctx.strokeStyle = adjustColorBrightness(plant.color, 0.6);
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const gillX = pos.x + Math.cos(angle) * capSize * 0.7;
+                const gillY = pos.y - stemHeight + capSize * 0.1;
+                
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y - stemHeight + capSize * 0.1);
+                ctx.lineTo(gillX, gillY);
+                ctx.stroke();
+            }
+            
+            // Add spots for some mushrooms
+            if (plant.age > 20) {
+                ctx.fillStyle = adjustColorBrightness(plant.color, 1.5);
+                for (let i = 0; i < 3; i++) {
+                    const spotAngle = Math.random() * Math.PI * 2;
+                    const spotX = pos.x + Math.cos(spotAngle) * capSize * 0.5;
+                    const spotY = pos.y - stemHeight - capSize * 0.3 + Math.sin(spotAngle) * capSize * 0.3;
+                    
+                    ctx.beginPath();
+                    ctx.arc(spotX, spotY, size * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Enhanced algae rendering with flowing texture
+        function renderEnhancedAlgae(pos, size, plant) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.004;
+            const flow = Math.sin(time * 5 + pos.x * 0.2) * 2;
+            
+            // Draw flowing algae strands
+            const strandCount = 6;
+            ctx.strokeStyle = plant.color;
+            ctx.lineWidth = Math.max(1, size * 0.15);
+            ctx.lineCap = 'round';
+            
+            for (let i = 0; i < strandCount; i++) {
+                const strandAngle = (i / strandCount) * Math.PI * 2;
+                const baseX = pos.x + Math.cos(strandAngle) * size * 0.2;
+                const baseY = pos.y - size * 0.3;
+                
+                const flowX = baseX + Math.sin(time * 3 + i) * flow;
+                const flowY = baseY - size * (0.8 + Math.sin(time * 2 + i) * 0.2);
+                
+                // Create flowing gradient
+                const strandGradient = ctx.createLinearGradient(baseX, baseY, flowX, flowY);
+                strandGradient.addColorStop(0, adjustColorBrightness(plant.color, 0.7));
+                strandGradient.addColorStop(0.5, plant.color);
+                strandGradient.addColorStop(1, adjustColorBrightness(plant.color, 1.3));
+                
+                ctx.strokeStyle = strandGradient;
+                
+                ctx.beginPath();
+                ctx.moveTo(baseX, baseY);
+                ctx.quadraticCurveTo(
+                    baseX + flow * 0.5, baseY - size * 0.4,
+                    flowX, flowY
+                );
+                ctx.stroke();
+            }
+            
+            // Add glowing effect
+            ctx.shadowColor = plant.color;
+            ctx.shadowBlur = 3;
+            ctx.fillStyle = adjustColorBrightness(plant.color, 1.2);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - size * 0.5, size * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        // Enhanced cactus rendering with spines and segments
+        function renderEnhancedCactus(pos, size, plant) {
+            const ctx = gameState.ctx;
+            
+            const segments = Math.max(2, Math.floor(size / 3));
+            const segmentHeight = size * 1.5 / segments;
+            const segmentWidth = size * 0.6;
+            
+            // Draw cactus segments
+            for (let i = 0; i < segments; i++) {
+                const segmentY = pos.y - segmentHeight * (i + 0.5);
+                const segmentSize = segmentWidth * (1 - i * 0.1); // Taper towards top
+                
+                // Segment gradient
+                const segmentGradient = ctx.createLinearGradient(
+                    pos.x - segmentSize, segmentY,
+                    pos.x + segmentSize, segmentY
+                );
+                segmentGradient.addColorStop(0, adjustColorBrightness(plant.color, 0.8));
+                segmentGradient.addColorStop(0.5, plant.color);
+                segmentGradient.addColorStop(1, adjustColorBrightness(plant.color, 1.2));
+                
+                ctx.fillStyle = segmentGradient;
+                ctx.strokeStyle = adjustColorBrightness(plant.color, 0.6);
+                ctx.lineWidth = 1;
+                
+                ctx.beginPath();
+                ctx.ellipse(pos.x, segmentY, segmentSize, segmentHeight * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Add vertical ridge lines
+                ctx.strokeStyle = adjustColorBrightness(plant.color, 0.7);
+                ctx.lineWidth = 1;
+                for (let ridge = 0; ridge < 4; ridge++) {
+                    const ridgeAngle = (ridge / 4) * Math.PI * 2;
+                    const ridgeX = pos.x + Math.cos(ridgeAngle) * segmentSize * 0.7;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(ridgeX, segmentY - segmentHeight * 0.3);
+                    ctx.lineTo(ridgeX, segmentY + segmentHeight * 0.3);
+                    ctx.stroke();
+                }
+                
+                // Add spines
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 1;
+                for (let spine = 0; spine < 8; spine++) {
+                    const spineAngle = (spine / 8) * Math.PI * 2;
+                    const spineBaseX = pos.x + Math.cos(spineAngle) * segmentSize * 0.8;
+                    const spineBaseY = segmentY + Math.sin(spineAngle) * segmentHeight * 0.2;
+                    const spineEndX = spineBaseX + Math.cos(spineAngle) * size * 0.3;
+                    const spineEndY = spineBaseY + Math.sin(spineAngle) * size * 0.3;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(spineBaseX, spineBaseY);
+                    ctx.lineTo(spineEndX, spineEndY);
                     ctx.stroke();
                 }
             }
             
-            // Add plant shadow
-            renderPlantShadow(pos, size, plant.type);
+            // Add flower if mature
+            if (plant.age > 100 && plant.energy > 90) {
+                ctx.fillStyle = '#FF69B4';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y - segmentHeight * segments - size * 0.2, size * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Flower petals
+                ctx.fillStyle = '#FFB6C1';
+                for (let petal = 0; petal < 6; petal++) {
+                    const petalAngle = (petal / 6) * Math.PI * 2;
+                    const petalX = pos.x + Math.cos(petalAngle) * size * 0.15;
+                    const petalY = pos.y - segmentHeight * segments - size * 0.2 + Math.sin(petalAngle) * size * 0.15;
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(petalX, petalY, size * 0.1, size * 0.05, petalAngle, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
         }
         
-        // Render plant shadow for depth perception
-        function renderPlantShadow(pos, size, plantType) {
+        // Generic plant rendering for unknown types
+        function renderGenericPlant(pos, size, plant) {
             const ctx = gameState.ctx;
+            
+            const plantGradient = ctx.createRadialGradient(pos.x, pos.y - size, 0, pos.x, pos.y - size, size);
+            plantGradient.addColorStop(0, adjustColorBrightness(plant.color, 1.3));
+            plantGradient.addColorStop(0.7, plant.color);
+            plantGradient.addColorStop(1, adjustColorBrightness(plant.color, 0.7));
+            
+            ctx.fillStyle = plantGradient;
+            ctx.strokeStyle = adjustColorBrightness(plant.color, 0.5);
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - size, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+        
+        // Advanced shadow rendering for plants
+        function renderAdvancedPlantShadow(pos, size, plantType, elevation) {
+            const ctx = gameState.ctx;
+            const shadowIntensity = Math.min(0.3, 0.05 + elevation * 0.25);
+            const shadowSize = size * (1.2 + elevation * 0.3);
+            const shadowOffset = size * (0.3 + elevation * 0.2);
+            
+            // Different shadow shapes for different plant types
+            let shadowShape = 'circle';
+            let shadowScale = { x: 1, y: 0.4 };
+            
+            switch (plantType) {
+                case 2: // Tree
+                    shadowScale = { x: 1.5, y: 0.6 };
+                    break;
+                case 1: // Bush
+                    shadowScale = { x: 1.2, y: 0.5 };
+                    break;
+                case 0: // Grass
+                    shadowScale = { x: 0.8, y: 0.3 };
+                    break;
+                case 5: // Cactus
+                    shadowScale = { x: 0.6, y: 0.8 };
+                    break;
+            }
+            
+            // Create gradient shadow
+            const shadowGradient = ctx.createRadialGradient(
+                pos.x + shadowOffset, pos.y + shadowOffset, 0,
+                pos.x + shadowOffset, pos.y + shadowOffset, shadowSize
+            );
+            shadowGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowIntensity})`);
+            shadowGradient.addColorStop(0.7, `rgba(0, 0, 0, ${shadowIntensity * 0.5})`);
+            shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = shadowGradient;
+            ctx.beginPath();
+            ctx.ellipse(
+                pos.x + shadowOffset, pos.y + shadowOffset,
+                shadowSize * shadowScale.x, shadowSize * shadowScale.y,
+                0, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Plant selection effect
+        function renderPlantSelectionEffect(pos, size) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.005;
+            const pulse = Math.sin(time * 8) * 0.3 + 0.7;
+            
+            ctx.strokeStyle = `rgba(255, 255, 0, ${pulse})`;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([3, 3]);
+            
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - size, size * 1.5, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.setLineDash([]); // Reset line dash
+        }
             const shadowOffset = size * 0.5;
             
             ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -697,59 +1475,395 @@
             ctx.fill();
         }
         
-        // Enhanced entity rendering with elevation and improved visuals
+        // Enhanced entity rendering with sophisticated 3D-style visuals
         function renderEnhancedEntity(entity) {
             const pos = worldToIso(entity.x, entity.y, entity.baseElevation);
             const ctx = gameState.ctx;
             
-            const size = Math.max(4, (entity.size + 1) * gameState.zoom * 4);
-            const entityHeight = size * 1.5; // Entity height
+            const size = Math.max(6, (entity.size + 1) * gameState.zoom * 5);
+            const entityHeight = size * 1.8; // Entity height for 3D effect
             const entityY = pos.y - entityHeight / 2;
             
-            // Draw entity shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.beginPath();
-            ctx.ellipse(pos.x + size * 0.3, pos.y + size * 0.3, size * 0.8, size * 0.4, 0, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw sophisticated shadow with depth
+            renderEntityShadow(pos, size, entity.baseElevation);
             
-            // Draw entity body with gradient effect
-            const gradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, size);
-            gradient.addColorStop(0, entity.color);
-            gradient.addColorStop(1, adjustColorBrightness(entity.color, 0.7));
+            // Determine entity type and render accordingly
+            const entityType = determineEntityType(entity);
             
-            ctx.fillStyle = gradient;
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.lineWidth = 1;
-            
-            // Draw entity shape based on species/traits
-            if (entity.traits.flying_ability > 0.5) {
-                // Flying entity - draw with wing-like shape
-                ctx.beginPath();
-                ctx.ellipse(pos.x, entityY, size, size * 0.6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                
-                // Wing indicators
-                ctx.strokeStyle = adjustColorBrightness(entity.color, 1.2);
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(pos.x - size, entityY);
-                ctx.lineTo(pos.x + size, entityY);
-                ctx.stroke();
-            } else if (entity.traits.aquatic_adaptation > 0.5) {
-                // Aquatic entity - elongated shape
-                ctx.beginPath();
-                ctx.ellipse(pos.x, entityY, size * 1.2, size * 0.8, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-            } else {
-                // Land entity - standard rectangular/circular shape
-                ctx.fillRect(pos.x - size / 2, entityY - size / 2, size, size);
-                ctx.strokeRect(pos.x - size / 2, entityY - size / 2, size, size);
+            switch (entityType) {
+                case 'flying':
+                    renderFlyingCreature(pos, entityY, size, entity);
+                    break;
+                case 'aquatic':
+                    renderAquaticCreature(pos, entityY, size, entity);
+                    break;
+                case 'underground':
+                    renderUndergroundCreature(pos, entityY, size, entity);
+                    break;
+                case 'large_predator':
+                    renderLargePredator(pos, entityY, size, entity);
+                    break;
+                case 'small_herbivore':
+                    renderSmallHerbivore(pos, entityY, size, entity);
+                    break;
+                default:
+                    renderStandardCreature(pos, entityY, size, entity);
+                    break;
             }
             
-            // Draw entity status indicators
+            // Draw entity status and trait indicators
             renderEntityStatusIndicators(pos, entityY, size, entity);
+            
+            // Add selection highlight if selected
+            if (gameState.selectedEntity && gameState.selectedEntity.id === entity.id) {
+                renderEntitySelectionEffect(pos, entityY, size);
+            }
+        }
+        
+        // Determine entity type based on traits for specialized rendering
+        function determineEntityType(entity) {
+            const traits = entity.traits;
+            
+            if (traits.flying_ability > 0.6) return 'flying';
+            if (traits.aquatic_adaptation > 0.6) return 'aquatic';
+            if (traits.digging_ability > 0.6) return 'underground';
+            if (traits.size > 1.5 && traits.aggression > 0.5) return 'large_predator';
+            if (traits.size < 0.5 && traits.speed > 0.5) return 'small_herbivore';
+            
+            return 'standard';
+        }
+        
+        // Enhanced shadow rendering with depth perception
+        function renderEntityShadow(pos, size, elevation) {
+            const ctx = gameState.ctx;
+            const shadowIntensity = Math.min(0.4, 0.1 + elevation * 0.3);
+            const shadowOffset = size * (0.4 + elevation * 0.2);
+            
+            // Create gradient shadow for depth
+            const shadowGradient = ctx.createRadialGradient(
+                pos.x + shadowOffset, pos.y + shadowOffset, 0,
+                pos.x + shadowOffset, pos.y + shadowOffset, size
+            );
+            shadowGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowIntensity})`);
+            shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = shadowGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x + shadowOffset, pos.y + shadowOffset, size * 0.9, size * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Flying creature with wings and aerial perspective
+        function renderFlyingCreature(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.005;
+            const wingFlap = Math.sin(time * 10 + entity.id) * 0.3; // Wing animation
+            const hoverOffset = Math.sin(time * 2 + entity.id) * 3; // Hover effect
+            
+            const adjustedY = entityY + hoverOffset;
+            
+            // Draw body with 3D gradient
+            const bodyGradient = ctx.createRadialGradient(pos.x, adjustedY, 0, pos.x, adjustedY, size);
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.3));
+            bodyGradient.addColorStop(0.6, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.6));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, adjustedY, size * 0.8, size * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw animated wings
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.8);
+            ctx.lineWidth = Math.max(2, size * 0.15);
+            ctx.lineCap = 'round';
+            
+            // Left wing
+            ctx.beginPath();
+            ctx.moveTo(pos.x - size * 0.3, adjustedY);
+            ctx.quadraticCurveTo(
+                pos.x - size * (1.2 + wingFlap), adjustedY - size * (0.3 + Math.abs(wingFlap)),
+                pos.x - size * (1.5 + wingFlap), adjustedY + size * 0.2
+            );
+            ctx.stroke();
+            
+            // Right wing
+            ctx.beginPath();
+            ctx.moveTo(pos.x + size * 0.3, adjustedY);
+            ctx.quadraticCurveTo(
+                pos.x + size * (1.2 + wingFlap), adjustedY - size * (0.3 + Math.abs(wingFlap)),
+                pos.x + size * (1.5 + wingFlap), adjustedY + size * 0.2
+            );
+            ctx.stroke();
+            
+            // Add beak or head feature
+            ctx.fillStyle = adjustColorBrightness(entity.color, 0.7);
+            ctx.beginPath();
+            ctx.ellipse(pos.x, adjustedY - size * 0.3, size * 0.3, size * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Aquatic creature with streamlined body
+        function renderAquaticCreature(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.003;
+            const swimWave = Math.sin(time * 8 + entity.id) * 0.1; // Swimming motion
+            
+            // Draw streamlined body with scales effect
+            const bodyGradient = ctx.createLinearGradient(
+                pos.x - size, entityY, pos.x + size, entityY
+            );
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 0.7));
+            bodyGradient.addColorStop(0.3, adjustColorBrightness(entity.color, 1.2));
+            bodyGradient.addColorStop(0.7, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.8));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY, size * 1.4, size * 0.7, swimWave, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add fin details
+            ctx.fillStyle = adjustColorBrightness(entity.color, 0.6);
+            
+            // Dorsal fin
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY - size * 0.5, size * 0.3, size * 0.4, 0, 0, Math.PI);
+            ctx.fill();
+            
+            // Tail fin
+            ctx.beginPath();
+            ctx.ellipse(pos.x + size * 1.2, entityY, size * 0.4, size * 0.8, Math.PI * 0.3 + swimWave, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add scales pattern
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.9);
+            ctx.lineWidth = 1;
+            for (let i = -3; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.arc(pos.x + i * size * 0.2, entityY, size * 0.1, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        // Underground/burrowing creature
+        function renderUndergroundCreature(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            
+            // Draw chunky, armored body
+            const bodyGradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, size);
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.1));
+            bodyGradient.addColorStop(0.7, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.5));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY, size * 1.1, size * 0.9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add armor plating
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.4);
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                const plateY = entityY - size * 0.5 + i * size * 0.5;
+                ctx.beginPath();
+                ctx.ellipse(pos.x, plateY, size * 0.8, size * 0.2, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            // Add digging claws
+            ctx.fillStyle = '#444444';
+            const clawPositions = [
+                {x: pos.x - size * 0.8, y: entityY + size * 0.3},
+                {x: pos.x + size * 0.8, y: entityY + size * 0.3}
+            ];
+            
+            clawPositions.forEach(claw => {
+                ctx.beginPath();
+                ctx.moveTo(claw.x, claw.y);
+                ctx.lineTo(claw.x + size * 0.3, claw.y + size * 0.2);
+                ctx.lineTo(claw.x + size * 0.1, claw.y + size * 0.4);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        
+        // Large predator with intimidating features
+        function renderLargePredator(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.002;
+            const breathe = Math.sin(time * 4 + entity.id) * 0.05; // Breathing effect
+            
+            const adjustedSize = size * (1 + breathe);
+            
+            // Draw muscular body with menacing gradient
+            const bodyGradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, adjustedSize);
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.2));
+            bodyGradient.addColorStop(0.4, entity.color);
+            bodyGradient.addColorStop(0.8, adjustColorBrightness(entity.color, 0.6));
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.3));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, entityY, adjustedSize * 1.2, adjustedSize * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add predator markings/stripes
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.4);
+            ctx.lineWidth = Math.max(2, size * 0.1);
+            for (let i = 0; i < 3; i++) {
+                const stripeX = pos.x - size * 0.6 + i * size * 0.6;
+                ctx.beginPath();
+                ctx.moveTo(stripeX, entityY - size * 0.4);
+                ctx.lineTo(stripeX, entityY + size * 0.4);
+                ctx.stroke();
+            }
+            
+            // Add glowing eyes
+            ctx.fillStyle = '#FF4444';
+            ctx.shadowColor = '#FF0000';
+            ctx.shadowBlur = 4;
+            
+            const eyePositions = [
+                {x: pos.x - size * 0.3, y: entityY - size * 0.2},
+                {x: pos.x + size * 0.3, y: entityY - size * 0.2}
+            ];
+            
+            eyePositions.forEach(eye => {
+                ctx.beginPath();
+                ctx.arc(eye.x, eye.y, size * 0.08, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            ctx.shadowBlur = 0;
+            
+            // Add fangs/teeth
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.moveTo(pos.x - size * 0.1, entityY + size * 0.1);
+            ctx.lineTo(pos.x, entityY + size * 0.3);
+            ctx.lineTo(pos.x + size * 0.1, entityY + size * 0.1);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Small herbivore with cute features
+        function renderSmallHerbivore(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.008;
+            const hop = Math.abs(Math.sin(time * 6 + entity.id)) * 2; // Hopping motion
+            
+            const adjustedY = entityY - hop;
+            
+            // Draw rounded, soft body
+            const bodyGradient = ctx.createRadialGradient(pos.x, adjustedY, 0, pos.x, adjustedY, size);
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.4));
+            bodyGradient.addColorStop(0.6, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.8));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.arc(pos.x, adjustedY, size * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add fluffy fur effect
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 1.2);
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const furX = pos.x + Math.cos(angle) * size * 0.8;
+                const furY = adjustedY + Math.sin(angle) * size * 0.8;
+                
+                ctx.beginPath();
+                ctx.moveTo(furX, furY);
+                ctx.lineTo(furX + Math.cos(angle) * size * 0.2, furY + Math.sin(angle) * size * 0.2);
+                ctx.stroke();
+            }
+            
+            // Add large, gentle eyes
+            ctx.fillStyle = '#000000';
+            const eyePositions = [
+                {x: pos.x - size * 0.3, y: adjustedY - size * 0.2},
+                {x: pos.x + size * 0.3, y: adjustedY - size * 0.2}
+            ];
+            
+            eyePositions.forEach(eye => {
+                ctx.beginPath();
+                ctx.arc(eye.x, eye.y, size * 0.12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add eye shine
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(eye.x - size * 0.04, eye.y - size * 0.04, size * 0.04, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+            });
+            
+            // Add ears
+            ctx.fillStyle = adjustColorBrightness(entity.color, 0.9);
+            ctx.beginPath();
+            ctx.ellipse(pos.x - size * 0.4, adjustedY - size * 0.6, size * 0.15, size * 0.4, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(pos.x + size * 0.4, adjustedY - size * 0.6, size * 0.15, size * 0.4, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Standard creature with basic 3D rendering
+        function renderStandardCreature(pos, entityY, size, entity) {
+            const ctx = gameState.ctx;
+            
+            // Draw main body with 3D gradient
+            const bodyGradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, size);
+            bodyGradient.addColorStop(0, adjustColorBrightness(entity.color, 1.3));
+            bodyGradient.addColorStop(0.5, entity.color);
+            bodyGradient.addColorStop(1, adjustColorBrightness(entity.color, 0.6));
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.4);
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.arc(pos.x, entityY, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add simple limbs
+            ctx.strokeStyle = adjustColorBrightness(entity.color, 0.7);
+            ctx.lineWidth = Math.max(2, size * 0.1);
+            ctx.lineCap = 'round';
+            
+            // Legs
+            const legPositions = [
+                {x: pos.x - size * 0.5, y: entityY + size * 0.3},
+                {x: pos.x + size * 0.5, y: entityY + size * 0.3}
+            ];
+            
+            legPositions.forEach(leg => {
+                ctx.beginPath();
+                ctx.moveTo(leg.x, leg.y);
+                ctx.lineTo(leg.x, leg.y + size * 0.4);
+                ctx.stroke();
+            });
+        }
+        
+        // Selection effect for entities
+        function renderEntitySelectionEffect(pos, entityY, size) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.005;
+            const pulse = Math.sin(time * 8) * 0.3 + 0.7;
+            
+            ctx.strokeStyle = `rgba(255, 255, 0, ${pulse})`;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            ctx.arc(pos.x, entityY, size * 1.3, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.setLineDash([]); // Reset line dash
+        }
         }
         
         // Render status indicators for entities (energy, health, etc.)
@@ -1337,6 +2451,377 @@
         function toggleDetails() {
             gameState.showDetails = !gameState.showDetails;
             updateDetailsPanel();
+        }
+
+        // ======================
+        // TERRAIN HELPER FUNCTIONS
+        // ======================
+        
+        // Draw layered rock formations for mountains
+        function drawRockLayer(pos, tileWidth, tileHeight, layerHeight, baseColor, brightness) {
+            const ctx = gameState.ctx;
+            const layerColor = adjustColorBrightness(baseColor, brightness);
+            
+            // Right face
+            ctx.fillStyle = adjustColorBrightness(layerColor, 0.8);
+            ctx.beginPath();
+            ctx.moveTo(pos.x + tileWidth / 2, pos.y);
+            ctx.lineTo(pos.x + tileWidth / 2, pos.y + layerHeight);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2 + layerHeight);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Left face
+            ctx.fillStyle = adjustColorBrightness(layerColor, 0.6);
+            ctx.beginPath();
+            ctx.moveTo(pos.x - tileWidth / 2, pos.y);
+            ctx.lineTo(pos.x - tileWidth / 2, pos.y + layerHeight);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2 + layerHeight);
+            ctx.lineTo(pos.x, pos.y + tileHeight / 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Add rocky texture to mountain surfaces
+        function renderRockyTexture(pos, tileWidth, tileHeight, elevation) {
+            const ctx = gameState.ctx;
+            const textureIntensity = Math.min(elevation, 1.0);
+            
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            
+            // Draw rock cracks
+            const crackCount = Math.floor(textureIntensity * 5);
+            for (let i = 0; i < crackCount; i++) {
+                const startAngle = Math.random() * Math.PI * 2;
+                const length = (Math.random() * 0.3 + 0.2) * Math.min(tileWidth, tileHeight);
+                
+                const startX = pos.x + Math.cos(startAngle) * length * 0.3;
+                const startY = pos.y + Math.sin(startAngle) * length * 0.3;
+                const endX = startX + Math.cos(startAngle) * length;
+                const endY = startY + Math.sin(startAngle) * length;
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+        }
+        
+        // Add snow cap to high peaks
+        function renderSnowCap(pos, tileWidth, tileHeight, depthHeight) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.001;
+            const sparkle = Math.sin(time * 5) * 0.1 + 0.9;
+            
+            const snowGradient = ctx.createLinearGradient(
+                pos.x, pos.y - depthHeight - tileHeight / 2,
+                pos.x, pos.y - depthHeight + tileHeight / 4
+            );
+            snowGradient.addColorStop(0, `rgba(255, 255, 255, ${sparkle})`);
+            snowGradient.addColorStop(1, 'rgba(240, 248, 255, 0.8)');
+            
+            ctx.fillStyle = snowGradient;
+            ctx.strokeStyle = 'rgba(200, 220, 255, 0.8)';
+            ctx.lineWidth = 1;
+            
+            const snowY = pos.y - depthHeight;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, snowY - tileHeight / 2);
+            ctx.lineTo(pos.x + tileWidth / 3, snowY - tileHeight / 6);
+            ctx.lineTo(pos.x, snowY + tileHeight / 6);
+            ctx.lineTo(pos.x - tileWidth / 3, snowY - tileHeight / 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+        
+        // Render erosion patterns in canyons
+        function renderErosionPatterns(pos, tileWidth, tileHeight, depthHeight) {
+            const ctx = gameState.ctx;
+            
+            ctx.strokeStyle = 'rgba(139, 69, 19, 0.4)';
+            ctx.lineWidth = 1;
+            
+            // Vertical erosion lines
+            for (let i = 0; i < 4; i++) {
+                const x = pos.x - tileWidth / 3 + (i * tileWidth / 6);
+                ctx.beginPath();
+                ctx.moveTo(x, pos.y);
+                ctx.lineTo(x, pos.y + depthHeight * 0.8);
+                ctx.stroke();
+            }
+            
+            // Horizontal stratification
+            for (let i = 0; i < 3; i++) {
+                const y = pos.y + (i * depthHeight / 4);
+                ctx.beginPath();
+                ctx.moveTo(pos.x - tileWidth / 3, y);
+                ctx.lineTo(pos.x + tileWidth / 3, y);
+                ctx.stroke();
+            }
+        }
+        
+        // Water reflection effects
+        function renderWaterReflection(pos, tileWidth, tileHeight, waveAnimation) {
+            const ctx = gameState.ctx;
+            
+            // Reflection shimmer
+            const reflectionGradient = ctx.createLinearGradient(
+                pos.x - tileWidth / 4, pos.y,
+                pos.x + tileWidth / 4, pos.y
+            );
+            reflectionGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            reflectionGradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.3 + waveAnimation * 0.1})`);
+            reflectionGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            ctx.fillStyle = reflectionGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y + waveAnimation, tileWidth / 3, tileHeight / 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Water bubble effects for deep water
+        function renderWaterBubbles(pos, tileWidth, tileHeight, time) {
+            const ctx = gameState.ctx;
+            
+            // Rising bubbles
+            for (let i = 0; i < 3; i++) {
+                const bubbleX = pos.x + (Math.sin(time + i) * tileWidth / 4);
+                const bubbleY = pos.y + (Math.cos(time * 1.5 + i) * tileHeight / 3);
+                const bubbleSize = 1 + Math.sin(time * 3 + i) * 0.5;
+                
+                ctx.fillStyle = 'rgba(173, 216, 230, 0.6)';
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Forest floor organic texture
+        function renderForestFloorTexture(pos, tileWidth, tileHeight, baseColor) {
+            const ctx = gameState.ctx;
+            
+            // Fallen leaves and organic matter
+            ctx.fillStyle = adjustColorBrightness(baseColor, 0.8);
+            for (let i = 0; i < 6; i++) {
+                const leafX = pos.x + (Math.random() - 0.5) * tileWidth * 0.6;
+                const leafY = pos.y + (Math.random() - 0.5) * tileHeight * 0.6;
+                const leafSize = Math.random() * 3 + 1;
+                
+                ctx.beginPath();
+                ctx.ellipse(leafX, leafY, leafSize, leafSize * 0.6, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Undergrowth vegetation
+        function renderUndergrowth(pos, tileWidth, tileHeight, baseColor) {
+            const ctx = gameState.ctx;
+            
+            ctx.strokeStyle = adjustColorBrightness(baseColor, 1.2);
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+            
+            // Small ferns and grass
+            for (let i = 0; i < 4; i++) {
+                const fernX = pos.x + (Math.random() - 0.5) * tileWidth * 0.7;
+                const fernY = pos.y + (Math.random() - 0.5) * tileHeight * 0.7;
+                const fernHeight = Math.random() * 8 + 4;
+                
+                ctx.beginPath();
+                ctx.moveTo(fernX, fernY);
+                ctx.lineTo(fernX + (Math.random() - 0.5) * 4, fernY - fernHeight);
+                ctx.stroke();
+            }
+        }
+        
+        // Sand ripple patterns
+        function renderSandRipples(pos, tileWidth, tileHeight, windPattern) {
+            const ctx = gameState.ctx;
+            
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Wind-blown ripples
+            for (let i = 0; i < 3; i++) {
+                const rippleY = pos.y - tileHeight / 4 + i * tileHeight / 6;
+                const curve = windPattern * 3;
+                
+                ctx.beginPath();
+                ctx.moveTo(pos.x - tileWidth / 3, rippleY);
+                ctx.quadraticCurveTo(pos.x, rippleY + curve, pos.x + tileWidth / 3, rippleY);
+                ctx.stroke();
+            }
+        }
+        
+        // Oasis effects in desert
+        function renderOasisEffect(pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            const time = Date.now() * 0.002;
+            
+            // Shimmering water
+            const shimmer = Math.sin(time * 4) * 0.2 + 0.8;
+            ctx.fillStyle = `rgba(0, 150, 255, ${shimmer * 0.6})`;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y, tileWidth / 4, tileHeight / 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Palm frond shadows
+            ctx.strokeStyle = 'rgba(0, 100, 0, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pos.x - tileWidth / 4, pos.y - tileHeight / 4);
+            ctx.lineTo(pos.x + tileWidth / 6, pos.y + tileHeight / 6);
+            ctx.stroke();
+        }
+        
+        // Ice crystal formations
+        function renderIceCrystals(pos, tileWidth, tileHeight, shimmer) {
+            const ctx = gameState.ctx;
+            
+            ctx.strokeStyle = `rgba(173, 216, 230, ${0.8 + shimmer})`;
+            ctx.lineWidth = 1;
+            
+            // Crystal formations
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const crystalX = pos.x + Math.cos(angle) * tileWidth / 4;
+                const crystalY = pos.y + Math.sin(angle) * tileHeight / 6;
+                
+                ctx.beginPath();
+                ctx.moveTo(crystalX, crystalY);
+                ctx.lineTo(crystalX + Math.cos(angle) * 6, crystalY + Math.sin(angle) * 3);
+                ctx.stroke();
+                
+                // Crystal facets
+                ctx.beginPath();
+                ctx.moveTo(crystalX, crystalY);
+                ctx.lineTo(crystalX + Math.cos(angle + Math.PI / 6) * 4, crystalY + Math.sin(angle + Math.PI / 6) * 2);
+                ctx.stroke();
+            }
+        }
+        
+        // Ice surface shine
+        function renderIceShine(pos, tileWidth, tileHeight, time) {
+            const ctx = gameState.ctx;
+            const shine = Math.abs(Math.sin(time)) * 0.3;
+            
+            const shineGradient = ctx.createLinearGradient(
+                pos.x - tileWidth / 4, pos.y - tileHeight / 4,
+                pos.x + tileWidth / 4, pos.y + tileHeight / 4
+            );
+            shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            shineGradient.addColorStop(0.5, `rgba(255, 255, 255, ${shine})`);
+            shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            ctx.fillStyle = shineGradient;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y, tileWidth / 3, tileHeight / 6, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Enhanced slope indicators
+        function renderAdvancedSlopeIndicators(pos, slope, tileWidth, tileHeight, elevation) {
+            const ctx = gameState.ctx;
+            const intensity = Math.min(slope, 1.0);
+            const direction = elevation > 0 ? 1 : -1; // Upslope or downslope
+            
+            ctx.strokeStyle = `rgba(100, 100, 100, ${intensity * 0.6})`;
+            ctx.lineWidth = Math.max(1, intensity * 2);
+            
+            // Directional slope lines
+            const numLines = Math.floor(intensity * 6) + 2;
+            for (let i = 0; i < numLines; i++) {
+                const offset = (i - numLines / 2) * (tileWidth / numLines) * 0.4;
+                const startY = pos.y - tileHeight / 4;
+                const endY = pos.y + tileHeight / 4;
+                const skew = direction * intensity * 5;
+                
+                ctx.beginPath();
+                ctx.moveTo(pos.x + offset, startY);
+                ctx.lineTo(pos.x + offset + skew, endY);
+                ctx.stroke();
+            }
+        }
+        
+        // High altitude atmospheric effects
+        function renderHighAltitudeEffects(pos, tileWidth, tileHeight, elevation) {
+            const ctx = gameState.ctx;
+            const intensity = (elevation - 0.7) / 0.3; // Normalize for high altitude range
+            
+            // Thin air shimmer
+            const shimmerGradient = ctx.createRadialGradient(
+                pos.x, pos.y, 0,
+                pos.x, pos.y, Math.max(tileWidth, tileHeight) / 2
+            );
+            shimmerGradient.addColorStop(0, `rgba(173, 216, 230, ${intensity * 0.2})`);
+            shimmerGradient.addColorStop(1, 'rgba(173, 216, 230, 0)');
+            
+            ctx.fillStyle = shimmerGradient;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, Math.max(tileWidth, tileHeight) / 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Depth effects for valleys and underground areas
+        function renderDepthEffects(pos, tileWidth, tileHeight, elevation) {
+            const ctx = gameState.ctx;
+            const intensity = Math.abs(elevation + 0.3) / 0.7; // Normalize for depth range
+            
+            // Shadow overlay for depth
+            const depthGradient = ctx.createRadialGradient(
+                pos.x, pos.y, 0,
+                pos.x, pos.y, Math.max(tileWidth, tileHeight) / 2
+            );
+            depthGradient.addColorStop(0, `rgba(0, 0, 0, ${intensity * 0.3})`);
+            depthGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = depthGradient;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, Math.max(tileWidth, tileHeight) / 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Render terrain features like rocks, vegetation patches, etc.
+        function renderTerrainFeatures(tile, pos, tileWidth, tileHeight) {
+            const ctx = gameState.ctx;
+            
+            tile.terrainFeatures.forEach((feature, index) => {
+                const featureX = pos.x + (Math.sin(index) * tileWidth / 4);
+                const featureY = pos.y + (Math.cos(index) * tileHeight / 4);
+                
+                switch (feature) {
+                    case 1: // Boulder
+                        ctx.fillStyle = '#696969';
+                        ctx.strokeStyle = '#2F4F4F';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.ellipse(featureX, featureY, 4, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        break;
+                        
+                    case 2: // Vegetation patch
+                        ctx.fillStyle = '#228B22';
+                        ctx.beginPath();
+                        ctx.arc(featureX, featureY, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 3: // Crystal formation
+                        ctx.strokeStyle = '#E0E0E0';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(featureX, featureY - 4);
+                        ctx.lineTo(featureX - 2, featureY + 2);
+                        ctx.lineTo(featureX + 2, featureY + 2);
+                        ctx.closePath();
+                        ctx.stroke();
+                        break;
+                }
+            });
         }
 
         // Initialize when page loads
