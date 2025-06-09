@@ -1488,7 +1488,9 @@
             const pos = worldToIso(entity.x, entity.y, entity.baseElevation);
             const ctx = gameState.ctx;
             
-            const size = Math.max(6, (entity.size + 1) * gameState.zoom * 5);
+            // Apply size multiplier for screenshots if set
+            const sizeMultiplier = gameState.entitySizeMultiplier || 1;
+            const size = Math.max(8 * sizeMultiplier, (entity.size + 1) * gameState.zoom * 5 * sizeMultiplier);
             const entityHeight = size * 1.8; // Entity height for 3D effect
             const entityY = pos.y - entityHeight / 2;
             
@@ -1533,6 +1535,15 @@
             
             // Draw entity status and trait indicators
             renderEntityStatusIndicators(pos, entityY, size, entity);
+            
+            // Add extra visibility for screenshots
+            if (gameState.entitySizeMultiplier && gameState.entitySizeMultiplier > 1) {
+                ctx.strokeStyle = '#FFFF00'; // Bright yellow border
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(pos.x, entityY, size * 1.2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
             
             // Add selection highlight if selected
             if (gameState.selectedEntity && gameState.selectedEntity.id === entity.id) {
