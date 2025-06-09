@@ -196,24 +196,30 @@ test.describe('EvoSim Entity Type Screenshots', () => {
       await page.evaluate((entity) => {
         const gameState = (window as any).gameState;
         if (gameState) {
-          // Set camera position and zoom
+          // Set camera position to center on the entity
           gameState.camera.x = entity.x;
           gameState.camera.y = entity.y;
-          gameState.zoom = 4.0; // Higher zoom for better visibility
+          gameState.zoom = 6.0; // Higher zoom for better visibility
           
-          // Force a render update to ensure entity is visible
-          if (typeof render === 'function') {
-            render();
-          }
+          // Set size multiplier for enhanced visibility
+          gameState.entitySizeMultiplier = 5; // Make entities 5x larger for screenshots
           
           console.log(`Camera positioned at entity ${entity.id}: (${entity.x}, ${entity.y}) with zoom ${gameState.zoom}`);
           console.log(`Entity traits:`, entity.traits);
           console.log(`Entity color:`, entity.color);
+          console.log(`Entity size multiplier:`, gameState.entitySizeMultiplier);
+          
+          // Force multiple render updates to ensure entity is visible
+          if (typeof render === 'function') {
+            for (let i = 0; i < 3; i++) {
+              render();
+            }
+          }
         }
       }, targetEntity);
 
       // Wait longer for camera to update and render
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
 
       // Add label overlay and enhance entity visibility for screenshots
       await page.evaluate((data) => {
@@ -221,10 +227,9 @@ test.describe('EvoSim Entity Type Screenshots', () => {
         const existingLabels = document.querySelectorAll('.entity-type-label');
         existingLabels.forEach(label => label.remove());
 
-        // Temporarily increase entity size for better visibility in screenshots
-        const originalEntitySize = window.gameState?.entitySizeMultiplier || 1;
+        // Ensure entity size multiplier is set for visibility
         if (window.gameState) {
-          window.gameState.entitySizeMultiplier = 3; // Make entities 3x larger for screenshots
+          window.gameState.entitySizeMultiplier = 5; // Make entities 5x larger for screenshots
         }
 
         // Create new label with entity position info
@@ -241,11 +246,52 @@ test.describe('EvoSim Entity Type Screenshots', () => {
         `;
         document.body.appendChild(label);
         
-        // Force a render to show the enhanced entities
+        // Force multiple renders to show the enhanced entities
         if (typeof render === 'function') {
-          render();
+          for (let i = 0; i < 5; i++) {
+            render();
+          }
         }
+        
+        console.log(`Enhanced rendering for ${data.displayName} - Entity size multiplier: ${window.gameState?.entitySizeMultiplier}`);
       }, entityTypeData);
+
+      // Wait for rendering to complete
+      await page.waitForTimeout(2000);
+
+      // Validate that entity is actually rendered and visible on canvas
+      const entityVisible = await page.evaluate(() => {
+        const gameState = (window as any).gameState;
+        if (!gameState || !gameState.canvas) return false;
+        
+        const canvas = gameState.canvas;
+        const ctx = gameState.ctx;
+        
+        // Get canvas image data to check if entity is rendered
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+        
+        // Count non-background pixels (crude check for rendered content)
+        let nonBackgroundPixels = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const r = pixels[i];
+          const g = pixels[i + 1];
+          const b = pixels[i + 2];
+          const alpha = pixels[i + 3];
+          
+          // Check if pixel is not background (not pure black or transparent)
+          if (alpha > 0 && (r > 20 || g > 20 || b > 20)) {
+            nonBackgroundPixels++;
+          }
+        }
+        
+        console.log(`Canvas validation: ${nonBackgroundPixels} non-background pixels found`);
+        return nonBackgroundPixels > 1000; // Ensure substantial content is rendered
+      });
+
+      if (!entityVisible) {
+        console.log(`Warning: Entity ${type} may not be visible in screenshot`);
+      }
 
       // Take screenshot
       await page.screenshot({ 
@@ -255,10 +301,10 @@ test.describe('EvoSim Entity Type Screenshots', () => {
 
       console.log(`Screenshot saved: ${type.replace(/\s+/g, '-').toLowerCase()}.png`);
       
-      // Reset entity size multiplier
+      // Reset entity size multiplier for next iteration
       await page.evaluate(() => {
         if (window.gameState) {
-          delete window.gameState.entitySizeMultiplier;
+          window.gameState.entitySizeMultiplier = 1;
         }
       });
     }

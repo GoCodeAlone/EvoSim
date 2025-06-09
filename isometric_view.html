@@ -1485,69 +1485,149 @@
         
         // Enhanced entity rendering with sophisticated 3D-style visuals
         function renderEnhancedEntity(entity) {
-            const pos = worldToIso(entity.x, entity.y, entity.baseElevation);
+            const pos = worldToIso(entity.x, entity.y, entity.baseElevation || 0);
             const ctx = gameState.ctx;
             
-            // Apply size multiplier for screenshots if set
+            // Apply size multiplier for screenshots if set - ensure minimum visibility
             const sizeMultiplier = gameState.entitySizeMultiplier || 1;
-            const size = Math.max(8 * sizeMultiplier, (entity.size + 1) * gameState.zoom * 5 * sizeMultiplier);
-            const entityHeight = size * 1.8; // Entity height for 3D effect
+            const baseSize = Math.max(12, (Math.abs(entity.size) + 1) * 8); // Ensure minimum size
+            const size = baseSize * gameState.zoom * sizeMultiplier;
+            const finalSize = Math.max(20 * sizeMultiplier, size); // Guarantee minimum visible size
+            
+            // Debug logging for screenshot mode
+            if (sizeMultiplier > 1) {
+                console.log(`Rendering entity ${entity.id} at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) with size ${finalSize.toFixed(1)}`);
+            }
+            
+            // Check if entity is within visible canvas area (with margin for debugging)
+            const margin = 100;
+            if (pos.x < -margin || pos.x > gameState.canvas.width + margin || 
+                pos.y < -margin || pos.y > gameState.canvas.height + margin) {
+                if (sizeMultiplier > 1) {
+                    console.log(`Entity ${entity.id} is off-screen: canvas(${gameState.canvas.width}x${gameState.canvas.height}), pos(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)})`);
+                }
+            }
+            
+            const entityHeight = finalSize * 1.2; // Entity height for 3D effect
             const entityY = pos.y - entityHeight / 2;
             
-            // Draw sophisticated shadow with depth
-            renderEntityShadow(pos, size, entity.baseElevation);
+            // Always draw a simple, highly visible entity first as fallback
+            const fallbackRadius = finalSize / 2;
+            
+            // Draw entity shadow
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.beginPath();
+            ctx.ellipse(pos.x + 3, pos.y + 3, fallbackRadius * 0.8, fallbackRadius * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
             
             // Determine entity type and render accordingly
             const entityType = determineEntityType(entity);
             
+            // Bright, highly visible fallback rendering first
+            ctx.save();
+            
+            // Use bright, contrasting colors based on entity type
+            let primaryColor, secondaryColor;
             switch (entityType) {
                 case 'flying':
-                    renderFlyingCreature(pos, entityY, size, entity);
+                    primaryColor = '#FFD700'; // Gold
+                    secondaryColor = '#FFA500'; // Orange
                     break;
                 case 'aquatic':
-                    renderAquaticCreature(pos, entityY, size, entity);
+                    primaryColor = '#00BFFF'; // Deep Sky Blue  
+                    secondaryColor = '#0080FF'; // Blue
                     break;
                 case 'underground':
-                    renderUndergroundCreature(pos, entityY, size, entity);
+                    primaryColor = '#8B4513'; // Saddle Brown
+                    secondaryColor = '#654321'; // Dark Brown
                     break;
                 case 'large_predator':
-                    renderLargePredator(pos, entityY, size, entity);
+                    primaryColor = '#FF4500'; // Red Orange
+                    secondaryColor = '#DC143C'; // Crimson
                     break;
                 case 'small_herbivore':
-                    renderSmallHerbivore(pos, entityY, size, entity);
+                    primaryColor = '#32CD32'; // Lime Green
+                    secondaryColor = '#228B22'; // Forest Green
                     break;
                 case 'scavenger':
-                    renderScavenger(pos, entityY, size, entity);
-                    break;
-                case 'intelligent_social':
-                    renderIntelligentSocial(pos, entityY, size, entity);
-                    break;
-                case 'explorer':
-                    renderExplorer(pos, entityY, size, entity);
-                    break;
-                case 'stealth':
-                    renderStealthCreature(pos, entityY, size, entity);
+                    primaryColor = '#800080'; // Purple
+                    secondaryColor = '#4B0082'; // Indigo
                     break;
                 default:
-                    renderStandardCreature(pos, entityY, size, entity);
+                    primaryColor = entity.color || '#FFFFFF';
+                    secondaryColor = adjustColorBrightness(primaryColor, 0.7);
                     break;
             }
             
-            // Draw entity status and trait indicators
-            renderEntityStatusIndicators(pos, entityY, size, entity);
+            // Draw main entity body with gradient for 3D effect
+            const gradient = ctx.createRadialGradient(pos.x, entityY, 0, pos.x, entityY, fallbackRadius);
+            gradient.addColorStop(0, primaryColor);
+            gradient.addColorStop(0.7, secondaryColor);
+            gradient.addColorStop(1, adjustColorBrightness(secondaryColor, 0.5));
             
-            // Add extra visibility for screenshots
-            if (gameState.entitySizeMultiplier && gameState.entitySizeMultiplier > 1) {
-                ctx.strokeStyle = '#FFFF00'; // Bright yellow border
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(pos.x, entityY, size * 1.2, 0, Math.PI * 2);
-                ctx.stroke();
+            ctx.fillStyle = gradient;
+            ctx.strokeStyle = adjustColorBrightness(primaryColor, 0.3);
+            ctx.lineWidth = Math.max(2, fallbackRadius * 0.1);
+            
+            ctx.beginPath();
+            ctx.arc(pos.x, entityY, fallbackRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add entity type specific visual markers
+            ctx.fillStyle = primaryColor;
+            ctx.font = `${Math.max(12, fallbackRadius * 0.8)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            let symbol = '●';
+            switch (entityType) {
+                case 'flying': symbol = '🕊️'; break;
+                case 'aquatic': symbol = '🐟'; break;
+                case 'underground': symbol = '🐭'; break;
+                case 'large_predator': symbol = '🦁'; break;
+                case 'small_herbivore': symbol = '🐰'; break;
+                case 'scavenger': symbol = '🐺'; break;
+                default: symbol = '●'; break;
             }
             
-            // Add selection highlight if selected
+            // Draw symbol on entity
+            if (symbol !== '●') {
+                ctx.fillText(symbol, pos.x, entityY);
+            }
+            
+            ctx.restore();
+            
+            // Draw entity ID for debugging in screenshot mode
+            if (sizeMultiplier > 1) {
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 1;
+                ctx.font = `${Math.max(10, finalSize * 0.2)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                const text = `ID:${entity.id}`;
+                const textY = entityY + fallbackRadius + 5;
+                ctx.strokeText(text, pos.x, textY);
+                ctx.fillText(text, pos.x, textY);
+                ctx.restore();
+            }
+            
+            // Draw selection highlight if this entity is selected
             if (gameState.selectedEntity && gameState.selectedEntity.id === entity.id) {
-                renderEntitySelectionEffect(pos, entityY, size);
+                ctx.save();
+                ctx.strokeStyle = '#FFFF00'; // Bright yellow
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 4]);
+                ctx.beginPath();
+                ctx.arc(pos.x, entityY, fallbackRadius * 1.5, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
             }
         }
         
